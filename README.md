@@ -34,6 +34,28 @@ Per abilitare GitHub Pages la prima volta:
 
 URL pubblicazione: `https://<username>.github.io/informatix-repair/`
 
+## App Android (APK) con Capacitor
+
+Il progetto include già la piattaforma Android generata da [Capacitor](https://capacitorjs.com/) nella cartella `android/`.
+
+Requisiti: [Android Studio](https://developer.android.com/studio) installato in locale (con Android SDK).
+
+```bash
+npm run cap:sync   # builda il sito e sincronizza dist/ dentro android/
+npm run cap:open   # apre il progetto in Android Studio
+```
+
+Da Android Studio:
+- **Run** per testare su emulatore/dispositivo
+- **Build → Generate Signed Bundle / APK** per generare l'APK firmato da distribuire
+
+Configurazione app: `capacitor.config.ts` (`appId: it.informatixrepair.app`, `appName: Informatix Repair`).
+
+Nota: essendo una WebView del sito statico, prima della pubblicazione su Play Store conviene:
+- sostituire i contenuti placeholder (vedi TODO sotto)
+- valutare l'aggiunta di funzionalità native (notifiche push, fotocamera, geolocalizzazione) per rispettare le policy anti "wrapper senza valore aggiunto" di Google Play
+- generare le icone/splash screen dell'app (es. con `@capacitor/assets`)
+
 ## Struttura
 
 ```
