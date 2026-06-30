@@ -79,6 +79,6 @@ public/images/        Logo e immagini statiche
 - Indirizzo completo (via, civico)
 - Orari di apertura esatti
 - Logo reale già inserito (`public/images/Informatix-logo.png`)
-- Foto reali del negozio, del team e dei lavori completati (sostituire i placeholder in `portfolio.html`)
+- Foto reali del negozio, del team e dei lavori completati (al momento `portfolio.html` usa foto stock Unsplash a tema, da sostituire con foto reali dei lavori quando disponibili)
 - Social media (Facebook, Instagram)
 - Eventuale integrazione di un servizio di invio form reale (es. Formspree) al posto del `mailto:` in `contatti.html`
