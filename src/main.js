@@ -27,7 +27,7 @@ function renderNavbar() {
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-20">
           <a href="index.html" class="flex items-center gap-2">
-            <img src="/images/logo.svg" alt="Informatix Repair" class="h-10 md:h-12" />
+            <img src="/images/Informatix-logo.png" alt="Informatix Repair" class="h-12 md:h-14" />
           </a>
           <div class="hidden md:flex items-center gap-8">${links}
             <a href="contatti.html" class="btn-primary !py-2 !px-5">Richiedi Preventivo</a>
