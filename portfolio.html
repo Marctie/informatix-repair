@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio | Informatix Repair</title>
+  <meta name="description" content="Galleria dei lavori completati da Informatix Repair: laptop, desktop, smartphone." />
+  <link rel="icon" type="image/svg+xml" href="/images/logo.svg" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body class="font-body">
+  <div id="navbar"></div>
+
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+    <h1 class="section-title text-center">Portfolio</h1>
+    <p class="text-gray-600 text-center max-w-2xl mx-auto mb-10">
+      Alcuni esempi di lavori completati. (Immagini placeholder &mdash; verranno sostituite con foto reali dei lavori.)
+    </p>
+
+    <div class="flex flex-wrap justify-center gap-3 mb-10">
+      <button data-filter="all" class="px-5 py-2 rounded-full bg-secondary text-white text-sm font-medium">Tutti</button>
+      <button data-filter="laptop" class="px-5 py-2 rounded-full bg-lightbg text-primary text-sm font-medium">Laptop</button>
+      <button data-filter="desktop" class="px-5 py-2 rounded-full bg-lightbg text-primary text-sm font-medium">Desktop</button>
+      <button data-filter="smartphone" class="px-5 py-2 rounded-full bg-lightbg text-primary text-sm font-medium">Smartphone</button>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div data-category="laptop" class="service-card">
+        <div class="h-40 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 text-sm">Foto lavoro</div>
+        <h3 class="font-semibold mb-1">Sostituzione Schermo Laptop</h3>
+        <p class="text-sm text-gray-600">Riparazione display rotto su notebook 15".</p>
+      </div>
+      <div data-category="desktop" class="service-card">
+        <div class="h-40 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 text-sm">Foto lavoro</div>
+        <h3 class="font-semibold mb-1">Assemblaggio Gaming PC</h3>
+        <p class="text-sm text-gray-600">Build custom per gaming ad alte prestazioni.</p>
+      </div>
+      <div data-category="smartphone" class="service-card">
+        <div class="h-40 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 text-sm">Foto lavoro</div>
+        <h3 class="font-semibold mb-1">Riparazione Display Smartphone</h3>
+        <p class="text-sm text-gray-600">Sostituzione vetro e touch su smartphone Android.</p>
+      </div>
+      <div data-category="laptop" class="service-card">
+        <div class="h-40 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 text-sm">Foto lavoro</div>
+        <h3 class="font-semibold mb-1">Recovery Dati Hard Disk</h3>
+        <p class="text-sm text-gray-600">Recupero dati da HDD danneggiato su laptop.</p>
+      </div>
+      <div data-category="desktop" class="service-card">
+        <div class="h-40 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 text-sm">Foto lavoro</div>
+        <h3 class="font-semibold mb-1">Upgrade SSD e RAM</h3>
+        <p class="text-sm text-gray-600">Potenziamento PC desktop per maggiore velocità.</p>
+      </div>
+      <div data-category="smartphone" class="service-card">
+        <div class="h-40 bg-gray-200 rounded-lg mb-4 flex items-center justify-center text-gray-400 text-sm">Foto lavoro</div>
+        <h3 class="font-semibold mb-1">Sostituzione Batteria</h3>
+        <p class="text-sm text-gray-600">Cambio batteria su smartphone con autonomia ridotta.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contatti | Informatix Repair</title>
+  <meta name="description" content="Contatta Informatix Repair a Nocera Superiore (SA) per una diagnosi o un preventivo gratuito." />
+  <link rel="icon" type="image/svg+xml" href="/images/logo.svg" />
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body class="font-body">
+  <div id="navbar"></div>
+
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+    <h1 class="section-title text-center">Contattaci</h1>
+    <p class="text-gray-600 text-center max-w-2xl mx-auto mb-12">
+      Siamo a Nocera Superiore (SA). Scrivici per una diagnosi o un preventivo gratuito.
+    </p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div>
+        <div class="service-card mb-6">
+          <h2 class="font-heading font-semibold text-lg mb-4">Informazioni</h2>
+          <ul class="space-y-3 text-gray-600 text-sm">
+            <li><strong class="text-primary">Indirizzo:</strong> Nocera Superiore (SA), 84019 [indirizzo preciso da confermare]</li>
+            <li><strong class="text-primary">Telefono:</strong> [DA CONFERMARE]</li>
+            <li><strong class="text-primary">WhatsApp:</strong> [DA CONFERMARE]</li>
+            <li><strong class="text-primary">Email:</strong> info@informatix-repair.it</li>
+            <li><strong class="text-primary">Orari:</strong> Lun-Sab 9:00-19:00, Domenica chiuso [da verificare]</li>
+          </ul>
+          <div class="flex gap-3 mt-6">
+            <a href="tel:+390000000000" class="btn-outline !py-2 !px-4 text-sm">Chiama</a>
+            <a href="https://wa.me/390000000000" class="btn-primary !py-2 !px-4 text-sm">WhatsApp</a>
+          </div>
+        </div>
+
+        <div class="rounded-xl overflow-hidden shadow-sm h-72">
+          <iframe
+            title="Mappa Nocera Superiore"
+            class="w-full h-full border-0"
+            loading="lazy"
+            src="https://www.google.com/maps?q=40.7427,14.5903&z=14&output=embed">
+          </iframe>
+        </div>
+      </div>
+
+      <div class="service-card">
+        <h2 class="font-heading font-semibold text-lg mb-4">Scrivici</h2>
+        <form action="mailto:info@informatix-repair.it" method="post" enctype="text/plain" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1" for="name">Nome</label>
+            <input id="name" name="Nome" type="text" required class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1" for="email">Email</label>
+            <input id="email" name="Email" type="email" required class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-primary mb-1" for="message">Messaggio</label>
+            <textarea id="message" name="Messaggio" rows="5" required class="w-full rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-accent"></textarea>
+          </div>
+          <button type="submit" class="btn-primary w-full">Invia Messaggio</button>
+          <p class="text-xs text-gray-500">Il modulo apre il tuo client email predefinito. Per un invio diretto via server, integrare in futuro un servizio come Formspree o un webhook.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer"></div>
+</body>
+</html>
