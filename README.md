@@ -51,7 +51,11 @@ Da Android Studio:
 
 Configurazione app: `capacitor.config.ts` (`appId: it.informatixrepair.app`, `appName: Informatix Repair`).
 
-Nota: essendo una WebView del sito statico, prima della pubblicazione su Play Store conviene:
+**Importante**: l'app NON bundla i file statici di `dist/` — `server.url` in `capacitor.config.ts` punta al sito live su GitHub Pages (`https://marctie.github.io/informatix-repair/`). L'APK è quindi un wrapper WebView che mostra sempre la versione pubblicata, senza bisogno di ricompilare l'app a ogni modifica del sito. Richiede connessione internet per funzionare.
+
+Se in futuro si preferisce un APK realmente offline (contenuti bundlati), basta rimuovere la chiave `url` da `server` in `capacitor.config.ts` e rilanciare `npm run cap:sync`.
+
+Nota: prima della pubblicazione su Play Store conviene:
 - sostituire i contenuti placeholder (vedi TODO sotto)
 - valutare l'aggiunta di funzionalità native (notifiche push, fotocamera, geolocalizzazione) per rispettare le policy anti "wrapper senza valore aggiunto" di Google Play
 - generare le icone/splash screen dell'app (es. con `@capacitor/assets`)
@@ -74,7 +78,7 @@ public/images/        Logo e immagini statiche
 - Numero di telefono e WhatsApp
 - Indirizzo completo (via, civico)
 - Orari di apertura esatti
-- Logo definitivo in PNG/SVG ad alta risoluzione (sostituire `public/images/logo.svg`, attualmente un placeholder testuale)
+- Logo reale già inserito (`public/images/Informatix-logo.png`)
 - Foto reali del negozio, del team e dei lavori completati (sostituire i placeholder in `portfolio.html`)
 - Social media (Facebook, Instagram)
 - Eventuale integrazione di un servizio di invio form reale (es. Formspree) al posto del `mailto:` in `contatti.html`

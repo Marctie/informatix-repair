@@ -6,6 +6,9 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     androidScheme: 'https',
+    // L'app carica il sito live invece dei file bundlati in dist/,
+    // così resta sempre aggiornata senza dover ricompilare l'APK.
+    url: 'https://marctie.github.io/informatix-repair/',
   },
 };
 
