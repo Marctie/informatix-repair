@@ -7,7 +7,7 @@ Apple ha rilasciato iOS 27 il 14 settembre, quasi tre mesi dopo la presentazione
 
 ## Le novità principali
 
-Il cambiamento più visibile riguarda Siri, che è stato ricostruito e ha adesso una propria app dedicata. Apple Intelligence si allarga con strumenti di scrittura migliorati e con la generazione di immagini tramite un modello privato in cloud. Arrivano anche nuovi controlli per i genitori, una funzione chiamata iPhone Handoff, che permette di passare da un iPhone all'altro usando lo stesso numero, e la possibilità di sfogliare video dentro CarPlay.
+Il cambiamento più atteso riguarda Siri, che è stato ricostruito e ha una propria app dedicata. Attenzione però: la nuova Siri non è disponibile in Italia né nel resto dell'Unione europea al lancio, e all'inizio parla solo inglese. Apple Intelligence, invece, funziona anche in italiano e si allarga con strumenti di scrittura migliorati e con la generazione di immagini tramite un modello privato in cloud. Arrivano anche nuovi controlli per i genitori, una funzione chiamata iPhone Handoff, che permette di passare da un iPhone all'altro usando lo stesso numero, e la possibilità di sfogliare video dentro CarPlay.
 
 ## Non tutto è per tutti
 

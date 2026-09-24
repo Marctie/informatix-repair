@@ -111,3 +111,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 51-55: mercato smartphone Q2 2026, PC piu cari e rinnovo Windows 10, USB-C sui portatili, fine supporto Office 2021, Linux su Steam.
 - Articoli 56-60: iPhone pieghevole, SpaceX e Starlink, difese antitruffa di Android 17, data center in Italia, gestori di password.
 - Articoli 61-65: boom dei ricondizionati, EU Kids Act, batterie al litio e sicurezza, ChatGPT con pubblicita e nuovi prezzi, 6G.
+- Articoli 66-70: aggiornamento Windows 11 di settembre, meno clic dai risultati Google con IA, pressione dal polso, rincaro PS5, Siri IA non in Italia (corretto anche l'articolo su iOS 27).
