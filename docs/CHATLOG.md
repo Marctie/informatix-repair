@@ -104,3 +104,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 16-20: Starlink e Fastweb, Galaxy Z Fold 8 e Flip 8, browser con agenti IA, prezzi SSD, NIS2 Italia.
 - Articoli 21-25: iOS 27, rincari schede video e RTX 50 Super, zero-day Chrome, guasti cloud, robot umanoidi.
 - Articoli 26-30: SMS falsi Agenzia delle Entrate, IT Wallet ed EUDI, portatili Core Ultra serie 3, Copilot ridimensionato, WhatsApp.
+- Articoli 31-35: Apple Watch e AirPods, GPT-6 Astra, power bank in aereo, Steam Machine, Google Home Speaker.
