@@ -15,6 +15,6 @@ Il 30 giugno l'Università di Washington ha pubblicato uno studio che segnala ri
 
 ## Come comportarsi
 
-Non serve rinunciare a queste funzioni, ma è bene usarle con criterio. Evita di lasciare l'agente operare mentre sei collegato a servizi delicati, come la banca o la posta di lavoro. Controlla sempre ciò che sta per fare prima di confermare un pagamento o un invio. Tieni il browser aggiornato e disattiva le funzioni che non ti servono: Mozilla, per esempio, ha promesso un interruttore per spegnere tutto ciò che riguarda l'intelligenza artificiale in Firefox.
+Non serve rinunciare a queste funzioni, ma è bene usarle con criterio. Evita di lasciare l'agente operare mentre sei collegato a servizi delicati, come la banca o la posta di lavoro. Controlla sempre ciò che sta per fare prima di confermare un pagamento o un invio. Tieni il browser aggiornato e disattiva le funzioni che non ti servono: Mozilla, per esempio, ha introdotto in Firefox un interruttore per spegnere tutto ciò che riguarda l'intelligenza artificiale.
 
 Se hai dubbi sulle impostazioni del tuo browser, portaci il computer e le rivediamo insieme.

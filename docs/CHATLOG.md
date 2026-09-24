@@ -116,3 +116,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 76-80: SPID e CIE, euro digitale, Amazon Leo, tracciamento ACR delle smart TV, Meta Muse.
 - Articoli 81-85: certificati Secure Boot scaduti, macOS 27 senza Mac Intel, WhatsApp su vecchi telefoni, iOS 27 e batteria, One UI 9.
 - Articoli 86-90: lancio dei Googlebook, Micron chiude Crucial, Black Friday 2026 e memorie, account locale in Windows 11, GPT-6 Sol e Luna.
+- Articoli 91-95: stop USA ai router esteri, IFA 2026, Snapdragon 8 Elite Gen 6, Firefox 148 con interruttore IA, auto elettriche in Italia.
