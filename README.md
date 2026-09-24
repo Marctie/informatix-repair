@@ -6,7 +6,7 @@ Sito vetrina per Informatix Repair, negozio di riparazioni informatiche a Nocera
 
 - [Vite](https://vitejs.dev/) (multi-pagina, vanilla JS)
 - [Tailwind CSS](https://tailwindcss.com/)
-- Deploy automatico su GitHub Pages via GitHub Actions
+- Hosting previsto: Cloudflare Pages su `informatixrepair.it`
 
 ## Sviluppo locale
 
@@ -26,13 +26,17 @@ L'output statico viene generato in `dist/`.
 
 ## Deploy
 
-Ad ogni push su `main`, il workflow `.github/workflows/deploy.yml` builda il sito e lo pubblica su GitHub Pages.
+Il sito usa `base: '/'` (dominio proprio). Su **Cloudflare Pages**: collega il repo, build command `npm run build`, output directory `dist`.
+
+Il workflow GitHub Pages in `.github/workflows/deploy.yml` è rimasto ma con `base: '/'` funzionerebbe solo con un dominio custom: non usarlo come URL di produzione.
 
 Per abilitare GitHub Pages la prima volta:
 1. Vai su **Settings → Pages** del repository
 2. In **Source** seleziona **GitHub Actions**
 
-URL pubblicazione: `https://<username>.github.io/informatix-repair/`
+Documentazione di progetto: [docs/MEMORY.md](docs/MEMORY.md) e [docs/CHATLOG.md](docs/CHATLOG.md).
+
+Contatti e link (telefono, WhatsApp, social, link APK) si configurano nell'oggetto `SITE` in `src/main.js`.
 
 ## App Android (APK) con Capacitor
 
