@@ -109,3 +109,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 41-45: diritto alla riparazione (decreto italiano), Cyber Resilience Act, GTA 6, eSIM, Tesla FSD in Europa.
 - Articoli 46-50: Meta Ray-Ban Display in Italia, Googlebook e Aluminium OS, Artemis II, batterie al silicio-carbonio, ransomware di agosto.
 - Articoli 51-55: mercato smartphone Q2 2026, PC piu cari e rinnovo Windows 10, USB-C sui portatili, fine supporto Office 2021, Linux su Steam.
+- Articoli 56-60: iPhone pieghevole, SpaceX e Starlink, difese antitruffa di Android 17, data center in Italia, gestori di password.
