@@ -30,6 +30,7 @@ const NAV_LINKS = [
   { href: '/chi-siamo.html', label: 'Chi Siamo', match: ['chi-siamo.html'] },
   { href: '/servizi.html', label: 'Servizi', match: ['servizi.html'] },
   { href: '/portfolio.html', label: 'Portfolio', match: ['portfolio.html'] },
+  { href: '/blog.html', label: 'Blog', match: ['blog.html'] },
   { href: '/contatti.html', label: 'Contatti', match: ['contatti.html'] },
 ];
 
@@ -84,7 +85,7 @@ function renderNavbar() {
   const links = (cls) =>
     NAV_LINKS.map(
       (l) =>
-        `<a href="${l.href}" class="${cls}" ${l.match.includes(page) ? 'aria-current="page"' : ''}>${l.label}</a>`
+        `<a href="${l.href}" class="${cls}" ${l.match.includes(page) || (l.href === '/blog.html' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${l.label}</a>`
     ).join('');
 
   mount.innerHTML = `
