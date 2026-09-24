@@ -82,3 +82,13 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 4. Domini: `.it` già registrato (redirect a `.eu` scaduto, ex SiteGround); acquistato `informatixrepair.com` su Cloudflare come principale.
 5. Deploy su Cloudflare Pages (`informatix-repair`), custom domain collegato, DNS impostato.
 6. Commit e push su GitHub `Marctie/informatix-repair`.
+
+## Sessione 2026-09-24 (pomeriggio) – Privacy e conformità
+- Il repo è collegato a Cloudflare Pages dal proprietario (deploy automatico a ogni push su `main`).
+- Il `.it` lo gestirà **Christian** (il cliente): da coordinare con lui il redirect verso il `.com`.
+- WhatsApp e social mancanti: rimandati, non richiesti per ora.
+- **Aggiunto** `privacy.html` (informativa GDPR generica, titolare = Informatix Repair; P.IVA/telefono compaiono solo se valorizzati in `SITE`). Link nel footer, voce nella sitemap e in `vite.config.js`. È un modello: farla rivedere/validare dal cliente.
+- **Modificato** font: self-hosted con `@fontsource/inter` e `@fontsource/poppins` (nessuna chiamata a Google Fonts, meglio per privacy e prestazioni). Rimossi i `<link>` a fonts.googleapis/gstatic da tutte le pagine.
+- **Modificato** mappa in Contatti: ora si carica solo al click su "Carica la mappa" (nessun tracciamento Google preventivo) e punta a Via Pecorari 178.
+- **Aggiunto** in `SITE`: `legalName` e `vat` (vuoti, da compilare col cliente).
+- Foto reali: non generabili da me (nessuno strumento di generazione immagini; inoltre foto finte di negozio/lavori sarebbero ingannevoli). Servono foto vere del negozio e dei lavori.

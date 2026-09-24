@@ -11,6 +11,7 @@ export default defineConfig({
         servizi: resolve(__dirname, 'servizi.html'),
         portfolio: resolve(__dirname, 'portfolio.html'),
         contatti: resolve(__dirname, 'contatti.html'),
+        privacy: resolve(__dirname, 'privacy.html'),
         notFound: resolve(__dirname, '404.html'),
       },
     },

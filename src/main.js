@@ -1,3 +1,10 @@
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/poppins/500.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
+import '@fontsource/poppins/800.css';
 import './styles/main.css';
 
 /* ------------------------------------------------------------------
@@ -6,6 +13,8 @@ import './styles/main.css';
 const SITE = {
   name: 'Informatix Repair',
   url: 'https://informatixrepair.com',
+  legalName: '', // ragione sociale, es. 'Informatix Repair di Mario Rossi'
+  vat: '', // P.IVA, es. '01234567890'
   email: 'info@informatixrepair.it',
   phone: '+39 376 234 4151',
   whatsapp: '', // solo cifre con prefisso, es. '393331234567'
@@ -187,7 +196,8 @@ function renderFooter() {
       </div>
       <div class="border-t border-white/10">
         <div class="container-x py-5 text-center sm:text-left text-xs text-gray-500">
-          &copy; ${new Date().getFullYear()} ${SITE.name}. Tutti i diritti riservati.
+          &copy; ${new Date().getFullYear()} ${SITE.legalName || SITE.name}. Tutti i diritti riservati.${SITE.vat ? ` P.IVA ${SITE.vat}.` : ''}
+          <span class="mx-1">·</span><a href="/privacy.html" class="hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
         </div>
       </div>
     </footer>
@@ -251,6 +261,20 @@ function initPortfolioFilter() {
   });
 }
 
+/** Carica la mappa Google solo al click, così non parte alcun tracciamento di terze parti prima della scelta. */
+function initMapConsent() {
+  document.querySelectorAll('[data-map-src]').forEach((box) => {
+    box.querySelector('button').addEventListener('click', () => {
+      const f = document.createElement('iframe');
+      f.title = box.dataset.mapTitle || 'Mappa';
+      f.src = box.dataset.mapSrc;
+      f.className = 'w-full h-full border-0';
+      f.referrerPolicy = 'no-referrer-when-downgrade';
+      box.replaceChildren(f);
+    });
+  });
+}
+
 function initContactForm() {
   const form = document.getElementById('contact-form');
   if (!form) return;
@@ -272,5 +296,6 @@ document.addEventListener('DOMContentLoaded', () => {
   hydrateIcons();
   initReveal();
   initPortfolioFilter();
+  initMapConsent();
   initContactForm();
 });
