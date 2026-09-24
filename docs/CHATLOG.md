@@ -114,3 +114,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 66-70: aggiornamento Windows 11 di settembre, meno clic dai risultati Google con IA, pressione dal polso, rincaro PS5, Siri IA non in Italia (corretto anche l'articolo su iOS 27).
 - Articoli 71-75: smontaggio iFixit di iPhone 18 Pro, rincari Raspberry Pi, Chat Control, Fairphone 6 Plus, IA in locale sul PC.
 - Articoli 76-80: SPID e CIE, euro digitale, Amazon Leo, tracciamento ACR delle smart TV, Meta Muse.
+- Articoli 81-85: certificati Secure Boot scaduti, macOS 27 senza Mac Intel, WhatsApp su vecchi telefoni, iOS 27 e batteria, One UI 9.
