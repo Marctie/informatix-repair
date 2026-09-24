@@ -102,3 +102,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 6-10: violazione Bouygues Telecom, AI Act (trasparenza), passkey, batterie sostituibili UE 2027, Pixel 11.
 - Articoli 11-15: Snap Specs, prezzo Switch 2 e memorie, Wi-Fi 7/8, robotaxi, computer quantistici.
 - Articoli 16-20: Starlink e Fastweb, Galaxy Z Fold 8 e Flip 8, browser con agenti IA, prezzi SSD, NIS2 Italia.
+- Articoli 21-25: iOS 27, rincari schede video e RTX 50 Super, zero-day Chrome, guasti cloud, robot umanoidi.
