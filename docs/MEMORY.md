@@ -44,3 +44,5 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Dati sempre attribuiti alle fonti; niente numeri non verificati.
 - Workflow: commit e push ogni 5 articoli (Cloudflare Pages ripubblica).
 - Obiettivo iniziale: almeno 100 articoli.
+- Stato: primi 100 articoli pubblicati il 2026-09-24 (tutti con la stessa data di scrittura; per i prossimi conviene 1-2 a settimana con data reale).
+- Da verificare periodicamente: articoli con date/prezzi futuri (scadenze ottobre-dicembre 2026, rumor Apple) da aggiornare quando diventano fatti.
