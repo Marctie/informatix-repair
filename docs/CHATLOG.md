@@ -92,3 +92,10 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - **Modificato** mappa in Contatti: ora si carica solo al click su "Carica la mappa" (nessun tracciamento Google preventivo) e punta a Via Pecorari 178.
 - **Aggiunto** in `SITE`: `legalName` e `vat` (vuoti, da compilare col cliente).
 - Foto reali: non generabili da me (nessuno strumento di generazione immagini; inoltre foto finte di negozio/lavori sarebbero ingannevoli). Servono foto vere del negozio e dei lavori.
+
+## Blog
+- Aggiunto sistema blog statico: `scripts/build-blog.mjs`, `content/blog/`, voce "Blog" nel menu, elenco paginato (12 per pagina), articoli con JSON-LD `BlogPosting`, copertine SVG originali, sitemap generata.
+- `npm run build` e `npm run dev` ora eseguono prima lo script del blog; `vite.config.js` include le pagine generate; `tailwind.config.js` scansiona `blog/`.
+- Corretto il deploy Cloudflare: la directory di output nelle impostazioni Pages era `dist/cloudflare`, portata a `dist` (le build da Git fallivano).
+- Preset editoriale salvato in `docs/MEMORY.md`.
+- Articoli 1-5 (2026-09-24): fine ESU Windows 10, Windows 11 26H2, crisi RAM, iPhone 18 Pro, Android 17.

@@ -34,3 +34,13 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Dati legali per Privacy/Cookie (ragione sociale, P.IVA, titolare trattamento): necessari prima del go-live per form e mappa Google.
 - Servizio invio form reale (ora `mailto:`).
 - L'URL di `capacitor.config.ts` punta ancora a GitHub Pages: aggiornarlo a `https://informatixrepair.com` quando il dominio è attivo.
+
+## Blog (preset editoriale, valido anche per articoli futuri)
+- File sorgente: `content/blog/AAAA-MM-GG-NNN-slug.md` (front matter: title, date, description). Lo script `scripts/build-blog.mjs` genera `blog.html`, `blog/*.html` e la sitemap a ogni `npm run build` (file generati ignorati da git).
+- Argomenti: solo attualità e novità tecnologiche, verificate con ricerche web prima di scrivere.
+- Categoria unica: **Tecnologia**.
+- Stile: italiano naturale, nessuna emoji né simboli decorativi, niente formule da IA, articoli brevi ma completi (250-350 parole, 2-3 sottotitoli). Firma "Informatix Repair", nessun autore inventato.
+- Immagini: copertine SVG originali generate dallo script (nessun copyright).
+- Dati sempre attribuiti alle fonti; niente numeri non verificati.
+- Workflow: commit e push ogni 5 articoli (Cloudflare Pages ripubblica).
+- Obiettivo iniziale: almeno 100 articoli.
