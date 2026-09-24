@@ -107,3 +107,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 31-35: Apple Watch e AirPods, GPT-6 Astra, power bank in aereo, Steam Machine, Google Home Speaker.
 - Articoli 36-40: Manifest V3 e blocchi pubblicitari, fibra e connessione di casa, Patch Tuesday di settembre, Mac mini M6, voci clonate con IA.
 - Articoli 41-45: diritto alla riparazione (decreto italiano), Cyber Resilience Act, GTA 6, eSIM, Tesla FSD in Europa.
+- Articoli 46-50: Meta Ray-Ban Display in Italia, Googlebook e Aluminium OS, Artemis II, batterie al silicio-carbonio, ransomware di agosto.
