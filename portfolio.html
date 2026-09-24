@@ -5,58 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Portfolio | Informatix Repair</title>
   <meta name="description" content="Galleria dei lavori completati da Informatix Repair: laptop, desktop, smartphone." />
+  <meta name="theme-color" content="#0B0F19" />
+  <link rel="canonical" href="https://informatixrepair.com/portfolio.html" />
   <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="it_IT" />
+  <meta property="og:site_name" content="Informatix Repair" />
+  <meta property="og:title" content="Portfolio | Informatix Repair" />
+  <meta property="og:description" content="Galleria dei lavori completati da Informatix Repair: laptop, desktop, smartphone." />
+  <meta property="og:url" content="https://informatixrepair.com/portfolio.html" />
+  <meta property="og:image" content="https://informatixrepair.com/images/Informatix-logo.png" />
+  <meta name="twitter:card" content="summary" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <script type="module" src="/src/main.js"></script>
 </head>
-<body class="font-body">
+<body>
   <div id="navbar"></div>
 
-  <section class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
-    <h1 class="section-title text-center">Portfolio</h1>
-    <p class="text-gray-600 text-center max-w-2xl mx-auto mb-10">
-      Alcuni esempi di lavori completati.
-    </p>
-
-    <div class="flex flex-wrap justify-center gap-3 mb-10">
-      <button data-filter="all" class="px-5 py-2 rounded-full bg-secondary text-white text-sm font-medium">Tutti</button>
-      <button data-filter="laptop" class="px-5 py-2 rounded-full bg-lightbg text-primary text-sm font-medium">Laptop</button>
-      <button data-filter="desktop" class="px-5 py-2 rounded-full bg-lightbg text-primary text-sm font-medium">Desktop</button>
-      <button data-filter="smartphone" class="px-5 py-2 rounded-full bg-lightbg text-primary text-sm font-medium">Smartphone</button>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div data-category="laptop" class="service-card">
-        <img src="https://images.unsplash.com/photo-1721332154191-ba5f1534266e?w=800&q=70&auto=format&fit=crop" alt="Tecnico al lavoro sull'interno di un laptop con cacciavite di precisione" class="h-40 w-full object-cover rounded-lg mb-4" loading="lazy" />
-        <h3 class="font-semibold mb-1">Sostituzione Schermo Laptop</h3>
-        <p class="text-sm text-gray-600">Riparazione display rotto su notebook 15".</p>
+  <main id="main">
+    <section class="hero-bg relative overflow-hidden text-white">
+      <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
+      <div class="container-x relative py-14 md:py-20 text-center">
+        <span class="eyebrow !text-red-400">Portfolio</span>
+        <h1 class="text-4xl md:text-5xl font-extrabold mb-4">I nostri lavori</h1>
+        <p class="text-gray-300 text-lg max-w-2xl mx-auto">Alcuni esempi di interventi completati su laptop, desktop e smartphone.</p>
       </div>
-      <div data-category="desktop" class="service-card">
-        <img src="https://images.unsplash.com/photo-1660855551740-4474188debdb?w=800&q=70&auto=format&fit=crop" alt="Case PC gaming assemblato con componenti illuminati" class="h-40 w-full object-cover rounded-lg mb-4" loading="lazy" />
-        <h3 class="font-semibold mb-1">Assemblaggio Gaming PC</h3>
-        <p class="text-sm text-gray-600">Build custom per gaming ad alte prestazioni.</p>
+    </section>
+    <section class="section container-x">
+      <div class="flex flex-wrap justify-center gap-3 mb-12" role="group" aria-label="Filtra per categoria">
+        <button type="button" data-filter="all" aria-pressed="true" class="filter-btn">Tutti</button>
+        <button type="button" data-filter="laptop" aria-pressed="false" class="filter-btn">Laptop</button>
+        <button type="button" data-filter="desktop" aria-pressed="false" class="filter-btn">Desktop</button>
+        <button type="button" data-filter="smartphone" aria-pressed="false" class="filter-btn">Smartphone</button>
       </div>
-      <div data-category="smartphone" class="service-card">
-        <img src="https://images.unsplash.com/photo-1550041473-d296a3a8a18a?w=800&q=70&auto=format&fit=crop" alt="Tecnico che ripara la scheda di uno smartphone" class="h-40 w-full object-cover rounded-lg mb-4" loading="lazy" />
-        <h3 class="font-semibold mb-1">Riparazione Display Smartphone</h3>
-        <p class="text-sm text-gray-600">Sostituzione vetro e touch su smartphone Android.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <article data-category="laptop" class="card card-hover !p-0 overflow-hidden group">
+          <div class="overflow-hidden"><img src="https://images.unsplash.com/photo-1721332154191-ba5f1534266e?w=800&q=70&auto=format&fit=crop" alt="Tecnico al lavoro sull'interno di un laptop con cacciavite di precisione" width="800" height="533" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /></div>
+          <div class="p-6"><span class="text-xs font-semibold uppercase tracking-wider text-secondary">Laptop</span><h3 class="font-semibold mt-1 mb-1">Sostituzione schermo laptop</h3><p class="text-sm text-gray-600">Riparazione display rotto su notebook 15".</p></div>
+        </article>
+        <article data-category="desktop" class="card card-hover !p-0 overflow-hidden group">
+          <div class="overflow-hidden"><img src="https://images.unsplash.com/photo-1660855551740-4474188debdb?w=800&q=70&auto=format&fit=crop" alt="Case PC gaming assemblato con componenti illuminati" width="800" height="533" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /></div>
+          <div class="p-6"><span class="text-xs font-semibold uppercase tracking-wider text-secondary">Desktop</span><h3 class="font-semibold mt-1 mb-1">Assemblaggio gaming PC</h3><p class="text-sm text-gray-600">Build custom per gaming ad alte prestazioni.</p></div>
+        </article>
+        <article data-category="smartphone" class="card card-hover !p-0 overflow-hidden group">
+          <div class="overflow-hidden"><img src="https://images.unsplash.com/photo-1550041473-d296a3a8a18a?w=800&q=70&auto=format&fit=crop" alt="Tecnico che ripara la scheda di uno smartphone" width="800" height="533" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /></div>
+          <div class="p-6"><span class="text-xs font-semibold uppercase tracking-wider text-secondary">Smartphone</span><h3 class="font-semibold mt-1 mb-1">Riparazione display smartphone</h3><p class="text-sm text-gray-600">Sostituzione vetro e touch su smartphone Android.</p></div>
+        </article>
+        <article data-category="laptop" class="card card-hover !p-0 overflow-hidden group">
+          <div class="overflow-hidden"><img src="https://images.unsplash.com/photo-1531492746076-161ca9bcad58?w=800&q=70&auto=format&fit=crop" alt="Hard disk smontato durante un intervento di recupero dati" width="800" height="533" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /></div>
+          <div class="p-6"><span class="text-xs font-semibold uppercase tracking-wider text-secondary">Laptop</span><h3 class="font-semibold mt-1 mb-1">Recupero dati hard disk</h3><p class="text-sm text-gray-600">Recupero dati da HDD danneggiato su laptop.</p></div>
+        </article>
+        <article data-category="desktop" class="card card-hover !p-0 overflow-hidden group">
+          <div class="overflow-hidden"><img src="https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800&q=70&auto=format&fit=crop" alt="Componenti interni di un PC desktop con RAM e dissipatori illuminati" width="800" height="533" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /></div>
+          <div class="p-6"><span class="text-xs font-semibold uppercase tracking-wider text-secondary">Desktop</span><h3 class="font-semibold mt-1 mb-1">Upgrade SSD e RAM</h3><p class="text-sm text-gray-600">Potenziamento PC desktop per maggiore velocità.</p></div>
+        </article>
+        <article data-category="smartphone" class="card card-hover !p-0 overflow-hidden group">
+          <div class="overflow-hidden"><img src="https://images.unsplash.com/photo-1617299516258-eb06985065ff?w=800&q=70&auto=format&fit=crop" alt="Smartphone aperto con batteria esposta durante la sostituzione" width="800" height="533" class="h-48 w-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" /></div>
+          <div class="p-6"><span class="text-xs font-semibold uppercase tracking-wider text-secondary">Smartphone</span><h3 class="font-semibold mt-1 mb-1">Sostituzione batteria</h3><p class="text-sm text-gray-600">Cambio batteria su smartphone con autonomia ridotta.</p></div>
+        </article>
       </div>
-      <div data-category="laptop" class="service-card">
-        <img src="https://images.unsplash.com/photo-1531492746076-161ca9bcad58?w=800&q=70&auto=format&fit=crop" alt="Hard disk smontato durante un intervento di recupero dati" class="h-40 w-full object-cover rounded-lg mb-4" loading="lazy" />
-        <h3 class="font-semibold mb-1">Recovery Dati Hard Disk</h3>
-        <p class="text-sm text-gray-600">Recupero dati da HDD danneggiato su laptop.</p>
+    </section>
+    <section class="container-x pb-16 md:pb-24">
+      <div class="rounded-3xl bg-lightbg px-6 py-12 text-center">
+        <h2 class="text-2xl md:text-3xl font-bold mb-3">Vuoi un intervento simile?</h2>
+        <p class="text-gray-600 mb-7 max-w-xl mx-auto">Descrivici il tuo problema e riceverai un preventivo senza impegno.</p>
+        <a href="/contatti.html" class="btn-primary">Richiedi Preventivo</a>
       </div>
-      <div data-category="desktop" class="service-card">
-        <img src="https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?w=800&q=70&auto=format&fit=crop" alt="Componenti interni di un PC desktop con RAM e dissipatori illuminati" class="h-40 w-full object-cover rounded-lg mb-4" loading="lazy" />
-        <h3 class="font-semibold mb-1">Upgrade SSD e RAM</h3>
-        <p class="text-sm text-gray-600">Potenziamento PC desktop per maggiore velocità.</p>
-      </div>
-      <div data-category="smartphone" class="service-card">
-        <img src="https://images.unsplash.com/photo-1617299516258-eb06985065ff?w=800&q=70&auto=format&fit=crop" alt="Smartphone aperto con batteria esposta durante la sostituzione" class="h-40 w-full object-cover rounded-lg mb-4" loading="lazy" />
-        <h3 class="font-semibold mb-1">Sostituzione Batteria</h3>
-        <p class="text-sm text-gray-600">Cambio batteria su smartphone con autonomia ridotta.</p>
-      </div>
-    </div>
-  </section>
+    </section>
+  </main>
 
   <div id="footer"></div>
 </body>

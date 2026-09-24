@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-  base: '/informatix-repair/',
+  base: '/',
   build: {
     rollupOptions: {
       input: {
@@ -11,6 +11,7 @@ export default defineConfig({
         servizi: resolve(__dirname, 'servizi.html'),
         portfolio: resolve(__dirname, 'portfolio.html'),
         contatti: resolve(__dirname, 'contatti.html'),
+        notFound: resolve(__dirname, '404.html'),
       },
     },
   },
