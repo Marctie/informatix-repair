@@ -105,3 +105,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 21-25: iOS 27, rincari schede video e RTX 50 Super, zero-day Chrome, guasti cloud, robot umanoidi.
 - Articoli 26-30: SMS falsi Agenzia delle Entrate, IT Wallet ed EUDI, portatili Core Ultra serie 3, Copilot ridimensionato, WhatsApp.
 - Articoli 31-35: Apple Watch e AirPods, GPT-6 Astra, power bank in aereo, Steam Machine, Google Home Speaker.
+- Articoli 36-40: Manifest V3 e blocchi pubblicitari, fibra e connessione di casa, Patch Tuesday di settembre, Mac mini M6, voci clonate con IA.
