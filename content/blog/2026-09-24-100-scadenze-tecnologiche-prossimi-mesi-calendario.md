@@ -7,7 +7,7 @@ Alcune novità della tecnologia si possono ignorare. Altre hanno una data precis
 
 ## Ottobre 2026
 
-Il 4 ottobre i primi Googlebook arrivano nei negozi americani, ma non in Italia. Il 6 ottobre l'Unione europea è chiamata a decidere sull'estensione delle autorizzazioni per la guida assistita FSD di Tesla, Italia compresa. Il 13 ottobre finiscono gli aggiornamenti estesi di Windows 10 per i privati, termina il supporto di Office 2021 e in Italia parte la vendita degli occhiali Meta Ray-Ban Display. Il 31 ottobre scade il termine per adottare le misure di base di sicurezza previste dalla NIS2 in Italia. Nello stesso mese Apple potrebbe presentare nuovi Mac e iPad, ma per ora sono solo indiscrezioni.
+Il 4 ottobre i primi Googlebook arrivano nei negozi americani, ma non in Italia. Il 6 ottobre l'Unione europea è chiamata a decidere sull'estensione delle autorizzazioni per la guida assistita FSD di Tesla, Italia compresa. Il 13 ottobre finiscono gli aggiornamenti estesi di Windows 10 per i privati, termina il supporto di Office 2021 e in Italia parte la vendita degli occhiali Meta Ray-Ban Display. Il 16 ottobre si aprono le prenotazioni dell'iPhone Duo pieghevole, in vendita dal 23. Il 31 ottobre scade il termine per adottare le misure di base di sicurezza previste dalla NIS2 in Italia. Nello stesso mese Apple potrebbe presentare nuovi Mac e iPad, ma per ora sono solo indiscrezioni.
 
 ## Novembre 2026
 
