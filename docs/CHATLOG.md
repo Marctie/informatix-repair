@@ -146,3 +146,8 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Creata la routine cloud per scrivere e pubblicare 2 articoli al giorno alle 9:00 e alle 18:00 (Europe/Rome), pubblicazione diretta su `main`, modello Claude Sonnet 5, notifica push finale (da verificare che arrivi).
 - GitHub collegato all'account Claude dal proprietario. Prima esecuzione prevista alle 18:06 del 25 settembre.
 - Promemoria: cambiare l'orario UTC della routine al passaggio all'ora solare (25 ottobre).
+
+### Chiusura sessione (2026-09-25)
+- Stato finale: sito online su informatixrepair.com, blog con 105 articoli, privacy policy, deploy automatico da GitHub su Cloudflare Pages.
+- Routine di pubblicazione attiva (9:00 e 18:00), prima esecuzione alle 18:06 del 25 settembre: da controllare esito, articoli pubblicati e ricezione della notifica push.
+- Da fare alla prossima sessione: verificare la prima esecuzione della routine; cambiare l'orario UTC il 25 ottobre; dati legali e foto reali da Christian; redirect di `.it` ed `.eu`; scelta email `.com`.
