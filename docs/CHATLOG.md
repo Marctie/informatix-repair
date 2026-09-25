@@ -141,3 +141,8 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - **Correzione:** l'articolo 056 (iPhone pieghevole) riportava indiscrezioni (7,8 pollici, Touch ID, prezzo stimato). Riscritto con i dati ufficiali di Apple: iPhone Duo, schermi 5,4 e 7,6 pollici, da 1.999 dollari, prenotazioni 16 ottobre, vendita 23 ottobre.
 - Articolo 100 (calendario scadenze) aggiornato con le date dell'iPhone Duo.
 - Fonti: CNBC, ABC, CNN, Al Jazeera (caso Medicare); Tom's Guide, Engadget (Meta Connect); Gamers Nexus, Malwarebytes (LG); SecurityWeek, CISA (Roundcube); MacRumors, Apple (iPhone Duo).
+
+### Routine automatica (2026-09-25)
+- Creata la routine cloud per scrivere e pubblicare 2 articoli al giorno alle 9:00 e alle 18:00 (Europe/Rome), pubblicazione diretta su `main`, modello Claude Sonnet 5, notifica push finale (da verificare che arrivi).
+- GitHub collegato all'account Claude dal proprietario. Prima esecuzione prevista alle 18:06 del 25 settembre.
+- Promemoria: cambiare l'orario UTC della routine al passaggio all'ora solare (25 ottobre).
