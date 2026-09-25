@@ -118,3 +118,20 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Articoli 86-90: lancio dei Googlebook, Micron chiude Crucial, Black Friday 2026 e memorie, account locale in Windows 11, GPT-6 Sol e Luna.
 - Articoli 91-95: stop USA ai router esteri, IFA 2026, Snapdragon 8 Elite Gen 6, Firefox 148 con interruttore IA, auto elettriche in Italia.
 - Articoli 96-100: aggiornamenti estesi Windows 10, Apple a ottobre (indiscrezioni), recensioni Pixel 11 Pro Fold, riepilogo di settembre, calendario delle scadenze. Totale: 100 articoli.
+
+### Riepilogo blog e deploy (chiusura sessione 2026-09-24/25)
+- **Articoli:** 100 pubblicati (file `content/blog/2026-09-24-NNN-*.md`), categoria unica "Tecnologia", firma "Informatix Repair", stile senza emoji né simboli, circa 300 parole ciascuno (controllato con script). Tutti datati 2026-09-24.
+- **Lavoro per gruppi:** 20 commit da 5 articoli, ciascuno con build di verifica e push tramite `scripts/publish-batch.sh`.
+- **Fonti:** ogni argomento cercato sul web prima della scrittura; cifre attribuite alle fonti; affermazioni incerte attenuate.
+- **Correzioni fatte in corsa:** articolo iOS 27 (la nuova Siri IA non è disponibile in Italia/UE al lancio); articolo browser con agenti IA (Firefox ha già rilasciato l'interruttore IA con la 148); rimosse frasi in prima persona e affermazioni non supportate dalle fonti (es. ente sanitario colpito da ransomware, rinvio IA di settore).
+- **Fix deploy Cloudflare:** le build da Git fallivano perché la directory di output era `dist/cloudflare`; impostata a `dist` via API. Il deploy automatico da GitHub ora funziona.
+- **Verifiche online:** privacy policy raggiungibile (308 verso l'URL senza `.html`), blog e pagina 9 dell'elenco a 200, sitemap con 115 URL.
+- **Struttura generata:** `blog.html`, `blog/pagina-N.html` (12 articoli per pagina, 9 pagine), `blog/<slug>.html`, `public/sitemap.xml`; ignorati da git e rigenerati a ogni `npm run build`.
+
+### Da fare (aperto)
+- Dati legali per la privacy (ragione sociale, P.IVA) da chiedere a Christian; foto reali del negozio e dei lavori.
+- Redirect di `informatixrepair.it` e `.eu` verso il `.com` (il `.it` lo gestisce Christian).
+- Decidere se usare `info@informatixrepair.com` (Cloudflare Email Routing).
+- Nuovi articoli: 1-2 a settimana con data reale; aggiornare quelli con scadenze future (13 ottobre, 6 ottobre, 31 ottobre, rumor Apple).
+- Canonical delle pagine con `.html` mentre Cloudflare serve gli indirizzi senza estensione: valutare l'allineamento.
+- Aggiornare `capacitor.config.ts` al dominio `.com` quando si lavorerà sull'app.
