@@ -1,22 +1,22 @@
 ---
-title: Il primo iPhone pieghevole, cosa sappiamo e quali dubbi restano
+title: iPhone Duo, il primo pieghevole di Apple tra prezzo alto e formato inedito
 date: 2026-09-24
-description: Apple ha presentato il suo telefono con schermo flessibile. Formato inedito, prezzo molto alto e qualche domanda sulla durata nel tempo.
+description: Apple ha presentato l'iPhone Duo il 9 settembre. Doppio schermo, prezzo da 1.999 dollari e qualche domanda sulla durata nel tempo di uno schermo che si piega.
 ---
-Con la presentazione del 9 settembre Apple è entrata nel mercato dei pieghevoli. Il dispositivo, che nelle indiscrezioni compare come iPhone Ultra o iPhone Fold, ha un formato diverso da quello di Samsung e Google: uno schermo interno da circa 7,8 pollici in formato quasi quadrato, che ricorda un piccolo tablet, contro il classico telefono lungo e stretto. Le spedizioni, secondo alcune fonti, potrebbero arrivare a ottobre o più tardi.
+Con la presentazione del 9 settembre Apple è entrata nel mercato dei pieghevoli con l'iPhone Duo. Il dispositivo ha un design a libro, come un piccolo tablet che si chiude: uno schermo esterno da 5,4 pollici e uno interno da 7,6, con una piega ridotta al minimo al centro. Ci sono due colori, Star White e Night Sky.
 
-## Le caratteristiche riportate
+## Prezzi e date
 
-Le informazioni diffuse parlano del chip A20 Pro, della doppia fotocamera posteriore da 48 megapixel e di quella doppia frontale da 18. Il telaio sarebbe in titanio e alluminio, con uno spessore aperto di circa 4,5 millimetri. Un dettaglio che ha fatto discutere è il ritorno del Touch ID al posto del Face ID, una scelta legata agli spazi ridotti. Alcuni dati arrivano da anticipazioni e vanno confermati con le schede ufficiali.
-
-## Il prezzo
-
-Le stime di TrendForce indicavano un prezzo di partenza tra 2.099 e 2.299 dollari, con le versioni più capienti oltre i 3.000. È una cifra che lo colloca ben sopra ai pieghevoli concorrenti e a qualsiasi altro iPhone.
+Secondo le informazioni ufficiali riportate da MacRumors, negli Stati Uniti il prezzo parte da 1.999 dollari con 256 giga e sale fino a 3.199 per la versione da 2 terabyte, con tagli intermedi da 512 giga e 1 terabyte. Le prenotazioni cominciano il 16 ottobre e la vendita il 23 ottobre negli Stati Uniti e in più di settanta paesi e regioni, mentre il 30 ottobre arriverà in altri 28 mercati. I prezzi europei non sono ancora stati confermati.
 
 ## I punti deboli tipici dei pieghevoli
 
-La piega dello schermo, la cerniera e la polvere sono le criticità di ogni modello di questo tipo. Apple dichiara di aver ridotto la piega visibile e di aver studiato la resistenza della cerniera, ma solo l'uso reale nel tempo darà risposte. La gestione del calore in uno spessore così ridotto è un altro banco di prova.
+La piega dello schermo, la cerniera e la polvere sono le criticità di ogni modello di questo tipo. Apple dichiara di aver lavorato su piega e resistenza, ma solo l'uso reale nel tempo darà risposte. La gestione del calore in un corpo così sottile è un altro banco di prova.
 
 ## Riparabilità
 
-I pannelli flessibili sono costosi da sostituire, e le riparazioni fuori dal centro assistenza del produttore sono più complesse. Se ne prendi uno, valuta subito una copertura dedicata e usa custodie adatte. Se invece cerchi un telefono che duri anni con una spesa contenuta, un modello tradizionale resta la scelta più semplice.
+I pannelli flessibili sono costosi da sostituire e le riparazioni fuori dai centri ufficiali sono più complesse. Se decidi di acquistarlo, valuta subito una copertura dedicata e usa custodie adatte. Chi cerca un telefono che duri anni con una spesa contenuta troverà più semplice restare su un modello tradizionale.
+
+## Per chi è
+
+Un prodotto del genere ha senso per chi vuole uno schermo grande in tasca e non bada al prezzo. Per tutti gli altri, un iPhone 18 Pro o un modello precedente offre più autonomia, più robustezza e un costo molto inferiore.
