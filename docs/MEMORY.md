@@ -46,3 +46,9 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Obiettivo iniziale: almeno 100 articoli.
 - Stato: primi 100 articoli pubblicati il 2026-09-24 (tutti con la stessa data di scrittura; per i prossimi conviene 1-2 a settimana con data reale).
 - Da verificare periodicamente: articoli con date/prezzi futuri (scadenze ottobre-dicembre 2026, rumor Apple) da aggiornare quando diventano fatti.
+
+## Routine automatica del blog
+- Routine cloud di Claude Code "Informatix Repair - 2 articoli blog al giorno (9:00 e 18:00)", id `trig_01D7E1mHzN4P3ZL2JGVxrUmx`, gestibile da https://claude.ai/code/routines.
+- Cron `0 7,16 * * *` (UTC) = 9:00 e 18:00 ora italiana con ora legale. **Dal 25 ottobre 2026 (ora solare) va cambiato in `0 8,17 * * *`**; a marzo 2027 tornare a `0 7,16 * * *`.
+- Ogni esecuzione: cerca notizie, scrive 2 articoli con le regole del preset, fa la build, commit e push su `main` (pubblicazione diretta, senza revisione), poi tenta una notifica push. Se non trova notizie affidabili scrive meno articoli.
+- Se gli articoli automatici calano di qualità, controllare le esecuzioni con list_runs/get_run_log o dalla pagina delle routine.
