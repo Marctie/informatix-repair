@@ -119,6 +119,10 @@
 }
 
 @layer utilities {
+  /* L'attributo hidden deve vincere anche su classi display come .flex */
+  [hidden] {
+    display: none !important;
+  }
   /* Animazione d'ingresso allo scroll (attivata da JS) */
   .js .reveal {
     opacity: 0;
