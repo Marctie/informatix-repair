@@ -169,3 +169,9 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - **Privacy:** non pubblicate le foto con seriali, IMEI, indirizzi MAC e codici a barre (schermata Info del 16 Pro Max, Info del 13 mini, retro della scatola del 17 Pro Max).
 - **Non pubblicati** (foto presenti ma senza prezzo nel file note): AirPods 4 con cancellazione del rumore, Redmi Note 15 Pro 5G 8/256, Galaxy Tab A11+ 5G, MacBook Air 13" (A2179), gioco PS5 EA FC27. Da aggiungere in `usati.json` se in vendita.
 - Da fare: foto e stato batteria del 17 Pro Max Pacific Blue; conferma stato reale dei dispositivi; colore/nome esatti (11 Pro "Bianco", 17 Pro Max "Pacific Blue" come da note).
+
+### Chiusura sessione (2026-09-26)
+- Vetrina Usati verificata in locale (desktop, mobile, home, modulo contatti). Bug trovato dall'utente e corretto: i filtri non nascondevano le schede perché la classe `flex` sovrascriveva l'attributo `hidden`; aggiunta in `main.css` la regola `[hidden] { display: none !important; }` e verificato con test automatico (Tutti 7, Nuovi 1, Usati 6, Fino a 500 € 3).
+- Commit e push su `main` con deploy automatico su Cloudflare Pages.
+- Da fare alla prossima sessione: foto e stato batteria del 17 Pro Max Pacific Blue; prezzi degli altri articoli fotografati (AirPods 4, Redmi Note 15 Pro, Galaxy Tab A11+, MacBook Air 13", PS5 FC27) se in vendita; verificare le esecuzioni della routine blog (9:00 e 18:00) ora che il push funziona; cambio orario UTC della routine il 25 ottobre; dati legali e foto reali del negozio da Christian; redirect di `.it` ed `.eu`; scelta email `.com`.
+- Nota tecnica: nel repo i file hanno fine riga CRLF (autocrlf); modificando file da script preservare il CRLF.
