@@ -151,3 +151,7 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Stato finale: sito online su informatixrepair.com, blog con 105 articoli, privacy policy, deploy automatico da GitHub su Cloudflare Pages.
 - Routine di pubblicazione attiva (9:00 e 18:00), prima esecuzione alle 18:06 del 25 settembre: da controllare esito, articoli pubblicati e ricezione della notifica push.
 - Da fare alla prossima sessione: verificare la prima esecuzione della routine; cambiare l'orario UTC il 25 ottobre; dati legali e foto reali da Christian; redirect di `.it` ed `.eu`; scelta email `.com`.
+
+## Routine automatica
+
+- **2026-09-26 21:11** – Articoli 106-107: "Falso rimborso INPS, PEC compromesse e il malware MintsLoader" (bollettino CERT-AGID 20-26 settembre); "Google porta i chip per l'intelligenza artificiale nello spazio" (progetto Suncatcher, lancio TPU su Transporter-18 di SpaceX).
