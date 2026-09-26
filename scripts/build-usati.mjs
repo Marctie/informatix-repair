@@ -14,7 +14,7 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const euro = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €';
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 const img = (it, n, thumb = false) => `/images/usati/${it.slug}/${n}${thumb ? '-t' : ''}.jpg`;
-const title = (it) => `${it.name} ${it.memory} ${it.color}`;
+const title = (it) => [it.name, it.memory, it.color].filter(Boolean).join(' ');
 
 /* Colori dell'illustrazione per gli articoli senza foto */
 const TINT = { 'Pacific Blue': ['#5B8DC9', '#1E3A5F'] };
@@ -37,7 +37,7 @@ const card = (it) => {
   const has = it.photos > 0;
   const nums = Array.from({ length: it.photos }, (_, i) => i + 1);
   const isNew = it.condition === 'nuovo';
-  const query = new URLSearchParams({ prodotto: title(it), prezzo: euro(it.price) }).toString();
+  const query = new URLSearchParams({ prodotto: title(it), ...(it.price != null ? { prezzo: euro(it.price) } : {}) }).toString();
   const gallery = has
     ? `<button type="button" class="usato-open group/img relative block w-full aspect-[4/5] overflow-hidden bg-ink" aria-label="Ingrandisci le foto di ${esc(title(it))}">
             <img src="${img(it, 1)}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-60" loading="lazy" />
@@ -53,13 +53,13 @@ const card = (it) => {
           }`
     : `<div class="relative w-full aspect-[4/5] overflow-hidden bg-ink">${placeholder(it)}</div>`;
 
-  return `        <article id="${it.slug}" class="usato card !p-0 overflow-hidden flex flex-col reveal" data-kind="${it.condition}" data-price="${it.price}">
+  return `        <article id="${it.slug}" class="usato card !p-0 overflow-hidden flex flex-col reveal" data-kind="${it.condition}" data-cat="${it.category}"${it.price != null ? ` data-price="${it.price}"` : ''}>
           <div class="relative" data-photos='${JSON.stringify(nums.map((n) => img(it, n)))}' data-title="${esc(title(it))}">
             ${gallery}
             <span class="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold shadow-soft ${isNew ? 'bg-secondary text-white' : 'bg-white text-primary'}">${esc(it.conditionLabel)}</span>
           </div>
           <div class="p-6 flex flex-col grow">
-            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">${esc(it.memory)} &middot; ${esc(it.color)}</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">${[it.memory, it.color].filter(Boolean).map(esc).join(' &middot; ')}</p>
             <h2 class="text-xl font-semibold leading-snug">${esc(it.name)}</h2>
             <p class="text-sm font-medium text-secondary mt-1">${esc(it.tagline)}</p>
             <p class="text-sm text-gray-600 leading-relaxed mt-3">${esc(it.description)}</p>
@@ -70,10 +70,10 @@ const card = (it) => {
             </details>
             <div class="mt-auto pt-6">
               <div class="flex items-end justify-between gap-3 mb-4">
-                <div><span class="block text-xs text-gray-500">Prezzo in negozio</span><span class="font-heading text-3xl font-extrabold text-primary">${euro(it.price)}</span></div>
+                ${it.price != null ? `<div><span class="block text-xs text-gray-500">Prezzo in negozio</span><span class="font-heading text-3xl font-extrabold text-primary">${euro(it.price)}</span></div>` : `<div><span class="block text-xs text-gray-500">Prezzo</span><span class="font-heading text-2xl font-bold text-primary">Su richiesta</span></div>`}
               </div>
               <div class="grid grid-cols-[1fr_auto] gap-2">
-                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm">Chiedi info <i data-icon="arrow" data-class="w-4 h-4"></i></a>
+                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm">${it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'} <i data-icon="arrow" data-class="w-4 h-4"></i></a>
                 <a data-site="phone" href="#" class="btn-outline !py-3 !px-4 text-sm" aria-label="Chiama per ${esc(title(it))}"><i data-icon="phoneCall" data-class="w-4 h-4"></i></a>
               </div>
             </div>
@@ -87,7 +87,10 @@ const filters = [
   ['all', 'Tutti', items.length],
   ['nuovo', 'Nuovi sigillati', count((i) => i.condition === 'nuovo')],
   ['usato', 'Usati', count((i) => i.condition === 'usato')],
-  ['500', 'Fino a 500 €', count((i) => i.price <= 500)],
+  ['smartphone', 'Smartphone', count((i) => i.category === 'smartphone')],
+  ['computer', 'Computer e tablet', count((i) => i.category === 'computer')],
+  ['audio-gaming', 'Audio e gaming', count((i) => i.category === 'audio-gaming')],
+  ['500', 'Fino a 500 €', count((i) => i.price != null && i.price <= 500)],
 ];
 
 const ld = JSON.stringify({
@@ -103,7 +106,7 @@ const ld = JSON.stringify({
       description: it.description,
       ...(it.photos ? { image: `${BASE}${img(it, 1)}` } : {}),
       itemCondition: it.condition === 'nuovo' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
-      offers: { '@type': 'Offer', price: it.price, priceCurrency: 'EUR', availability: 'https://schema.org/LimitedAvailability', url: `${BASE}/usati.html#${it.slug}` },
+      ...(it.price != null ? { offers: { '@type': 'Offer', price: it.price, priceCurrency: 'EUR', availability: 'https://schema.org/LimitedAvailability', url: `${BASE}/usati.html#${it.slug}` } } : {}),
     },
   })),
 });
@@ -116,8 +119,8 @@ const html = `<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vetrina Usati | iPhone usati e nuovi a Nocera Superiore | Informatix Repair</title>
-  <meta name="description" content="Vetrina Usati di Informatix Repair a Nocera Superiore: iPhone usati e nuovi sigillati, con stato batteria e prezzi. Vieni a vederli e provarli in negozio." />
+  <title>Vetrina Usati | Smartphone, computer e accessori a Nocera Superiore | Informatix Repair</title>
+  <meta name="description" content="Vetrina Usati di Informatix Repair a Nocera Superiore: smartphone, computer, tablet e accessori usati o nuovi sigillati, con foto e prezzi. Vieni a vederli e provarli in negozio." />
   <meta name="theme-color" content="#0B0F19" />
   <link rel="canonical" href="${BASE}/usati.html" />
   <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
@@ -125,7 +128,7 @@ const html = `<!doctype html>
   <meta property="og:locale" content="it_IT" />
   <meta property="og:site_name" content="Informatix Repair" />
   <meta property="og:title" content="Vetrina Usati | Informatix Repair" />
-  <meta property="og:description" content="iPhone usati e nuovi sigillati, con stato batteria e prezzi. Vieni a vederli in negozio a Nocera Superiore." />
+  <meta property="og:description" content="Smartphone, computer, tablet e accessori con foto e prezzi. Vieni a vederli in negozio a Nocera Superiore." />
   <meta property="og:url" content="${BASE}/usati.html" />
   <meta property="og:image" content="${BASE}${ogImage}" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -141,7 +144,7 @@ const html = `<!doctype html>
       <div class="container-x relative py-14 md:py-20 text-center">
         <span class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-1.5 text-xs font-medium text-gray-200 mb-6"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Pezzi unici &middot; aggiornata al ${fmtDate(data.updated)}</span>
         <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.08] mb-5">Vetrina <span class="text-secondary">Usati</span></h1>
-        <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">iPhone selezionati e nuovi sigillati. Guarda le foto, controlla lo stato della batteria e vieni a provarli con mano in negozio.</p>
+        <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">Smartphone, computer, tablet e accessori selezionati. Guarda le foto, controlla le caratteristiche e vieni a provarli con mano in negozio.</p>
         <div class="mt-8 inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-5 rounded-2xl bg-white/10 border border-white/15 px-6 py-4 text-sm">
           <span class="inline-flex items-center gap-2"><i data-icon="pin" data-class="w-5 h-5 text-secondary"></i> Via Pecorari 178, Nocera Superiore</span>
           <span class="hidden sm:block w-px h-5 bg-white/20" aria-hidden="true"></span>
@@ -212,7 +215,7 @@ writeFileSync(join(ROOT, 'usati.html'), html);
 
 /* Riassunto per il box in home */
 const teaser = items
-  .filter((i) => i.featured && i.photos)
+  .filter((i) => i.featured && i.photos && i.price != null)
   .map((i) => ({ slug: i.slug, name: i.name, memory: i.memory, color: i.color, label: i.conditionLabel, price: euro(i.price), image: img(i, 1) }));
 writeFileSync(join(ROOT, 'public', 'usati.json'), JSON.stringify({ count: items.length, items: teaser }));
 

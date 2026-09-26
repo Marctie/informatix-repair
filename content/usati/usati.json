@@ -14,10 +14,20 @@
       "tagline": "L'ultimo top di gamma Apple, ancora nella sua scatola.",
       "description": "Nuovo, mai aperto: la confezione originale Apple è ancora sigillata. Il Pro Max più recente con 512 GB di memoria, ideale per chi vuole il massimo senza compromessi e senza il minimo segno d'uso.",
       "specs": [
-        ["Chip", "A19 Pro"],
-        ["Schermo", "6,9 pollici"],
-        ["Confezione", "Originale, sigillata"]
-      ]
+        [
+          "Chip",
+          "A19 Pro"
+        ],
+        [
+          "Schermo",
+          "6,9 pollici"
+        ],
+        [
+          "Confezione",
+          "Originale, sigillata"
+        ]
+      ],
+      "category": "smartphone"
     },
     {
       "slug": "iphone-17-pro-max-256-pacific-blue",
@@ -32,9 +42,16 @@
       "tagline": "Il Pro Max più recente in blu, a un prezzo molto più basso del nuovo.",
       "description": "Il modello più recente della gamma Pro Max nella colorazione blu. Le foto e i dettagli sulla batteria sono in arrivo: passa in negozio o chiamaci per vederlo e provarlo di persona.",
       "specs": [
-        ["Chip", "A19 Pro"],
-        ["Schermo", "6,9 pollici"]
-      ]
+        [
+          "Chip",
+          "A19 Pro"
+        ],
+        [
+          "Schermo",
+          "6,9 pollici"
+        ]
+      ],
+      "category": "smartphone"
     },
     {
       "slug": "iphone-16-pro-max-256-desert-titanium",
@@ -51,11 +68,24 @@
       "tagline": "Il colore sabbia più elegante della gamma, con la sua scatola originale.",
       "description": "Aspetto curato, senza segni evidenti nelle foto. La batteria è in stato Normale con capacità massima al 90% e 792 cicli di ricarica. Aggiornato a iOS 26.5.2 e completo della scatola originale.",
       "specs": [
-        ["Chip", "A18 Pro"],
-        ["Schermo", "6,9 pollici"],
-        ["Prodotto", "Settembre 2024"],
-        ["Confezione", "Scatola originale"]
-      ]
+        [
+          "Chip",
+          "A18 Pro"
+        ],
+        [
+          "Schermo",
+          "6,9 pollici"
+        ],
+        [
+          "Prodotto",
+          "Settembre 2024"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ],
+      "category": "smartphone"
     },
     {
       "slug": "iphone-16-pro-256-titanio-bianco",
@@ -72,11 +102,24 @@
       "tagline": "Compatto, potente e con la batteria ancora in ottima salute.",
       "description": "Titanio bianco in ottime condizioni estetiche secondo le foto. Batteria in stato Normale con capacità massima al 92% e 526 cicli. Prodotto a febbraio 2025, completo di scatola originale.",
       "specs": [
-        ["Chip", "A18 Pro"],
-        ["Schermo", "6,3 pollici"],
-        ["Prodotto", "Febbraio 2025"],
-        ["Confezione", "Scatola originale"]
-      ]
+        [
+          "Chip",
+          "A18 Pro"
+        ],
+        [
+          "Schermo",
+          "6,3 pollici"
+        ],
+        [
+          "Prodotto",
+          "Febbraio 2025"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ],
+      "category": "smartphone"
     },
     {
       "slug": "iphone-15-128-giallo",
@@ -91,10 +134,20 @@
       "tagline": "Il giallo più solare, con Dynamic Island e USB-C.",
       "description": "Un iPhone 15 pulito e ben tenuto, in una delle colorazioni più belle della serie. Viene consegnato con la sua scatola originale. Perfetto per chi cerca uno smartphone recente e completo, senza spendere una cifra da top di gamma.",
       "specs": [
-        ["Chip", "A16 Bionic"],
-        ["Schermo", "6,1 pollici"],
-        ["Confezione", "Scatola originale"]
-      ]
+        [
+          "Chip",
+          "A16 Bionic"
+        ],
+        [
+          "Schermo",
+          "6,1 pollici"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ],
+      "category": "smartphone"
     },
     {
       "slug": "iphone-13-mini-128-rosa",
@@ -110,11 +163,24 @@
       "tagline": "Piccolo, leggero e con la batteria originale al 100%.",
       "description": "La batteria è originale e ha capacità massima al 100%. Lo schermo è stato sostituito con un ricambio usato, come indica la cronologia assistenza di iOS: te lo diciamo chiaramente, così puoi valutare tutto con serenità. Ha una pellicola protettiva applicata e iOS 26.5.2.",
       "specs": [
-        ["Chip", "A15 Bionic"],
-        ["Schermo", "5,4 pollici"],
-        ["Batteria", "Originale"],
-        ["Display", "Ricambio usato"]
-      ]
+        [
+          "Chip",
+          "A15 Bionic"
+        ],
+        [
+          "Schermo",
+          "5,4 pollici"
+        ],
+        [
+          "Batteria",
+          "Originale"
+        ],
+        [
+          "Display",
+          "Ricambio usato"
+        ]
+      ],
+      "category": "smartphone"
     },
     {
       "slug": "iphone-11-pro-256-bianco",
@@ -129,8 +195,219 @@
       "tagline": "La tripla fotocamera al prezzo più accessibile della vetrina.",
       "description": "Con 256 GB di memoria e la tripla fotocamera, è la scelta giusta per chi vuole un iPhone Pro spendendo poco. Passa in negozio per provarlo e controllarne lo stato dal vivo.",
       "specs": [
-        ["Chip", "A13 Bionic"],
-        ["Schermo", "5,8 pollici"]
+        [
+          "Chip",
+          "A13 Bionic"
+        ],
+        [
+          "Schermo",
+          "5,8 pollici"
+        ]
+      ],
+      "category": "smartphone"
+    },
+    {
+      "slug": "macbook-air-13-2020-i7-8-256",
+      "name": "MacBook Air 13\"",
+      "memory": "256 GB",
+      "color": "Space Gray",
+      "category": "computer",
+      "condition": "usato",
+      "conditionLabel": "Usato con scatola",
+      "price": null,
+      "featured": false,
+      "photos": 4,
+      "tagline": "Sottile, silenzioso e pronto per lavoro e studio.",
+      "description": "MacBook Air 13 pollici in grigio siderale con 8 GB di RAM e SSD da 256 GB, completo della sua scatola originale e con tastiera italiana. Dalle foto ha un aspetto ordinato; per provarlo e controllarne lo stato passa in negozio.",
+      "specs": [
+        [
+          "Modello",
+          "MacBook Air 13\" (A2179, 2020)"
+        ],
+        [
+          "Processore",
+          "Intel Core i7 quad-core 1,2 GHz"
+        ],
+        [
+          "Memoria RAM",
+          "8 GB"
+        ],
+        [
+          "Archiviazione",
+          "SSD 256 GB"
+        ],
+        [
+          "Schermo",
+          "Retina 13,3 pollici"
+        ],
+        [
+          "Tastiera",
+          "Italiana"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ]
+    },
+    {
+      "slug": "samsung-galaxy-tab-a11-plus-5g",
+      "name": "Samsung Galaxy Tab A11+ 5G",
+      "memory": "Schermo 11 pollici",
+      "color": "",
+      "category": "computer",
+      "condition": "usato",
+      "conditionLabel": "Con scatola originale",
+      "price": null,
+      "featured": false,
+      "photos": 1,
+      "tagline": "Il tablet con schermo grande e connessione 5G.",
+      "description": "Tablet Samsung con 5G integrato, ideale per video, studio e navigazione anche fuori casa. Le foto mostrano la confezione originale: passa in negozio per vedere il dispositivo e verificarne lo stato.",
+      "specs": [
+        [
+          "Schermo",
+          "11 pollici"
+        ],
+        [
+          "Connettività",
+          "5G"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ]
+    },
+    {
+      "slug": "redmi-note-15-pro-5g-8-256-nero",
+      "name": "Xiaomi Redmi Note 15 Pro 5G",
+      "memory": "8 GB + 256 GB",
+      "color": "Nero",
+      "category": "smartphone",
+      "condition": "usato",
+      "conditionLabel": "Con scatola originale",
+      "price": null,
+      "featured": false,
+      "photos": 1,
+      "tagline": "Batteria enorme e fotocamera da 200 megapixel.",
+      "description": "Smartphone Android 5G con 8 GB di RAM e 256 GB di memoria, molto autonomo grazie alla batteria da 6580 mAh. Le foto mostrano la confezione originale: passa in negozio per vederlo e provarlo.",
+      "specs": [
+        [
+          "Memoria RAM",
+          "8 GB"
+        ],
+        [
+          "Archiviazione",
+          "256 GB"
+        ],
+        [
+          "Batteria",
+          "6580 mAh"
+        ],
+        [
+          "Fotocamera",
+          "200 MP"
+        ],
+        [
+          "Connettività",
+          "5G"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ]
+    },
+    {
+      "slug": "airpods-4-cancellazione-rumore",
+      "name": "Apple AirPods 4 con cancellazione del rumore",
+      "memory": "Custodia USB-C",
+      "color": "Bianco",
+      "category": "audio-gaming",
+      "condition": "usato",
+      "conditionLabel": "In scatola originale",
+      "price": null,
+      "featured": false,
+      "photos": 2,
+      "tagline": "Musica senza distrazioni, con ricarica anche wireless.",
+      "description": "Gli AirPods 4 nella versione con cancellazione attiva del rumore: la custodia si ricarica via USB-C oppure con un caricabatterie wireless compatibile Qi. Le foto mostrano la confezione originale.",
+      "specs": [
+        [
+          "Chip",
+          "H2"
+        ],
+        [
+          "Cancellazione rumore",
+          "Attiva"
+        ],
+        [
+          "Ricarica custodia",
+          "USB-C e wireless"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ]
+    },
+    {
+      "slug": "airpods-4",
+      "name": "Apple AirPods 4",
+      "memory": "Custodia USB-C",
+      "color": "Bianco",
+      "category": "audio-gaming",
+      "condition": "usato",
+      "conditionLabel": "In scatola originale",
+      "price": null,
+      "featured": false,
+      "photos": 2,
+      "tagline": "Leggeri, comodi e con custodia USB-C.",
+      "description": "Gli AirPods 4 nella versione standard, con custodia di ricarica USB-C. Le foto mostrano la confezione originale: passa in negozio per vederli da vicino.",
+      "specs": [
+        [
+          "Chip",
+          "H2"
+        ],
+        [
+          "Ricarica custodia",
+          "USB-C"
+        ],
+        [
+          "Confezione",
+          "Scatola originale"
+        ]
+      ]
+    },
+    {
+      "slug": "ea-sports-fc-27-ps5",
+      "name": "EA SPORTS FC 27",
+      "memory": "PlayStation 5",
+      "color": "Disco Blu-ray",
+      "category": "audio-gaming",
+      "condition": "nuovo",
+      "conditionLabel": "Nuovo sigillato",
+      "price": null,
+      "featured": false,
+      "photos": 2,
+      "tagline": "Il nuovo calcio EA SPORTS, ancora nel cellophane.",
+      "description": "Copia per PlayStation 5 mai aperta, ancora protetta dal cellophane originale. Un regalo pronto da consegnare, o il tuo prossimo campionato.",
+      "specs": [
+        [
+          "Piattaforma",
+          "PlayStation 5"
+        ],
+        [
+          "Formato",
+          "Disco Blu-ray"
+        ],
+        [
+          "Classificazione",
+          "PEGI 16"
+        ],
+        [
+          "Confezione",
+          "Sigillata"
+        ]
       ]
     }
   ]
