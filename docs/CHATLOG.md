@@ -196,3 +196,7 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Controllare che la routine blog pubblichi ogni giorno; cambiare l'orario UTC il 25 ottobre (`0 8,17 * * *`).
 - Dati legali e foto reali del negozio da Christian; redirect di `.it` ed `.eu` verso il `.com`; scelta email `.com`.
 - Opzionale: disattivare o reindirizzare `pages.dev`; anteprime su ramo di prova prima di pubblicare.
+
+### Note per la prossima sessione (2026-09-27)
+- **Pannello admin per Christian (il cliente):** trovare il modo di dargli un pannello collegato al sito per gestire da solo le pubblicazioni dell'usato (aggiungere, modificare, togliere prodotti, prezzi e foto) e, in prospettiva, altri contenuti. Punto di partenza: oggi i prodotti stanno in `content/usati/usati.json` con foto in `public/images/usati/<slug>/`, il sito è statico su Cloudflare Pages con deploy automatico da GitHub. Da valutare le opzioni (es. CMS su Git come Decap/Sveltia, oppure backend leggero su Cloudflare con database e archivio foto e login protetto) tenendo conto che Christian non è tecnico.
+- Poi: raccolta di nuove idee per il sito.
