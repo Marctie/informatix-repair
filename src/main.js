@@ -325,8 +325,8 @@ async function initUsatiTeaser() {
           <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div class="max-w-xl">
               <span class="eyebrow !text-red-400">Vetrina Usati</span>
-              <h2 class="text-3xl md:text-4xl font-bold leading-tight mb-3">Il tuo prossimo iPhone ti aspetta in negozio</h2>
-              <p class="text-gray-300">${count} dispositivi selezionati, con foto, stato batteria e prezzo. Vieni a vederli e provarli dal vivo.</p>
+              <h2 class="text-3xl md:text-4xl font-bold leading-tight mb-3">Il tuo prossimo dispositivo ti aspetta in negozio</h2>
+              <p class="text-gray-300">${count} prodotti selezionati, tra smartphone, computer e accessori. Vieni a vederli e provarli dal vivo.</p>
             </div>
             <a href="/usati.html" class="btn-primary shrink-0">Vai alla vetrina ${icon('arrow', 'w-5 h-5')}</a>
           </div>

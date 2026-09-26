@@ -134,7 +134,7 @@ function initFilters() {
   const cards = document.querySelectorAll('.usato');
   const counter = document.getElementById('usati-count');
   const empty = document.getElementById('usati-empty');
-  const match = (c, f) => f === 'all' || c.dataset.kind === f || (f === '500' && Number(c.dataset.price) <= 500);
+  const match = (c, f) => f === 'all' || c.dataset.kind === f || c.dataset.cat === f || (f === '500' && c.dataset.price !== undefined && Number(c.dataset.price) <= 500);
   buttons.forEach((btn) =>
     btn.addEventListener('click', () => {
       const f = btn.dataset.usatiFilter;

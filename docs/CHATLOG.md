@@ -175,3 +175,10 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Commit e push su `main` con deploy automatico su Cloudflare Pages.
 - Da fare alla prossima sessione: foto e stato batteria del 17 Pro Max Pacific Blue; prezzi degli altri articoli fotografati (AirPods 4, Redmi Note 15 Pro, Galaxy Tab A11+, MacBook Air 13", PS5 FC27) se in vendita; verificare le esecuzioni della routine blog (9:00 e 18:00) ora che il push funziona; cambio orario UTC della routine il 25 ottobre; dati legali e foto reali del negozio da Christian; redirect di `.it` ed `.eu`; scelta email `.com`.
 - Nota tecnica: nel repo i file hanno fine riga CRLF (autocrlf); modificando file da script preservare il CRLF.
+
+## Sessione 2026-09-26 (sera) – Altri prodotti in Vetrina Usati
+- Aggiunti 6 prodotti dalle foto rimaste (ora 13 in vetrina): MacBook Air 13" (A2179, 2020, i7 quad-core 1,2 GHz, 8 GB, 256 GB, tastiera italiana), Samsung Galaxy Tab A11+ 5G, Xiaomi Redmi Note 15 Pro 5G 8+256 GB nero, AirPods 4 con cancellazione del rumore, AirPods 4, EA SPORTS FC 27 per PS5 (sigillato).
+- Specifiche ricavate dal modello riconosciuto in foto e dalle etichette delle scatole (l'utente non le conosce ancora). Da confermare quando disponibili: MacBook (processore dedotto da "1.2GHz quad-core", stato reale, se funziona), Tab (memoria, colore), Redmi, AirPods.
+- Prezzi non forniti: mostrato "Su richiesta" con pulsante "Chiedi il prezzo". Per inserirli basta valorizzare `price` in `content/usati/usati.json`.
+- Aggiunta `category` (smartphone, computer, audio-gaming) e nuovi filtri "Smartphone", "Computer e tablet", "Audio e gaming"; verificati con test automatico. Nel box in home compaiono solo prodotti con prezzo.
+- Escluse le foto con etichette/codici (seriali, IMEI, AirPort/Bluetooth ID). Scelta la coppia fronte/retro delle AirPods in base all'ordine degli scatti e alle etichette.
