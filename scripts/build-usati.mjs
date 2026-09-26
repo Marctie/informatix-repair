@@ -59,7 +59,7 @@ const card = (it) => {
             <span class="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold shadow-soft ${isNew ? 'bg-secondary text-white' : 'bg-white text-primary'}">${esc(it.conditionLabel)}</span>
           </div>
           <div class="p-6 flex flex-col grow">
-            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">${[it.memory, it.color].filter(Boolean).map(esc).join(' &middot; ')}</p>
+            ${[it.memory, it.color].filter(Boolean).length ? `<p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">${[it.memory, it.color].filter(Boolean).map(esc).join(' &middot; ')}</p>` : ''}
             <h2 class="text-xl font-semibold leading-snug">${esc(it.name)}</h2>
             <p class="text-sm font-medium text-secondary mt-1">${esc(it.tagline)}</p>
             <p class="text-sm text-gray-600 leading-relaxed mt-3">${esc(it.description)}</p>
@@ -69,11 +69,12 @@ const card = (it) => {
               <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">${it.specs.map(([k, v]) => `<dt class="text-gray-500">${esc(k)}</dt><dd class="font-medium text-primary text-right">${esc(v)}</dd>`).join('')}</dl>
             </details>
             <div class="mt-auto pt-6">
+              ${it.contact ? `<p class="flex gap-2 rounded-xl bg-lightbg px-3.5 py-3 text-xs text-gray-600 leading-relaxed mb-4"><i data-icon="chat" data-class="w-4 h-4 shrink-0 text-secondary mt-px"></i><span>Stato e dettagli si concordano direttamente con il negozio: chiamaci o scrivici.</span></p>` : ''}
               <div class="flex items-end justify-between gap-3 mb-4">
                 ${it.price != null ? `<div><span class="block text-xs text-gray-500">Prezzo in negozio</span><span class="font-heading text-3xl font-extrabold text-primary">${euro(it.price)}</span></div>` : `<div><span class="block text-xs text-gray-500">Prezzo</span><span class="font-heading text-2xl font-bold text-primary">Su richiesta</span></div>`}
               </div>
               <div class="grid grid-cols-[1fr_auto] gap-2">
-                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm">${it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'} <i data-icon="arrow" data-class="w-4 h-4"></i></a>
+                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm">${it.contact ? 'Contatta il negozio' : it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'} <i data-icon="arrow" data-class="w-4 h-4"></i></a>
                 <a data-site="phone" href="#" class="btn-outline !py-3 !px-4 text-sm" aria-label="Chiama per ${esc(title(it))}"><i data-icon="phoneCall" data-class="w-4 h-4"></i></a>
               </div>
             </div>

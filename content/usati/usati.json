@@ -209,7 +209,7 @@
     {
       "slug": "macbook-air-13-2020-i7-8-256",
       "name": "MacBook Air 13\"",
-      "memory": "256 GB",
+      "memory": "8 GB + 256 GB",
       "color": "Space Gray",
       "category": "computer",
       "condition": "usato",
@@ -217,28 +217,24 @@
       "price": null,
       "featured": false,
       "photos": 4,
-      "tagline": "Sottile, silenzioso e pronto per lavoro e studio.",
-      "description": "MacBook Air 13 pollici in grigio siderale con 8 GB di RAM e SSD da 256 GB, completo della sua scatola originale e con tastiera italiana. Dalle foto ha un aspetto ordinato; per provarlo e controllarne lo stato passa in negozio.",
+      "tagline": "Un MacBook Air 13 pollici con la sua scatola originale.",
+      "description": "MacBook Air 13 pollici in grigio siderale con 8 GB di memoria, 256 GB di archiviazione e tastiera italiana, completo della scatola originale. Per lo stato e i dettagli contatta direttamente il negozio.",
       "specs": [
         [
           "Modello",
-          "MacBook Air 13\" (A2179, 2020)"
+          "MacBook Air 13\" (A2179)"
         ],
         [
           "Processore",
-          "Intel Core i7 quad-core 1,2 GHz"
+          "Quad-core 1,2 GHz"
         ],
         [
-          "Memoria RAM",
+          "Memoria",
           "8 GB"
         ],
         [
           "Archiviazione",
-          "SSD 256 GB"
-        ],
-        [
-          "Schermo",
-          "Retina 13,3 pollici"
+          "256 GB"
         ],
         [
           "Tastiera",
@@ -248,12 +244,13 @@
           "Confezione",
           "Scatola originale"
         ]
-      ]
+      ],
+      "contact": true
     },
     {
       "slug": "samsung-galaxy-tab-a11-plus-5g",
       "name": "Samsung Galaxy Tab A11+ 5G",
-      "memory": "11 pollici",
+      "memory": "",
       "color": "",
       "category": "computer",
       "condition": "usato",
@@ -261,13 +258,9 @@
       "price": null,
       "featured": false,
       "photos": 1,
-      "tagline": "Il tablet con schermo grande e connessione 5G.",
-      "description": "Tablet Samsung con 5G integrato, ideale per video, studio e navigazione anche fuori casa. Le foto mostrano la confezione originale: passa in negozio per vedere il dispositivo e verificarne lo stato.",
+      "tagline": "Un tablet Samsung con connessione 5G.",
+      "description": "Tablet Samsung Galaxy Tab A11+ con connessione 5G. Le foto mostrano la confezione originale. Per caratteristiche, stato e disponibilità contatta direttamente il negozio.",
       "specs": [
-        [
-          "Schermo",
-          "11 pollici"
-        ],
         [
           "Connettività",
           "5G"
@@ -276,7 +269,8 @@
           "Confezione",
           "Scatola originale"
         ]
-      ]
+      ],
+      "contact": true
     },
     {
       "slug": "redmi-note-15-pro-5g-8-256-nero",
@@ -289,8 +283,8 @@
       "price": null,
       "featured": false,
       "photos": 1,
-      "tagline": "Batteria enorme e fotocamera da 200 megapixel.",
-      "description": "Smartphone Android 5G con 8 GB di RAM e 256 GB di memoria, molto autonomo grazie alla batteria da 6580 mAh. Le foto mostrano la confezione originale: passa in negozio per vederlo e provarlo.",
+      "tagline": "Smartphone 5G con batteria da 6580 mAh.",
+      "description": "Xiaomi Redmi Note 15 Pro 5G nella versione con 8 GB di RAM e 256 GB di memoria, colore nero. Le foto mostrano la confezione originale. Per lo stato e i dettagli contatta direttamente il negozio.",
       "specs": [
         [
           "Memoria RAM",
@@ -316,7 +310,8 @@
           "Confezione",
           "Scatola originale"
         ]
-      ]
+      ],
+      "contact": true
     },
     {
       "slug": "airpods-4-cancellazione-rumore",
@@ -329,13 +324,9 @@
       "price": null,
       "featured": false,
       "photos": 2,
-      "tagline": "Musica senza distrazioni, con ricarica anche wireless.",
-      "description": "Gli AirPods 4 nella versione con cancellazione attiva del rumore: la custodia si ricarica via USB-C oppure con un caricabatterie wireless compatibile Qi. Le foto mostrano la confezione originale.",
+      "tagline": "Con cancellazione attiva del rumore.",
+      "description": "Apple AirPods 4 nella versione con cancellazione attiva del rumore, in confezione originale. Per stato e dettagli contatta direttamente il negozio.",
       "specs": [
-        [
-          "Chip",
-          "H2"
-        ],
         [
           "Cancellazione rumore",
           "Attiva"
@@ -348,7 +339,8 @@
           "Confezione",
           "Scatola originale"
         ]
-      ]
+      ],
+      "contact": true
     },
     {
       "slug": "airpods-4",
@@ -361,13 +353,9 @@
       "price": null,
       "featured": false,
       "photos": 2,
-      "tagline": "Leggeri, comodi e con custodia USB-C.",
-      "description": "Gli AirPods 4 nella versione standard, con custodia di ricarica USB-C. Le foto mostrano la confezione originale: passa in negozio per vederli da vicino.",
+      "tagline": "Con custodia di ricarica USB-C.",
+      "description": "Apple AirPods 4 nella versione standard, con custodia di ricarica USB-C, in confezione originale. Per stato e dettagli contatta direttamente il negozio.",
       "specs": [
-        [
-          "Chip",
-          "H2"
-        ],
         [
           "Ricarica custodia",
           "USB-C"
@@ -376,7 +364,8 @@
           "Confezione",
           "Scatola originale"
         ]
-      ]
+      ],
+      "contact": true
     },
     {
       "slug": "ea-sports-fc-27-ps5",
