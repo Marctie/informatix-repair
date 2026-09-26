@@ -10,7 +10,7 @@ import './styles/main.css';
 /* ------------------------------------------------------------------
  * Configurazione del sito. I campi vuoti nascondono i relativi elementi.
  * ------------------------------------------------------------------ */
-const SITE = {
+export const SITE = {
   name: 'Informatix Repair',
   url: 'https://informatixrepair.com',
   legalName: '', // ragione sociale, es. 'Informatix Repair di Mario Rossi'
@@ -30,6 +30,7 @@ const NAV_LINKS = [
   { href: '/chi-siamo.html', label: 'Chi Siamo', match: ['chi-siamo.html'] },
   { href: '/servizi.html', label: 'Servizi', match: ['servizi.html'] },
   { href: '/portfolio.html', label: 'Portfolio', match: ['portfolio.html'] },
+  { href: '/usati.html', label: 'Vetrina Usati', match: ['usati.html'] },
   { href: '/blog.html', label: 'Blog', match: ['blog.html'] },
   { href: '/contatti.html', label: 'Contatti', match: ['contatti.html'] },
 ];
@@ -61,6 +62,10 @@ const P = {
   whatsapp: 'M20 12a8 8 0 01-11.8 7L4 20l1.2-4A8 8 0 1120 12z M9 9c0 3 3 6 6 6l1-1.5-2-1-1 .8c-.8-.4-1.6-1.2-2-2l.8-1-1-2L9 9z',
   facebook: 'M14 8h3V4h-3a4 4 0 00-4 4v2H7v4h3v6h4v-6h3l1-4h-4V8z',
   instagram: 'M7 3h10a4 4 0 014 4v10a4 4 0 01-4 4H7a4 4 0 01-4-4V7a4 4 0 014-4z M12 8a4 4 0 100 8 4 4 0 000-8z M17.5 6.5h.01',
+  battery: 'M4 7h14a1 1 0 011 1v8a1 1 0 01-1 1H4a1 1 0 01-1-1V8a1 1 0 011-1z M21 10.5v3 M6 10v4',
+  expand: 'M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5',
+  chevL: 'M15 6l-6 6 6 6',
+  chevR: 'M9 6l6 6-6 6',
   phoneCall: 'M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z',
 };
 
@@ -279,6 +284,23 @@ function initMapConsent() {
 function initContactForm() {
   const form = document.getElementById('contact-form');
   if (!form) return;
+
+  // Arrivo dalla Vetrina Usati: precompila servizio e messaggio
+  const params = new URLSearchParams(window.location.search);
+  const prodotto = params.get('prodotto');
+  if (prodotto) {
+    const select = form.querySelector('#servizio');
+    const msg = form.querySelector('#messaggio');
+    const prezzo = params.get('prezzo');
+    if (select) select.value = 'Vetrina Usati';
+    if (msg && !msg.value) {
+      msg.value =
+        prodotto === 'Ricerca modello'
+          ? 'Buongiorno, sto cercando questo modello: '
+          : `Buongiorno, vorrei informazioni su: ${prodotto}${prezzo ? ` (${prezzo})` : ''}. È ancora disponibile? Quando posso passare a vederlo in negozio?`;
+    }
+  }
+
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const d = new FormData(form);
@@ -286,6 +308,52 @@ function initContactForm() {
     const body = `Nome: ${d.get('nome')}\nEmail: ${d.get('email')}\nTelefono: ${d.get('telefono') || '-'}\nServizio: ${d.get('servizio') || '-'}\n\n${d.get('messaggio')}`;
     window.location.href = `mailto:${SITE.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   });
+}
+
+/** Box "Vetrina Usati" in home: legge il riassunto generato in fase di build. */
+async function initUsatiTeaser() {
+  const mount = document.getElementById('usati-teaser');
+  if (!mount) return;
+  try {
+    const res = await fetch('/usati.json');
+    if (!res.ok) return;
+    const { count, items } = await res.json();
+    if (!items.length) return;
+    mount.innerHTML = `
+      <section class="bg-ink text-white">
+        <div class="section container-x">
+          <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div class="max-w-xl">
+              <span class="eyebrow !text-red-400">Vetrina Usati</span>
+              <h2 class="text-3xl md:text-4xl font-bold leading-tight mb-3">Il tuo prossimo iPhone ti aspetta in negozio</h2>
+              <p class="text-gray-300">${count} dispositivi selezionati, con foto, stato batteria e prezzo. Vieni a vederli e provarli dal vivo.</p>
+            </div>
+            <a href="/usati.html" class="btn-primary shrink-0">Vai alla vetrina ${icon('arrow', 'w-5 h-5')}</a>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            ${items
+              .slice(0, 3)
+              .map(
+                (i) => `
+              <a href="/usati.html#${i.slug}" class="group rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-secondary/60 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                <div class="relative aspect-[4/5] overflow-hidden bg-black">
+                  <img src="${i.image}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-60" loading="lazy" />
+                  <img src="${i.image}" alt="${i.name} ${i.memory} ${i.color}" class="relative w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" loading="lazy" width="880" height="1100" />
+                  <span class="absolute top-3 left-3 rounded-full bg-white text-primary px-3 py-1 text-xs font-semibold">${i.label}</span>
+                </div>
+                <div class="p-5 flex items-end justify-between gap-3">
+                  <div><p class="text-xs uppercase tracking-wider text-gray-400">${i.memory} · ${i.color}</p><h3 class="font-semibold text-lg">${i.name}</h3></div>
+                  <span class="font-heading text-2xl font-extrabold whitespace-nowrap">${i.price}</span>
+                </div>
+              </a>`
+              )
+              .join('')}
+          </div>
+        </div>
+      </section>`;
+  } catch {
+    /* il box è facoltativo */
+  }
 }
 
 document.documentElement.classList.add('js');
@@ -299,4 +367,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initPortfolioFilter();
   initMapConsent();
   initContactForm();
+  initUsatiTeaser();
 });
