@@ -183,3 +183,16 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Aggiunta `category` (smartphone, computer, audio-gaming) e nuovi filtri "Smartphone", "Computer e tablet", "Audio e gaming"; verificati con test automatico. Nel box in home compaiono solo prodotti con prezzo.
 - Escluse le foto con etichette/codici (seriali, IMEI, AirPort/Bluetooth ID). Scelta la coppia fronte/retro delle AirPods in base all'ordine degli scatti e alle etichette.
 - **Schede ridotte ai soli dati certi** (richiesta utente): per MacBook Air, Galaxy Tab, Redmi Note 15 Pro e i due AirPods restano solo le informazioni leggibili su scatole ed etichette (rimossi processore "Core i7", "Retina", "11 pollici", chip H2, giudizi sull'aspetto). Aggiunto il flag `contact: true` in `usati.json`: la scheda mostra "Stato e dettagli si concordano direttamente con il negozio" e il pulsante "Contatta il negozio" (modulo precompilato + telefono). Per togliere l'avviso da un prodotto, rimuovere `contact`.
+
+### Riepilogo finale sessione 2026-09-26
+1. **Routine blog riparata:** la GitHub App di Claude non aveva accesso in scrittura (push 403). Dopo la riconnessione una esecuzione manuale ha pubblicato (articoli 106-107). Restano da controllare le esecuzioni delle 9:00 e 18:00.
+2. **Vetrina Usati online** su `/usati.html`: 13 prodotti (8 smartphone, MacBook Air, Galaxy Tab, AirPods 4 x2, PS5 FC 27), galleria con lightbox, filtri per categoria, stato batteria, indicatore aperto/chiuso, richiesta info precompilata, box in home, menu, sitemap, JSON-LD.
+3. **Bug filtri corretto** (`[hidden]` sovrascritto da `.flex`) e verificato.
+4. **Schede prudenti:** dati non certi rimossi; per i prodotti senza prezzo o specifiche compaiono "Su richiesta" e "Contatta il negozio" (`contact: true`).
+5. **Indirizzi del sito:** informatixrepair.com, www e `informatix-repair.pages.dev` (indirizzo tecnico gratuito di Cloudflare Pages, stessa copia del sito; il canonical punta al `.com`). Tutti aggiornati all'ultimo commit su `main`.
+
+### Da fare alla prossima sessione
+- Prezzi e specifiche dei prodotti "su richiesta" (in `content/usati/usati.json`); foto e stato batteria del 17 Pro Max Pacific Blue.
+- Controllare che la routine blog pubblichi ogni giorno; cambiare l'orario UTC il 25 ottobre (`0 8,17 * * *`).
+- Dati legali e foto reali del negozio da Christian; redirect di `.it` ed `.eu` verso il `.com`; scelta email `.com`.
+- Opzionale: disattivare o reindirizzare `pages.dev`; anteprime su ramo di prova prima di pubblicare.
