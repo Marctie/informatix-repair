@@ -19,6 +19,7 @@ export default defineConfig({
         contatti: resolve(__dirname, 'contatti.html'),
         privacy: resolve(__dirname, 'privacy.html'),
         blog: resolve(__dirname, 'blog.html'),
+        usati: resolve(__dirname, 'usati.html'),
         ...blogPages,
         notFound: resolve(__dirname, '404.html'),
       },

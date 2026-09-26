@@ -5,3 +5,6 @@ dist
 # Generati da scripts/build-blog.mjs
 /blog/
 /blog.html
+# Generati da scripts/build-usati.mjs
+/usati.html
+/public/usati.json

@@ -155,3 +155,17 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 ## Routine automatica
 
 - **2026-09-26 21:11** – Articoli 106-107: "Falso rimborso INPS, PEC compromesse e il malware MintsLoader" (bollettino CERT-AGID 20-26 settembre); "Google porta i chip per l'intelligenza artificiale nello spazio" (progetto Suncatcher, lancio TPU su Transporter-18 di SpaceX).
+
+## Sessione 2026-09-26 – Routine blog e Vetrina Usati
+- **Routine blog:** non pubblicava perché la GitHub App di Claude non aveva accesso in scrittura al repo (push 403); l'esecuzione risultava comunque "succeeded". Dopo la riconnessione di GitHub un'esecuzione manuale ha pubblicato correttamente (commit `c4445df`, articoli 106-107). Gli articoli scritti alle 18:06 (Chat Control, Chrome 154) sono andati persi.
+- **Aggiunta la Vetrina Usati** (`/usati.html`), solo vetrina: nessun carrello, il cliente è invitato a passare in negozio.
+  - Dati in `content/usati/usati.json` (nome, memoria, colore, prezzo, stato, batteria, scheda tecnica, numero di foto). Foto in `public/images/usati/<slug>/N.jpg` con miniature `N-t.jpg`.
+  - `scripts/build-usati.mjs` genera `usati.html` e `public/usati.json` (entrambi ignorati da git); eseguito da `npm run build` e `npm run dev`.
+  - `src/usati.js`: galleria con miniature, lightbox (tastiera e swipe), filtri (Tutti / Nuovi sigillati / Usati / Fino a 500 €), indicatore "Aperto ora / Chiuso, riapre..." calcolato sugli orari in ora di Roma.
+  - Pulsante "Chiedi info" verso `/contatti.html?prodotto=...&prezzo=...`: il modulo si precompila (servizio "Vetrina Usati" e messaggio); pulsante telefono da `SITE.phone`.
+  - Box "Vetrina Usati" in home (3 in evidenza), voce "Vetrina Usati" nel menu, URL in sitemap, JSON-LD `ItemList`/`Product`.
+- Dispositivi: iPhone 17 Pro Max 512 GB Argento (nuovo sigillato, 1.500 €), 17 Pro Max 256 GB Pacific Blue (1.150 €, senza foto), 16 Pro Max 256 GB Desert (750 €), 16 Pro 256 GB Bianco (700 €), 15 128 GB Giallo (500 €), 13 mini 128 GB Rosa (300 €), 11 Pro 256 GB Bianco (220 €).
+- Dati letti dalle foto: batteria e cicli (16 Pro Max 90% / 792; 16 Pro 92% / 526; 13 mini 100%), iOS 26.5.2. Sul 13 mini iOS segnala lo schermo come "parte usata": scritto chiaramente nella scheda.
+- **Privacy:** non pubblicate le foto con seriali, IMEI, indirizzi MAC e codici a barre (schermata Info del 16 Pro Max, Info del 13 mini, retro della scatola del 17 Pro Max).
+- **Non pubblicati** (foto presenti ma senza prezzo nel file note): AirPods 4 con cancellazione del rumore, Redmi Note 15 Pro 5G 8/256, Galaxy Tab A11+ 5G, MacBook Air 13" (A2179), gioco PS5 EA FC27. Da aggiungere in `usati.json` se in vendita.
+- Da fare: foto e stato batteria del 17 Pro Max Pacific Blue; conferma stato reale dei dispositivi; colore/nome esatti (11 Pro "Bianco", 17 Pro Max "Pacific Blue" come da note).

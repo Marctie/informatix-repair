@@ -52,3 +52,8 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Cron `0 7,16 * * *` (UTC) = 9:00 e 18:00 ora italiana con ora legale. **Dal 25 ottobre 2026 (ora solare) va cambiato in `0 8,17 * * *`**; a marzo 2027 tornare a `0 7,16 * * *`.
 - Ogni esecuzione: cerca notizie, scrive 2 articoli con le regole del preset, fa la build, commit e push su `main` (pubblicazione diretta, senza revisione), poi tenta una notifica push. Se non trova notizie affidabili scrive meno articoli.
 - Se gli articoli automatici calano di qualità, controllare le esecuzioni con list_runs/get_run_log o dalla pagina delle routine.
+
+## Vetrina Usati
+- Pagina `/usati.html`, solo vetrina (no e-commerce, no pagamenti online): CTA "Chiedi info" e telefono. Si aggiorna modificando `content/usati/usati.json` e aggiungendo le foto in `public/images/usati/<slug>/` (poi `npm run build`).
+- Regole: non inventare dati (batteria, garanzia, stato) non ricavabili da foto o note; dichiarare i difetti noti (es. schermo sostituito); non pubblicare foto con seriali/IMEI/codici a barre.
+- Foto originali in `C:\Mega.nz Sync\Lavoro\Dev\Sito Informatix.it\Foto vendite usati` (con "note per la vendita.txt").

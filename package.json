@@ -4,12 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/build-blog.mjs && vite",
-    "build": "node scripts/build-blog.mjs && vite build",
+    "dev": "node scripts/build-blog.mjs && node scripts/build-usati.mjs && vite",
+    "build": "node scripts/build-blog.mjs && node scripts/build-usati.mjs && vite build",
     "preview": "vite preview",
     "cap:sync": "vite build && npx cap sync android",
     "cap:open": "npx cap open android",
-    "blog": "node scripts/build-blog.mjs"
+    "blog": "node scripts/build-blog.mjs",
+    "usati": "node scripts/build-usati.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

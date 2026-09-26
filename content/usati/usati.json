@@ -1,0 +1,137 @@
+{
+  "updated": "2026-09-26",
+  "items": [
+    {
+      "slug": "iphone-17-pro-max-512-argento-sigillato",
+      "name": "iPhone 17 Pro Max",
+      "memory": "512 GB",
+      "color": "Argento",
+      "condition": "nuovo",
+      "conditionLabel": "Nuovo sigillato",
+      "price": 1500,
+      "featured": true,
+      "photos": 3,
+      "tagline": "L'ultimo top di gamma Apple, ancora nella sua scatola.",
+      "description": "Nuovo, mai aperto: la confezione originale Apple è ancora sigillata. Il Pro Max più recente con 512 GB di memoria, ideale per chi vuole il massimo senza compromessi e senza il minimo segno d'uso.",
+      "specs": [
+        ["Chip", "A19 Pro"],
+        ["Schermo", "6,9 pollici"],
+        ["Confezione", "Originale, sigillata"]
+      ]
+    },
+    {
+      "slug": "iphone-17-pro-max-256-pacific-blue",
+      "name": "iPhone 17 Pro Max",
+      "memory": "256 GB",
+      "color": "Pacific Blue",
+      "condition": "usato",
+      "conditionLabel": "Usato",
+      "price": 1150,
+      "featured": false,
+      "photos": 0,
+      "tagline": "Il Pro Max più recente in blu, a un prezzo molto più basso del nuovo.",
+      "description": "Il modello più recente della gamma Pro Max nella colorazione blu. Le foto e i dettagli sulla batteria sono in arrivo: passa in negozio o chiamaci per vederlo e provarlo di persona.",
+      "specs": [
+        ["Chip", "A19 Pro"],
+        ["Schermo", "6,9 pollici"]
+      ]
+    },
+    {
+      "slug": "iphone-16-pro-max-256-desert-titanium",
+      "name": "iPhone 16 Pro Max",
+      "memory": "256 GB",
+      "color": "Desert Titanium",
+      "condition": "usato",
+      "conditionLabel": "Usato con scatola",
+      "price": 750,
+      "featured": true,
+      "photos": 5,
+      "battery": 90,
+      "cycles": 792,
+      "tagline": "Il colore sabbia più elegante della gamma, con la sua scatola originale.",
+      "description": "Aspetto curato, senza segni evidenti nelle foto. La batteria è in stato Normale con capacità massima al 90% e 792 cicli di ricarica. Aggiornato a iOS 26.5.2 e completo della scatola originale.",
+      "specs": [
+        ["Chip", "A18 Pro"],
+        ["Schermo", "6,9 pollici"],
+        ["Prodotto", "Settembre 2024"],
+        ["Confezione", "Scatola originale"]
+      ]
+    },
+    {
+      "slug": "iphone-16-pro-256-titanio-bianco",
+      "name": "iPhone 16 Pro",
+      "memory": "256 GB",
+      "color": "White Titanium",
+      "condition": "usato",
+      "conditionLabel": "Usato con scatola",
+      "price": 700,
+      "featured": true,
+      "photos": 6,
+      "battery": 92,
+      "cycles": 526,
+      "tagline": "Compatto, potente e con la batteria ancora in ottima salute.",
+      "description": "Titanio bianco in ottime condizioni estetiche secondo le foto. Batteria in stato Normale con capacità massima al 92% e 526 cicli. Prodotto a febbraio 2025, completo di scatola originale.",
+      "specs": [
+        ["Chip", "A18 Pro"],
+        ["Schermo", "6,3 pollici"],
+        ["Prodotto", "Febbraio 2025"],
+        ["Confezione", "Scatola originale"]
+      ]
+    },
+    {
+      "slug": "iphone-15-128-giallo",
+      "name": "iPhone 15",
+      "memory": "128 GB",
+      "color": "Giallo",
+      "condition": "usato",
+      "conditionLabel": "Usato con scatola",
+      "price": 500,
+      "featured": false,
+      "photos": 3,
+      "tagline": "Il giallo più solare, con Dynamic Island e USB-C.",
+      "description": "Un iPhone 15 pulito e ben tenuto, in una delle colorazioni più belle della serie. Viene consegnato con la sua scatola originale. Perfetto per chi cerca uno smartphone recente e completo, senza spendere una cifra da top di gamma.",
+      "specs": [
+        ["Chip", "A16 Bionic"],
+        ["Schermo", "6,1 pollici"],
+        ["Confezione", "Scatola originale"]
+      ]
+    },
+    {
+      "slug": "iphone-13-mini-128-rosa",
+      "name": "iPhone 13 mini",
+      "memory": "128 GB",
+      "color": "Rosa",
+      "condition": "usato",
+      "conditionLabel": "Usato",
+      "price": 300,
+      "featured": false,
+      "photos": 4,
+      "battery": 100,
+      "tagline": "Piccolo, leggero e con la batteria originale al 100%.",
+      "description": "La batteria è originale e ha capacità massima al 100%. Lo schermo è stato sostituito con un ricambio usato, come indica la cronologia assistenza di iOS: te lo diciamo chiaramente, così puoi valutare tutto con serenità. Ha una pellicola protettiva applicata e iOS 26.5.2.",
+      "specs": [
+        ["Chip", "A15 Bionic"],
+        ["Schermo", "5,4 pollici"],
+        ["Batteria", "Originale"],
+        ["Display", "Ricambio usato"]
+      ]
+    },
+    {
+      "slug": "iphone-11-pro-256-bianco",
+      "name": "iPhone 11 Pro",
+      "memory": "256 GB",
+      "color": "Bianco",
+      "condition": "usato",
+      "conditionLabel": "Usato",
+      "price": 220,
+      "featured": false,
+      "photos": 1,
+      "tagline": "La tripla fotocamera al prezzo più accessibile della vetrina.",
+      "description": "Con 256 GB di memoria e la tripla fotocamera, è la scelta giusta per chi vuole un iPhone Pro spendendo poco. Passa in negozio per provarlo e controllarne lo stato dal vivo.",
+      "specs": [
+        ["Chip", "A13 Bionic"],
+        ["Schermo", "5,8 pollici"]
+      ]
+    }
+  ]
+}

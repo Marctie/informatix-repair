@@ -217,7 +217,7 @@ ${related.map(card).join('')}        </div>
 });
 
 /* ---------- sitemap ---------- */
-const fixed = ['', 'chi-siamo.html', 'servizi.html', 'portfolio.html', 'blog.html', 'contatti.html', 'privacy.html'];
+const fixed = ['', 'chi-siamo.html', 'servizi.html', 'portfolio.html', 'usati.html', 'blog.html', 'contatti.html', 'privacy.html'];
 const urls = [
   ...fixed.map((p) => `  <url><loc>${BASE}/${p}</loc></url>`),
   ...Array.from({ length: pages - 1 }, (_, i) => `  <url><loc>${BASE}/blog/pagina-${i + 2}.html</loc></url>`),
