@@ -13,8 +13,12 @@ const items = data.items;
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const euro = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €';
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+const fmtDateEn = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 const img = (it, n, thumb = false) => `/images/usati/${it.slug}/${n}${thumb ? '-t' : ''}.jpg`;
 const title = (it) => [it.name, it.memory, it.color].filter(Boolean).join(' ');
+const titleEn = (it) => [it.nameEn || it.name, it.memoryEn || it.memory, it.colorEn || it.color].filter(Boolean).join(' ');
+/* Coppia di span IT/EN, mostrati/nascosti via CSS in base a html[lang]. Se manca la traduzione, l'EN ricade sull'IT. */
+const bi = (tag, cls, it, en) => `<${tag}${cls ? ` class="${cls}"` : ''} data-lang-it>${it}</${tag}><${tag}${cls ? ` class="${cls}"` : ''} data-lang-en>${en || it}</${tag}>`;
 
 /* Colori dell'illustrazione per gli articoli senza foto */
 const TINT = { 'Pacific Blue': ['#5B8DC9', '#1E3A5F'] };
@@ -28,7 +32,7 @@ const battery = (it) => {
   if (!it.battery) return '';
   const col = it.battery >= 90 ? 'bg-emerald-500' : it.battery >= 80 ? 'bg-amber-500' : 'bg-secondary';
   return `<div class="mt-4">
-            <div class="flex items-center justify-between text-xs text-gray-600 mb-1.5"><span class="inline-flex items-center gap-1.5 font-medium text-primary"><i data-icon="battery" data-class="w-4 h-4 text-gray-500"></i> Salute batteria</span><span><strong class="text-primary">${it.battery}%</strong>${it.cycles ? ` · ${it.cycles} cicli` : ''}</span></div>
+            <div class="flex items-center justify-between text-xs text-gray-600 mb-1.5"><span class="inline-flex items-center gap-1.5 font-medium text-primary"><i data-icon="battery" data-class="w-4 h-4 text-gray-500"></i> <span data-i18n="usati.battery">Salute batteria</span></span><span><strong class="text-primary">${it.battery}%</strong>${it.cycles ? ` · ${it.cycles} <span data-i18n="usati.cycles">cicli</span>` : ''}</span></div>
             <div class="h-1.5 rounded-full bg-line overflow-hidden" role="img" aria-label="Capacità massima batteria ${it.battery}%"><div class="h-full rounded-full ${col}" style="width:${it.battery}%"></div></div>
           </div>`;
 };
@@ -53,28 +57,32 @@ const card = (it) => {
           }`
     : `<div class="relative w-full aspect-[4/5] overflow-hidden bg-ink">${placeholder(it)}</div>`;
 
+  const specsDl = (specs) => `<dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">${specs.map(([k, v]) => `<dt class="text-gray-500">${esc(k)}</dt><dd class="font-medium text-primary text-right">${esc(v)}</dd>`).join('')}</dl>`;
+  const ctaLabel = it.contact ? 'usati.ctaContact' : it.price != null ? 'usati.ctaInfo' : 'usati.ctaPrice';
+
   return `        <article id="${it.slug}" class="usato card !p-0 overflow-hidden flex flex-col reveal" data-kind="${it.condition}" data-cat="${it.category}"${it.price != null ? ` data-price="${it.price}"` : ''}>
-          <div class="relative" data-photos='${JSON.stringify(nums.map((n) => img(it, n)))}' data-title="${esc(title(it))}">
+          <div class="relative" data-photos='${JSON.stringify(nums.map((n) => img(it, n)))}' data-title="${esc(title(it))}" data-title-en="${esc(titleEn(it))}">
             ${gallery}
-            <span class="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold shadow-soft ${isNew ? 'bg-secondary text-white' : 'bg-white text-primary'}">${esc(it.conditionLabel)}</span>
+            <span class="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold shadow-soft ${isNew ? 'bg-secondary text-white' : 'bg-white text-primary'}">${bi('span', '', esc(it.conditionLabel), it.conditionLabelEn && esc(it.conditionLabelEn))}</span>
           </div>
           <div class="p-6 flex flex-col grow">
-            ${[it.memory, it.color].filter(Boolean).length ? `<p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">${[it.memory, it.color].filter(Boolean).map(esc).join(' &middot; ')}</p>` : ''}
-            <h2 class="text-xl font-semibold leading-snug">${esc(it.name)}</h2>
-            <p class="text-sm font-medium text-secondary mt-1">${esc(it.tagline)}</p>
-            <p class="text-sm text-gray-600 leading-relaxed mt-3">${esc(it.description)}</p>
+            ${[it.memory, it.color].filter(Boolean).length ? `<p class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">${bi('span', '', [it.memory, it.color].filter(Boolean).map(esc).join(' &middot; '), [it.memoryEn || it.memory, it.colorEn || it.color].filter(Boolean).map(esc).join(' &middot; '))}</p>` : ''}
+            <h2 class="text-xl font-semibold leading-snug">${bi('span', '', esc(it.name), it.nameEn && esc(it.nameEn))}</h2>
+            ${bi('p', 'text-sm font-medium text-secondary mt-1', esc(it.tagline), it.taglineEn && esc(it.taglineEn))}
+            ${bi('p', 'text-sm text-gray-600 leading-relaxed mt-3', esc(it.description), it.descriptionEn && esc(it.descriptionEn))}
             ${battery(it)}
             <details class="mt-4 group/d">
-              <summary class="cursor-pointer select-none text-sm font-semibold text-primary hover:text-secondary list-none flex items-center gap-1.5"><span class="transition-transform group-open/d:rotate-90">${'&rsaquo;'}</span> Scheda tecnica</summary>
-              <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">${it.specs.map(([k, v]) => `<dt class="text-gray-500">${esc(k)}</dt><dd class="font-medium text-primary text-right">${esc(v)}</dd>`).join('')}</dl>
+              <summary class="cursor-pointer select-none text-sm font-semibold text-primary hover:text-secondary list-none flex items-center gap-1.5"><span class="transition-transform group-open/d:rotate-90">${'&rsaquo;'}</span> <span data-i18n="usati.specs">Scheda tecnica</span></summary>
+              <div data-lang-it>${specsDl(it.specs)}</div>
+              <div data-lang-en>${specsDl(it.specsEn || it.specs)}</div>
             </details>
             <div class="mt-auto pt-6">
-              ${it.contact ? `<p class="flex gap-2 rounded-xl bg-lightbg px-3.5 py-3 text-xs text-gray-600 leading-relaxed mb-4"><i data-icon="chat" data-class="w-4 h-4 shrink-0 text-secondary mt-px"></i><span>Stato e dettagli si concordano direttamente con il negozio: chiamaci o scrivici.</span></p>` : ''}
+              ${it.contact ? `<p class="flex gap-2 rounded-xl bg-lightbg px-3.5 py-3 text-xs text-gray-600 leading-relaxed mb-4"><i data-icon="chat" data-class="w-4 h-4 shrink-0 text-secondary mt-px"></i><span data-i18n="usati.contactNote">Stato e dettagli si concordano direttamente con il negozio: chiamaci o scrivici.</span></p>` : ''}
               <div class="flex items-end justify-between gap-3 mb-4">
-                ${it.price != null ? `<div><span class="block text-xs text-gray-500">Prezzo in negozio</span><span class="font-heading text-3xl font-extrabold text-primary">${euro(it.price)}</span></div>` : `<div><span class="block text-xs text-gray-500">Prezzo</span><span class="font-heading text-2xl font-bold text-primary">Su richiesta</span></div>`}
+                ${it.price != null ? `<div><span class="block text-xs text-gray-500" data-i18n="usati.priceLabel">Prezzo in negozio</span><span class="font-heading text-3xl font-extrabold text-primary">${euro(it.price)}</span></div>` : `<div><span class="block text-xs text-gray-500" data-i18n="usati.priceOnRequestLabel">Prezzo</span><span class="font-heading text-2xl font-bold text-primary" data-i18n="usati.priceOnRequest">Su richiesta</span></div>`}
               </div>
               <div class="grid grid-cols-[1fr_auto] gap-2">
-                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm">${it.contact ? 'Contatta il negozio' : it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'} <i data-icon="arrow" data-class="w-4 h-4"></i></a>
+                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm"><span data-i18n="${ctaLabel}">${it.contact ? 'Contatta il negozio' : it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'}</span> <i data-icon="arrow" data-class="w-4 h-4"></i></a>
                 <a data-site="phone" href="#" class="btn-outline !py-3 !px-4 text-sm" aria-label="Chiama per ${esc(title(it))}"><i data-icon="phoneCall" data-class="w-4 h-4"></i></a>
               </div>
             </div>
@@ -85,13 +93,13 @@ const card = (it) => {
 
 const count = (f) => items.filter(f).length;
 const filters = [
-  ['all', 'Tutti', items.length],
-  ['nuovo', 'Nuovi sigillati', count((i) => i.condition === 'nuovo')],
-  ['usato', 'Usati', count((i) => i.condition === 'usato')],
-  ['smartphone', 'Smartphone', count((i) => i.category === 'smartphone')],
-  ['computer', 'Computer e tablet', count((i) => i.category === 'computer')],
-  ['audio-gaming', 'Audio e gaming', count((i) => i.category === 'audio-gaming')],
-  ['500', 'Fino a 500 €', count((i) => i.price != null && i.price <= 500)],
+  ['all', 'usati.filter.all', 'Tutti', items.length],
+  ['nuovo', 'usati.filter.nuovo', 'Nuovi sigillati', count((i) => i.condition === 'nuovo')],
+  ['usato', 'usati.filter.usato', 'Usati', count((i) => i.condition === 'usato')],
+  ['smartphone', 'usati.filter.smartphone', 'Smartphone', count((i) => i.category === 'smartphone')],
+  ['computer', 'usati.filter.computer', 'Computer e tablet', count((i) => i.category === 'computer')],
+  ['audio-gaming', 'usati.filter.audioGaming', 'Audio e gaming', count((i) => i.category === 'audio-gaming')],
+  ['500', 'usati.filter.500', 'Fino a 500 €', count((i) => i.price != null && i.price <= 500)],
 ];
 
 const ld = JSON.stringify({
@@ -120,16 +128,16 @@ const html = `<!doctype html>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vetrina Usati | Smartphone, computer e accessori a Nocera Superiore | Informatix Repair</title>
-  <meta name="description" content="Vetrina Usati di Informatix Repair a Nocera Superiore: smartphone, computer, tablet e accessori usati o nuovi sigillati, con foto e prezzi. Vieni a vederli e provarli in negozio." />
+  <title data-i18n="usati.meta.title">Vetrina Usati | Smartphone, computer e accessori a Nocera Superiore | Informatix Repair</title>
+  <meta name="description" data-i18n-content="usati.meta.desc" content="Vetrina Usati di Informatix Repair a Nocera Superiore: smartphone, computer, tablet e accessori usati o nuovi sigillati, con foto e prezzi. Vieni a vederli e provarli in negozio." />
   <meta name="theme-color" content="#0B0F19" />
   <link rel="canonical" href="${BASE}/usati.html" />
   <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="it_IT" />
   <meta property="og:site_name" content="Informatix Repair" />
-  <meta property="og:title" content="Vetrina Usati | Informatix Repair" />
-  <meta property="og:description" content="Smartphone, computer, tablet e accessori con foto e prezzi. Vieni a vederli in negozio a Nocera Superiore." />
+  <meta property="og:title" data-i18n-content="usati.meta.title" content="Vetrina Usati | Informatix Repair" />
+  <meta property="og:description" data-i18n-content="usati.meta.desc" content="Smartphone, computer, tablet e accessori con foto e prezzi. Vieni a vederli in negozio a Nocera Superiore." />
   <meta property="og:url" content="${BASE}/usati.html" />
   <meta property="og:image" content="${BASE}${ogImage}" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -143,11 +151,11 @@ const html = `<!doctype html>
     <section class="hero-bg relative overflow-hidden text-white">
       <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
       <div class="container-x relative py-14 md:py-20 text-center">
-        <span class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-1.5 text-xs font-medium text-gray-200 mb-6"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> Pezzi unici &middot; aggiornata al ${fmtDate(data.updated)}</span>
-        <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.08] mb-5">Vetrina <span class="text-secondary">Usati</span></h1>
-        <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto">Smartphone, computer, tablet e accessori selezionati. Guarda le foto, controlla le caratteristiche e vieni a provarli con mano in negozio.</p>
+        <span class="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-1.5 text-xs font-medium text-gray-200 mb-6"><span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> ${bi('span', '', `Pezzi unici &middot; aggiornata al ${fmtDate(data.updated)}`, `One of a kind &middot; updated on ${fmtDateEn(data.updated)}`)}</span>
+        <h1 class="text-4xl md:text-6xl font-extrabold leading-[1.08] mb-5" data-i18n-html="usati.hero.titleHtml">Vetrina <span class="text-secondary">Usati</span></h1>
+        <p class="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto" data-i18n="usati.hero.subtitle">Smartphone, computer, tablet e accessori selezionati. Guarda le foto, controlla le caratteristiche e vieni a provarli con mano in negozio.</p>
         <div class="mt-8 inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-5 rounded-2xl bg-white/10 border border-white/15 px-6 py-4 text-sm">
-          <span class="inline-flex items-center gap-2"><i data-icon="pin" data-class="w-5 h-5 text-secondary"></i> Via Pecorari 178, Nocera Superiore</span>
+          <span class="inline-flex items-center gap-2"><i data-icon="pin" data-class="w-5 h-5 text-secondary"></i> <span data-i18n="usati.address">Via Pecorari 178, Nocera Superiore</span></span>
           <span class="hidden sm:block w-px h-5 bg-white/20" aria-hidden="true"></span>
           <span id="shop-status" class="inline-flex items-center gap-2 text-gray-200" aria-live="polite"><i data-icon="clock" data-class="w-5 h-5 text-secondary"></i> <span data-status-text>Lun–Ven 9:00–13:30 e 16:00–19:30 · Sab 9:00–12:30</span></span>
         </div>
@@ -156,28 +164,28 @@ const html = `<!doctype html>
 
     <section class="section container-x !pt-12">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 mb-10">
-        <p class="text-gray-600"><strong class="text-primary font-semibold" id="usati-count">${items.length}</strong> dispositivi in negozio</p>
-        <div class="flex flex-wrap gap-2" role="group" aria-label="Filtra la vetrina">
-${filters.map(([k, l, n], i) => `          <button type="button" class="filter-btn" data-usati-filter="${k}" aria-pressed="${i === 0}">${l} <span class="opacity-60">${n}</span></button>`).join('\n')}
+        <p class="text-gray-600"><strong class="text-primary font-semibold" id="usati-count">${items.length}</strong> <span data-i18n="usati.countLabel">dispositivi in negozio</span></p>
+        <div class="flex flex-wrap gap-2" role="group" data-i18n-attr="aria-label:usati.filters.aria" aria-label="Filtra la vetrina">
+${filters.map(([k, key, l, n], i) => `          <button type="button" class="filter-btn" data-usati-filter="${k}" aria-pressed="${i === 0}"><span data-i18n="${key}">${l}</span> <span class="opacity-60">${n}</span></button>`).join('\n')}
         </div>
       </div>
 
       <div id="usati-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 ${items.map(card).join('')}      </div>
-      <p id="usati-empty" class="hidden text-center text-gray-600 py-16">Nessun dispositivo per questo filtro. Prova con un altro o <a href="/contatti.html" class="text-secondary font-semibold underline">scrivici cosa cerchi</a>.</p>
+      <p id="usati-empty" class="hidden text-center text-gray-600 py-16"><span data-i18n="usati.empty">Nessun dispositivo per questo filtro. Prova con un altro o</span> <a href="/contatti.html" class="text-secondary font-semibold underline" data-i18n="usati.emptyLink">scrivici cosa cerchi</a>.</p>
     </section>
 
     <section class="bg-lightbg">
       <div class="section container-x">
         <div class="text-center max-w-2xl mx-auto mb-12">
-          <span class="eyebrow">Come funziona</span>
-          <h2 class="section-title">Dal telefono al tuo palmo, in tre passi</h2>
-          <p class="text-gray-600">Non è un negozio online: ogni dispositivo si sceglie guardandolo negli occhi.</p>
+          <span class="eyebrow" data-i18n="usati.howTitle.eyebrow">Come funziona</span>
+          <h2 class="section-title" data-i18n="usati.howTitle">Dal telefono al tuo palmo, in tre passi</h2>
+          <p class="text-gray-600" data-i18n="usati.howSubtitle">Non è un negozio online: ogni dispositivo si sceglie guardandolo negli occhi.</p>
         </div>
         <ol class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <li class="card reveal text-center"><div class="mx-auto w-14 h-14 rounded-full bg-secondary text-white font-heading text-xl font-bold flex items-center justify-center shadow-glow mb-4">1</div><h3 class="font-semibold mb-1.5">Scegli</h3><p class="text-sm text-gray-600">Sfoglia la vetrina e guarda foto, stato della batteria e prezzo di ogni dispositivo.</p></li>
-          <li class="card reveal text-center"><div class="mx-auto w-14 h-14 rounded-full bg-secondary text-white font-heading text-xl font-bold flex items-center justify-center shadow-glow mb-4">2</div><h3 class="font-semibold mb-1.5">Chiedi info</h3><p class="text-sm text-gray-600">Scrivici o chiamaci per confermare che sia ancora disponibile: sono pezzi unici.</p></li>
-          <li class="card reveal text-center"><div class="mx-auto w-14 h-14 rounded-full bg-secondary text-white font-heading text-xl font-bold flex items-center justify-center shadow-glow mb-4">3</div><h3 class="font-semibold mb-1.5">Vieni a provarlo</h3><p class="text-sm text-gray-600">Passa in negozio a Nocera Superiore: lo vedi dal vivo, lo provi e ti togli ogni dubbio.</p></li>
+          <li class="card reveal text-center"><div class="mx-auto w-14 h-14 rounded-full bg-secondary text-white font-heading text-xl font-bold flex items-center justify-center shadow-glow mb-4">1</div><h3 class="font-semibold mb-1.5" data-i18n="usati.how1.title">Scegli</h3><p class="text-sm text-gray-600" data-i18n="usati.how1.desc">Sfoglia la vetrina e guarda foto, stato della batteria e prezzo di ogni dispositivo.</p></li>
+          <li class="card reveal text-center"><div class="mx-auto w-14 h-14 rounded-full bg-secondary text-white font-heading text-xl font-bold flex items-center justify-center shadow-glow mb-4">2</div><h3 class="font-semibold mb-1.5" data-i18n="usati.how2.title">Chiedi info</h3><p class="text-sm text-gray-600" data-i18n="usati.how2.desc">Scrivici o chiamaci per confermare che sia ancora disponibile: sono pezzi unici.</p></li>
+          <li class="card reveal text-center"><div class="mx-auto w-14 h-14 rounded-full bg-secondary text-white font-heading text-xl font-bold flex items-center justify-center shadow-glow mb-4">3</div><h3 class="font-semibold mb-1.5" data-i18n="usati.how3.title">Vieni a provarlo</h3><p class="text-sm text-gray-600" data-i18n="usati.how3.desc">Passa in negozio a Nocera Superiore: lo vedi dal vivo, lo provi e ti togli ogni dubbio.</p></li>
         </ol>
       </div>
     </section>
@@ -186,22 +194,22 @@ ${items.map(card).join('')}      </div>
       <div class="hero-bg relative overflow-hidden rounded-3xl text-white px-6 py-12 md:py-16 text-center">
         <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
         <div class="relative">
-          <h2 class="text-2xl md:text-4xl font-bold mb-3">Non vedi quello che cerchi?</h2>
-          <p class="text-gray-300 mb-8 max-w-xl mx-auto">La vetrina cambia spesso. Dicci che modello ti serve: se arriva in negozio, ti avvisiamo per primo.</p>
+          <h2 class="text-2xl md:text-4xl font-bold mb-3" data-i18n="usati.cta2.title">Non vedi quello che cerchi?</h2>
+          <p class="text-gray-300 mb-8 max-w-xl mx-auto" data-i18n="usati.cta2.subtitle">La vetrina cambia spesso. Dicci che modello ti serve: se arriva in negozio, ti avvisiamo per primo.</p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contatti.html?prodotto=${encodeURIComponent('Ricerca modello')}" class="btn-primary">Scrivici cosa cerchi <i data-icon="arrow" data-class="w-5 h-5"></i></a>
-            <a data-site="phone" href="#" class="btn-ghost"><i data-icon="phoneCall" data-class="w-5 h-5"></i> Chiama il negozio</a>
+            <a href="/contatti.html?prodotto=${encodeURIComponent('Ricerca modello')}" class="btn-primary"><span data-i18n="usati.cta2.button1">Scrivici cosa cerchi</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
+            <a data-site="phone" href="#" class="btn-ghost"><i data-icon="phoneCall" data-class="w-5 h-5"></i> <span data-i18n="usati.cta2.button2">Chiama il negozio</span></a>
           </div>
         </div>
       </div>
-      <p class="text-xs text-gray-500 text-center max-w-2xl mx-auto mt-8">Le informazioni sulle condizioni dei dispositivi derivano dalle foto e dalle schermate del dispositivo e possono non riportare ogni dettaglio: lo stato reale si verifica di persona in negozio. Prezzi e disponibilità sono soggetti a variazione e i pezzi sono unici. Confermali prima di passare. Non è possibile acquistare online.</p>
+      <p class="text-xs text-gray-500 text-center max-w-2xl mx-auto mt-8" data-i18n="usati.disclaimer">Le informazioni sulle condizioni dei dispositivi derivano dalle foto e dalle schermate del dispositivo e possono non riportare ogni dettaglio: lo stato reale si verifica di persona in negozio. Prezzi e disponibilità sono soggetti a variazione e i pezzi sono unici. Confermali prima di passare. Non è possibile acquistare online.</p>
     </section>
   </main>
 
   <div id="lightbox" class="fixed inset-0 z-[90] hidden bg-black/90 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Foto ingrandita">
-    <button type="button" class="lb-close absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" aria-label="Chiudi"><i data-icon="close" data-class="w-6 h-6"></i></button>
-    <button type="button" class="lb-prev absolute left-3 md:left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" aria-label="Foto precedente"><i data-icon="chevL" data-class="w-6 h-6"></i></button>
-    <button type="button" class="lb-next absolute right-3 md:right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" aria-label="Foto successiva"><i data-icon="chevR" data-class="w-6 h-6"></i></button>
+    <button type="button" class="lb-close absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" data-i18n-attr="aria-label:usati.lightbox.close" aria-label="Chiudi"><i data-icon="close" data-class="w-6 h-6"></i></button>
+    <button type="button" class="lb-prev absolute left-3 md:left-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" data-i18n-attr="aria-label:usati.lightbox.prev" aria-label="Foto precedente"><i data-icon="chevL" data-class="w-6 h-6"></i></button>
+    <button type="button" class="lb-next absolute right-3 md:right-6 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center" data-i18n-attr="aria-label:usati.lightbox.next" aria-label="Foto successiva"><i data-icon="chevR" data-class="w-6 h-6"></i></button>
     <figure class="h-full flex flex-col items-center justify-center px-16 py-14">
       <img class="lb-img max-h-full max-w-full object-contain rounded-lg" alt="" />
       <figcaption class="lb-cap mt-4 text-sm text-gray-300"></figcaption>
@@ -217,7 +225,7 @@ writeFileSync(join(ROOT, 'usati.html'), html);
 /* Riassunto per il box in home */
 const teaser = items
   .filter((i) => i.featured && i.photos && i.price != null)
-  .map((i) => ({ slug: i.slug, name: i.name, memory: i.memory, color: i.color, label: i.conditionLabel, price: euro(i.price), image: img(i, 1) }));
+  .map((i) => ({ slug: i.slug, name: i.name, memory: i.memory, color: i.color, label: i.conditionLabel, labelEn: i.conditionLabelEn || i.conditionLabel, price: euro(i.price), image: img(i, 1) }));
 writeFileSync(join(ROOT, 'public', 'usati.json'), JSON.stringify({ count: items.length, items: teaser }));
 
 console.log(`Vetrina Usati: ${items.length} dispositivi.`);

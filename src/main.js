@@ -6,6 +6,7 @@ import '@fontsource/poppins/600.css';
 import '@fontsource/poppins/700.css';
 import '@fontsource/poppins/800.css';
 import './styles/main.css';
+import { t, getLang, setLang, applyI18n } from './i18n.js';
 
 /* ------------------------------------------------------------------
  * Configurazione del sito. I campi vuoti nascondono i relativi elementi.
@@ -26,13 +27,13 @@ export const SITE = {
 };
 
 const NAV_LINKS = [
-  { href: '/', label: 'Home', match: ['', 'index.html'] },
-  { href: '/chi-siamo.html', label: 'Chi Siamo', match: ['chi-siamo.html'] },
-  { href: '/servizi.html', label: 'Servizi', match: ['servizi.html'] },
-  { href: '/portfolio.html', label: 'Portfolio', match: ['portfolio.html'] },
-  { href: '/usati.html', label: 'Vetrina Usati', match: ['usati.html'] },
-  { href: '/blog.html', label: 'Blog', match: ['blog.html'] },
-  { href: '/contatti.html', label: 'Contatti', match: ['contatti.html'] },
+  { href: '/', key: 'common.nav.home', match: ['', 'index.html'] },
+  { href: '/chi-siamo.html', key: 'common.nav.chiSiamo', match: ['chi-siamo.html'] },
+  { href: '/servizi.html', key: 'common.nav.servizi', match: ['servizi.html'] },
+  { href: '/portfolio.html', key: 'common.nav.portfolio', match: ['portfolio.html'] },
+  { href: '/usati.html', key: 'common.nav.usati', match: ['usati.html'] },
+  { href: '/blog.html', key: 'common.nav.blog', match: ['blog.html'] },
+  { href: '/contatti.html', key: 'common.nav.contatti', match: ['contatti.html'] },
 ];
 
 /* Icone (stile outline 24x24) */
@@ -90,35 +91,48 @@ function renderNavbar() {
   const links = (cls) =>
     NAV_LINKS.map(
       (l) =>
-        `<a href="${l.href}" class="${cls}" ${l.match.includes(page) || (l.href === '/blog.html' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${l.label}</a>`
+        `<a href="${l.href}" class="${cls}" ${l.match.includes(page) || (l.href === '/blog.html' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${t(l.key)}</a>`
     ).join('');
 
+  const langBtn = (cls) => {
+    const label = getLang() === 'it' ? 'Switch to English' : "Passa all'italiano";
+    return `<button type="button" id="lang-toggle-${cls.includes('mobile') ? 'mobile' : 'desktop'}" class="lang-toggle ${cls}" aria-label="${label}">${getLang() === 'it' ? 'EN' : 'IT'}</button>`;
+  };
+
   mount.innerHTML = `
-    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lift">Vai al contenuto</a>
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lift">${t('common.skip')}</a>
     <header id="site-header" class="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-transparent transition-shadow duration-300">
       <div class="container-x">
         <div class="flex items-center justify-between h-[72px]">
           <a href="/" class="flex items-center gap-2" aria-label="${SITE.name} - Home">
             <img src="/images/Informatix-logo.png" alt="${SITE.name}" width="56" height="56" class="h-12 w-auto" />
           </a>
-          <nav class="hidden md:flex items-center gap-8" aria-label="Principale">
+          <nav class="hidden md:flex items-center gap-8" aria-label="${t('common.nav.aria')}">
             ${links('nav-link')}
-            <a href="/contatti.html" class="btn-primary !py-2.5 !px-5 text-sm">Richiedi Preventivo</a>
+            <a href="/contatti.html" class="btn-primary !py-2.5 !px-5 text-sm">${t('common.cta.quote')}</a>
+            ${langBtn('shrink-0 w-10 h-9 rounded-lg border border-line text-xs font-semibold text-primary hover:border-secondary hover:text-secondary transition-colors')}
           </nav>
-          <button id="nav-toggle" type="button" aria-label="Apri menu" aria-expanded="false" aria-controls="nav-mobile" class="md:hidden p-2 -mr-2 text-primary">
-            <span data-open>${icon('menu', 'w-7 h-7')}</span>
-            <span data-close class="hidden">${icon('close', 'w-7 h-7')}</span>
-          </button>
+          <div class="md:hidden flex items-center gap-2">
+            ${langBtn('shrink-0 w-9 h-9 rounded-lg border border-line text-xs font-semibold text-primary')}
+            <button id="nav-toggle" type="button" aria-label="${t('common.menu.open')}" aria-expanded="false" aria-controls="nav-mobile" class="p-2 -mr-2 text-primary">
+              <span data-open>${icon('menu', 'w-7 h-7')}</span>
+              <span data-close class="hidden">${icon('close', 'w-7 h-7')}</span>
+            </button>
+          </div>
         </div>
       </div>
       <div id="nav-mobile" class="md:hidden overflow-hidden max-h-0 transition-[max-height] duration-300 bg-white border-t border-line">
-        <nav class="container-x py-4 flex flex-col" aria-label="Mobile">
+        <nav class="container-x py-4 flex flex-col" aria-label="${t('common.nav.ariaMobile')}">
           ${links('py-3 text-base font-medium text-primary border-b border-line aria-[current=page]:text-secondary')}
-          <a href="/contatti.html" class="btn-primary mt-4">Richiedi Preventivo</a>
+          <a href="/contatti.html" class="btn-primary mt-4">${t('common.cta.quote')}</a>
         </nav>
       </div>
     </header>
   `;
+
+  mount.querySelectorAll('.lang-toggle').forEach((btn) =>
+    btn.addEventListener('click', () => setLang(getLang() === 'it' ? 'en' : 'it'))
+  );
 
   const header = document.getElementById('site-header');
   const toggle = document.getElementById('nav-toggle');
@@ -152,10 +166,10 @@ function renderApkBanner() {
     <section class="container-x pb-16 md:pb-24">
       <div class="rounded-3xl bg-ink text-white p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <h2 class="text-2xl md:text-3xl font-bold mb-2">Scarica l'app Informatix Repair</h2>
-          <p class="text-gray-300">Tutto il sito a portata di mano, direttamente sul tuo smartphone Android.</p>
+          <h2 class="text-2xl md:text-3xl font-bold mb-2">${t('common.app.title')}</h2>
+          <p class="text-gray-300">${t('common.app.desc')}</p>
         </div>
-        <a href="${SITE.apkUrl}" class="btn-primary shrink-0" download>${icon('download', 'w-5 h-5')} Scarica APK</a>
+        <a href="${SITE.apkUrl}" class="btn-primary shrink-0" download>${icon('download', 'w-5 h-5')} ${t('common.app.cta')}</a>
       </div>
     </section>`;
 }
@@ -181,17 +195,17 @@ function renderFooter() {
       <div class="container-x py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
         <div class="lg:col-span-2">
           <div class="inline-block bg-white rounded-xl p-2 mb-4"><img src="/images/Informatix-logo.png" alt="${SITE.name}" class="h-14 w-auto" loading="lazy" /></div>
-          <p class="text-gray-400 text-sm max-w-sm">Riparazioni informatiche professionali a Nocera Superiore (SA). Per privati, aziende e appassionati di tecnologia.</p>
+          <p class="text-gray-400 text-sm max-w-sm">${t('common.footer.tagline')}</p>
           ${social ? `<div class="flex gap-3 mt-5">${social}</div>` : ''}
         </div>
         <div>
-          <h4 class="font-heading font-semibold mb-4">Navigazione</h4>
+          <h4 class="font-heading font-semibold mb-4">${t('common.footer.navHeading')}</h4>
           <ul class="space-y-2.5 text-sm text-gray-400">
-            ${NAV_LINKS.map((l) => `<li><a href="${l.href}" class="hover:text-white transition-colors">${l.label}</a></li>`).join('')}
+            ${NAV_LINKS.map((l) => `<li><a href="${l.href}" class="hover:text-white transition-colors">${t(l.key)}</a></li>`).join('')}
           </ul>
         </div>
         <div>
-          <h4 class="font-heading font-semibold mb-4">Contatti</h4>
+          <h4 class="font-heading font-semibold mb-4">${t('common.footer.contactHeading')}</h4>
           <ul class="space-y-3 text-sm text-gray-400">
             <li class="flex gap-2">${icon('pin', 'w-5 h-5 shrink-0 text-secondary')}<span>${SITE.address}</span></li>
             ${SITE.phone ? `<li class="flex gap-2">${icon('phoneCall', 'w-5 h-5 shrink-0 text-secondary')}<a href="${telHref(SITE.phone)}" class="hover:text-white">${SITE.phone}</a></li>` : ''}
@@ -202,8 +216,8 @@ function renderFooter() {
       </div>
       <div class="border-t border-white/10">
         <div class="container-x py-5 text-center sm:text-left text-xs text-gray-500">
-          &copy; ${new Date().getFullYear()} ${SITE.legalName || SITE.name}. Tutti i diritti riservati.${SITE.vat ? ` P.IVA ${SITE.vat}.` : ''}
-          <span class="mx-1">·</span><a href="/privacy.html" class="hover:text-white underline-offset-2 hover:underline">Privacy Policy</a>
+          &copy; ${new Date().getFullYear()} ${SITE.legalName || SITE.name}. ${t('common.footer.rights')}${SITE.vat ? ` VAT ${SITE.vat}.` : ''}
+          <span class="mx-1">·</span><a href="/privacy.html" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.privacy')}</a>
         </div>
       </div>
     </footer>
@@ -319,16 +333,17 @@ async function initUsatiTeaser() {
     if (!res.ok) return;
     const { count, items } = await res.json();
     if (!items.length) return;
+    const lang = getLang();
     mount.innerHTML = `
       <section class="bg-ink text-white">
         <div class="section container-x">
           <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div class="max-w-xl">
-              <span class="eyebrow !text-red-400">Vetrina Usati</span>
-              <h2 class="text-3xl md:text-4xl font-bold leading-tight mb-3">Il tuo prossimo dispositivo ti aspetta in negozio</h2>
-              <p class="text-gray-300">${count} prodotti selezionati, tra smartphone, computer e accessori. Vieni a vederli e provarli dal vivo.</p>
+              <span class="eyebrow !text-red-400">${t('home.usati.eyebrow')}</span>
+              <h2 class="text-3xl md:text-4xl font-bold leading-tight mb-3">${t('home.usati.title')}</h2>
+              <p class="text-gray-300">${t('home.usati.subtitle', count)}</p>
             </div>
-            <a href="/usati.html" class="btn-primary shrink-0">Vai alla vetrina ${icon('arrow', 'w-5 h-5')}</a>
+            <a href="/usati.html" class="btn-primary shrink-0">${t('home.usati.link')} ${icon('arrow', 'w-5 h-5')}</a>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             ${items
@@ -339,7 +354,7 @@ async function initUsatiTeaser() {
                 <div class="relative aspect-[4/5] overflow-hidden bg-black">
                   <img src="${i.image}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-60" loading="lazy" />
                   <img src="${i.image}" alt="${i.name} ${i.memory} ${i.color}" class="relative w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" loading="lazy" width="880" height="1100" />
-                  <span class="absolute top-3 left-3 rounded-full bg-white text-primary px-3 py-1 text-xs font-semibold">${i.label}</span>
+                  <span class="absolute top-3 left-3 rounded-full bg-white text-primary px-3 py-1 text-xs font-semibold">${lang === 'en' && i.labelEn ? i.labelEn : i.label}</span>
                 </div>
                 <div class="p-5 flex items-end justify-between gap-3">
                   <div><p class="text-xs uppercase tracking-wider text-gray-400">${i.memory} · ${i.color}</p><h3 class="font-semibold text-lg">${i.name}</h3></div>
@@ -356,16 +371,22 @@ async function initUsatiTeaser() {
   }
 }
 
-document.documentElement.classList.add('js');
-document.addEventListener('DOMContentLoaded', () => {
+function renderAll() {
   renderNavbar();
   renderFooter();
   renderApkBanner();
   fillSiteData();
   hydrateIcons();
+  applyI18n();
+  initUsatiTeaser();
+}
+
+document.documentElement.classList.add('js');
+document.addEventListener('DOMContentLoaded', () => {
+  renderAll();
   initReveal();
   initPortfolioFilter();
   initMapConsent();
   initContactForm();
-  initUsatiTeaser();
 });
+document.addEventListener('i18n:change', renderAll);

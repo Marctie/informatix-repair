@@ -1,4 +1,5 @@
 import './main.js';
+import { t } from './i18n.js';
 
 /* ---------- Stato del negozio (aperto / chiuso) ---------- */
 // Giorni: 0 = domenica. Fasce in minuti dalla mezzanotte, ora di Roma.
@@ -11,7 +12,6 @@ const HOURS = {
   6: [[540, 750]],
   0: [],
 };
-const DAYS = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
 const hm = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
 
 function romeNow() {
@@ -24,14 +24,18 @@ function romeNow() {
 function shopStatus() {
   const { day, min } = romeNow();
   const open = (HOURS[day] || []).find(([a, b]) => min >= a && min < b);
-  if (open) return { open: true, text: `Aperto ora, fino alle ${hm(open[1])}` };
+  if (open) return { open: true, text: t('usati.status.openUntil', hm(open[1])) };
   const later = (HOURS[day] || []).find(([a]) => min < a);
-  if (later) return { open: false, text: `Chiuso, riapre oggi alle ${hm(later[0])}` };
+  if (later) return { open: false, text: t('usati.status.closedReopensToday', hm(later[0])) };
   for (let i = 1; i <= 7; i++) {
     const d = (day + i) % 7;
-    if (HOURS[d].length) return { open: false, text: `Chiuso, riapre ${i === 1 ? 'domani' : DAYS[d]} alle ${hm(HOURS[d][0][0])}` };
+    if (HOURS[d].length)
+      return {
+        open: false,
+        text: i === 1 ? t('usati.status.closedReopensTomorrow', hm(HOURS[d][0][0])) : t('usati.status.closedReopensDay', t(`common.day.${d}`), hm(HOURS[d][0][0])),
+      };
   }
-  return { open: false, text: 'Chiuso' };
+  return { open: false, text: t('usati.status.closed') };
 }
 
 function initStatus() {
@@ -167,3 +171,4 @@ document.addEventListener('DOMContentLoaded', () => {
   initFilters();
   highlightFromHash();
 });
+document.addEventListener('i18n:change', initStatus);

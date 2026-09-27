@@ -23,6 +23,16 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - `base` di Vite = `/` (dominio proprio, non più sottocartella GitHub Pages).
 - Quando arriverà auth/e-commerce serve un backend (valutare Cloudflare Workers + D1/Supabase); il sito statico attuale non lo richiede.
 
+## Sito bilingue IT/EN (switch lato client, stessa URL)
+- Motore in `src/i18n.js`: dizionario `it`/`en` per chiave, lingua salvata in `localStorage` (`ir-lang`, default `it`), nessun cambio di URL/dominio.
+- Convenzioni negli HTML: `data-i18n` (textContent), `data-i18n-html` (innerHTML, per markup inline tipo `<span class="text-secondary">`), `data-i18n-content` (attributo `content` dei meta tag), `data-i18n-attr="attr:chiave"` (attributi arbitrari come aria-label).
+- Selettore lingua (bottone EN/IT) nella navbar, gestito in `src/main.js` (`setLang`/`getLang`); al cambio lingua si ri-eseguono navbar/footer/banner APK/teaser usati e si applica `applyI18n()` a tutto il documento (evento `i18n:change`).
+- Per contenuto generato a build-time con variabili per-elemento (Vetrina Usati, card blog) si usa invece la coppia di attributi `data-lang-it` / `data-lang-en` con toggle via CSS (`html[lang="it"|"en"] [data-lang-en|it] { display:none }`, regola in `src/styles/main.css`). Se manca la traduzione EN, il build script fa fallback al testo IT (mai vuoto).
+- **Vetrina Usati**: `content/usati/usati.json` ha ora campi `*En` opzionali per ogni articolo (`taglineEn`, `descriptionEn`, `conditionLabelEn`, `specsEn`, `colorEn`, `memoryEn`, `nameEn`). `scripts/build-usati.mjs` li usa per generare le coppie IT/EN; se un nuovo articolo non ha i campi `*En`, l'EN mostra automaticamente il testo italiano (nessun vuoto, ma va tradotto appena possibile).
+- **Blog**: la "cornice" (elenco, paginazione, card, header articolo, CTA finali) è bilingue tramite `scripts/build-blog.mjs`. Il **corpo dei singoli articoli resta solo in italiano**: tradurre i 100+ articoli esistenti (e i 2/giorno che arrivano dalla routine automatica) non è stato fatto in questa sessione per ragioni di scala/qualità. Quando un utente EN apre un articolo vede un avviso "This article is currently only available in Italian." (`blog.itOnly`). Da valutare in futuro: aggiungere un secondo file markdown (`slug.en.md`) o un secondo blocco nel `.md` esistente con la traduzione, letto da `build-blog.mjs` con fallback IT se assente; oppure un job separato che traduce gli articoli passati a gruppi.
+- Pagine fisse (home, chi-siamo, servizi, portfolio, contatti, privacy, 404) sono interamente tradotte (testi, meta tag, og:title/description) tramite le chiavi in `src/i18n.js`.
+- Limite noto: il messaggio precompilato del form contatti (in `initContactForm`, `src/main.js`) resta in italiano indipendentemente dalla lingua attiva, perché va all'email del negozio in Italia.
+
 ## Hosting / dominio
 - Il proprietario ha già un account **Cloudflare**.
 - Piano: dominio `.it` acquistato presso registrar accreditato (Cloudflare Registrar potrebbe non supportare `.it`, da verificare), DNS su Cloudflare, hosting su **Cloudflare Pages**.
