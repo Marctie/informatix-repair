@@ -217,3 +217,36 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Prezzi e specifiche dei prodotti "su richiesta" in Vetrina Usati; foto e stato batteria del 17 Pro Max Pacific Blue.
 - Pannello admin per Christian (vedi nota sopra); dati legali e foto reali del negozio; redirect `.it`/`.eu`; email `.com`.
 - Controllare esecuzioni quotidiane della routine blog; cambiare l'orario UTC il 25 ottobre (`0 8,17 * * *`).
+
+## Sessione 2026-09-27 (sera) – Gestionale Usati: prototipo locale, poi decisione di architettura online
+
+### Prototipo locale del pannello admin
+- Costruito `admin/` (Express + Multer + Sharp, `npm run admin` → `http://localhost:4848`): CRUD sugli articoli di `usati.json`, upload foto con ridimensionamento e miniature automatiche, form a sezioni (Foto, Dati, Prezzo e stato, Testi, Scheda tecnica) in stile sito, bottone "Segna venduto"/"Rimetti in vetrina", rigenerazione automatica di `usati.html` a ogni salvataggio.
+- **Flusso "venduto → sparisce dopo 7 giorni"**: l'articolo resta visibile con ribbon "VENDUTO" e CTA disattivata; `src/usati.js` calcola lato client i giorni trascorsi da `soldAt` a ogni caricamento pagina e rimuove la card dal DOM se ≥7 giorni. Nessun cron/rebuild necessario.
+- Bug Windows risolto: `execFileSync('npm.cmd', ...)` dava `EINVAL` per rilanciare la build dal server → sostituito con `execFileSync(process.execPath, [percorso allo script .mjs])`.
+- **Stile approvato dall'utente** ("mi piace un sacco"): modale con header/footer fissi e corpo scrollabile, schermo intero su mobile, checkbox come pillole cliccabili, card con badge di stato sovrapposto, tab segmented-control. Da riprendere come riferimento per altre pagine interne future.
+- Aggiunto login locale: pagina `login.html` in stile sito, sessione via `express-session`, credenziali in `admin/auth.local.json` (generate al primo avvio, mai su git — corretto anche un buco nel `.gitignore`: il pattern `*.local` non copriva `auth.local.json`, serviva la riga esplicita `/admin/auth.local.json`).
+- Commit locali `77c9b79` (gestionale) e `861568d` (login + stile) su `main`, **non pushati**: l'utente ha chiesto di aspettare la decisione sull'architettura definitiva prima di pubblicarli.
+
+### Discussione: come deve arrivare online e chi lo usa
+- Punto di partenza dell'utente: **non vuole esporre un URL admin non protetto** sul sito pubblico — rischio che uno "smanettone" lo trovi e causi danni. Sicurezza tramite vera autenticazione, non tramite URL segreto.
+- Proposta dell'utente, poi confermata: repo dedicato nuovo (separato dal sito pubblico), login vero per Christian, e un bot Telegram in aggiunta per fare le CRUD più rapide (Christian scrive/manda foto in chat).
+- **Decisioni prese** (vedi anche `docs/MEMORY.md` → "Gestionale Usati"):
+  1. Repo dedicato nuovo per il gestionale, separato dal repo del sito pubblico.
+  2. Backend su **Cloudflare Worker** invece del server Express locale.
+  3. Login: **email+password custom**, verificato dal Worker (Cloudflare Access valutato e scartato dall'utente).
+  4. Storage: **il Worker scrive direttamente su GitHub** (Contents API) nel repo del sito pubblico — ogni salvataggio è un commit vero, Cloudflare Pages ripubblica da sola (scartato un database nuovo tipo D1/R2 per ora).
+  5. Conseguenza tecnica: i Worker non eseguono `sharp` (nativo) → ridimensionamento foto lato client (browser) prima dell'upload.
+  6. Bot Telegram per le CRUD rapide, stesso backend/API del Worker (nessuna logica duplicata).
+- **Ricognizione sui bot Telegram esistenti** (cartella `C:\Mega.nz Sync\Lavoro\Dev\Bot Telegram`, fatta da un subagente): tutti i bot usano **python-telegram-bot v21.x**. Equivoco chiarito: i bot "Vinted" (`Vinted-Bot-Telegram`, `Bot Vinted multiaccount`) sono bot di **monitoraggio/scraping** (stato venduto/riservato via IMAP), non pubblicano annunci con foto — inviano foto solo in uscita. La parte "ricevi foto da Telegram" per il nuovo bot va scritta da zero (standard PTB, nessun rischio). Pattern riusabili: `ConversationHandler` multi-step di `Vinted-MultiMail-Bot/src/bot.py` (righe 646-676) per il flusso guidato foto→nome→prezzo→note→conferma; `SabbaGambaBot-Telegram` (bot.py+db.py) per comandi semplici + SQLite + autorizzazione per singola chat. Deploy: una riga in `Termux-Launcher/bots.conf` (flotta su un Samsung via Termux, doppio watchdog, boot automatico); `Dashboard-Windows` è solo per Windows, nessuna API riusabile esternamente.
+
+### Chiusura sessione (2026-09-27 sera)
+- L'utente doveva andare a dormire: **niente sviluppo del nuovo backend/repo/bot in questa sessione**, solo aggiornamento della documentazione (questo file + `docs/MEMORY.md`), poi commit e push (Mega Sync non stava sincronizzando bene stasera, quindi git è il canale di continuità più affidabile verso il PC aziendale usato domani).
+- **Piano dettato dall'utente per la prossima sessione**: primo passo, ripassare insieme questa conversazione/decisione sul gestionale; poi via libera per sviluppare davvero (nuovo repo, Worker, login, bot compreso). **Importante**: non installare il bot sul telefono Samsung finché l'utente non lo chiede esplicitamente — il giorno dopo non avrà il telefono con sé; l'installazione avverrà quando sarà a casa con il Samsung collegato via **ADB**, su sua richiesta esplicita.
+
+### Da fare alla prossima sessione
+- Ripassare con l'utente le decisioni di architettura qui sopra prima di scrivere codice.
+- Creare il nuovo repo dedicato al gestionale; impostare il Worker Cloudflare (login email+password, scrittura su GitHub via Contents API); spostare il ridimensionamento foto lato client (via lo farà sia il frontend web sia il bot).
+- Scrivere il bot Telegram (nuovo, non riuso diretto dei bot Vinted) seguendo i pattern individuati; **non installarlo/avviarlo sul Samsung finché l'utente non lo chiede esplicitamente** (serve ADB con il telefono collegato).
+- Valutare se/come recuperare o abbandonare il prototipo locale in `admin/` (stile già approvato, da riprendere come riferimento visuale anche se il backend cambia).
+- Restano aperti anche i TODO delle sessioni precedenti: prezzi/specifiche prodotti "su richiesta", foto 17 Pro Max Pacific Blue, dati legali e foto reali del negozio, redirect `.it`/`.eu`, email `.com`, cambio orario UTC routine blog il 25 ottobre.
