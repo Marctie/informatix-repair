@@ -1,23 +1,74 @@
-// Gestionale locale per la Vetrina Usati. Solo uso locale: nessuna autenticazione (prevista in futuro).
+// Gestionale locale per la Vetrina Usati. Protetto da login semplice (username/password fisse in admin/auth.local.json, escluso da git).
 // Avvio: npm run admin  ->  http://localhost:4848
 import express from 'express';
+import session from 'express-session';
 import multer from 'multer';
 import sharp from 'sharp';
+import crypto from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const ADMIN_DIR = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(ADMIN_DIR, 'public');
+const AUTH_PATH = join(ADMIN_DIR, 'auth.local.json');
+const ROOT = join(ADMIN_DIR, '..');
 const DATA_PATH = join(ROOT, 'content', 'usati', 'usati.json');
 const IMAGES_DIR = join(ROOT, 'public', 'images', 'usati');
 const PORT = 4848;
 const GRACE_DAYS = 7;
 
+// ---------- Credenziali locali (mai su git: vedi *.local in .gitignore) ----------
+function loadOrCreateAuth() {
+  if (existsSync(AUTH_PATH)) return JSON.parse(readFileSync(AUTH_PATH, 'utf8'));
+  const creds = { username: 'christian', password: crypto.randomBytes(4).toString('hex') };
+  writeFileSync(AUTH_PATH, JSON.stringify(creds, null, 2) + '\n');
+  console.log('\n== Credenziali gestionale generate (admin/auth.local.json) ==');
+  console.log(`   Utente:   ${creds.username}`);
+  console.log(`   Password: ${creds.password}`);
+  console.log('   Puoi cambiarle modificando quel file in qualsiasi momento.\n');
+  return creds;
+}
+const AUTH = loadOrCreateAuth();
+
 const app = express();
 app.use(express.json({ limit: '2mb' }));
-app.use(express.static(join(dirname(fileURLToPath(import.meta.url)), 'public')));
-app.use('/images/usati', express.static(IMAGES_DIR));
+app.use(
+  session({
+    secret: 'informatix-repair-gestionale-locale',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 30 * 24 * 60 * 60 * 1000 },
+  })
+);
+
+function requireAuthPage(req, res, next) {
+  if (req.session?.user) return next();
+  res.redirect('/login.html');
+}
+function requireAuthApi(req, res, next) {
+  if (req.session?.user) return next();
+  res.status(401).json({ ok: false, error: 'Sessione scaduta, accedi di nuovo.' });
+}
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body || {};
+  if (username === AUTH.username && password === AUTH.password) {
+    req.session.user = username;
+    return res.json({ ok: true });
+  }
+  res.status(401).json({ ok: false, error: 'Utente o password non corretti.' });
+});
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+app.get('/api/session', (req, res) => res.json({ loggedIn: !!req.session?.user, username: req.session?.user || null }));
+
+app.use(express.static(PUBLIC_DIR, { index: false }));
+app.use('/images/usati', requireAuthPage, express.static(IMAGES_DIR));
+app.get('/', requireAuthPage, (req, res) => res.sendFile(join(PUBLIC_DIR, 'index.html')));
+app.use('/api', requireAuthApi);
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 

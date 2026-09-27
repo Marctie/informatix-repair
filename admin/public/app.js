@@ -20,10 +20,16 @@ function toast(msg, ok = true) {
 
 async function fetchItems() {
   const res = await fetch('/api/items');
+  if (res.status === 401) return (location.href = '/login.html');
   const data = await res.json();
   ITEMS = data.items;
   render();
 }
+
+$('#btn-logout').addEventListener('click', async () => {
+  await fetch('/api/logout', { method: 'POST' });
+  location.href = '/login.html';
+});
 
 function statusBadge(it) {
   if (it.status === 'active') return `<span class="badge bg-emerald-100 text-emerald-700">● In vetrina</span>`;

@@ -8,3 +8,5 @@ dist
 # Generati da scripts/build-usati.mjs
 /usati.html
 /public/usati.json
+# Credenziali del gestionale usati (locali, mai su git)
+/admin/auth.local.json
