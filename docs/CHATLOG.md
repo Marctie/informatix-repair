@@ -201,3 +201,19 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 ### Note per la prossima sessione (2026-09-27)
 - **Pannello admin per Christian (il cliente):** trovare il modo di dargli un pannello collegato al sito per gestire da solo le pubblicazioni dell'usato (aggiungere, modificare, togliere prodotti, prezzi e foto) e, in prospettiva, altri contenuti. Punto di partenza: oggi i prodotti stanno in `content/usati/usati.json` con foto in `public/images/usati/<slug>/`, il sito è statico su Cloudflare Pages con deploy automatico da GitHub. Da valutare le opzioni (es. CMS su Git come Decap/Sveltia, oppure backend leggero su Cloudflare con database e archivio foto e login protetto) tenendo conto che Christian non è tecnico.
 - Poi: raccolta di nuove idee per il sito.
+
+## Sessione 2026-09-27 – Sito bilingue IT/EN
+- Richiesta utente: rendere il sito internazionale, italiano/inglese.
+- Scelte confermate con l'utente: bilingue su tutto il sito (pagine fisse, Vetrina Usati, blog), switch lato client via bottone in navbar (stessa URL, nessun redirect/sottodominio), lingua di default italiano.
+- **Motore i18n** nuovo file `src/i18n.js`: dizionario `it`/`en` per chiave, lingua salvata in `localStorage` (`ir-lang`). Attributi HTML: `data-i18n` (testo), `data-i18n-html` (markup inline), `data-i18n-content` (meta tag), `data-i18n-attr="attr:chiave"` (attributi come aria-label). Bottone EN/IT aggiunto in `renderNavbar()` (`src/main.js`), desktop e mobile; al click si ri-renderizzano navbar/footer/banner APK/teaser usati e si applica `applyI18n()` a tutto il documento (evento `i18n:change`).
+- **Pagine fisse tradotte integralmente**: home, chi-siamo, servizi, portfolio, contatti, privacy, 404 (testi, meta tag, Open Graph).
+- **Vetrina Usati**: aggiunti campi `*En` opzionali a tutti i 13 articoli in `content/usati/usati.json` (tagline, descrizione, specifiche, condizione, colore); `scripts/build-usati.mjs` genera coppie di elementi IT/EN mostrate/nascoste via CSS (`data-lang-it`/`data-lang-en`, regola in `src/styles/main.css`); se un futuro articolo non ha i campi `*En`, l'EN mostra il testo italiano di fallback (mai vuoto, ma da tradurre appena possibile). Stato negozio aperto/chiuso (`src/usati.js`) tradotto anch'esso.
+- **Blog**: tradotta la cornice (elenco, paginazione, card, header articolo, CTA finali) in `scripts/build-blog.mjs`. **Il corpo dei 107 articoli esistenti resta solo in italiano** (tradurli tutti non era fattibile in una sessione senza rischi di qualità); in EN compare l'avviso "This article is currently only available in Italian". Decisione dell'utente: lasciare così per ora, non tradurre in batch né aggiornare subito la routine automatica.
+- Limite noto: il messaggio precompilato del form contatti resta in italiano in ogni lingua (va all'email del negozio in Italia).
+- Verificato `npm run build` senza errori; commit `8814d1c` e poi merge con l'articolo pubblicato nel frattempo dalla routine automatica (`dc495a0`) e push (`e90e9d4`) su `main` → pubblicato su Cloudflare Pages (informatixrepair.com).
+
+### Da fare alla prossima sessione
+- Valutare se/quando tradurre gli articoli del blog passati (107) e se aggiornare la routine automatica perché scriva anche la versione EN dei nuovi articoli.
+- Prezzi e specifiche dei prodotti "su richiesta" in Vetrina Usati; foto e stato batteria del 17 Pro Max Pacific Blue.
+- Pannello admin per Christian (vedi nota sopra); dati legali e foto reali del negozio; redirect `.it`/`.eu`; email `.com`.
+- Controllare esecuzioni quotidiane della routine blog; cambiare l'orario UTC il 25 ottobre (`0 8,17 * * *`).
