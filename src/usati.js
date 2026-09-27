@@ -155,6 +155,21 @@ function initFilters() {
   );
 }
 
+/* ---------- Rimozione automatica articoli venduti dopo 7 giorni ---------- */
+// Calcolato lato client a ogni caricamento pagina: nessuna ricompilazione necessaria.
+const SOLD_GRACE_DAYS = 7;
+function pruneSoldItems() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  document.querySelectorAll('.usato[data-sold-at]').forEach((card) => {
+    const soldAt = new Date(card.dataset.soldAt + 'T00:00:00');
+    const days = Math.floor((today - soldAt) / 86400000);
+    if (days >= SOLD_GRACE_DAYS) card.remove();
+  });
+  const counter = document.getElementById('usati-count');
+  if (counter) counter.textContent = String(document.querySelectorAll('.usato').length);
+}
+
 /* Se si arriva da un link con #slug, evidenzia la scheda */
 function highlightFromHash() {
   const id = decodeURIComponent(location.hash.slice(1));
@@ -165,6 +180,7 @@ function highlightFromHash() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  pruneSoldItems();
   initStatus();
   initGalleries();
   initLightbox();
