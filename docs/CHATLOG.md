@@ -155,6 +155,7 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 ## Routine automatica
 
 - **2026-09-26 21:11** – Articoli 106-107: "Falso rimborso INPS, PEC compromesse e il malware MintsLoader" (bollettino CERT-AGID 20-26 settembre); "Google porta i chip per l'intelligenza artificiale nello spazio" (progetto Suncatcher, lancio TPU su Transporter-18 di SpaceX).
+- **2026-09-27 09:03** – Articoli 108-109: "Chrome 154 corregge 108 falle di sicurezza, meglio aggiornare subito" (108 correzioni, 11 critiche, rilascio Chrome 154); "RemControl, il trojan Android che finge di essere un'app TV e punta l'Italia" (malware bancario Group-IB diffuso con finte pagine Play Store di TVTap, mirato su IP italiani).
 
 ## Sessione 2026-09-26 – Routine blog e Vetrina Usati
 - **Routine blog:** non pubblicava perché la GitHub App di Claude non aveva accesso in scrittura al repo (push 403); l'esecuzione risultava comunque "succeeded". Dopo la riconnessione di GitHub un'esecuzione manuale ha pubblicato correttamente (commit `c4445df`, articoli 106-107). Gli articoli scritti alle 18:06 (Chat Control, Chrome 154) sono andati persi.
