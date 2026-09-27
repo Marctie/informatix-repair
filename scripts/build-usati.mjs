@@ -60,9 +60,14 @@ const card = (it) => {
   const specsDl = (specs) => `<dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">${specs.map(([k, v]) => `<dt class="text-gray-500">${esc(k)}</dt><dd class="font-medium text-primary text-right">${esc(v)}</dd>`).join('')}</dl>`;
   const ctaLabel = it.contact ? 'usati.ctaContact' : it.price != null ? 'usati.ctaInfo' : 'usati.ctaPrice';
 
-  return `        <article id="${it.slug}" class="usato card !p-0 overflow-hidden flex flex-col reveal" data-kind="${it.condition}" data-cat="${it.category}"${it.price != null ? ` data-price="${it.price}"` : ''}>
+  return `        <article id="${it.slug}" class="usato card !p-0 overflow-hidden flex flex-col reveal" data-kind="${it.condition}" data-cat="${it.category}"${it.price != null ? ` data-price="${it.price}"` : ''}${it.sold && it.soldAt ? ` data-sold-at="${it.soldAt}"` : ''}>
           <div class="relative" data-photos='${JSON.stringify(nums.map((n) => img(it, n)))}' data-title="${esc(title(it))}" data-title-en="${esc(titleEn(it))}">
             ${gallery}
+            ${
+              it.sold
+                ? `<div class="absolute inset-0 bg-ink/55 flex items-center justify-center pointer-events-none"><span class="rounded-full bg-white text-primary px-4 py-1.5 text-sm font-bold rotate-[-6deg] shadow-lift">${bi('span', '', 'VENDUTO', 'SOLD')}</span></div>`
+                : ''
+            }
             <span class="absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold shadow-soft ${isNew ? 'bg-secondary text-white' : 'bg-white text-primary'}">${bi('span', '', esc(it.conditionLabel), it.conditionLabelEn && esc(it.conditionLabelEn))}</span>
           </div>
           <div class="p-6 flex flex-col grow">
@@ -81,10 +86,14 @@ const card = (it) => {
               <div class="flex items-end justify-between gap-3 mb-4">
                 ${it.price != null ? `<div><span class="block text-xs text-gray-500" data-i18n="usati.priceLabel">Prezzo in negozio</span><span class="font-heading text-3xl font-extrabold text-primary">${euro(it.price)}</span></div>` : `<div><span class="block text-xs text-gray-500" data-i18n="usati.priceOnRequestLabel">Prezzo</span><span class="font-heading text-2xl font-bold text-primary" data-i18n="usati.priceOnRequest">Su richiesta</span></div>`}
               </div>
-              <div class="grid grid-cols-[1fr_auto] gap-2">
+              ${
+                it.sold
+                  ? `<div class="rounded-xl bg-lightbg px-3.5 py-3 text-sm text-center font-semibold text-gray-500">${bi('span', '', 'Venduto: presto altri arrivi', 'Sold: more coming soon')}</div>`
+                  : `<div class="grid grid-cols-[1fr_auto] gap-2">
                 <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm"><span data-i18n="${ctaLabel}">${it.contact ? 'Contatta il negozio' : it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'}</span> <i data-icon="arrow" data-class="w-4 h-4"></i></a>
                 <a data-site="phone" href="#" class="btn-outline !py-3 !px-4 text-sm" aria-label="Chiama per ${esc(title(it))}"><i data-icon="phoneCall" data-class="w-4 h-4"></i></a>
-              </div>
+              </div>`
+              }
             </div>
           </div>
         </article>
@@ -224,7 +233,7 @@ writeFileSync(join(ROOT, 'usati.html'), html);
 
 /* Riassunto per il box in home */
 const teaser = items
-  .filter((i) => i.featured && i.photos && i.price != null)
+  .filter((i) => i.featured && i.photos && i.price != null && !i.sold)
   .map((i) => ({ slug: i.slug, name: i.name, memory: i.memory, color: i.color, label: i.conditionLabel, labelEn: i.conditionLabelEn || i.conditionLabel, price: euro(i.price), image: img(i, 1) }));
 writeFileSync(join(ROOT, 'public', 'usati.json'), JSON.stringify({ count: items.length, items: teaser }));
 

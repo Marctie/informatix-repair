@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gestionale Usati · Informatix Repair</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      colors: {
+        ink: '#0B0F19', primary: '#111827',
+        secondary: { DEFAULT: '#DC2626', dark: '#B91C1C', light: '#FEE2E2' },
+        accent: '#3B82F6', lightbg: '#F5F6F8', line: '#E5E7EB',
+      },
+      fontFamily: { heading: ['Poppins','system-ui','sans-serif'], body: ['Inter','system-ui','sans-serif'] },
+      boxShadow: { soft: '0 1px 2px rgb(16 24 40 / .04), 0 8px 24px -8px rgb(16 24 40 / .10)', lift: '0 2px 4px rgb(16 24 40 / .05), 0 20px 40px -12px rgb(16 24 40 / .20)' },
+    } }
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ color-scheme: light; }
+  * { -webkit-tap-highlight-color: transparent; }
+  body { font-family: 'Inter', system-ui, sans-serif; background:#F5F6F8; }
+  h1,h2,h3,.font-heading{ font-family:'Poppins', system-ui, sans-serif; }
+
+  /* ---------- primitives ---------- */
+  .card{ background:#fff; border:1px solid #E5E7EB; border-radius:1rem; }
+  .btn-primary{ background:#DC2626; color:#fff; font-weight:600; border-radius:.7rem; padding:.6rem 1.15rem; display:inline-flex; align-items:center; justify-content:center; gap:.4rem; transition:.15s; white-space:nowrap; box-shadow:0 1px 2px rgb(220 38 38 / .15); }
+  .btn-primary:hover{ background:#B91C1C; }
+  .btn-primary:active{ transform: scale(.98); }
+  .btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
+  .btn-outline{ border:1px solid #E5E7EB; color:#111827; font-weight:600; border-radius:.7rem; padding:.55rem 1rem; display:inline-flex; align-items:center; justify-content:center; gap:.4rem; background:#fff; transition:.15s; white-space:nowrap; }
+  .btn-outline:hover{ background:#F5F6F8; border-color:#D1D5DB; }
+  .btn-outline:active{ transform: scale(.98); }
+  .btn-ghost{ color:#6B7280; font-weight:600; border-radius:.7rem; padding:.55rem .8rem; transition:.15s; }
+  .btn-ghost:hover{ color:#111827; background:#F5F6F8; }
+
+  input,select,textarea{ border:1px solid #E5E7EB; border-radius:.6rem; padding:.6rem .8rem; width:100%; font-size:.9rem; background:#fff; color:#111827; transition:.15s; }
+  input::placeholder,textarea::placeholder{ color:#9CA3AF; }
+  input:hover,select:hover,textarea:hover{ border-color:#D1D5DB; }
+  input:focus,select:focus,textarea:focus{ outline:none; border-color:#DC2626; box-shadow:0 0 0 3px rgb(220 38 38 / .12); }
+  select{ cursor:pointer; }
+  label{ font-size:.78rem; font-weight:600; color:#4B5563; margin-bottom:.35rem; display:block; letter-spacing:.01em; }
+  .field-hint{ font-size:.72rem; color:#9CA3AF; margin-top:.3rem; }
+
+  .badge{ display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; padding:.25rem .7rem; font-size:.7rem; font-weight:700; letter-spacing:.01em; white-space:nowrap; }
+
+  /* ---------- header & tabs ---------- */
+  .brand-mark{ background:linear-gradient(135deg,#DC2626,#B91C1C); }
+  .tab-btn{ position:relative; border:1px solid #E5E7EB; color:#4B5563; font-weight:600; border-radius:.7rem; padding:.5rem .95rem; font-size:.85rem; background:#fff; transition:.15s; display:inline-flex; align-items:center; gap:.4rem; }
+  .tab-btn:hover{ border-color:#D1D5DB; color:#111827; }
+  .tab-btn.tab-active{ background:#0B0F19; color:#fff; border-color:#0B0F19; box-shadow:0 4px 10px -2px rgb(11 15 25 / .25); }
+  .tab-count{ font-size:.7rem; opacity:.6; font-weight:700; }
+
+  /* ---------- item cards ---------- */
+  .item-card{ background:#fff; border:1px solid #E5E7EB; border-radius:1.1rem; overflow:hidden; display:flex; flex-direction:column; transition:.18s; }
+  .item-card:hover{ box-shadow:0 12px 28px -10px rgb(16 24 40 / .16); border-color:#E5E7EB; transform:translateY(-2px); }
+  .item-thumb{ aspect-ratio:4/3; background:#F5F6F8; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+  .item-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .item-thumb .no-photo{ font-size:.72rem; color:#9CA3AF; font-weight:600; }
+  .item-badge-pos{ position:absolute; top:.6rem; left:.6rem; }
+  .item-price{ font-family:'Poppins', system-ui, sans-serif; font-weight:800; font-size:1.15rem; color:#111827; }
+
+  /* ---------- modal ---------- */
+  .modal-backdrop{ background:rgba(11,15,25,.62); backdrop-filter:blur(3px); }
+  .modal-panel{ background:#fff; display:flex; flex-direction:column; max-height:calc(100vh - 2.5rem); }
+  .modal-body{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .form-section{ border-top:1px solid #EEF0F2; padding-top:1.25rem; margin-top:1.25rem; }
+  .form-section:first-child{ border-top:none; padding-top:0; margin-top:0; }
+  .form-section-title{ font-size:.72rem; font-weight:700; color:#DC2626; text-transform:uppercase; letter-spacing:.06em; margin-bottom:.85rem; display:flex; align-items:center; gap:.4rem; }
+  .form-grid{ display:grid; grid-template-columns:1fr; gap:.9rem; }
+  @media (min-width:520px){ .form-grid{ grid-template-columns:1fr 1fr; } .form-grid .col-2{ grid-column:1 / -1; } }
+
+  .toggle-pill{ display:flex; align-items:center; gap:.5rem; border:1px solid #E5E7EB; border-radius:.7rem; padding:.6rem .8rem; cursor:pointer; transition:.15s; font-size:.85rem; font-weight:600; color:#4B5563; user-select:none; }
+  .toggle-pill:hover{ border-color:#D1D5DB; }
+  .toggle-pill input{ width:auto; margin:0; accent-color:#DC2626; cursor:pointer; }
+  .toggle-pill:has(input:checked){ border-color:#DC2626; background:#FEF2F2; color:#B91C1C; }
+
+  #photo-drop{ border:2px dashed #E5E7EB; border-radius:.9rem; padding:1.5rem 1rem; text-align:center; font-size:.85rem; color:#6B7280; cursor:pointer; transition:.15s; background:#FAFAFB; }
+  #photo-drop:hover{ border-color:#DC2626; color:#DC2626; background:#FEF2F2; }
+  #photo-drop.drag-active{ border-color:#DC2626; color:#DC2626; background:#FEF2F2; }
+  .photo-thumb{ position:relative; width:4.5rem; height:4.5rem; border-radius:.7rem; overflow:hidden; border:1px solid #E5E7EB; flex-shrink:0; }
+  .photo-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .photo-thumb.is-new{ border-color:#DC2626; }
+  .photo-thumb-x{ position:absolute; top:-.35rem; right:-.35rem; width:1.3rem; height:1.3rem; border-radius:999px; background:#DC2626; color:#fff; font-size:.72rem; line-height:1; display:flex; align-items:center; justify-content:center; border:2px solid #fff; box-shadow:0 1px 3px rgb(0 0 0 / .2); }
+
+  .spec-row{ display:grid; grid-template-columns:1fr 1fr auto; gap:.5rem; align-items:center; }
+  .spec-row input{ font-size:.85rem; }
+  .spec-row button{ width:2.1rem; height:2.1rem; border-radius:.55rem; display:flex; align-items:center; justify-content:center; color:#DC2626; background:#FEF2F2; font-size:1rem; flex-shrink:0; transition:.15s; }
+  .spec-row button:hover{ background:#FEE2E2; }
+
+  .modal-footer{ background:#fff; border-top:1px solid #E5E7EB; }
+
+  #toast{ box-shadow:0 8px 24px -6px rgb(0 0 0 / .35); }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:#D1D5DB; border-radius:4px; }
+  ::-webkit-scrollbar-thumb:hover{ background:#9CA3AF; }
+</style>
+</head>
+<body class="text-primary">
+
+<header class="bg-ink text-white sticky top-0 z-30 shadow-lift">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-lg brand-mark flex items-center justify-center font-heading font-bold text-sm">IX</div>
+      <div>
+        <p class="font-heading font-bold text-sm leading-tight">Gestionale Usati</p>
+        <p class="text-[11px] text-gray-400 leading-tight">Informatix Repair &middot; solo locale</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/usati.html" target="_blank" class="hidden sm:inline-flex btn-ghost !text-gray-300 hover:!text-white hover:!bg-white/10 text-sm">Anteprima vetrina ↗</a>
+      <button id="btn-new" class="btn-primary text-sm">+ Nuovo articolo</button>
+    </div>
+  </div>
+  <div class="bg-white/5 border-t border-white/10 text-center text-[11px] text-gray-400 py-1.5 px-4">
+    Login non ancora attivo — per ora accessibile solo da questo PC (localhost:4848). Sarà l'ultimo passo prima di andare online.
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6 pb-24">
+
+  <div class="flex flex-wrap items-center gap-2 mb-6" id="tabs">
+    <button data-tab="active" class="tab-btn">In vetrina</button>
+    <button data-tab="sold" class="tab-btn">Venduti <span class="tab-count">in uscita</span></button>
+    <button data-tab="expired" class="tab-btn">Archivio <span class="tab-count">scaduti</span></button>
+    <button data-tab="all" class="tab-btn">Tutti</button>
+    <span class="ml-auto text-sm text-gray-500 font-medium" id="count-label"></span>
+  </div>
+
+  <div id="grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  <div id="empty" class="hidden text-center text-gray-500 py-20">
+    <p class="font-heading font-semibold text-primary mb-1">Nessun articolo qui</p>
+    <p class="text-sm">Prova un'altra vista oppure crea un nuovo articolo.</p>
+  </div>
+</main>
+
+<!-- Modale form -->
+<div id="modal" class="hidden fixed inset-0 z-50 modal-backdrop items-center justify-center p-0 sm:p-4">
+  <div class="modal-panel w-full h-full sm:h-auto sm:max-w-2xl sm:rounded-2xl sm:shadow-lift">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
+      <h2 id="form-title" class="font-heading font-bold text-lg">Nuovo articolo</h2>
+      <button id="btn-close" type="button" class="btn-ghost text-xl leading-none px-2 !py-1">×</button>
+    </div>
+
+    <form id="item-form" class="modal-body px-5 py-5 grow">
+      <input type="hidden" id="f-slug" />
+
+      <div class="form-section">
+        <p class="form-section-title">📷 Foto</p>
+        <div id="photo-drop">
+          <strong class="text-primary">Clicca per scegliere</strong> o trascina qui le foto — la prima sarà quella principale
+        </div>
+        <input type="file" id="f-photos" accept="image/*" multiple class="hidden" />
+        <div id="photo-preview" class="flex flex-wrap gap-2 mt-3"></div>
+      </div>
+
+      <div class="form-section">
+        <p class="form-section-title">📱 Dati dell'articolo</p>
+        <div class="form-grid">
+          <div class="col-2"><label>Nome modello *</label><input id="f-name" required placeholder="es. iPhone 15" /></div>
+          <div><label>Memoria</label><input id="f-memory" placeholder="es. 128 GB" /></div>
+          <div><label>Colore</label><input id="f-color" placeholder="es. Nero" /></div>
+          <div>
+            <label>Categoria</label>
+            <select id="f-category">
+              <option value="smartphone">Smartphone</option>
+              <option value="computer">Computer e tablet</option>
+              <option value="audio-gaming">Audio e gaming</option>
+            </select>
+          </div>
+          <div>
+            <label>Condizione</label>
+            <select id="f-condition">
+              <option value="usato">Usato</option>
+              <option value="nuovo">Nuovo sigillato</option>
+            </select>
+          </div>
+          <div class="col-2"><label>Etichetta condizione (mostrata sulla card) *</label><input id="f-conditionLabel" required placeholder="es. Usato con scatola" /></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <p class="form-section-title">💶 Prezzo e stato</p>
+        <div class="form-grid">
+          <div><label>Prezzo €</label><input id="f-price" type="number" min="0" step="1" placeholder="es. 350" /><p class="field-hint">Vuoto = "su richiesta"</p></div>
+          <div><label>Salute batteria % (opzionale)</label><input id="f-battery" type="number" min="0" max="100" placeholder="es. 92" /></div>
+          <div class="col-2"><label>Cicli di ricarica (opzionale)</label><input id="f-cycles" type="number" min="0" placeholder="es. 480" /></div>
+          <label class="toggle-pill"><input type="checkbox" id="f-featured" /> In evidenza</label>
+          <label class="toggle-pill"><input type="checkbox" id="f-contact" /> Solo su richiesta</label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <p class="form-section-title">✍️ Testi</p>
+        <div class="space-y-3">
+          <div><label>Frase breve (tagline)</label><input id="f-tagline" placeholder="Una riga d'effetto per la card" /></div>
+          <div><label>Descrizione</label><textarea id="f-description" rows="3" placeholder="Stato, difetti noti, dotazione. Non inventare dettagli non verificati."></textarea></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <p class="form-section-title">📋 Scheda tecnica</p>
+        <div id="specs-rows" class="space-y-2"></div>
+        <button type="button" id="btn-add-spec" class="btn-ghost text-sm mt-2 !px-0">+ Aggiungi riga</button>
+      </div>
+    </form>
+
+    <div class="modal-footer px-5 py-4 flex items-center justify-between gap-3 shrink-0">
+      <p class="text-xs text-gray-500 hidden sm:block">Le foto vengono ridimensionate automaticamente.</p>
+      <div class="flex gap-2 w-full sm:w-auto">
+        <button type="button" id="btn-cancel" class="btn-outline text-sm flex-1 sm:flex-initial">Annulla</button>
+        <button type="submit" form="item-form" id="btn-submit" class="btn-primary text-sm flex-1 sm:flex-initial">Salva e pubblica</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm font-medium px-4 py-2.5 rounded-full"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
