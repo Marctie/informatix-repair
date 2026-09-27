@@ -6,26 +6,26 @@
       "name": "iPhone 17 Pro Max",
       "memory": "512 GB",
       "color": "Argento",
+      "colorEn": "Silver",
       "condition": "nuovo",
       "conditionLabel": "Nuovo sigillato",
+      "conditionLabelEn": "Sealed new",
       "price": 1500,
       "featured": true,
       "photos": 3,
       "tagline": "L'ultimo top di gamma Apple, ancora nella sua scatola.",
+      "taglineEn": "Apple's latest flagship, still in its box.",
       "description": "Nuovo, mai aperto: la confezione originale Apple è ancora sigillata. Il Pro Max più recente con 512 GB di memoria, ideale per chi vuole il massimo senza compromessi e senza il minimo segno d'uso.",
+      "descriptionEn": "New, never opened: the original Apple packaging is still sealed. The latest Pro Max with 512 GB of storage, ideal for those who want the best with no compromises and no signs of use.",
       "specs": [
-        [
-          "Chip",
-          "A19 Pro"
-        ],
-        [
-          "Schermo",
-          "6,9 pollici"
-        ],
-        [
-          "Confezione",
-          "Originale, sigillata"
-        ]
+        ["Chip", "A19 Pro"],
+        ["Schermo", "6,9 pollici"],
+        ["Confezione", "Originale, sigillata"]
+      ],
+      "specsEn": [
+        ["Chip", "A19 Pro"],
+        ["Screen", "6.9 inches"],
+        ["Packaging", "Original, sealed"]
       ],
       "category": "smartphone"
     },
@@ -36,20 +36,21 @@
       "color": "Pacific Blue",
       "condition": "usato",
       "conditionLabel": "Usato",
+      "conditionLabelEn": "Used",
       "price": 1150,
       "featured": false,
       "photos": 0,
       "tagline": "Il Pro Max più recente in blu, a un prezzo molto più basso del nuovo.",
+      "taglineEn": "The latest Pro Max in blue, at a much lower price than new.",
       "description": "Il modello più recente della gamma Pro Max nella colorazione blu. Le foto e i dettagli sulla batteria sono in arrivo: passa in negozio o chiamaci per vederlo e provarlo di persona.",
+      "descriptionEn": "The latest model in the Pro Max range in blue. Photos and battery details are coming soon: come by the store or call us to see and try it in person.",
       "specs": [
-        [
-          "Chip",
-          "A19 Pro"
-        ],
-        [
-          "Schermo",
-          "6,9 pollici"
-        ]
+        ["Chip", "A19 Pro"],
+        ["Schermo", "6,9 pollici"]
+      ],
+      "specsEn": [
+        ["Chip", "A19 Pro"],
+        ["Screen", "6.9 inches"]
       ],
       "category": "smartphone"
     },
@@ -60,30 +61,27 @@
       "color": "Desert Titanium",
       "condition": "usato",
       "conditionLabel": "Usato con scatola",
+      "conditionLabelEn": "Used, with box",
       "price": 750,
       "featured": true,
       "photos": 5,
       "battery": 90,
       "cycles": 792,
       "tagline": "Il colore sabbia più elegante della gamma, con la sua scatola originale.",
+      "taglineEn": "The most elegant sand colour in the range, with its original box.",
       "description": "Aspetto curato, senza segni evidenti nelle foto. La batteria è in stato Normale con capacità massima al 90% e 792 cicli di ricarica. Aggiornato a iOS 26.5.2 e completo della scatola originale.",
+      "descriptionEn": "Well-kept condition, with no visible marks in the photos. Battery health is Normal with 90% maximum capacity and 792 charge cycles. Updated to iOS 26.5.2 and comes with the original box.",
       "specs": [
-        [
-          "Chip",
-          "A18 Pro"
-        ],
-        [
-          "Schermo",
-          "6,9 pollici"
-        ],
-        [
-          "Prodotto",
-          "Settembre 2024"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Chip", "A18 Pro"],
+        ["Schermo", "6,9 pollici"],
+        ["Prodotto", "Settembre 2024"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Chip", "A18 Pro"],
+        ["Screen", "6.9 inches"],
+        ["Manufactured", "September 2024"],
+        ["Packaging", "Original box"]
       ],
       "category": "smartphone"
     },
@@ -94,30 +92,27 @@
       "color": "White Titanium",
       "condition": "usato",
       "conditionLabel": "Usato con scatola",
+      "conditionLabelEn": "Used, with box",
       "price": 700,
       "featured": true,
       "photos": 6,
       "battery": 92,
       "cycles": 526,
       "tagline": "Compatto, potente e con la batteria ancora in ottima salute.",
+      "taglineEn": "Compact, powerful, with a battery still in great health.",
       "description": "Titanio bianco in ottime condizioni estetiche secondo le foto. Batteria in stato Normale con capacità massima al 92% e 526 cicli. Prodotto a febbraio 2025, completo di scatola originale.",
+      "descriptionEn": "White titanium in great cosmetic condition according to the photos. Battery health is Normal with 92% maximum capacity and 526 cycles. Manufactured in February 2025, comes with the original box.",
       "specs": [
-        [
-          "Chip",
-          "A18 Pro"
-        ],
-        [
-          "Schermo",
-          "6,3 pollici"
-        ],
-        [
-          "Prodotto",
-          "Febbraio 2025"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Chip", "A18 Pro"],
+        ["Schermo", "6,3 pollici"],
+        ["Prodotto", "Febbraio 2025"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Chip", "A18 Pro"],
+        ["Screen", "6.3 inches"],
+        ["Manufactured", "February 2025"],
+        ["Packaging", "Original box"]
       ],
       "category": "smartphone"
     },
@@ -126,26 +121,26 @@
       "name": "iPhone 15",
       "memory": "128 GB",
       "color": "Giallo",
+      "colorEn": "Yellow",
       "condition": "usato",
       "conditionLabel": "Usato con scatola",
+      "conditionLabelEn": "Used, with box",
       "price": 500,
       "featured": false,
       "photos": 3,
       "tagline": "Il giallo più solare, con Dynamic Island e USB-C.",
+      "taglineEn": "The sunniest yellow, with Dynamic Island and USB-C.",
       "description": "Un iPhone 15 pulito e ben tenuto, in una delle colorazioni più belle della serie. Viene consegnato con la sua scatola originale. Perfetto per chi cerca uno smartphone recente e completo, senza spendere una cifra da top di gamma.",
+      "descriptionEn": "A clean, well-kept iPhone 15 in one of the nicest colours in the range. Comes with its original box. Perfect for anyone looking for a recent, full-featured smartphone without paying flagship prices.",
       "specs": [
-        [
-          "Chip",
-          "A16 Bionic"
-        ],
-        [
-          "Schermo",
-          "6,1 pollici"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Chip", "A16 Bionic"],
+        ["Schermo", "6,1 pollici"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Chip", "A16 Bionic"],
+        ["Screen", "6.1 inches"],
+        ["Packaging", "Original box"]
       ],
       "category": "smartphone"
     },
@@ -154,31 +149,29 @@
       "name": "iPhone 13 mini",
       "memory": "128 GB",
       "color": "Rosa",
+      "colorEn": "Pink",
       "condition": "usato",
       "conditionLabel": "Usato",
+      "conditionLabelEn": "Used",
       "price": 300,
       "featured": false,
       "photos": 4,
       "battery": 100,
       "tagline": "Piccolo, leggero e con la batteria originale al 100%.",
+      "taglineEn": "Small, light, with the original battery at 100%.",
       "description": "La batteria è originale e ha capacità massima al 100%. Lo schermo è stato sostituito con un ricambio usato, come indica la cronologia assistenza di iOS: te lo diciamo chiaramente, così puoi valutare tutto con serenità. Ha una pellicola protettiva applicata e iOS 26.5.2.",
+      "descriptionEn": "The battery is original with 100% maximum capacity. The screen has been replaced with a used part, as shown in iOS's service history: we tell you clearly so you can decide with peace of mind. It has a screen protector applied and runs iOS 26.5.2.",
       "specs": [
-        [
-          "Chip",
-          "A15 Bionic"
-        ],
-        [
-          "Schermo",
-          "5,4 pollici"
-        ],
-        [
-          "Batteria",
-          "Originale"
-        ],
-        [
-          "Display",
-          "Ricambio usato"
-        ]
+        ["Chip", "A15 Bionic"],
+        ["Schermo", "5,4 pollici"],
+        ["Batteria", "Originale"],
+        ["Display", "Ricambio usato"]
+      ],
+      "specsEn": [
+        ["Chip", "A15 Bionic"],
+        ["Screen", "5.4 inches"],
+        ["Battery", "Original"],
+        ["Display", "Used replacement part"]
       ],
       "category": "smartphone"
     },
@@ -187,22 +180,24 @@
       "name": "iPhone 11 Pro",
       "memory": "256 GB",
       "color": "Bianco",
+      "colorEn": "White",
       "condition": "usato",
       "conditionLabel": "Usato",
+      "conditionLabelEn": "Used",
       "price": 220,
       "featured": false,
       "photos": 1,
       "tagline": "La tripla fotocamera al prezzo più accessibile della vetrina.",
+      "taglineEn": "The triple camera at the showcase's most affordable price.",
       "description": "Con 256 GB di memoria e la tripla fotocamera, è la scelta giusta per chi vuole un iPhone Pro spendendo poco. Passa in negozio per provarlo e controllarne lo stato dal vivo.",
+      "descriptionEn": "With 256 GB of storage and the triple camera, it's the right choice for anyone who wants an iPhone Pro on a budget. Come by the store to try it and check its condition in person.",
       "specs": [
-        [
-          "Chip",
-          "A13 Bionic"
-        ],
-        [
-          "Schermo",
-          "5,8 pollici"
-        ]
+        ["Chip", "A13 Bionic"],
+        ["Schermo", "5,8 pollici"]
+      ],
+      "specsEn": [
+        ["Chip", "A13 Bionic"],
+        ["Screen", "5.8 inches"]
       ],
       "category": "smartphone"
     },
@@ -214,36 +209,29 @@
       "category": "computer",
       "condition": "usato",
       "conditionLabel": "Usato con scatola",
+      "conditionLabelEn": "Used, with box",
       "price": null,
       "featured": false,
       "photos": 4,
       "tagline": "Un MacBook Air 13 pollici con la sua scatola originale.",
+      "taglineEn": "A 13-inch MacBook Air with its original box.",
       "description": "MacBook Air 13 pollici in grigio siderale con 8 GB di memoria, 256 GB di archiviazione e tastiera italiana, completo della scatola originale. Per lo stato e i dettagli contatta direttamente il negozio.",
+      "descriptionEn": "13-inch MacBook Air in space grey with 8 GB of memory, 256 GB of storage and an Italian keyboard, complete with its original box. For condition and details, contact the store directly.",
       "specs": [
-        [
-          "Modello",
-          "MacBook Air 13\" (A2179)"
-        ],
-        [
-          "Processore",
-          "Quad-core 1,2 GHz"
-        ],
-        [
-          "Memoria",
-          "8 GB"
-        ],
-        [
-          "Archiviazione",
-          "256 GB"
-        ],
-        [
-          "Tastiera",
-          "Italiana"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Modello", "MacBook Air 13\" (A2179)"],
+        ["Processore", "Quad-core 1,2 GHz"],
+        ["Memoria", "8 GB"],
+        ["Archiviazione", "256 GB"],
+        ["Tastiera", "Italiana"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Model", "MacBook Air 13\" (A2179)"],
+        ["Processor", "Quad-core 1.2 GHz"],
+        ["Memory", "8 GB"],
+        ["Storage", "256 GB"],
+        ["Keyboard", "Italian layout"],
+        ["Packaging", "Original box"]
       ],
       "contact": true
     },
@@ -255,20 +243,21 @@
       "category": "computer",
       "condition": "usato",
       "conditionLabel": "Con scatola originale",
+      "conditionLabelEn": "With original box",
       "price": null,
       "featured": false,
       "photos": 1,
       "tagline": "Un tablet Samsung con connessione 5G.",
+      "taglineEn": "A Samsung tablet with 5G connectivity.",
       "description": "Tablet Samsung Galaxy Tab A11+ con connessione 5G. Le foto mostrano la confezione originale. Per caratteristiche, stato e disponibilità contatta direttamente il negozio.",
+      "descriptionEn": "Samsung Galaxy Tab A11+ tablet with 5G connectivity. The photos show the original packaging. For specs, condition and availability, contact the store directly.",
       "specs": [
-        [
-          "Connettività",
-          "5G"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Connettività", "5G"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Connectivity", "5G"],
+        ["Packaging", "Original box"]
       ],
       "contact": true
     },
@@ -277,68 +266,64 @@
       "name": "Xiaomi Redmi Note 15 Pro 5G",
       "memory": "8 GB + 256 GB",
       "color": "Nero",
+      "colorEn": "Black",
       "category": "smartphone",
       "condition": "usato",
       "conditionLabel": "Con scatola originale",
+      "conditionLabelEn": "With original box",
       "price": null,
       "featured": false,
       "photos": 1,
       "tagline": "Smartphone 5G con batteria da 6580 mAh.",
+      "taglineEn": "5G smartphone with a 6580 mAh battery.",
       "description": "Xiaomi Redmi Note 15 Pro 5G nella versione con 8 GB di RAM e 256 GB di memoria, colore nero. Le foto mostrano la confezione originale. Per lo stato e i dettagli contatta direttamente il negozio.",
+      "descriptionEn": "Xiaomi Redmi Note 15 Pro 5G with 8 GB of RAM and 256 GB of storage, in black. The photos show the original packaging. For condition and details, contact the store directly.",
       "specs": [
-        [
-          "Memoria RAM",
-          "8 GB"
-        ],
-        [
-          "Archiviazione",
-          "256 GB"
-        ],
-        [
-          "Batteria",
-          "6580 mAh"
-        ],
-        [
-          "Fotocamera",
-          "200 MP"
-        ],
-        [
-          "Connettività",
-          "5G"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Memoria RAM", "8 GB"],
+        ["Archiviazione", "256 GB"],
+        ["Batteria", "6580 mAh"],
+        ["Fotocamera", "200 MP"],
+        ["Connettività", "5G"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["RAM", "8 GB"],
+        ["Storage", "256 GB"],
+        ["Battery", "6580 mAh"],
+        ["Camera", "200 MP"],
+        ["Connectivity", "5G"],
+        ["Packaging", "Original box"]
       ],
       "contact": true
     },
     {
       "slug": "airpods-4-cancellazione-rumore",
       "name": "Apple AirPods 4 con cancellazione del rumore",
+      "nameEn": "Apple AirPods 4 with Active Noise Cancellation",
       "memory": "Custodia USB-C",
+      "memoryEn": "USB-C case",
       "color": "Bianco",
+      "colorEn": "White",
       "category": "audio-gaming",
       "condition": "usato",
       "conditionLabel": "In scatola originale",
+      "conditionLabelEn": "In original box",
       "price": null,
       "featured": false,
       "photos": 2,
       "tagline": "Con cancellazione attiva del rumore.",
+      "taglineEn": "With active noise cancellation.",
       "description": "Apple AirPods 4 nella versione con cancellazione attiva del rumore, in confezione originale. Per stato e dettagli contatta direttamente il negozio.",
+      "descriptionEn": "Apple AirPods 4 with active noise cancellation, in original packaging. For condition and details, contact the store directly.",
       "specs": [
-        [
-          "Cancellazione rumore",
-          "Attiva"
-        ],
-        [
-          "Ricarica custodia",
-          "USB-C e wireless"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Cancellazione rumore", "Attiva"],
+        ["Ricarica custodia", "USB-C e wireless"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Noise cancellation", "Active"],
+        ["Case charging", "USB-C and wireless"],
+        ["Packaging", "Original box"]
       ],
       "contact": true
     },
@@ -346,24 +331,27 @@
       "slug": "airpods-4",
       "name": "Apple AirPods 4",
       "memory": "Custodia USB-C",
+      "memoryEn": "USB-C case",
       "color": "Bianco",
+      "colorEn": "White",
       "category": "audio-gaming",
       "condition": "usato",
       "conditionLabel": "In scatola originale",
+      "conditionLabelEn": "In original box",
       "price": null,
       "featured": false,
       "photos": 2,
       "tagline": "Con custodia di ricarica USB-C.",
+      "taglineEn": "With USB-C charging case.",
       "description": "Apple AirPods 4 nella versione standard, con custodia di ricarica USB-C, in confezione originale. Per stato e dettagli contatta direttamente il negozio.",
+      "descriptionEn": "Apple AirPods 4, standard version, with USB-C charging case, in original packaging. For condition and details, contact the store directly.",
       "specs": [
-        [
-          "Ricarica custodia",
-          "USB-C"
-        ],
-        [
-          "Confezione",
-          "Scatola originale"
-        ]
+        ["Ricarica custodia", "USB-C"],
+        ["Confezione", "Scatola originale"]
+      ],
+      "specsEn": [
+        ["Case charging", "USB-C"],
+        ["Packaging", "Original box"]
       ],
       "contact": true
     },
@@ -372,31 +360,29 @@
       "name": "EA SPORTS FC 27",
       "memory": "PlayStation 5",
       "color": "Disco Blu-ray",
+      "colorEn": "Blu-ray disc",
       "category": "audio-gaming",
       "condition": "nuovo",
       "conditionLabel": "Nuovo sigillato",
+      "conditionLabelEn": "Sealed new",
       "price": null,
       "featured": false,
       "photos": 2,
       "tagline": "Il nuovo calcio EA SPORTS, ancora nel cellophane.",
+      "taglineEn": "The new EA SPORTS football game, still shrink-wrapped.",
       "description": "Copia per PlayStation 5 mai aperta, ancora protetta dal cellophane originale. Un regalo pronto da consegnare, o il tuo prossimo campionato.",
+      "descriptionEn": "A PlayStation 5 copy never opened, still protected by the original shrink wrap. A gift ready to give, or your next season.",
       "specs": [
-        [
-          "Piattaforma",
-          "PlayStation 5"
-        ],
-        [
-          "Formato",
-          "Disco Blu-ray"
-        ],
-        [
-          "Classificazione",
-          "PEGI 16"
-        ],
-        [
-          "Confezione",
-          "Sigillata"
-        ]
+        ["Piattaforma", "PlayStation 5"],
+        ["Formato", "Disco Blu-ray"],
+        ["Classificazione", "PEGI 16"],
+        ["Confezione", "Sigillata"]
+      ],
+      "specsEn": [
+        ["Platform", "PlayStation 5"],
+        ["Format", "Blu-ray disc"],
+        ["Rating", "PEGI 16"],
+        ["Packaging", "Sealed"]
       ]
     }
   ]

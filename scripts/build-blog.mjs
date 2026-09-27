@@ -79,21 +79,22 @@ function cover(slug) {
 }
 
 /* ---------- template ---------- */
-const head = ({ title, desc, path, extra = '' }) => `<!doctype html>
+/* titleKey/descKey: attivano data-i18n solo per le pagine di elenco (chrome bilingue). Gli articoli mantengono titolo/descrizione fissi in italiano. */
+const head = ({ title, desc, path, extra = '', titleKey = '', descKey = '' }) => `<!doctype html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${esc(title)}</title>
-  <meta name="description" content="${esc(desc)}" />
+  <title${titleKey ? ` data-i18n="${titleKey}"` : ''}>${esc(title)}</title>
+  <meta name="description"${descKey ? ` data-i18n-content="${descKey}"` : ''} content="${esc(desc)}" />
   <meta name="theme-color" content="#0B0F19" />
   <link rel="canonical" href="${BASE}${path}" />
   <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
   <meta property="og:type" content="article" />
   <meta property="og:locale" content="it_IT" />
   <meta property="og:site_name" content="Informatix Repair" />
-  <meta property="og:title" content="${esc(title)}" />
-  <meta property="og:description" content="${esc(desc)}" />
+  <meta property="og:title"${titleKey ? ` data-i18n-content="${titleKey}"` : ''} content="${esc(title)}" />
+  <meta property="og:description"${descKey ? ` data-i18n-content="${descKey}"` : ''} content="${esc(desc)}" />
   <meta property="og:url" content="${BASE}${path}" />
   <meta property="og:image" content="${BASE}/images/Informatix-logo.png" />
   <meta name="twitter:card" content="summary" />
@@ -111,23 +112,13 @@ const tail = `  </main>
 </html>
 `;
 
-const pageHeader = (eyebrow, h1, lead) => `    <section class="hero-bg relative overflow-hidden text-white">
-      <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
-      <div class="container-x relative py-14 md:py-20 text-center">
-        <span class="eyebrow !text-red-400">${eyebrow}</span>
-        <h1 class="text-3xl md:text-5xl font-extrabold mb-4">${h1}</h1>
-        ${lead ? `<p class="text-gray-300 text-lg max-w-2xl mx-auto">${lead}</p>` : ''}
-      </div>
-    </section>
-`;
-
 const card = (a) => `        <a href="/blog/${a.slug}.html" class="card card-hover !p-0 overflow-hidden group flex flex-col reveal">
           <div class="aspect-[800/340] overflow-hidden">${cover(a.slug)}</div>
           <div class="p-6 flex flex-col grow">
             <div class="flex items-center gap-3 text-xs text-gray-500 mb-3"><span class="font-semibold uppercase tracking-wider text-secondary">${CATEGORY}</span><span>${fmtDate(a.date)}</span></div>
             <h2 class="text-lg font-semibold mb-2 group-hover:text-secondary transition-colors">${esc(a.title)}</h2>
             <p class="text-sm text-gray-600 leading-relaxed mb-4">${esc(a.description)}</p>
-            <span class="mt-auto text-sm font-semibold text-secondary">Leggi l'articolo &rarr;</span>
+            <span class="mt-auto text-sm font-semibold text-secondary"><span data-i18n="blog.readMore">Leggi l'articolo</span> &rarr;</span>
           </div>
         </a>
 `;
@@ -148,13 +139,27 @@ for (let n = 1; n <= pages; n++) {
   const slice = articles.slice((n - 1) * PER_PAGE, n * PER_PAGE);
   const nav =
     pages > 1
-      ? `      <nav class="flex justify-center flex-wrap gap-2 mt-12" aria-label="Pagine del blog">${Array.from({ length: pages }, (_, i) => i + 1)
+      ? `      <nav class="flex justify-center flex-wrap gap-2 mt-12" data-i18n-attr="aria-label:blog.pagesAria" aria-label="Pagine del blog">${Array.from({ length: pages }, (_, i) => i + 1)
           .map((i) => `<a href="${listPath(i)}" ${i === n ? 'aria-current="page"' : ''} class="w-10 h-10 inline-flex items-center justify-center rounded-full text-sm font-medium ${i === n ? 'bg-secondary text-white' : 'bg-lightbg text-primary hover:bg-secondary-light'}">${i}</a>`)
           .join('')}</nav>\n`
       : '';
   const html =
-    head({ title: `Blog${n > 1 ? ` - Pagina ${n}` : ''} | Informatix Repair`, desc: 'Notizie, novità e approfondimenti dal mondo della tecnologia, a cura di Informatix Repair.', path: listPath(n) }) +
-    pageHeader('Blog', 'Tecnologia, in parole semplici', 'Novità, guide e approfondimenti dal mondo della tecnologia.') +
+    head({
+      title: `Blog${n > 1 ? ` - Pagina ${n}` : ''} | Informatix Repair`,
+      desc: 'Notizie, novità e approfondimenti dal mondo della tecnologia, a cura di Informatix Repair.',
+      path: listPath(n),
+      titleKey: n === 1 ? 'blog.meta.title' : '',
+      descKey: n === 1 ? 'blog.meta.desc' : '',
+    }) +
+    `    <section class="hero-bg relative overflow-hidden text-white">
+      <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
+      <div class="container-x relative py-14 md:py-20 text-center">
+        <span class="eyebrow !text-red-400" data-i18n="blog.hero.eyebrow">Blog</span>
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-4" data-i18n="blog.hero.title">Tecnologia, in parole semplici</h1>
+        <p class="text-gray-300 text-lg max-w-2xl mx-auto" data-i18n="blog.hero.subtitle">Novità, guide e approfondimenti dal mondo della tecnologia.</p>
+      </div>
+    </section>
+` +
     `    <section class="section container-x">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 ${slice.map(card).join('')}      </div>
@@ -183,14 +188,15 @@ articles.forEach((a, i) => {
     `    <section class="hero-bg relative overflow-hidden text-white">
       <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
       <div class="container-x relative py-12 md:py-16 max-w-3xl">
-        <a href="/blog.html" class="text-sm text-gray-300 hover:text-white">&larr; Tutti gli articoli</a>
-        <div class="flex items-center gap-3 text-xs mt-6 mb-4"><span class="font-semibold uppercase tracking-wider text-red-400">${CATEGORY}</span><span class="text-gray-400">${fmtDate(a.date)} &middot; ${a.minutes} min di lettura</span></div>
+        <a href="/blog.html" class="text-sm text-gray-300 hover:text-white">&larr; <span data-i18n="blog.backToAll">Tutti gli articoli</span></a>
+        <div class="flex items-center gap-3 text-xs mt-6 mb-4"><span class="font-semibold uppercase tracking-wider text-red-400">${CATEGORY}</span><span class="text-gray-400">${fmtDate(a.date)} &middot; ${a.minutes} <span data-i18n="blog.minRead">min di lettura</span></span></div>
         <h1 class="text-3xl md:text-5xl font-extrabold leading-tight">${esc(a.title)}</h1>
       </div>
     </section>
 
     <section class="container-x max-w-3xl py-12 md:py-16">
       <div class="rounded-2xl overflow-hidden mb-10 aspect-[800/340]">${cover(a.slug)}</div>
+      <p data-lang-en class="mb-6 rounded-xl bg-lightbg border border-line px-4 py-3 text-sm text-gray-600" data-i18n="blog.itOnly">This article is currently only available in Italian.</p>
       <article class="text-gray-700 text-[1.05rem] leading-8 [&_p]:mb-5 [&_h2]:font-heading [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:text-primary [&_h2]:mt-10 [&_h2]:mb-3 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-5 [&_ul]:space-y-2 [&_a]:text-secondary [&_a]:underline">
 ${render(a.body)}
       </article>
@@ -198,7 +204,7 @@ ${render(a.body)}
 
     <section class="bg-lightbg">
       <div class="container-x py-14">
-        <h2 class="text-2xl font-bold mb-8">Altri articoli</h2>
+        <h2 class="text-2xl font-bold mb-8" data-i18n="blog.related">Altri articoli</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 ${related.map(card).join('')}        </div>
       </div>
@@ -206,9 +212,9 @@ ${related.map(card).join('')}        </div>
 
     <section class="container-x py-14 md:py-20">
       <div class="rounded-3xl bg-ink text-white px-6 py-12 text-center">
-        <h2 class="text-2xl md:text-3xl font-bold mb-3">Hai un dispositivo che non funziona?</h2>
-        <p class="text-gray-300 mb-7 max-w-xl mx-auto">Diagnosi gratuita e preventivo prima di ogni intervento.</p>
-        <a href="/contatti.html" class="btn-primary">Richiedi Preventivo</a>
+        <h2 class="text-2xl md:text-3xl font-bold mb-3" data-i18n="blog.cta.title">Hai un dispositivo che non funziona?</h2>
+        <p class="text-gray-300 mb-7 max-w-xl mx-auto" data-i18n="blog.cta.subtitle">Diagnosi gratuita e preventivo prima di ogni intervento.</p>
+        <a href="/contatti.html" class="btn-primary" data-i18n="common.cta.quote">Richiedi Preventivo</a>
       </div>
     </section>
 ` +

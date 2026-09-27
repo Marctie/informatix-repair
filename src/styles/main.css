@@ -123,6 +123,13 @@
   [hidden] {
     display: none !important;
   }
+  /* Contenuto bilingue statico (es. Vetrina Usati, blog): mostra solo la lingua attiva */
+  html[lang="it"] [data-lang-en] {
+    display: none !important;
+  }
+  html[lang="en"] [data-lang-it] {
+    display: none !important;
+  }
   /* Animazione d'ingresso allo scroll (attivata da JS) */
   .js .reveal {
     opacity: 0;
