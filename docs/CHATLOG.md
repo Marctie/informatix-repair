@@ -252,3 +252,6 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Scrivere il bot Telegram (nuovo, non riuso diretto dei bot Vinted) seguendo i pattern individuati; **non installarlo/avviarlo sul Samsung finché l'utente non lo chiede esplicitamente** (serve ADB con il telefono collegato).
 - Valutare se/come recuperare o abbandonare il prototipo locale in `admin/` (stile già approvato, da riprendere come riferimento visuale anche se il backend cambia).
 - Restano aperti anche i TODO delle sessioni precedenti: prezzi/specifiche prodotti "su richiesta", foto 17 Pro Max Pacific Blue, dati legali e foto reali del negozio, redirect `.it`/`.eu`, email `.com`, cambio orario UTC routine blog il 25 ottobre.
+
+## Routine automatica
+- 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
