@@ -255,3 +255,4 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
+- 2026-09-29 – pubblicati 2 articoli: "Il bollettino di sicurezza Android di settembre chiude circa 200 falle" e "Dal 27 settembre negozi ed e-commerce devono segnalare la garanzia legale".
