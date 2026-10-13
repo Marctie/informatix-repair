@@ -131,6 +131,8 @@ describe('Rassegna grafica di tutte le schermate', () => {
     });
     api('POST', '/api/repairs', { customer: { name: 'Giovanni Russo', phone: '349 555 6677' }, brand_model: 'PlayStation 5', problem: 'Lettore disco non legge' });
     api('GET', '/api/products?q=Cavo').then((p) => api('POST', '/api/sales', { items: [{ product_id: p.body[0].id, qty: 2 }], method: 'carta' }));
+    api('POST', '/api/expenses', { description: 'Cartucce e carta per la stampante del laboratorio, ordine online', amount: '45,50', category: 'attrezzatura', vendor: 'Cartoleria Bianchi e Figli', doc_type: 'fattura', doc_number: 'F-2026/77', vat: '8,20', method: 'carta', paid_by: 'Christian', reimbursable: true });
+    api('POST', '/api/expenses', { description: 'Carburante', amount: '30', category: 'trasporti e carburante', doc_type: 'nessuno' });
     api('POST', '/api/customers', { name: 'Elena Caputo', phone: '338 777 8899', notes: 'Cliente affezionata, preferisce essere avvisata su WhatsApp.' });
   });
 
@@ -156,6 +158,7 @@ describe('Rassegna grafica di tutte le schermate', () => {
       page('analisi', 'analisi', 'Riparazioni accettate');
       page('analisi-magazzino', 'analisi?tab=magazzino', 'Prodotti a catalogo');
       page('utenti', 'utenti', 'Nuovo utente');
+      page('cassa-spese', 'cassa?days=30', 'Spese del periodo (2)');
 
       it('pagina vendite con carrello', () => {
         cy.visit('/#/vendite');
@@ -264,6 +267,26 @@ describe('Rassegna grafica di tutte le schermate', () => {
         cy.wait(250);
         checkLayout('.modal-panel', w, `${vp}/cliente`);
         cy.screenshot(`ui-${vp}-m-cliente`, { capture: 'viewport', overwrite: true });
+      });
+      it('finestre spese: nuova, modifica e nota spese', () => {
+        cy.visit('/#/cassa?days=30');
+        cy.get('#c-newexp').click();
+        cy.get('#ex-ok').should('be.visible');
+        cy.wait(250);
+        checkLayout('.modal-panel', w, `${vp}/nuova-spesa`);
+        cy.screenshot(`ui-${vp}-m-nuova-spesa`, { capture: 'viewport', overwrite: true });
+        closeModal();
+        cy.contains('[data-exp]', 'Cartucce e carta').click();
+        cy.get('#ex-del').should('be.visible');
+        cy.wait(250);
+        checkLayout('.modal-panel', w, `${vp}/modifica-spesa`);
+        cy.screenshot(`ui-${vp}-m-modifica-spesa`, { capture: 'viewport', overwrite: true });
+        closeModal();
+        cy.get('#c-nota').click();
+        cy.get('#nt-ok').should('be.visible');
+        cy.wait(250);
+        checkLayout('.modal-panel', w, `${vp}/nota-spese`);
+        cy.screenshot(`ui-${vp}-m-nota-spese`, { capture: 'viewport', overwrite: true });
       });
       it('finestre magazzino e fornitori', () => {
         cy.visit('/#/magazzino');
