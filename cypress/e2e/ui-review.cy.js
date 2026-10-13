@@ -90,7 +90,7 @@ function checkLayout(rootSel, vpWidth, label) {
     $root[0].querySelectorAll('.sec + .sec').forEach((sec) => {
       const prev = sec.previousElementSibling;
       const gap = sec.getBoundingClientRect().top - prev.getBoundingClientRect().bottom;
-      if (prev.getBoundingClientRect().height > 0 && sec.getBoundingClientRect().height > 0 && (gap < 20 || gap > 70)) problems.push(`spazio tra sezioni irregolare (${Math.round(gap)}px) prima di "${(sec.querySelector('.sec-t') || sec).textContent.trim().slice(0, 24)}"`);
+      if (prev.getBoundingClientRect().height > 0 && sec.getBoundingClientRect().height > 0 && gap >= 0 && (gap < 20 || gap > 70)) problems.push(`spazio tra sezioni irregolare (${Math.round(gap)}px) prima di "${(sec.querySelector('.sec-t') || sec).textContent.trim().slice(0, 24)}"`);
     });
     // gruppi di chip / pulsanti seguiti da un'etichetta o un campo: almeno 10px di distanza
     $root[0].querySelectorAll('.row').forEach((row) => {
