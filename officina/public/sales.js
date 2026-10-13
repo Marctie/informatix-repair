@@ -188,7 +188,28 @@ export async function settingsView(el) {
         <div class="row tight"><a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>${ONLINE ? '<button class="btn btn-outline" id="st-r2">Salva ora nel cloud</button>' : ''}</div>
         <p class="hint">${ONLINE ? 'Per ripristinare una copia serve l’assistenza: scrivici prima di cancellare qualcosa di importante.' : 'Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.'}</p>
       </section>
+      <section class="card panel sec" id="st-demo">
+        <h2 class="sec-t">Dati demo</h2>
+        <p class="hint">Carica clienti, riparazioni in ogni stato, magazzino, vendite e incassi di esempio per vedere tutto il gestionale al lavoro. Sono segnati come “(DEMO)” e si cancellano con un click, senza toccare i dati veri.</p>
+        <div class="row tight" id="st-demo-btns"><span class="hint">Controllo…</span></div>
+      </section>
     </div>`;
+  const drawDemo = async () => {
+    const d = await safe(() => api('GET', '/api/demo'));
+    const box = $('#st-demo-btns', el);
+    if (!d || !box) return;
+    box.innerHTML = d.loaded
+      ? `<button class="btn btn-outline" id="st-demo-del">🗑️ Elimina i dati demo</button><span class="hint">Presenti: ${d.customers} clienti, ${d.repairs} riparazioni, ${d.sales} vendite.</span>`
+      : '<button class="btn btn-primary" id="st-demo-load">Carica i dati demo</button>';
+    if ($('#st-demo-load', box)) $('#st-demo-load', box).onclick = async () => {
+      if (await safe(() => api('POST', '/api/demo', {}))) { toast('Dati demo caricati: esplora il gestionale'); drawDemo(); }
+    };
+    if ($('#st-demo-del', box)) $('#st-demo-del', box).onclick = async () => {
+      if (!confirm('Eliminare tutti i dati demo? I dati veri non vengono toccati.')) return;
+      if (await safe(() => api('DELETE', '/api/demo'))) { toast('Dati demo eliminati'); drawDemo(); }
+    };
+  };
+  drawDemo();
   if ($('#st-r2', el)) $('#st-r2', el).onclick = async () => {
     const out = await safe(() => api('POST', '/api/backup/r2', {}));
     if (out?.ok) toast('Copia salvata nel cloud');

@@ -720,3 +720,6 @@ Scelta hardware (da validare con prova di Christian): la carta contiene solo l'U
 - `GET /api/analytics?from&to` (solo admin) + pagina **Analisi** (`officina/public/analytics.js`, schede Riparazioni / Incassi / Vendite, barre con valori scritti). Test API: 16 verdi. Online (deploy fatto).
 - **Manuale aggiornato** (`officina/public/manuale.html`): accesso online, backup nel cloud, pagamento "non tracciato", sezioni nuove 15 Utenti e 16 Analisi. REGOLA: ogni sviluppo aggiorna anche il manuale.
 - Da fare: test Cypress per Analisi/Utenti (ui-review e responsive) su `cypress-tests`; scheda Magazzino/rotazione/avvisi/notifiche; schermate del manuale per Analisi e Utenti.
+
+## Dati demo (2026-10-13, notte)
+`officina/demo.mjs`: dati dimostrativi completi (3 fornitori, 14 prodotti con scorte basse/esaurite/invenduto, 8 clienti, 14 riparazioni in tutti gli stati, 13 vendite, incassi, anche "non tracciato"). Tutte le righe demo hanno **id negativo** (i dati veri sono positivi): "Elimina demo" cancella solo `id < 0` ed e' sicuro. API `GET/POST/DELETE /api/demo` (admin) e riquadro "Dati demo" in Impostazioni. Codici DEMO-001..014, token demo-token-N (ricerca: DEMO-004 + 0104). Manuale: sezione 17. Test API: 17 verdi.
