@@ -262,3 +262,10 @@ test('utenti: solo email valide, il proprietario è protetto', async () => {
   assert.equal((await a('POST', '/api/users', { email: 'cassa@example.com' })).status, 409);
   assert.equal((await a('DELETE', `/api/users/${u.id}`)).data.ok, true);
 });
+
+test('ricerca cliente: il sito pubblico può chiamarla da un altro dominio (CORS)', async () => {
+  const res = await fetch(`${P}/api/lookup`, { method: 'OPTIONS', headers: { origin: 'https://informatixrepair.com', 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' } });
+  assert.equal(res.headers.get('access-control-allow-origin'), 'https://informatixrepair.com');
+  const bad = await fetch(`${P}/api/lookup`, { method: 'OPTIONS', headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' } });
+  assert.notEqual(bad.headers.get('access-control-allow-origin'), 'https://evil.example');
+});
