@@ -13,14 +13,14 @@ describe('Gestionale officina', () => {
 
   it('crea un fornitore e un articolo di magazzino', () => {
     cy.visit('/#/fornitori');
-    cy.contains('＋ Nuovo fornitore').click();
+    cy.contains('button', 'Nuovo fornitore').click();
     cy.get('#sf-name').type('Ricambi Napoli');
     cy.get('#sf-phone').type('0811234567');
     cy.get('#sf-ok').click();
     cy.contains('Ricambi Napoli');
 
     cy.visit('/#/magazzino');
-    cy.contains('＋ Nuovo articolo').click();
+    cy.contains('button', 'Nuovo articolo').click();
     cy.get('#pf-name').type('Display iPhone 13');
     cy.get('#pf-cat').type('Ricambi');
     cy.get('#pf-qty').clear().type('3');
@@ -163,7 +163,7 @@ describe('Gestionale officina', () => {
 
   it('vendita al banco: cerca articolo, sconto, incasso e stampa', () => {
     cy.visit('/#/magazzino');
-    cy.contains('＋ Nuovo articolo').click();
+    cy.contains('button', 'Nuovo articolo').click();
     cy.get('#pf-name').type('Cavo USB-C');
     cy.get('#pf-qty').clear().type('5');
     cy.get('#pf-price').type('9,90');
