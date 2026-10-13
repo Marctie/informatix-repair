@@ -418,6 +418,28 @@ Le pistole USB sono una "tastiera velocissima" che scrive il codice e preme Invi
 - Provare con una pistola vera (modello? impostazione tastiera italiana e suffisso Invio).
 - Fotocamera: provare dopo la messa online https; valutare l'ingresso da telefono con autenticazione.
 
+## Sessione 2026-10-13 (6) – Revisione grafica completa (CSS pulito e responsive)
+
+### Segnalazione dell'utente
+Dagli screenshot inviati: nella scheda riparazione i pulsanti toccavano il titolo "CLIENTE", testi uno addosso all'altro, caselle senza respiro. Richiesta: non solo quelle schermate, **tutto**; "non voglio più vedere errori elementari".
+
+### Causa
+Margini "a caso" sparsi nei template (`sec-t:first-child{margin-top:0}` azzerava lo spazio proprio dove serviva, griglie tailwind improvvisate, doppi badge "Preventivo approvato", righe di testo senza struttura).
+
+### Cosa è cambiato
+- **Sistema di spaziatura unico** in `officina/public/index.html`: `.sec` (blocco con titolo e spazio fisso), `.sec-t`/`.sec-sub`, `.cols`/`.col` (2 colonne da 700 px), `.fgrid c2/c3/c4/m2` + `.field` (etichetta+campo), `.row`, `.kv` (etichetta: valore), `.plist` (elenchi), `.tl` (cronologia), `.total-box`, `.badges`, `.check`, `.suggest` (tendine), `.hint`. Etichette più leggibili (0,78 rem, #374151), textarea con altezza minima e padding.
+- **Tutte le finestre ridisegnate** con il sistema: nuova riparazione, dettaglio riparazione (intestazione con badge/progresso/azioni separata dal resto; colonne Cliente/Dispositivo/Stampe e Preventivo/Ricambi; note, messaggio, cronologia), modifica dati, consegna e incasso, cliente (nuovo e dettaglio), articolo, fornitore.
+- **Telefono**: magazzino e cassa diventano **elenchi a schede** (nome, prezzi, badge, −1/+1) al posto di tabelle tagliate; i filtri di stato scorrono in orizzontale su una riga sola; il piede delle finestre diventa una griglia (azione principale a tutta larghezza, poi Salva/Annulla); pulsanti con testo lungo vanno a capo; campi alti almeno 40 px.
+- Badge duplicato "Preventivo approvato" tolto; toast mostrato **dopo** il ridisegno (evitava click su elementi che sparivano); placeholder accorciati.
+
+### Controllo automatico anti-errori (Cypress, `cypress/e2e/ui-review.cy.js`, nella suite normale)
+Apre ogni pagina e ogni finestra a **telefono 390×844, tablet 768×1024, desktop 1280×860** con dati realistici e verifica via geometria: niente fuori schermo, niente sovrapposizioni tra elementi fratelli, niente contenuti che escono dal contenitore, campi non più stretti di 70 px né più bassi di 38 px su telefono. Salva anche gli screenshot (cypress/screenshots) per la revisione a occhio: eseguita su tutte le schermate. **62 test.** Al primo giro ha trovato 4 problemi veri (riga pulsanti "Da ordinare" che usciva dallo schermo su telefono, campi prezzo del carrello troppo bassi, filtri e tabelle da sistemare), tutti corretti.
+- Suite completa ora: officina 13 + responsive 43 + scanner 10 + ui-review 62 = **128 test verdi**; API 11 test verdi.
+- Manuale: schermate rigenerate con la nuova grafica.
+
+### Regola per il futuro (anche in memoria)
+Usare solo il sistema di spaziatura; per ogni schermata nuova o modificata guardare gli screenshot a 3 formati e far girare `ui-review` prima di consegnare.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
