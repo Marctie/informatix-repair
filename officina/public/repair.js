@@ -2,7 +2,7 @@
 import { scanWithCamera } from './scan.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
 
-const DEVICE_TYPES = [['smartphone', '📱 Smartphone'], ['tablet', 'Tablet'], ['portatile', '💻 Portatile'], ['pc', '🖥️ PC fisso'], ['console', '🎮 Console'], ['altro', 'Altro']];
+const DEVICE_TYPES = [['smartphone', 'Smartphone'], ['tablet', 'Tablet'], ['portatile', 'Portatile'], ['pc', 'PC fisso'], ['console', 'Console'], ['altro', 'Altro']];
 const PROBLEMS = ['Schermo rotto', 'Batteria', 'Non si accende', 'Non carica', 'Lento / software', 'Acqua / liquido', 'Audio / microfono', 'Fotocamera'];
 const ACCESSORIES = ['Caricatore', 'Cover', 'SIM', 'Scheda SD', 'Borsa', 'Cavo'];
 const CONDITIONS = ['Graffi', 'Display crepato', 'Ammaccature', 'Ottime condizioni'];
@@ -34,8 +34,8 @@ export function openRepairForm(onDone, preset = {}) {
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-model">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
           <div class="field"><label class="l" for="rf-serial">Seriale / IMEI</label>
-            <div class="row" style="flex-wrap:nowrap"><input id="rf-serial" autocomplete="off" placeholder="Spara col lettore o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
-            <div id="rf-serial-hint" class="hint" style="min-height:1.1rem"></div></div>
+            <div class="row nowrap"><input id="rf-serial" autocomplete="off" placeholder="Spara col lettore o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline btn-icon" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
+            <div id="rf-serial-hint" class="hint"></div></div>
         </div>
       </section>
 
