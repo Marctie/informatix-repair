@@ -7,7 +7,7 @@ describe('Dati demo', () => {
     cy.contains('h2', 'Dati demo');
     cy.contains('button', 'Carica i dati demo').click();
     cy.contains('button', 'Elimina i dati demo');
-    cy.contains('Presenti: 8 clienti, 14 riparazioni, 13 vendite');
+    cy.contains('Presenti: 8 clienti, 14 riparazioni, 19 vendite');
     cy.visit('/#/riparazioni?all=1');
     cy.contains('iPhone 13');
     cy.visit('/#/clienti');
