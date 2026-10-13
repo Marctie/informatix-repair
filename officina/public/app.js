@@ -29,8 +29,10 @@ async function route() {
     VIEWS.map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`).join('') +
     `<a href="${MANUAL.href}" target="_blank" rel="noopener"><span class="ico">${MANUAL.icon}</span>${MANUAL.label}</a>`;
   const inMore = !v.bottom;
-  $('#bottom-nav').innerHTML =
-    VIEWS.filter((x) => x.bottom).map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`).join('') +
+  const bottomItems = VIEWS.filter((x) => x.bottom).map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`);
+  // il pulsante "Nuova" sta al centro della barra: sempre a portata di pollice e mai sopra i contenuti
+  bottomItems.splice(2, 0, `<button id="nav-new" class="nav-new" aria-label="Nuova riparazione"><span class="plus">＋</span>Nuova</button>`);
+  $('#bottom-nav').innerHTML = bottomItems.join('') +
     `<button id="more-btn" class="${inMore ? 'on' : ''}" style="${inMore ? 'color:#fff;background:rgba(220,38,38,.9)' : ''}"><span class="ico">☰</span>Altro</button>`;
   $('#more-menu').classList.add('hidden');
   view.innerHTML = '<p class="text-gray-400 text-sm">Caricamento…</p>';
@@ -51,7 +53,7 @@ document.addEventListener('click', (e) => {
 
 // ---------- Azioni rapide ----------
 const newRepair = (preset) => openRepairForm(() => refresh(), preset);
-$('#fab').onclick = () => newRepair();
+document.addEventListener('click', (e) => { if (e.target.closest('#nav-new')) newRepair(); });
 $('#top-new').onclick = () => newRepair();
 
 // Scorciatoie da tastiera + lettura con la pistola codici a barre quando nessun campo è selezionato.
