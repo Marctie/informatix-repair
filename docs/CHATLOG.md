@@ -687,3 +687,12 @@ Struttura degli indirizzi: `/` = Portale, `/officina` e `/usati` nella stessa sh
 - **Sito** (branch `sito-segui-riparazione`, NON in main): pagina `segui-riparazione.html`, sezione in home, link "Area riservata" nel footer.
 - Test API: 14 verdi. Backup: download JSON da `/api/backup` (D1 non ha VACUUM INTO); backup giornaliero su R2 da fare (R2 non attivo).
 - **Da fare**: R2 + cron backup; Vetrina Usati sul Worker (+ decisione bot Telegram); Portale unico + manuale; ripassare Cypress su `cypress-tests` (merge di gestionale-officina); via libera per portare il sito in main; prove hardware di Christian.
+
+## Nuovo sviluppo richiesto (2026-10-13, notte) – Import ordini fornitore e prezzi d'acquisto (da fare in fondo al piano)
+Richiesta di Christian: nel magazzino importare un PDF o riepilogo ordine del fornitore.
+1. Dal PDF caricare i prodotti acquistati (carico di magazzino).
+2. Se il fornitore e' lo stesso, confrontare il prezzo di acquisto con quello precedente.
+3. Grafico dell'andamento del prezzo di acquisto per prodotto.
+4. Avvisi (sezione Notifiche e/o home): al nuovo ordine, se un pezzo gia' in magazzino dello stesso fornitore ha prezzo diverso dall'ultimo ordine, mostrare il dettaglio (piu' alto / piu' basso della volta scorsa).
+5. Le vendite scalano gia' le scorte: aggiungere soglie di scorta minima **personalizzabili da Impostazioni** (globale + per prodotto) e avvisi (anche in home) "il prodotto X sta per esaurire, da riordinare".
+Note tecniche: lettura PDF nel browser (pdf.js), schermata di revisione prima di confermare (i PDF dei fornitori sono tutti diversi), PDF scansionati = OCR da valutare; tabella storico prezzi (`price_history`) e tabella `notifications`; D1 + Worker invariati. Serve almeno un PDF di esempio per fornitore.

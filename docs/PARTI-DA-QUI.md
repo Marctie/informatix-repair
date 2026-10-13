@@ -30,6 +30,7 @@ Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-r
 3. Vetrina Usati sullo stesso Worker (foto ridimensionate nel browser) e Portale unico dopo "Area riservata"; manuale/`docs/ONLINE.md`.
 4. Via libera dell'utente -> sito in `main` (branch `sito-segui-riparazione`).
 5. Prove hardware di Christian (pistola, stampante, etichette, fotocamera in https).
+6. **Import ordini fornitore (PDF) + storico prezzi + avvisi scorte** (richiesta di Christian, dettagli in CHATLOG "Nuovo sviluppo richiesto"): servono PDF di esempio.
 
 ## Domande ancora aperte
 - Email di Christian e delle 3 postazioni (arrivano da Christian); alias con Cloudflare Email Routing per le postazioni?
