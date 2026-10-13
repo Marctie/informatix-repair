@@ -4,7 +4,7 @@
 //  - nessun elemento che esce dal bordo dello schermo
 //  - nessun testo o campo che si sovrappone a un altro (rettangoli che si intersecano tra elementi "fratelli")
 //  - nessun campo di testo più stretto di 80 px o troppo basso per un dito (44 px sul telefono)
-// Uso:  npm run test:e2e -- --spec cypress/tools/ui-review.cy.js     (le immagini finiscono in cypress/screenshots)
+// Uso:  npm run test:e2e -- --spec cypress/e2e/ui-review.cy.js     (le immagini finiscono in cypress/screenshots)
 const api = (method, url, body) => cy.request({ method, url, body });
 const VIEWPORTS = [['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 860]];
 
