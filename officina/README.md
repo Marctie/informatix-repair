@@ -19,6 +19,9 @@ npm run officina
 4. Il cliente dal link vede: barra di avanzamento, riepilogo del dispositivo, i suoi dati (telefono ed email mascherati), consegna stimata, preventivo/acconto/saldo, cronologia. Può **approvare o rifiutare il preventivo** con un tap.
 5. **Consegna e incasso**: calcola il saldo (totale meno acconti), registra l'incasso e fa partire la garanzia.
 
+## Pistola codici a barre
+Collegata via USB (modalità tastiera, suffisso Invio): nel modulo di nuova riparazione riempie *Seriale/IMEI* (con controllo IMEI e avviso se già in archivio); a pagina libera apre la riparazione con quel seriale o codice. Etichetta e scheda laboratorio riportano il codice a barre Code 128 del numero riparazione. La fotocamera del telefono (📷) richiede https: disponibile dopo la messa online.
+
 ## Moduli
 Oggi · Riparazioni · Clienti (storico) · Magazzino (scorta minima, carico/scarico rapido, "Da ordinare" con messaggio WhatsApp o email per fornitore) · Vendite (cassa veloce con ricevuta) · Fornitori · Cassa (incassi per periodo e metodo) · Impostazioni.
 
