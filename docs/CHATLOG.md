@@ -259,6 +259,20 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Valutare se/come recuperare o abbandonare il prototipo locale in `admin/` (stile già approvato, da riprendere come riferimento visuale anche se il backend cambia).
 - Restano aperti anche i TODO delle sessioni precedenti: prezzi/specifiche prodotti "su richiesta", foto 17 Pro Max Pacific Blue, dati legali e foto reali del negozio, redirect `.it`/`.eu`, email `.com`, cambio orario UTC routine blog il 25 ottobre.
 
+## Sessione 2026-10-13 – Ripresa gestionale Usati (locale, senza login)
+
+### Direttive dell'utente (valide da ora)
+- Dopo ogni funzionalità completata e testata: commit + push.
+- Tracciare su CHATLOG e MEMORY tutto ciò che si fa, si aggiunge o si elimina.
+- Se serve, Cypress va su un branch dedicato (test scritti ed eseguiti da Claude); a test verdi si fa merge in `main`, ma il branch Cypress resta sempre vivo e serve solo per i test.
+- Gestionale: per ora **niente autenticazione**, sviluppo solo in locale (poi si valuterà l'auth con il suo Firebase). Worker Cloudflare/repo dedicato rimandati.
+- Bot Telegram: scrivere il codice ma **non testarlo né installarlo** (l'utente non ha il telefono). Bot di esempio in `C:\1Marco Peluso\Lavoro da eliminare\Bot Telegram` (pattern: `Promemoria-Bot-Telegram`).
+
+### Modifiche
+- **Eliminato il login** del gestionale: rimossi da `admin/server.mjs` sessioni, `/api/login`, `/api/logout`, `/api/session`, guardie auth e generazione di `auth.local.json`; eliminata `admin/public/login.html`; tolto il bottone "Esci" da `admin/public/index.html` e relativa logica in `admin/public/app.js`; rimossa la dipendenza `express-session`; tolta da `.gitignore` la riga `/admin/auth.local.json`.
+- Il server ora ascolta solo su `127.0.0.1:4848` (non raggiungibile dalla rete locale, dato che non c'è più il login).
+- Test: avvio server, `GET /api/items` e `GET /` rispondono correttamente.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
