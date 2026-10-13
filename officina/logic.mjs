@@ -22,7 +22,7 @@ export const STATUSES = {
   delivered: { label: 'Consegnato', step: 5, hint: 'Dispositivo consegnato. Grazie per averci scelto!' },
   cancelled: { label: 'Annullato / non riparabile', step: -1, hint: 'La riparazione non è stata eseguita.' },
 };
-export const STEP_LABELS = ['Ricevuto', 'Diagnosi', 'Preventivo', 'Riparazione', 'Pronto', 'Consegnato'];
+export const STEP_LABELS = ['Ricevuto', 'Diagnosi', 'Preventivo', 'Lavori', 'Pronto', 'Ritirato'];
 // Prossimo stato "naturale" per il pulsante rapido "Avanza".
 export const NEXT_STATUS = {
   received: 'diagnosing',

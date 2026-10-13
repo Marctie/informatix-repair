@@ -24,7 +24,10 @@
   .bar>i{display:block;height:100%;background:linear-gradient(90deg,#DC2626,#EF4444);border-radius:99px;transition:width .8s ease}
   .bar.done>i{background:linear-gradient(90deg,#059669,#10B981)}
   .steps{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;text-align:center}
-  .steps div{font-size:10.5px;color:#9CA3AF;font-weight:600}
+  .steps div{font-size:10px;color:#9CA3AF;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+  .steps i{display:block;width:10px;height:10px;border-radius:50%;background:#D1D5DB;margin:0 auto 4px}
+  .steps div.on i{background:var(--red)}
+  .steps div.done i{background:var(--ok)}
   .steps div.on{color:#111827}
   .steps div.now{color:var(--red);font-weight:800}
   .pct{float:right;font-weight:800;color:var(--red)}

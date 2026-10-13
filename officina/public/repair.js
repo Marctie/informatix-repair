@@ -173,11 +173,11 @@ export async function openRepairDetail(id, onChange) {
       ${progressBar(r)}
       ${!done ? `<div class="flex gap-2 flex-wrap mt-3">
         ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
-        <select id="d-status" class="!w-auto"><option value="">Cambia stato…</option>${Object.entries(META.statuses).filter(([k]) => k !== 'delivered' && k !== r.status).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select>
+        <select id="d-status" class="sm:!w-auto sel-full"><option value="">Cambia stato…</option>${Object.entries(META.statuses).filter(([k]) => k !== 'delivered' && k !== r.status).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select>
         ${r.status === 'ready' || r.status === 'repairing' || r.status === 'approved' ? '<button class="btn btn-green" data-act="deliver">✔ Consegna e incassa</button>' : ''}
       </div>` : ''}
 
-      <div class="grid sm:grid-cols-2 gap-x-6">
+      <div class="grid sm:grid-cols-2 gap-x-6 grid-2col">
       <div>
         <div class="sec-t">Cliente</div>
         <p class="font-semibold">${esc(r.customer_name)}</p>
