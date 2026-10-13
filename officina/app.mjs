@@ -10,6 +10,7 @@ import { barcodeSvg } from './barcode.mjs';
 import { listExpenses, createExpense, updateExpense, deleteExpense, CATEGORIES, DOC_TYPES } from './expenses.mjs';
 import { buildNotaSpese } from './notaspese.mjs';
 import { notifyMiddleware } from './notify.mjs';
+import { registerPurchaseRoutes, PURCHASE_TABLES } from './purchases.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
@@ -201,9 +202,13 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
   }));
   app.delete('/api/suppliers/:id', h(async (req) => {
+    if ((await db.prepare('SELECT COUNT(*) AS n FROM purchases WHERE supplier_id = ?').get(req.params.id)).n) throw new L.HttpError(409, 'Il fornitore ha acquisti registrati: non si può eliminare.');
     await db.prepare('DELETE FROM suppliers WHERE id = ?').run(req.params.id);
     return { ok: true };
   }));
+
+  // Acquisti dai fornitori: import fatture, storico e analisi prezzi (officina/purchases.mjs)
+  registerPurchaseRoutes(app, h);
 
   // Magazzino
   const checkProduct = (b) => {
@@ -334,6 +339,6 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   return dump;
 }
