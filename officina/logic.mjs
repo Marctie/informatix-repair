@@ -125,14 +125,15 @@ export function createRepair(b) {
     const token = newToken();
     const r = db.prepare(
       `INSERT INTO repairs (code, token, customer_id, device_type, brand_model, serial, problem, accessories,
-        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).run(
       code, token, customerId, str(b.device_type) || 'smartphone', need(b.brand_model, 'Dispositivo'), str(b.serial),
       need(b.problem, 'Problema segnalato'), str(b.accessories), str(b.condition_notes), str(b.passcode),
       quote, money(deposit), str(b.eta_date), num(b.warranty_days, Number(settings.default_warranty_days) || 90),
       // se il preventivo è già concordato al banco lo consideriamo approvato dal cliente
-      b.quote_agreed && quote != null ? 'accepted' : null
+      b.quote_agreed && quote != null ? 'accepted' : null,
+      b.urgent ? 1 : 0
     );
     const id = Number(r.lastInsertRowid);
     logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
@@ -185,7 +186,7 @@ export function listRepairs({ status, q, customer_id, open } = {}) {
     const like = `%${q}%`;
     args.push(like, like, like, like, like, like);
   }
-  const sql = `${REPAIR_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.updated_at DESC, r.id DESC LIMIT 500`;
+  const sql = `${REPAIR_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.urgent DESC, r.updated_at DESC, r.id DESC LIMIT 500`;
   return db.prepare(sql).all(...args).map((r) => decorateRepair(r));
 }
 
@@ -206,6 +207,7 @@ export function updateRepair(id, b) {
       sets.push(`${k} = ?`);
       args.push(v);
     }
+    if ('urgent' in b) { sets.push('urgent = ?'); args.push(b.urgent ? 1 : 0); }
     if (!sets.length) return getRepair(id);
     // cambio preventivo dopo l'approvazione: va richiesta una nuova approvazione
     if ('quote' in b && num(b.quote) !== r.quote && ['approved', 'waiting_parts', 'repairing'].includes(r.status) && r.quote != null) {

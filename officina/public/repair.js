@@ -55,10 +55,11 @@ export function openRepairForm(onDone, preset = {}) {
         <div class="flex gap-1.5 flex-wrap items-center" id="rf-eta">
           ${[['Oggi', 0], ['Domani', 1], ['+3 giorni', 3], ['+1 settimana', 7], ['+2 settimane', 14]].map(([l, n]) => `<span class="chip" data-d="${n}">${l}</span>`).join('')}
           <input type="date" id="rf-etadate" class="!w-auto" />
+          <label class="chip chip-red flex items-center gap-1.5"><input type="checkbox" id="rf-urgent" /> 🔥 Urgente</label>
         </div>
       </div>
     </form>`,
-    { title: 'Nuova riparazione', wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary btn-lg" id="rf-save">Salva e crea scheda</button>` }
+    { title: 'Nuova riparazione', wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-outline btn-lg" id="rf-save">Salva</button><button class="btn btn-primary btn-lg" id="rf-save-print">🖨️ Salva e stampa</button>` }
   );
   const root = m.el;
   let customerId = null;
@@ -97,8 +98,9 @@ export function openRepairForm(onDone, preset = {}) {
     $('#rf-unpick', root).onclick = () => { customerId = null; $('#rf-picked', root).classList.add('hidden'); $('#rf-new', root).classList.remove('hidden'); $('#rf-search', root).classList.remove('hidden'); };
   };
 
-  $('#rf-save', root).onclick = async (ev) => {
-    const btn = ev.currentTarget;
+  const doSave = async (btn, print) => {
+    // la scheda di stampa va aperta SUBITO (durante il click), altrimenti il browser blocca la finestra
+    const pw = print ? window.open('about:blank', '_blank') : null;
     const accessories = [...selected(root, '#rf-acc')];
     const cond = [...selected(root, '#rf-cond')];
     const note = $('#rf-accnote', root).value.trim();
@@ -116,14 +118,21 @@ export function openRepairForm(onDone, preset = {}) {
       deposit: $('#rf-deposit', root).value,
       deposit_method: $('#rf-method', root).value,
       eta_date: $('#rf-etadate', root).value,
+      urgent: $('#rf-urgent', root).checked,
     };
     btn.disabled = true;
     const r = await safe(() => api('POST', '/api/repairs', body));
     btn.disabled = false;
-    if (!r) return;
+    if (!r) { pw?.close(); return; }
     m.close();
+    if (print) {
+      if (pw) pw.location.href = `/print/both/${r.id}`;
+      else toast('Il browser ha bloccato la stampa: usa il pulsante nella schermata successiva', false);
+    }
     showCreated(r, onDone);
   };
+  $('#rf-save', root).onclick = (ev) => doSave(ev.currentTarget, false);
+  $('#rf-save-print', root).onclick = (ev) => doSave(ev.currentTarget, true);
   setTimeout(() => $('#rf-search', root).focus(), 50);
 }
 
@@ -139,10 +148,12 @@ function showCreated(r, onDone) {
       <p class="text-sm font-semibold">Fai inquadrare il QR al cliente: segue la riparazione dal suo telefono.</p>
       <p class="text-xs text-gray-400 break-all mt-1">${esc(r.track_url)}</p>
       <div class="grid grid-cols-2 gap-2 mt-4">
-        <a class="btn btn-primary" target="_blank" href="/print/repair/${r.id}">🖨️ Stampa scheda con QR</a>
+        <a class="btn btn-primary btn-lg col-span-2" target="_blank" href="/print/both/${r.id}">🖨️ Stampa scheda cliente + laboratorio</a>
+        <a class="btn btn-outline" target="_blank" href="/print/customer/${r.id}">👤 Solo scheda cliente</a>
+        <a class="btn btn-outline" target="_blank" href="/print/lab/${r.id}">🔧 Solo scheda laboratorio</a>
         <a class="btn btn-outline" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta dispositivo</a>
-        ${wa ? `<a class="btn btn-green" target="_blank" rel="noopener" href="${wa}">💬 Invia link su WhatsApp</a>` : '<span></span>'}
         <button class="btn btn-outline" id="cp-link">📋 Copia link</button>
+        ${wa ? `<a class="btn btn-green col-span-2" target="_blank" rel="noopener" href="${wa}">💬 Invia link su WhatsApp</a>` : ''}
       </div>
       ${/localhost|127\.0\.0\.1/.test(r.track_url) ? '<p class="text-xs text-amber-600 mt-3">Il link usa “localhost”: il telefono del cliente non lo apre. Imposta l’indirizzo pubblico in Impostazioni.</p>' : ''}
     </div>`,
@@ -169,7 +180,7 @@ export async function openRepairDetail(id, onChange) {
     const due = total == null ? null : Math.max(0, total - r.paid);
     const wa = (kind) => waLink(r.customer_phone, waMessage(kind, { ...r }));
     body.innerHTML = `
-      <div class="flex items-center gap-2 flex-wrap mb-2">${statusBadge(r)}${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato dal cliente</span>' : ''}${r.quote_decision === 'accepted' ? '<span class="badge bg-emerald-100 text-emerald-700">Preventivo approvato</span>' : ''}</div>
+      <div class="flex items-center gap-2 flex-wrap mb-2">${statusBadge(r)}${done ? '' : `<button class="chip chip-red ${r.urgent ? 'on' : ''}" data-act="urgent">🔥 Urgente</button>`}${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato dal cliente</span>' : ''}${r.quote_decision === 'accepted' ? '<span class="badge bg-emerald-100 text-emerald-700">Preventivo approvato</span>' : ''}</div>
       ${progressBar(r)}
       ${!done ? `<div class="flex gap-2 flex-wrap mt-3">
         ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
@@ -194,7 +205,9 @@ export async function openRepairDetail(id, onChange) {
         ${r.passcode ? `<p class="text-sm text-gray-600">🔒 Sblocco: <span class="font-mono bg-lightbg px-1.5 rounded">${esc(r.passcode)}</span> <span class="text-xs text-gray-400">(solo interno)</span></p>` : ''}
         <div class="sec-t">Link e stampe</div>
         <div class="flex gap-2 flex-wrap">
-          <a class="btn btn-outline btn-sm" target="_blank" href="/print/repair/${r.id}">🖨️ Scheda</a>
+          <a class="btn btn-dark btn-sm" target="_blank" href="/print/both/${r.id}">🖨️ Stampa tutto</a>
+          <a class="btn btn-outline btn-sm" target="_blank" href="/print/customer/${r.id}">👤 Scheda cliente</a>
+          <a class="btn btn-outline btn-sm" target="_blank" href="/print/lab/${r.id}">🔧 Scheda laboratorio</a>
           <a class="btn btn-outline btn-sm" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta</a>
           <a class="btn btn-outline btn-sm" target="_blank" href="/t/${r.token}">👁️ Vista cliente</a>
           <button class="btn btn-outline btn-sm" data-act="copylink">📋 Copia link</button>
@@ -217,6 +230,8 @@ export async function openRepairDetail(id, onChange) {
         ${!done ? `<div class="relative mt-2"><input id="d-part" placeholder="Aggiungi ricambio dal magazzino (cerca)…" /><div id="d-part-s" class="hidden absolute z-10 left-0 right-0 mt-1 card shadow-lg max-h-48 overflow-y-auto"></div></div>` : ''}
       </div></div>
 
+      <div class="sec-t">Note del tecnico (interne: finiscono sulla scheda laboratorio)</div>
+      <div class="flex gap-2 items-start"><textarea id="d-tech" rows="2" placeholder="Diagnosi, prove fatte, cosa manca…">${esc(r.tech_notes || '')}</textarea><button class="btn btn-outline btn-sm" data-act="savetech">Salva</button></div>
       <div class="sec-t">Messaggio visibile al cliente</div>
       <div class="flex gap-2"><input id="d-cnote" value="${esc(r.customer_note || '')}" placeholder="es. Stiamo aspettando il display, arriva giovedì" ${done ? 'disabled' : ''} />${!done ? '<button class="btn btn-outline btn-sm" data-act="savecnote">Salva</button>' : ''}</div>
       <div class="sec-t">Aggiungi nota alla cronologia</div>
@@ -252,6 +267,8 @@ export async function openRepairDetail(id, onChange) {
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
       case 'askquote': return act(() => api('POST', `/api/repairs/${id}/status`, { status: 'quote_pending' }), 'Il cliente può ora approvare dal link');
       case 'deposit': return act(() => api('POST', `/api/repairs/${id}/deposit`, { amount: $('#d-dep', body).value }), 'Acconto registrato');
+      case 'savetech': return act(() => api('PATCH', `/api/repairs/${id}`, { tech_notes: $('#d-tech', body).value }), 'Note del tecnico salvate');
+      case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
       case 'savecnote': return act(() => api('PATCH', `/api/repairs/${id}`, { customer_note: $('#d-cnote', body).value }), 'Messaggio aggiornato');
       case 'note': { const t = $('#d-note', body).value; if (!t.trim()) return; return act(() => api('POST', `/api/repairs/${id}/note`, { note: t, public: $('#d-notepub', body).checked }), 'Nota aggiunta'); }
       case 'edit': return editDialog(id, () => { reloadList(); render(); });
