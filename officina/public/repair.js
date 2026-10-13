@@ -229,8 +229,10 @@ export async function openRepairDetail(id, onChange) {
     if (ps) ps.oninput = debounce(async (e) => {
       const q = e.target.value.trim();
       const box = $('#d-part-s', body);
+      if (!box) return;
       if (q.length < 2) return box.classList.add('hidden');
       const list = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
+      if (!box.isConnected) return; // finestra chiusa nel frattempo
       box.innerHTML = (list || []).map((p) => `<div class="px-3 py-2 hover:bg-lightbg cursor-pointer text-sm flex justify-between" data-pid="${p.id}"><span>${esc(p.name)}</span><span class="text-gray-500">${p.qty} pz · ${eur(p.price)}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun prodotto: aggiungilo dal Magazzino.</div>';
       box.classList.remove('hidden');
     }, 200);
