@@ -269,3 +269,17 @@ test('ricerca cliente: il sito pubblico può chiamarla da un altro dominio (CORS
   const bad = await fetch(`${P}/api/lookup`, { method: 'OPTIONS', headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' } });
   assert.notEqual(bad.headers.get('access-control-allow-origin'), 'https://evil.example');
 });
+
+test('metodo "non tracciato": salvato sempre, fuori dai totali di cassa se l’impostazione lo esclude', async () => {
+  const day = new Date().toISOString().slice(0, 10);
+  const before = (await a('GET', `/api/report?from=${day}&to=${day}`)).data.total;
+  await a('POST', '/api/sales', { items: [{ name: 'Cavo', unit_price: 10 }], method: 'non tracciato' });
+  assert.equal((await a('GET', `/api/report?from=${day}&to=${day}`)).data.total, before + 10); // di default conta
+  await a('PUT', '/api/settings', { cash_show_untracked: '0' });
+  const r = (await a('GET', `/api/report?from=${day}&to=${day}`)).data;
+  assert.equal(r.total, before);
+  assert.ok(!r.by_method.some((m) => m.method === 'non tracciato'));
+  assert.ok(r.untracked_excluded >= 1);
+  assert.equal((await a('GET', '/api/sales')).data.filter((s) => s.method === 'non tracciato').length >= 1, true); // la vendita resta salvata
+  await a('PUT', '/api/settings', { cash_show_untracked: '1' });
+});

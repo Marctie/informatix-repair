@@ -42,7 +42,7 @@ export async function salesView(el) {
           </div></div>`).join('')}</div>
         <div class="fgrid c3" style="align-items:end">
           <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="0" /></div>
-          <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
+          <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option><option>non tracciato</option></select></div>
           <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(subtotal)}</b></div>
         </div>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
@@ -135,6 +135,7 @@ export async function cashView(el) {
         ${r.by_method.map((m) => `<div class="card kpi"><b>${eur(m.total)}</b><span>${esc(m.method)} (${m.n})</span></div>`).join('')}
         <div class="card kpi"><b class="text-gray-600">${eur(r.parts_cost)}</b><span>Costo ricambi e merce venduta</span></div>
       </div>
+      ${r.untracked_excluded ? `<p class="hint">${r.untracked_excluded} ${r.untracked_excluded === 1 ? 'pagamento “non tracciato” non è conteggiato' : 'pagamenti “non tracciato” non sono conteggiati'} (impostazione in Impostazioni → Cassa).</p>` : ''}
       ${r.by_day.length > 1 ? `<div class="card panel sec"><h3 class="sec-t">Incassi per giorno</h3>
         <div class="flex items-end gap-1.5 h-36 overflow-x-auto pb-1">${r.by_day.map((d) => `<div class="flex flex-col items-center justify-end h-full min-w-[2.2rem] flex-1" title="${fdate(d.day)}: ${eur(d.total)}">
           <span class="text-[10px] text-gray-500 mb-1">${Math.round(d.total)}</span><div class="w-full rounded-t bg-secondary" style="height:${Math.max(4, (d.total / max) * 100)}%"></div>
@@ -173,6 +174,10 @@ export async function settingsView(el) {
         <h2 class="sec-t" style="margin-top:.6rem">Tracciamento per i clienti</h2>
         <div class="field"><label class="l" for="st-url">Indirizzo pubblico</label><input id="st-url" data-k="public_base_url" value="${esc(s.public_base_url)}" placeholder="vuoto = rete locale (${esc(META.track_base)})" />
           <span class="hint">Quando il tracciamento sarà online (es. https://riparazioni.informatixrepair.com) scrivilo qui: i QR e i link useranno questo indirizzo.</span></div>
+        <h2 class="sec-t" style="margin-top:.6rem">Cassa</h2>
+        <div class="field"><label class="l" for="st-untr">Pagamenti “non tracciato”</label>
+          <select id="st-untr" data-k="cash_show_untracked"><option value="1" ${s.cash_show_untracked !== '0' ? 'selected' : ''}>Conteggiali nella cassa</option><option value="0" ${s.cash_show_untracked === '0' ? 'selected' : ''}>Non mostrarli nella cassa</option></select>
+          <span class="hint">Il metodo “non tracciato” si sceglie su vendite e riparazioni. Con “non mostrarli” restano salvati nel gestionale ma non entrano nei totali, nel grafico e nell’incasso di oggi.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Scheda di ingresso</h2>
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>
