@@ -9,20 +9,22 @@ const dir = mkdtempSync(join(tmpdir(), 'officina-'));
 process.env.OFFICINA_DB = join(dir, 'test.db');
 
 const { createApps } = await import('../server.mjs');
-const { db } = await import('../db.mjs');
+const { closeDb } = await import('../db-node.mjs');
+const { serve } = await import('@hono/node-server');
 
 let admin, pub, A, P;
+const listen = (app) => new Promise((r) => { const srv = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, () => r(srv)); });
 before(async () => {
   const apps = createApps();
-  await new Promise((r) => (admin = apps.admin.listen(0, '127.0.0.1', r)));
-  await new Promise((r) => (pub = apps.pub.listen(0, '127.0.0.1', r)));
+  admin = await listen(apps.admin);
+  pub = await listen(apps.pub);
   A = `http://127.0.0.1:${admin.address().port}`;
   P = `http://127.0.0.1:${pub.address().port}`;
 });
 after(() => {
   admin.close();
   pub.close();
-  db.close();
+  closeDb();
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -233,4 +235,30 @@ test('codice a barre Code 128 per le etichette', async () => {
   await a('PATCH', `/api/repairs/${r.id}`, { serial: '356938035643809' });
   assert.equal((await a('GET', '/api/repairs?q=356938035643809')).data.length, 1);
   assert.equal((await a('GET', `/api/repairs?q=${r.code}`)).data[0].id, r.id);
+});
+
+test('ricerca cliente: numero ricevuta + ultime 4 cifre del telefono', async () => {
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Anna Verdi', phone: '3395550142' }, brand_model: 'Samsung A54', problem: 'Schermo rotto' })).data;
+  const ok = await call(P, 'POST', '/api/lookup', { code: r.code, phone4: '0142' });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.token, r.token);
+  // anche scrivendo solo il numero progressivo
+  const short = await call(P, 'POST', '/api/lookup', { code: r.code.slice(-4), phone4: '0142' });
+  assert.equal(short.data.token, r.token);
+  assert.equal((await call(P, 'POST', '/api/lookup', { code: r.code, phone4: '9999' })).status, 404);
+  assert.equal((await call(P, 'POST', '/api/lookup', { code: '', phone4: '' })).status, 404);
+});
+
+test('utenti: solo email valide, il proprietario è protetto', async () => {
+  const { ensureOwner } = await import('../dbref.mjs');
+  await ensureOwner('owner@example.com');
+  const list = (await a('GET', '/api/users')).data;
+  const owner = list.find((u) => u.email === 'owner@example.com');
+  assert.ok(owner.protected);
+  assert.equal((await a('DELETE', `/api/users/${owner.id}`)).status, 409);
+  assert.equal((await a('POST', '/api/users', { email: 'non-valida' })).status, 400);
+  const u = (await a('POST', '/api/users', { email: 'Cassa@Example.com', name: 'Cassa', role: 'staff' })).data;
+  assert.equal(u.email, 'cassa@example.com');
+  assert.equal((await a('POST', '/api/users', { email: 'cassa@example.com' })).status, 409);
+  assert.equal((await a('DELETE', `/api/users/${u.id}`)).data.ok, true);
 });
