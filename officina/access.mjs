@@ -43,7 +43,13 @@ export const accessAuth = async (c, next) => {
   const payload = await verifyAccessJwt(c.req.header('Cf-Access-Jwt-Assertion'), { team, aud });
   if (!payload?.email) return c.json({ ok: false, error: 'Accesso non autorizzato.' }, 401);
   const user = await db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(String(payload.email).toLowerCase());
-  if (!user) return c.json({ ok: false, error: 'Questo indirizzo email non è abilitato. Chiedi a Christian.' }, 403);
+  if (!user) { c.set('denied_email', String(payload.email).toLowerCase()); return c.json({ ok: false, error: 'Questo indirizzo email non è abilitato. Chiedi a Christian.' }, 403); }
   c.set('user', user);
+  // nuovo accesso: primo uso dopo 6 ore di inattività
+  const last = user.last_seen_at ? Date.parse(String(user.last_seen_at).replace(' ', 'T') + 'Z') : 0;
+  if (!last || Date.now() - last > 6 * 3600 * 1000) {
+    c.set('login_event', true);
+    await db.prepare("UPDATE users SET last_seen_at = datetime('now','localtime') WHERE id = ?").run(user.id);
+  }
   await next();
 };

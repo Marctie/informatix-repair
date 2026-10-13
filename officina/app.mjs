@@ -9,6 +9,7 @@ import * as L from './logic.mjs';
 import { barcodeSvg } from './barcode.mjs';
 import { listExpenses, createExpense, updateExpense, deleteExpense, CATEGORIES, DOC_TYPES } from './expenses.mjs';
 import { buildNotaSpese } from './notaspese.mjs';
+import { notifyMiddleware } from './notify.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
@@ -24,7 +25,7 @@ const h = (fn) => async (c) => {
     return c.json(await fn({ params: c.req.param(), query: c.req.query(), body: body || {}, user: c.get('user') }));
   } catch (e) {
     const status = e.status || 500;
-    if (status === 500) console.error(e);
+    if (status === 500) { console.error(e); c.set('err', e); }
     return c.json({ ok: false, error: status === 500 ? 'Errore interno' : e.message }, status);
   }
 };
@@ -38,6 +39,7 @@ export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
 // ---------- Pubblico ----------
 export function createPublicApp() {
   const app = new Hono();
+  app.use('/api/track/*', notifyMiddleware);
   // Il sito pubblico (altro dominio) chiama la ricerca per numero ricevuta
   app.use('/api/lookup', cors({ origin: ['https://informatixrepair.com', 'https://www.informatixrepair.com'], allowMethods: ['POST', 'OPTIONS'], allowHeaders: ['content-type'] }));
   app.get('/api/track/:token', h((req) => L.publicView(req.params.token)));
@@ -50,6 +52,7 @@ export function createPublicApp() {
 // ---------- Admin ----------
 export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
   const app = new Hono();
+  app.use('*', notifyMiddleware); // prima dell'accesso: segnala anche i tentativi negati e gli errori
   if (auth) app.use('*', auth);
 
   const trackBase = async () => {
