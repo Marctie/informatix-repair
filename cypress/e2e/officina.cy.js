@@ -8,7 +8,7 @@ describe('Gestionale officina', () => {
     cy.contains('h1', 'Oggi');
     cy.contains('Nessuna riparazione aperta');
     cy.get('#new-repair').should('be.visible');
-    cy.get('#nav a').should('have.length', 8);
+    cy.get('#nav a').should('have.length', 9);
   });
 
   it('crea un fornitore e un articolo di magazzino', () => {
