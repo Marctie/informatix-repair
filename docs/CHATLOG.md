@@ -367,6 +367,31 @@ RepairDesk, RepairShopr, Vollstart Repair Desk, RepairWorkshop: ticket con stato
 - Merge in main: solo quando lo dice l'utente.
 - Prova reale su telefono (QR/link) e stampa su stampante etichette 62×30.
 
+## Sessione 2026-10-13 (4) – Stampa rapida: scheda cliente + scheda laboratorio (branch `gestionale-officina`)
+
+### Richiesta dell'utente
+Pulsante rapido per stampare, all'arrivo di un cliente, due documenti distinti: **scheda cliente** (dettagli cliente + QR per tracciare la riparazione) e **scheda laboratorio** (quella che tiene Christian: dati della riparazione + dati del cliente + altri dettagli a scelta mia). Autenticazione e messa online del tracciamento: se ne parlerà dopo (nessuna modifica fatta).
+
+### Cosa è stato fatto
+- **Pulsante "🖨️ Salva e stampa"** nel modulo di nuova riparazione (primario, rosso): salva e apre subito `/print/both/:id` (cliente = pagina 1, laboratorio = pagina 2). La finestra di stampa viene aperta durante il click per non essere bloccata dal browser; se viene bloccata compare un avviso e restano i pulsanti nella schermata finale. "Salva" semplice resta disponibile.
+- **Schermata finale** e **dettaglio riparazione**: pulsanti Stampa tutto / Scheda cliente / Scheda laboratorio / Etichetta.
+- **Scheda cliente** (`print.mjs`): dati cliente e dispositivo, accessori, problema, preventivo/acconto/saldo previsto/consegna stimata/garanzia, **QR + link di tracciamento** con spiegazione, "come funziona", condizioni e firme. **Mai il PIN** né note tecniche (verificato da test).
+- **Scheda laboratorio** (uso interno): codice e data, bollino URGENTE, cliente, **PIN/schema in riquadro**, QR del link cliente, dispositivo, problema, economico; **controllo all'ingresso** (15 voci), **"al ritiro"** (backup proposto, reset autorizzato, blocco account iCloud/Google, SIM/SD restituite, accessori contati, foto), **diagnosi** (precompilata con le note del tecnico), **lavori eseguiti**, **ricambi** (precompilati dal gestionale con costo e prezzo), tempo impiegato, tecnico, data fine lavori, **collaudo finale** (15 voci), "cliente avvisato il…", "consegnato il…".
+- **Nuovi campi/funzioni a supporto**: `urgent` (colonna aggiunta con migrazione automatica `addColumn`; checkbox "🔥 Urgente" nel modulo e chip nel dettaglio; le urgenti vanno in cima agli elenchi e hanno il bollino) e **note del tecnico** modificabili nel dettaglio (campo `tech_notes` già esistente) che finiscono sulla scheda laboratorio.
+- Percorsi: `/print/customer/:id`, `/print/lab/:id`, `/print/both/:id`, `/print/label/:id`; `/print/repair/:id` resta come alias della scheda cliente. `?noprint=1` disattiva la stampa automatica (anteprime/test).
+- Stampa A4 più compatta (font 11px, margini 12 mm) perché la scheda laboratorio stia in una pagina.
+- **Manuale** aggiornato (foglio rapido, sezione "I due fogli che escono" con le schermate delle due schede, urgente, casi particolari) e schermate rigenerate (`12-scheda-cliente`, `13-scheda-laboratorio`, `05`, `06`).
+
+### Test
+- API: 10 test OK (nuovo: PIN assente sulla scheda cliente e presente sul laboratorio, note tecniche solo in laboratorio, `noprint`, urgenti per prime).
+- Cypress (`cypress-tests`): 56 test verdi (13 officina + 43 responsive/comodità), compresi "Salva e stampa" (verifica che si apra `/print/both/…`), schede cliente/laboratorio, note del tecnico, priorità.
+- `cypress.config.js` ora include anche `cypress/tools/` nello `specPattern` (serve per lanciare il generatore di schermate con `--spec`).
+
+### Da fare
+- Discussione con l'utente su **autenticazione** (Firebase) e **messa online del tracciamento**.
+- Prova di stampa su stampante reale (A4 e etichette 62×30).
+- Possibili ritocchi alla scheda laboratorio dopo il parere di Christian (voci della checklist, spazio per le firme).
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
