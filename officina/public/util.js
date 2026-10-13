@@ -5,8 +5,9 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 export const eur = (n) => (n == null || n === '' ? '—' : Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }));
 export const fdate = (s) => (s ? new Date(s.length === 10 ? s + 'T00:00:00' : s.replace(' ', 'T')).toLocaleDateString('it-IT') : '—');
 export const fdt = (s) => (s ? new Date(s.replace(' ', 'T')).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
-export const today = () => new Date().toISOString().slice(0, 10);
-export const addDays = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+const ld = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const today = () => ld(new Date());
+export const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ld(d); };
 
 export async function api(method, path, body) {
   const res = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
@@ -38,10 +39,14 @@ export function openModal(html, { title = '', wide = false, footer = '' } = {}) 
   const root = $('#modal-root');
   const wrap = document.createElement('div');
   wrap.className = 'modal-bg fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
   wrap.innerHTML = `<div class="modal-panel bg-white w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-xl'} rounded-t-2xl sm:rounded-2xl shadow-2xl">
-    <div class="flex items-center justify-between px-5 py-3.5 border-b border-line"><h2 class="font-heading font-bold text-lg">${esc(title)}</h2>
+    <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-line"><h2 class="font-heading font-bold text-lg truncate">${esc(title)}</h2>
       <button class="btn btn-ghost btn-sm" data-close aria-label="Chiudi">✕</button></div>
-    <div class="modal-body p-5">${html}</div>${footer ? `<div class="px-5 py-3 border-t border-line flex gap-2 justify-end flex-wrap">${footer}</div>` : ''}</div>`;
+    <div class="modal-body p-4 sm:p-5">${html}</div>${footer ? `<div class="px-4 sm:px-5 py-3 border-t border-line flex gap-2 justify-end flex-wrap" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">${footer}</div>` : ''}</div>`;
   root.appendChild(wrap);
   const close = () => { wrap.remove(); modalStack = modalStack.filter((m) => m !== api2); };
   wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) close(); });
