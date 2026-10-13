@@ -83,6 +83,7 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Documenti non fiscali. Messa online e autenticazione (Firebase) da fare. Test: `npm run test:officina` (API) e `npm run test:e2e` (Cypress, solo branch `cypress-tests`, mai su main).
 - Dettagli e cronologia: CHATLOG, sessione 2026-10-13 (2).
 - **Aggiornamento 2026-10-13 (sera)**: revisione completa fatta (date locali, validazioni, telefono normalizzato, backup, KPI), interfaccia responsive per telefono/tablet/desktop, ricerca globale e scorciatoie, manuale per Christian in `officina/public/manuale.html` (con schermate generate da Cypress), avvio con `AVVIA-OFFICINA.bat`. **Nessun merge in main finché l'utente non lo dice.** Cypress: 53 test verdi su `cypress-tests` (un DB nuovo per file).
+- **Stampa rapida (2026-10-13 sera)**: "🖨️ Salva e stampa" produce scheda cliente (QR, senza PIN) + scheda laboratorio (PIN, checklist ingresso/collaudo, diagnosi, ricambi). Nuovo campo `urgent` e note del tecnico. Autenticazione e messa online: da discutere con l'utente.
 
 ## Gestionale Usati (pannello admin) — in evoluzione, vedi CHATLOG 2026-09-27 (sera)
 - **Stato 2026-10-13**: pannello locale senza login (127.0.0.1:4848) funzionante; bot Telegram scritto in `bot/` (vedi `bot/README.md`) e testato solo con Update simulati, non su Telegram reale né installato. API del gestionale: GET/POST `/api/items`, PUT/PATCH/DELETE `/api/items/:slug`, POST `/api/items/:slug/sold|unsold`.
