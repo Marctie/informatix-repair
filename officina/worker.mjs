@@ -35,13 +35,13 @@ app.use('*', async (c, next) => {
   if (new URL(c.req.url).hostname !== c.env.PUBLIC_HOST) return next();
   const path = new URL(c.req.url).pathname;
   if (path.startsWith('/api/')) return publicApp.fetch(c.req.raw, c.env, c.executionCtx);
-  if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track.html');
+  if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track');
   if (path === '/track.js') return serveAsset(c.env, c.req.raw, '/track.js');
   return c.text('Non trovato', 404);
 });
 
 // Host gestionale (e qualunque altro): dietro Access
-app.get('/t/:token', (c) => serveAsset(c.env, c.req.raw, '/track.html')); // pagina vuota del tracciamento: i dati arrivano da /api/track (pubblico)
+app.get('/t/:token', (c) => serveAsset(c.env, c.req.raw, '/track')); // pagina vuota del tracciamento: i dati arrivano da /api/track (pubblico)
 app.route('/', publicApp);
 app.route('/', adminApp);
 app.get('*', (c) => c.env.ASSETS.fetch(c.req.raw));
