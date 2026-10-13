@@ -22,7 +22,7 @@ function checkLayout(rootSel, vpWidth, label) {
     // 1) niente esce dal bordo destro dello schermo
     all.forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (el.closest('.tbl-wrap, .overflow-x-auto, .overflow-auto') ) return;
+      if (el.closest('.tbl-wrap, .overflow-x-auto, .overflow-auto, .chips-scroll')) return;
       if (r.right > vpWidth + 1) problems.push(`fuori schermo: <${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}> "${(el.textContent || '').trim().slice(0, 30)}" right=${Math.round(r.right)}`);
     });
     // 2) campi: larghezza e altezza minime
@@ -55,7 +55,7 @@ function checkLayout(rootSel, vpWidth, label) {
     // 4) contenuto che esce dal contenitore a destra (tranne aree scorrevoli)
     all.forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (el.closest('.tbl-wrap, .overflow-x-auto')) return;
+      if (el.closest('.tbl-wrap, .overflow-x-auto, .chips-scroll')) return;
       if (r.right > rootRect.right + 2 && rootRect.width > 0) problems.push(`esce dal contenitore: <${el.tagName.toLowerCase()}> "${(el.textContent || '').trim().slice(0, 24)}"`);
     });
     expect(problems, `${label}: ${problems.length} problemi grafici\n${problems.slice(0, 12).join('\n')}`).to.have.length(0);
@@ -223,7 +223,7 @@ describe('Rassegna grafica di tutte le schermate', () => {
       });
       it('finestre magazzino e fornitori', () => {
         cy.visit('/#/magazzino');
-        cy.contains('tr', 'Display iPhone 13').click();
+        cy.contains('[data-id]:visible', 'Display iPhone 13').click();
         cy.get('#pf-ok').should('be.visible');
         cy.wait(250);
         checkLayout('.modal-panel', w, `${vp}/articolo`);
