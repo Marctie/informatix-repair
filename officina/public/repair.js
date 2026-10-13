@@ -204,9 +204,9 @@ function showCreated(r, onDone) {
       <p class="text-xs text-gray-400 break-all mt-1">${esc(r.track_url)}</p>
       <div class="grid grid-cols-2 gap-2 mt-4">
         <a class="btn btn-primary btn-lg col-span-2" target="_blank" href="/print/both/${r.id}">🖨️ Stampa scheda cliente + laboratorio</a>
-        <a class="btn btn-outline" target="_blank" href="/print/customer/${r.id}">👤 Solo scheda cliente</a>
-        <a class="btn btn-outline" target="_blank" href="/print/lab/${r.id}">🔧 Solo scheda laboratorio</a>
-        <a class="btn btn-outline" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta dispositivo</a>
+        <a class="btn btn-outline btn-wrap" target="_blank" href="/print/customer/${r.id}">👤 Solo scheda cliente</a>
+        <a class="btn btn-outline btn-wrap" target="_blank" href="/print/lab/${r.id}">🔧 Solo scheda laboratorio</a>
+        <a class="btn btn-outline btn-wrap" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta dispositivo</a>
         <button class="btn btn-outline" id="cp-link">📋 Copia link</button>
         ${wa ? `<a class="btn btn-green col-span-2" target="_blank" rel="noopener" href="${wa}">💬 Invia link su WhatsApp</a>` : ''}
       </div>
@@ -315,7 +315,7 @@ export async function openRepairDetail(id, onChange) {
             <div class="plist">
               ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}</span></span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
-            ${!done ? `<div class="relative"><input id="d-part" placeholder="Aggiungi un ricambio dal magazzino (scrivi per cercare)…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>` : ''}
+            ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>` : ''}
           </section>
         </div>
       </div>
