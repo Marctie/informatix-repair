@@ -623,6 +623,30 @@ Struttura degli indirizzi: `/` = Portale, `/officina` e `/usati` nella stessa sh
 - Chi sono gli utenti 3 e 4?
 - Vuole l'autonomia piena degli utenti da dentro l'app (opzione a)?
 
+## Sessione 2026-10-13 (12) – Utenti decisi: Christian amministratore, 3 postazioni, gestione utenti solo a Christian
+
+### Decisioni dell'utente
+- **Christian = amministratore** ed è **l'unico che può fare le CRUD degli utenti** (aggiungere, modificare, disattivare, eliminare).
+- Gli altri **3 utenti sono postazioni di lavoro**: **Cassa**, **Laboratorio**, **Vendite**. Possono avere gli stessi permessi (**nessuna restrizione** sui moduli): l'unica differenza è che **non vedono né usano la gestione utenti**.
+- Le email le farà mandare da Christian; i login si configurano a fine serata.
+
+### Modello utenti (da implementare nel Worker/D1)
+- Tabella `users`: `id`, `email` (unica, minuscola), `name` (es. "Christian", "Cassa", "Laboratorio", "Vendite"), `role` (`admin` | `staff`), `active`, `protected`, `created_at`, `last_login`.
+- **Permessi**: tutti i moduli (Oggi, Riparazioni, Clienti, Magazzino, Vendite, Fornitori, Cassa, Impostazioni, Backup, Vetrina usati) per `admin` e `staff`; **solo `admin` vede la pagina "Utenti" e le API `/api/users*`**. Il controllo è **nel Worker** (risposta 403), non solo nella grafica; test automatici dedicati (staff → 403 su ogni rotta utenti, admin → ok).
+- **Regole di sicurezza**: non si può eliminare/disattivare l'ultimo amministratore né se stessi; email duplicate rifiutate; ogni modifica agli utenti viene registrata (chi, cosa, quando); un utente disattivato non entra anche se ha un codice valido.
+- **Autonomia vera di Christian** (richiesta implicita: lui crea utenti senza il pannello Cloudflare): si adotta l'opzione **(a)**: Cloudflare Access configurato su "chiunque riceva il codice via email" e **il Worker è l'unico a decidere chi entra** confrontando l'email del JWT di Access con la tabella `users` (middleware globale su **tutte** le rotte, compresi i file statici: `run_worker_first`). Test: email non in elenco → 403 ovunque; utente disattivato → 403; token scaduto/audience errata → 401. (L'alternativa (c), aggiornare la policy Access via API Cloudflare con un token, resta di riserva.)
+- **Proprietario/supporto**: da confermare se `marcopeluso99@gmail.com` resta come amministratore **protetto** (non modificabile da Christian, utile per assistenza). Senza conferma: si crea come `admin` con `protected=1`, invisibile nell'elenco ma attivo.
+- **Chi ha fatto cosa**: ogni evento della cronologia delle riparazioni, ogni vendita/incasso e ogni modifica registrano il **nome dell'utente** (Cassa, Laboratorio, Vendite, Christian): extra utile per Christian (es. "Consegnata da Cassa", "Diagnosi di Laboratorio"). Si aggiunge `user` alle tabelle `repair_events`, `sales`, `payments`.
+- **Email delle postazioni**: ogni postazione ha bisogno di un indirizzo che riceva il codice. Suggerimento: indirizzi dedicati `cassa@`, `laboratorio@`, `vendite@informatixrepair.com` creati con **Cloudflare Email Routing** (gratuito) che **inoltrano a Christian**; in alternativa email personali. Per non dover chiedere il codice ogni volta: **durata della sessione Access lunga** (fino a 1 mese, da verificare nel pannello) e dispositivi fissi "ricordati".
+- **Pagina "Utenti" (solo admin)**: elenco con nome, email, ruolo, stato, ultimo accesso; pulsanti Aggiungi, Modifica, Attiva/Disattiva, Elimina; messaggi chiari; stessa grafica del resto (design system, 44 px, accessibile); manuale aggiornato con la sezione "Utenti".
+
+### Ordine di lavoro (aggiornato)
+1) Access + Worker/D1 + tracciamento; 2) **Utenti (middleware + pagina) e Portale**; 3) sito; 4) Vetrina Usati integrata. Le **stime** del piano restano 20-30 h; Utenti completo +1,5 h (già compreso nella voce "Portale + utenti").
+
+### Aperto
+- Conferma del ruolo del proprietario (`marcopeluso99@gmail.com`): admin protetto?
+- Email delle 4 postazioni/utenti (da Christian); se usare gli alias con Email Routing.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
