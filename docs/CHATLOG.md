@@ -467,6 +467,57 @@ Oltre a fuori-schermo/sovrapposizioni/campi piccoli, misura: **padding dei campi
 ### Nota
 Il pulsante "Modifica dati" si chiama ora "Modifica"; il tasto fluttuante `#fab` non esiste più (c'è `#nav-new` nella barra).
 
+## Sessione 2026-10-13 (8) – Riepilogo generale e piano della serata (messa online con Cloudflare)
+
+### Decisione presa
+Autenticazione con **Cloudflare Access** (scelta dall'utente tra le alternative: login proprio, Supabase, Auth0/Clerk, passkey). Il gestionale resta sul **PC del negozio** e viene raggiunto tramite **Cloudflare Tunnel** (`cloudflared`).
+
+### Cosa è stato fatto (tutto su branch `gestionale-officina` e `cypress-tests`, nessun merge in main)
+- **Gestionale Vetrina Usati** (su `main`): login rimosso, solo localhost (127.0.0.1:4848); API PATCH; **bot Telegram** in `bot/` scritto e testato con messaggi simulati (non su Telegram reale, non installato).
+- **Gestionale Officina** (`officina/`, Express + node:sqlite): clienti, riparazioni, magazzino, vendite, fornitori, cassa, impostazioni, backup; tracciamento cliente con QR/link (pagina pubblica separata, porta 4951) e approvazione del preventivo online; stati e barra di avanzamento; WhatsApp precompilato; lista "Da ordinare" per fornitore.
+- **Stampa rapida**: "Salva e stampa" → scheda cliente (QR, senza PIN) + scheda laboratorio (PIN, checklist ingresso/collaudo, diagnosi, ricambi), etichetta 62×30 con codice a barre; campo "Urgente" e note del tecnico.
+- **Lettore codici a barre**: pistola USB (tastiera + Invio) per seriale/IMEI con controllo Luhn e avviso "già in archivio"; scansione a pagina libera apre la riparazione; Code 128 su etichetta e scheda; fotocamera del telefono (`scan.js`, richiede https).
+- **Grafica**: sistema di spaziatura unico, icone SVG, responsive 320–1536 px; causa dei campi "attaccati" = reset di Tailwind (corretto con `html body input…`). Controllo automatico `ui-review`.
+- **Manuale per Christian** (`officina/public/manuale.html`) con schermate reali; avvio con `AVVIA-OFFICINA.bat`.
+- **Test**: API 11; Cypress (solo branch `cypress-tests`) 175 verdi (officina 13, responsive 43, scanner 10, ui-review 109). Cypress non va mai in `main`.
+
+### PIANO DELLA SERATA – messa online
+**Domande da chiarire all'inizio (l'utente deve rispondere)**
+1. Nomi dei due indirizzi (proposta: `gestionale.informatixrepair.com` protetto, `riparazioni.informatixrepair.com` pubblico).
+2. Email autorizzate al gestionale (Christian + utente).
+3. Dove mettere il link "nascosto" nel sito pubblico (piè di pagina o logo) e **via libera a toccare `main`** (il sito pubblico è su `main`; finora: nessun merge senza suo avviso). Alternativa: preparare la modifica in un ramo a parte.
+4. Il PC del negozio resta acceso tutto il giorno? (vedi sotto: perché serve)
+
+**Io (codice, ~2-4 h)**
+1. Verifica del JWT di Cloudflare Access (`Cf-Access-Jwt-Assertion`, claim `aud`/`iss`, chiavi pubbliche del team) nel server del gestionale: seconda barriera oltre ad Access; abilitabile da variabili d'ambiente (`ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`), spenta in locale.
+2. Separare chiaramente i due host: server admin (127.0.0.1:4950) solo dietro Access; server pubblico (4951) solo `/t/:token` e `/api/track/*` + limite di richieste per IP/token (protezione da tentativi sui codici).
+3. `public_base_url` = indirizzo pubblico del tracciamento; QR e link nelle schede usano quello. Controllo del messaggio "localhost" nei QR.
+4. Contesto sicuro (https) → abilitare la fotocamera del telefono: prova reale su telefono (BarcodeDetector / ZXing).
+5. Link discreto per Christian nel sito pubblico (ramo a parte, merge solo con via libera).
+6. Test: unit test del controllo JWT (token valido/scaduto/audience errata), Cypress sul server pubblico (nessuna rotta admin raggiungibile), `ui-review` invariato.
+7. Guida passo passo per la parte Cloudflare nel manuale/README (`docs/ONLINE.md`) + aggiornamento CHATLOG/MEMORY, commit e push.
+
+**Lui/lei (Cloudflare, ~20-30 min, guidato)**
+1. Attivare **Zero Trust** (piano gratuito, fino a 50 utenti; da verificare se chiede una carta).
+2. Installare **cloudflared** sul PC del negozio come servizio Windows (parte con il PC).
+3. Creare il **Tunnel** con due hostname: gestionale → `http://localhost:4950`, riparazioni → `http://localhost:4951`.
+4. Creare l'**applicazione Access** sul solo host del gestionale: regola "Allow" con le email autorizzate; metodo: codice via email (One-time PIN) e/o Google. Copiare `Application Audience (AUD)` e il team domain.
+5. Impostare in Windows: **non sospendere mai** il PC (alimentazione) e riavvio automatico dei servizi.
+
+**Verifiche finali della serata**
+- Dal telefono su rete dati: il QR di una riparazione di prova apre la pagina cliente; il gestionale chiede il login e rifiuta email non autorizzate.
+- La pagina pubblica non espone nessuna rotta admin (verificato anche da Cypress sul server pubblico).
+- Fotocamera: lettura di un codice a barre dal telefono.
+- Backup del DB scaricato prima di cambiare configurazione.
+
+### Rischi / punti aperti
+- **PC acceso**: se si spegne, gestionale e QR non rispondono (i dati e il programma stanno sul PC; Cloudflare fa solo da portiere). Alternativa futura: spostare tutto su Cloudflare (Workers + D1) per non dipendere dal PC, oppure un mini-PC sempre acceso.
+- Fotocamera mai provata con hardware vero; pistola mai provata; stampa mai provata su carta/etichette reali.
+- Bot Telegram: serve token da BotFather e ID utente; installazione sul telefono solo su richiesta dell'utente (via ADB/Termux).
+- Vetrina Usati online: ha ancora login assente, solo locale → decidere se metterla dietro lo stesso Access.
+- Cambio orario UTC della routine blog il 25 ottobre (`0 8,17 * * *`), ripristino a marzo 2027.
+- Altri TODO storici: dati legali privacy/cookie, foto reali del negozio, redirect `.it`/`.eu`, email del `.com`, icone dell'app Android.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
