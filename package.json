@@ -13,11 +13,13 @@
     "usati": "node scripts/build-usati.mjs",
     "admin": "node admin/server.mjs",
     "officina": "node officina/server.mjs",
+    "test:e2e": "node cypress/run.mjs",
     "test:officina": "node --test officina/tests/api.test.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "autoprefixer": "^10.4.20",
+    "cypress": "^13.17.0",
     "express": "^5.2.1",
     "multer": "^2.4.0",
     "postcss": "^8.4.49",
