@@ -19,6 +19,7 @@ for (let i = 0; i < 40; i++) {
   try { if ((await fetch('http://127.0.0.1:4960/api/meta')).ok) break; } catch { /* non ancora pronto */ }
   await new Promise((r) => setTimeout(r, 250));
 }
-const args = process.argv.includes('--open') ? ['open', '--e2e'] : ['run'];
+const extra = process.argv.slice(2).filter((a) => a !== '--open');
+const args = process.argv.includes('--open') ? ['open', '--e2e', ...extra] : ['run', ...extra];
 const cy = spawn('npx', ['cypress', ...args], { env, stdio: 'inherit', shell: true });
 cy.on('exit', (code) => { stop(); setTimeout(() => process.exit(code ?? 1), 1500); });
