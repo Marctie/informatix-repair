@@ -177,7 +177,7 @@ function bindRepairList(root, reload) {
 async function dashboardView(el) {
   const d = await api('GET', '/api/dashboard');
   const section = (title, list, opts = {}) =>
-    list.length ? `<section class="card overflow-hidden mb-4"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line">${title} <span class="text-gray-400 font-normal">(${list.length})</span></h3>${list.map((r) => repairRow(r, opts)).join('')}</section>` : '';
+    list.length ? `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line">${title} <span class="text-gray-400 font-normal">(${list.length})</span></h3>${list.map((r) => repairRow(r, opts)).join('')}</section>` : '';
   const c = d.counts;
   const todo = (c.received || 0) + (c.diagnosing || 0) + (c.approved || 0) + (c.repairing || 0);
   const parts = [];
@@ -185,12 +185,12 @@ async function dashboardView(el) {
   if (c.quote_pending) parts.push(`<b>${c.quote_pending}</b> ${c.quote_pending === 1 ? 'preventivo' : 'preventivi'} da approvare`);
   if (d.late.length) parts.push(`<b class="text-secondary">${d.late.length}</b> in ritardo`);
   el.innerHTML = `
-    <div class="flex items-end justify-between gap-3 flex-wrap mb-5">
+    <div class="page-head">
       <div><h1 class="font-heading font-extrabold text-2xl">Oggi</h1>
         <p class="text-sm text-gray-500 first-letter:uppercase">${new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}${parts.length ? ' · ' + parts.join(' · ') : ''}</p></div>
       <button class="btn btn-primary btn-lg hidden sm:inline-flex lg:hidden" id="new-repair">＋ Nuova riparazione</button>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <a href="#/riparazioni?open=1" class="card kpi"><b>${todo}</b><span>Da lavorare</span></a>
       <a href="#/riparazioni?status=ready" class="card kpi"><b class="text-emerald-600">${c.ready || 0}</b><span>Pronte al ritiro</span></a>
       <a href="#/riparazioni?status=quote_pending" class="card kpi"><b class="text-amber-600">${c.quote_pending || 0}</b><span>Preventivi da approvare</span></a>
@@ -201,7 +201,7 @@ async function dashboardView(el) {
     ${section('✋ Preventivo da approvare', d.to_approve)}
     ${section('🔧 In lavorazione', d.in_progress)}
     ${section('📦 In attesa ricambi', d.waiting_parts)}
-    ${d.low_stock.length ? `<section class="card overflow-hidden mb-4"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line flex justify-between gap-2">📉 Da riordinare (${d.low_stock.length}) <a href="#/magazzino?tab=reorder" class="text-secondary text-xs font-semibold">Lista ordini →</a></h3>
+    ${d.low_stock.length ? `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line flex justify-between gap-2">📉 Da riordinare (${d.low_stock.length}) <a href="#/magazzino?tab=reorder" class="text-secondary text-xs font-semibold">Lista ordini →</a></h3>
       ${d.low_stock.slice(0, 6).map((p) => `<div class="px-4 py-2.5 border-b border-line last:border-0 text-sm flex justify-between gap-3"><span class="min-w-0 truncate">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz (min. ${p.min_qty})</span></div>`).join('')}</section>` : ''}
     ${!d.open_total ? '<div class="card empty">Nessuna riparazione aperta. Tutto in ordine 🎉<br><span class="text-xs">Quando arriva un cliente premi “Nuova riparazione”.</span></div>' : ''}`;
   $('#new-repair', el).onclick = () => newRepair();
@@ -214,12 +214,12 @@ async function repairsView(el, params) {
   let open = params.get('open') === '1' || (!status && !params.has('all'));
   let q = '';
   el.innerHTML = `
-    <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+    <div class="page-head">
       <h1 class="font-heading font-extrabold text-2xl">Riparazioni</h1>
       <button class="btn btn-primary hidden sm:inline-flex lg:hidden" id="new-repair">＋ Nuova riparazione</button>
     </div>
-    <input id="q" type="search" placeholder="Filtra per cliente, telefono, modello, codice, seriale…" class="mb-3" />
-    <div class="flex gap-2 flex-wrap chips-scroll mb-4" id="chips"></div>
+    <input id="q" type="search" placeholder="Filtra per cliente, telefono, modello, codice, seriale…" />
+    <div class="flex gap-2 flex-wrap chips-scroll" id="chips"></div>
     <div class="card overflow-hidden" id="list"></div>`;
   const chipsEl = $('#chips', el);
   const listEl = $('#list', el);
