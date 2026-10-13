@@ -123,8 +123,8 @@
   <h2>Foglio rapido</h2>
   <p class="lead">Tutto quello che serve nel 90% dei giorni. Il resto del manuale è per quando hai un dubbio.</p>
   <div class="grid">
-    <div class="box"><b><span class="k">1</span>Arriva un cliente</b>Tasto rosso <b>＋ Nuova riparazione</b> (o premi <kbd>N</kbd>). Tocca le scelte rapide, scrivi nome, telefono e modello. <b>Salva</b>.</div>
-    <div class="box"><b><span class="k">2</span>Fai vedere il QR</b>Appare il QR: il cliente lo inquadra col telefono. Stampa la scheda con QR e fagli firmare. Metti l'etichetta sul dispositivo.</div>
+    <div class="box"><b><span class="k">1</span>Arriva un cliente</b>Tasto rosso <b>＋ Nuova riparazione</b> (o premi <kbd>N</kbd>). Tocca le scelte rapide, scrivi nome, telefono e modello. Premi <b>🖨️ Salva e stampa</b>.</div>
+    <div class="box"><b><span class="k">2</span>Due fogli, un click</b>Escono la <b>scheda cliente</b> (con il QR, la firma e la copia per lui) e la <b>scheda laboratorio</b> (per te, con PIN e checklist). Fai firmare e metti l'etichetta sul dispositivo.</div>
     <div class="box"><b><span class="k">3</span>Avanza lo stato</b>In <i>Oggi</i> ogni riga ha un tasto nero col <b>prossimo passo</b>: un click e il cliente vede l'aggiornamento.</div>
     <div class="box"><b><span class="k">4</span>Avvisa con WhatsApp</b>Il tasto 💬 apre WhatsApp con il messaggio già scritto (preventivo, pronto, ritardo). Tu premi solo invio.</div>
     <div class="box"><b><span class="k">5</span>Consegna e incassa</b>Quando è pronto, tasto <b>Consegnato →</b>: controlla il totale, scegli come ha pagato, conferma. Parte la garanzia.</div>
@@ -163,17 +163,49 @@
     <li><b>Cosa lascia e in che stato.</b> Tocca gli accessori lasciati (Caricatore, Cover, SIM…) e le condizioni (Graffi, Display crepato…). Questo ti protegge in caso di contestazioni.</li>
     <li><b>PIN / schema di sblocco</b> (facoltativo): serve solo a te per provare il dispositivo. Il cliente <u>non lo vede mai</u>.</li>
     <li><b>Preventivo e tempi.</b> Se sai già il prezzo, scrivilo; se è concordato con il cliente al banco spunta <b>Già concordato</b> (parte direttamente come “approvato”). Se il cliente lascia un <b>acconto</b>, scrivilo e scegli come ha pagato. Tocca la <b>consegna stimata</b> (Domani, +3 giorni, +1 settimana…).<small>Se ancora non sai il prezzo lascia vuoto: lo metterai dopo la diagnosi.</small></li>
-    <li><b>Salva e crea scheda.</b></li>
+    <li><b>Premi “🖨️ Salva e stampa”</b> (il tasto rosso): salva la scheda e apre subito la stampa dei due documenti. Se preferisci non stampare ora, premi solo <b>Salva</b>.</li>
   </ol>
-  <figure><img src="/manuale/05-nuova-riparazione.png" alt="Nuova riparazione" loading="lazy"><figcaption>La scheda di ingresso con le scelte rapide già toccate.</figcaption></figure>
+  <figure><img src="/manuale/05-nuova-riparazione.png" alt="Nuova riparazione" loading="lazy"><figcaption>La scheda di ingresso con le scelte rapide già toccate. In basso: Salva, oppure <b>Salva e stampa</b>.</figcaption></figure>
+  <div class="call tip"><b>Cliente di fretta o lavoro urgente?</b>Spunta <b>🔥 Urgente</b> vicino alla data di consegna: la riparazione resta in cima agli elenchi e sulle schede compare il bollino rosso URGENTE.</div>
+
+  <h3>I due fogli che escono</h3>
+  <p>Si stampano insieme (<b>Stampa tutto</b>): <b>pagina 1 per il cliente, pagina 2 per te</b>. Puoi stamparli anche separati, dalla schermata finale o in qualsiasi momento dalla scheda della riparazione.</p>
+  <div class="pair">
+    <div>
+      <h3 style="margin-top:.2rem">👤 Scheda cliente</h3>
+      <ul>
+        <li>Dati del cliente e del dispositivo, accessori lasciati, problema segnalato.</li>
+        <li><b>Preventivo, acconto, saldo previsto e data di consegna.</b></li>
+        <li><b>QR per seguire la riparazione</b> dal telefono (stato in tempo reale e approvazione del preventivo).</li>
+        <li>Condizioni e firme. <u>Il PIN di sblocco non c'è mai</u>: il foglio resta in mano al cliente.</li>
+      </ul>
+      <p>Falla firmare, trattieni una copia se vuoi e consegna l'altra al cliente.</p>
+    </div>
+    <figure><img src="/manuale/12-scheda-cliente.png" alt="Scheda cliente" loading="lazy"><figcaption>La scheda cliente, con il QR.</figcaption></figure>
+  </div>
+  <div class="pair">
+    <figure><img src="/manuale/13-scheda-laboratorio.png" alt="Scheda laboratorio" loading="lazy"><figcaption>La scheda laboratorio, per te.</figcaption></figure>
+    <div>
+      <h3 style="margin-top:.2rem">🔧 Scheda laboratorio</h3>
+      <ul>
+        <li>Tutti i dati del cliente e del dispositivo, più il <b>PIN / schema di sblocco</b> in evidenza.</li>
+        <li><b>Controllo all'ingresso</b>: caselle da barrare per ciò che funziona (display, fotocamere, audio, ricarica, Wi-Fi, SIM, segni di liquido, già aperto da terzi…). Ti protegge da contestazioni.</li>
+        <li><b>Al ritiro</b>: backup proposto, reset autorizzato, blocco account (iCloud/Google) disattivato, SIM/SD restituite, accessori contati, foto fatte.</li>
+        <li><b>Diagnosi</b> (si riempie da sola con le “Note del tecnico” scritte nel gestionale), <b>lavori eseguiti</b>, <b>ricambi</b> usati con costo e prezzo, tempo impiegato, tecnico e data.</li>
+        <li><b>Collaudo finale</b> con tutte le prove da fare prima di avvisare il cliente, e gli spazi per “avvisato il…” e “consegnato il…”.</li>
+      </ul>
+      <p>Tienila nel cassetto o attaccata al dispositivo: è il tuo promemoria di lavoro.</p>
+    </div>
+  </div>
+  <div class="call warn"><b>Se la stampa non parte</b>Se il browser blocca la finestra, usa i pulsanti della schermata che compare dopo il salvataggio (“Stampa scheda cliente + laboratorio”). Nella pagina di anteprima premi <b>Stampa</b> (o <kbd>Ctrl</kbd>+<kbd>P</kbd>) e scegli la stampante. Per l'etichetta scegli la stampante etichette (formato 62×30 mm).</div>
+
   <h3>Dopo il salvataggio: la schermata del QR</h3>
   <ol class="steps">
-    <li><b>Fai inquadrare il QR</b> al cliente con la fotocamera del suo telefono: si apre la pagina dove vede lo stato della sua riparazione.</li>
-    <li><b>Stampa scheda con QR</b>: foglio con i dati, le condizioni e le firme. Fallo firmare al cliente e consegnagli una copia.</li>
+    <li><b>Fai inquadrare il QR</b> al cliente (anche direttamente dallo schermo): si apre la pagina dove vede lo stato della sua riparazione.</li>
     <li><b>Etichetta dispositivo</b>: stampa e incolla sul dispositivo (o sulla busta) così non lo confondi con altri.</li>
-    <li>Oppure premi <b>Invia link su WhatsApp</b> per mandargli il collegamento (utile se il cliente non può inquadrare il QR).</li>
+    <li>Oppure premi <b>Invia link su WhatsApp</b> per mandargli il collegamento (utile se non può inquadrare il QR).</li>
   </ol>
-  <figure><img src="/manuale/06-scheda-creata.png" alt="QR del cliente" loading="lazy"><figcaption>Il QR da mostrare al cliente, con i pulsanti per stampare e inviare.</figcaption></figure>
+  <figure><img src="/manuale/06-scheda-creata.png" alt="QR del cliente" loading="lazy"><figcaption>Il QR da mostrare al cliente, con i pulsanti per le stampe.</figcaption></figure>
   <div class="call tip"><b>Se sbagli qualcosa</b>Apri la riparazione e premi <b>✏️ Modifica dati</b>: puoi correggere cliente, modello, accessori, problema, PIN e garanzia in qualsiasi momento.</div>
   <div class="call warn"><b>Stampa non parte?</b>Si apre una pagina di anteprima: premi il pulsante <b>Stampa</b> in alto (o <kbd>Ctrl</kbd>+<kbd>P</kbd>) e scegli la stampante. Per l'etichetta scegli la tua stampante etichette (formato 62×30 mm).</div>
 </section>
@@ -324,7 +356,7 @@
     <dt>Manca un ricambio</dt>
     <dd>Stato <b>In attesa ricambi</b> + messaggio al cliente (“Arriva giovedì”). Quando arriva, torna a <b>In riparazione</b>. Nel Magazzino registra il carico.</dd>
     <dt>Il cliente ha perso la ricevuta</dt>
-    <dd>Cercalo per nome o telefono in alto, apri la scheda e ristampa la <b>🖨️ Scheda</b> o rimanda il link su WhatsApp.</dd>
+    <dd>Cercalo per nome o telefono in alto, apri la scheda e ristampa la <b>👤 Scheda cliente</b> (o <b>🖨️ Stampa tutto</b>) oppure rimanda il link su WhatsApp.</dd>
     <dt>Ho sbagliato a cliccare lo stato</dt>
     <dd>Scegli lo stato giusto da “Cambia stato…” nella scheda. Una riparazione già <b>consegnata</b> non si può più riaprire: in quel caso crea una nuova riparazione.</dd>
     <dt>Un cliente è doppio</dt>
