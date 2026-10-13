@@ -66,6 +66,7 @@ async function saveBackup(env) {
   const list = await env.BACKUPS.list({ prefix: 'officina-' });
   const old = list.objects.map((o) => o.key).sort().slice(0, -30);
   if (old.length) await env.BACKUPS.delete(old);
+  console.log(`Backup salvato: ${key} (${list.objects.length} copie)`);
   return key;
 }
 
