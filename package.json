@@ -11,7 +11,9 @@
     "cap:open": "npx cap open android",
     "blog": "node scripts/build-blog.mjs",
     "usati": "node scripts/build-usati.mjs",
-    "admin": "node admin/server.mjs"
+    "admin": "node admin/server.mjs",
+    "officina": "node officina/server.mjs",
+    "test:officina": "node --test officina/tests/api.test.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
@@ -29,6 +31,7 @@
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@fontsource/inter": "^5.3.0",
-    "@fontsource/poppins": "^5.3.0"
+    "@fontsource/poppins": "^5.3.0",
+    "qrcode": "^1.5.4"
   }
 }

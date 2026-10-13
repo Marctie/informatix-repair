@@ -12,3 +12,5 @@ dist
 /bot/.venv
 /bot/.env
 __pycache__/
+# Gestionale officina (dati locali: clienti, riparazioni, ecc.)
+/officina/data/
