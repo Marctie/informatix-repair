@@ -58,6 +58,47 @@ function checkLayout(rootSel, vpWidth, label) {
       if (el.closest('.tbl-wrap, .overflow-x-auto, .chips-scroll')) return;
       if (r.right > rootRect.right + 2 && rootRect.width > 0) problems.push(`esce dal contenitore: <${el.tagName.toLowerCase()}> "${(el.textContent || '').trim().slice(0, 24)}"`);
     });
+    // 5) QUALITÀ DELLO STILE (errori "elementari"): testo attaccato al bordo, caratteri minuscoli, altezze incoerenti, spazi irregolari
+    const px = (v) => parseFloat(v) || 0;
+    all.filter((el) => el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),select,textarea')).forEach((el) => {
+      const cs = win.getComputedStyle(el);
+      const name = `#${el.id || el.name || el.placeholder}`;
+      if (px(cs.paddingLeft) < 10) problems.push(`testo attaccato al bordo sinistro nel campo ${name} (padding ${cs.paddingLeft})`);
+      if (el.tagName !== 'TEXTAREA' && px(cs.paddingTop) < 6) problems.push(`campo ${name} senza spazio sopra/sotto il testo (padding ${cs.paddingTop})`);
+      if (px(cs.fontSize) < 14) problems.push(`testo troppo piccolo nel campo ${name} (${cs.fontSize})`);
+      if (px(cs.borderTopWidth) < 1) problems.push(`campo ${name} senza bordo`);
+      if (el.tagName !== 'TEXTAREA' && el.getBoundingClientRect().height < 40) problems.push(`campo ${name} troppo basso (${Math.round(el.getBoundingClientRect().height)}px)`);
+    });
+    all.filter((el) => el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())).forEach((el) => {
+      const fs = px(win.getComputedStyle(el).fontSize);
+      if (fs < 10.5 && !el.closest('kbd')) problems.push(`carattere troppo piccolo (${fs}px): "${el.textContent.trim().slice(0, 24)}"`);
+    });
+    // righe con campo + pulsante: stessa altezza
+    $root[0].querySelectorAll('.row.nowrap').forEach((row) => {
+      const hs = [...row.children].filter((c) => c.getBoundingClientRect().height > 0).map((c) => Math.round(c.getBoundingClientRect().height));
+      if (hs.length > 1 && Math.max(...hs) - Math.min(...hs) > 1) problems.push(`altezze diverse nella riga campo+pulsante: ${hs.join(' / ')}`);
+    });
+    // etichetta -> campo: distanza regolare
+    $root[0].querySelectorAll('.field').forEach((f) => {
+      const lab = f.querySelector(':scope > label.l');
+      const ctl = f.querySelector(':scope > input:not([type=checkbox]),:scope > select,:scope > textarea,:scope > .row,:scope > .check');
+      if (!lab || !ctl || lab.getBoundingClientRect().height === 0) return;
+      const gap = ctl.getBoundingClientRect().top - lab.getBoundingClientRect().bottom;
+      if (gap < 3 || gap > 12) problems.push(`distanza etichetta-campo irregolare (${Math.round(gap)}px): "${lab.textContent.trim().slice(0, 20)}"`);
+    });
+    // sezioni consecutive: spazio verticale regolare (almeno 20px, non più di 70px)
+    $root[0].querySelectorAll('.sec + .sec').forEach((sec) => {
+      const prev = sec.previousElementSibling;
+      const gap = sec.getBoundingClientRect().top - prev.getBoundingClientRect().bottom;
+      if (prev.getBoundingClientRect().height > 0 && sec.getBoundingClientRect().height > 0 && (gap < 20 || gap > 70)) problems.push(`spazio tra sezioni irregolare (${Math.round(gap)}px) prima di "${(sec.querySelector('.sec-t') || sec).textContent.trim().slice(0, 24)}"`);
+    });
+    // gruppi di chip / pulsanti seguiti da un'etichetta o un campo: almeno 10px di distanza
+    $root[0].querySelectorAll('.row').forEach((row) => {
+      const next = row.nextElementSibling;
+      if (!next || row.getBoundingClientRect().height === 0 || next.getBoundingClientRect().height === 0 || row.parentElement.classList.contains('row')) return;
+      const gap = next.getBoundingClientRect().top - row.getBoundingClientRect().bottom;
+      if (gap < 8 && !row.closest('.nowrap')) problems.push(`elementi troppo vicini (${Math.round(gap)}px) dopo "${(row.textContent || '').trim().slice(0, 24)}"`);
+    });
     expect(problems, `${label}: ${problems.length} problemi grafici\n${problems.slice(0, 12).join('\n')}`).to.have.length(0);
   });
 }
