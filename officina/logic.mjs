@@ -538,3 +538,45 @@ export async function analytics(from, to) {
     sales: { count: sales.n, revenue: money(sales.s), avg_ticket: sales.n ? money(sales.s / sales.n) : 0, top: sold.slice(0, 10), bottom: sold.length > 10 ? sold.slice(-5).reverse() : [], parts_used: used.slice(0, 10) },
   };
 }
+
+// ---------- Avvisi (campanella e home) ----------
+// Soglie da Impostazioni: low_stock_default (scorta minima generale per i prodotti senza soglia propria, 0 = spenta),
+// stale_days (giorni senza uscite prima di segnalare un prodotto fermo, 0 = spenta), ready_days (pronte non ritirate).
+export async function alerts() {
+  const s = await getSettings();
+  const globalMin = Math.max(0, Number(s.low_stock_default) || 0);
+  const staleDays = Math.max(0, Number(s.stale_days) || 0);
+  const readyDays = Math.max(0, Number(s.ready_days) || 0);
+  const today = localDate();
+  const ago = (ymd) => (ymd ? daysBetween(String(ymd).slice(0, 10), today) - 1 : null);
+  const out = [];
+
+  const prods = await db.prepare(`SELECT p.*, s.name AS supplier_name,
+    (SELECT MAX(d) FROM (
+       SELECT MAX(m.created_at) AS d FROM stock_moves m WHERE m.product_id = p.id AND m.delta < 0
+       UNION ALL SELECT MAX(sa.created_at) FROM sale_items si JOIN sales sa ON sa.id = si.sale_id WHERE si.product_id = p.id
+       UNION ALL SELECT MAX(r.created_at) FROM repair_parts rp JOIN repairs r ON r.id = rp.repair_id WHERE rp.product_id = p.id)) AS last_out
+    FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id WHERE p.active = 1`).all();
+  for (const p of prods) {
+    const min = p.min_qty > 0 ? p.min_qty : globalMin;
+    const where = p.supplier_name ? ` (fornitore: ${p.supplier_name})` : '';
+    if (p.qty <= 0) out.push({ type: 'out_of_stock', severity: 'high', title: `${p.name}: esaurito`, detail: `Da riordinare${where}.`, link: '#/magazzino?tab=reorder', ref: p.id });
+    else if (min > 0 && p.qty <= min) out.push({ type: 'low_stock', severity: 'medium', title: `${p.name}: sta per esaurirsi`, detail: `Restano ${p.qty} pezzi (soglia ${min}). Da riordinare${where}.`, link: '#/magazzino?tab=reorder', ref: p.id });
+    else if (staleDays && p.qty > 0) {
+      const since = ago(p.last_out || p.created_at);
+      if (since != null && since >= staleDays) out.push({ type: 'stale', severity: 'low', title: `${p.name}: fermo da ${since} giorni`, detail: `Giacenza ${p.qty} pezzi, nessuna vendita o uso da ${since} giorni. Valuta un’offerta o controlla il prezzo di vendita (${money(p.price).toFixed(2)} €).`, link: '#/magazzino', ref: p.id });
+    }
+  }
+  const open = await listRepairs({ open: true });
+  for (const r of open) {
+    if (r.late) out.push({ type: 'late', severity: 'high', title: `${r.brand_model}: in ritardo`, detail: `${r.customer_name} · ${r.code} · data stimata ${r.eta_date}.`, link: `#/riparazioni?status=${r.status}`, ref: r.id });
+    if (r.quote_decision === 'declined') out.push({ type: 'declined', severity: 'medium', title: `${r.brand_model}: preventivo rifiutato`, detail: `${r.customer_name} ha rifiutato il preventivo: contattalo.`, link: '#/riparazioni?status=quote_pending', ref: r.id });
+    if (readyDays && r.status === 'ready') {
+      const since = ago(r.updated_at);
+      if (since != null && since >= readyDays) out.push({ type: 'ready_waiting', severity: 'low', title: `${r.brand_model}: pronta da ${since} giorni`, detail: `${r.customer_name} non l’ha ancora ritirata: ricordaglielo.`, link: '#/riparazioni?status=ready', ref: r.id });
+    }
+  }
+  const rank = { high: 0, medium: 1, low: 2 };
+  out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+  return { count: out.length, high: out.filter((x) => x.severity === 'high').length, items: out };
+}
