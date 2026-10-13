@@ -1,5 +1,6 @@
 // Accettazione veloce di una riparazione e scheda di dettaglio.
-import { $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
+import { scanWithCamera } from './scan.js';
+import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
 
 const DEVICE_TYPES = [['smartphone', '📱 Smartphone'], ['tablet', 'Tablet'], ['portatile', '💻 Portatile'], ['pc', '🖥️ PC fisso'], ['console', '🎮 Console'], ['altro', 'Altro']];
 const PROBLEMS = ['Schermo rotto', 'Batteria', 'Non si accende', 'Non carica', 'Lento / software', 'Acqua / liquido', 'Audio / microfono', 'Fotocamera'];
@@ -29,7 +30,9 @@ export function openRepairForm(onDone, preset = {}) {
       <div class="flex gap-2 flex-wrap mb-2" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div><label class="l">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
-        <div><label class="l">Seriale / IMEI</label><input id="rf-serial" /></div>
+        <div><label class="l">Seriale / IMEI <span class="font-normal text-gray-400">(spara col lettore)</span></label>
+          <div class="flex gap-2"><input id="rf-serial" autocomplete="off" placeholder="Scansiona o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
+          <div id="rf-serial-hint" class="text-xs mt-1 min-h-[1rem]"></div></div>
       </div>
 
       <div class="sec-t">Problema segnalato *</div>
@@ -77,6 +80,47 @@ export function openRepairForm(onDone, preset = {}) {
     const c = e.target.closest('[data-d]'); if (!c) return;
     $('#rf-etadate', root).value = addDays(Number(c.dataset.d));
   };
+
+  // seriale / IMEI: lettore di codici a barre (tastiera veloce + Invio), fotocamera, controlli
+  const serial = $('#rf-serial', root);
+  const hint = $('#rf-serial-hint', root);
+  serial.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#rf-problem', root).focus(); } });
+  const checkSerial = debounce(async () => {
+    const v = serial.value.trim();
+    hint.innerHTML = '';
+    if (v.length < 5) return;
+    const parts = [];
+    const ok = imeiCheck(v);
+    if (ok === true) parts.push('<span class="text-emerald-600">✔ IMEI valido</span>');
+    if (ok === false) parts.push('<span class="text-amber-600">⚠ IMEI non valido: controlla la lettura</span>');
+    const list = await safe(() => api('GET', `/api/repairs?q=${encodeURIComponent(v)}`));
+    if (!root.isConnected) return;
+    const same = (list || []).filter((r) => r.serial && r.serial.toLowerCase() === v.toLowerCase());
+    if (same.length) parts.push(`<button type="button" class="underline text-secondary text-left" data-prev="${same[0].id}">⚠ Già in archivio: ${esc(same[0].code)} · ${esc(same[0].customer_name)} (${esc(same[0].status_label)}): apri</button>`);
+    hint.innerHTML = parts.join(' · ');
+  }, 250);
+  serial.addEventListener('input', checkSerial);
+  if (serial.value) checkSerial();
+  hint.addEventListener('click', (e) => { const b = e.target.closest('[data-prev]'); if (b) openRepairDetail(Number(b.dataset.prev)); });
+  $('#rf-cam', root).onclick = async () => {
+    const v = await scanWithCamera();
+    if (v) { serial.value = v; serial.dispatchEvent(new Event('input')); toast(`Letto: ${v}`); }
+  };
+
+  // Se la pistola spara mentre è selezionata un'altra casella (di solito la ricerca cliente, che si apre già attiva),
+  // il codice letto viene spostato nel seriale: niente da ricopiare.
+  root.addEventListener('keydown', (e) => {
+    if (!isScanEnter(e) || e.target === serial || !e.target.matches('input')) return;
+    e.preventDefault();
+    const code = e.target.value.trim();
+    if (!code) return;
+    e.target.value = '';
+    sugg.classList.add('hidden');
+    serial.value = code;
+    serial.dispatchEvent(new Event('input'));
+    toast(`Letto: ${code}`);
+    $('#rf-problem', root).focus();
+  }, true);
 
   // ricerca cliente esistente
   const sugg = $('#rf-sugg', root);

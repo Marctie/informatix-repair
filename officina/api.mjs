@@ -8,6 +8,7 @@ import { rmSync } from 'node:fs';
 import QRCode from 'qrcode';
 import { db, getSettings, tx } from './db.mjs';
 import * as L from './logic.mjs';
+import { barcodeSvg } from './barcode.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const wrap = (fn) => async (req, res) => {
@@ -71,6 +72,13 @@ A.get('/api/qr', async (req, res) => {
   } catch (e) {
     res.status(400).end();
   }
+});
+
+// Codice a barre (Code 128) di un testo: per le etichette
+A.get('/api/barcode', (req, res) => {
+  const text = String(req.query.text || '').slice(0, 60);
+  if (!text) return res.status(400).end();
+  res.type('image/svg+xml').send(barcodeSvg(text));
 });
 
 // Clienti
