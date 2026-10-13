@@ -392,6 +392,32 @@ Pulsante rapido per stampare, all'arrivo di un cliente, due documenti distinti: 
 - Prova di stampa su stampante reale (A4 e etichette 62×30).
 - Possibili ritocchi alla scheda laboratorio dopo il parere di Christian (voci della checklist, spazio per le firme).
 
+## Sessione 2026-10-13 (5) – Lettore di codici a barre (pistola) e fotocamera (branch `gestionale-officina`)
+
+### Richiesta dell'utente
+Che Christian possa scansionare il seriale/IMEI con una **pistola per codici a barre**; poi, a seguire: e dal telefono, con la **fotocamera**?
+
+### Come funziona la pistola (nessun driver)
+Le pistole USB sono una "tastiera velocissima" che scrive il codice e preme Invio. Il gestionale riconosce la raffica (≥4 caratteri con meno di 50 ms tra uno e l'altro, poi Invio):
+- **Modulo nuova riparazione**: il campo *Seriale / IMEI* gestisce l'Invio finale (non invia nulla, passa al problema). Se la lettura arriva in un'altra casella (tipicamente la ricerca cliente, che è selezionata all'apertura) viene **spostata nel seriale**.
+- Il seriale viene controllato: IMEI di 15 cifre → algoritmo di **Luhn** ("✔ IMEI valido" / "⚠ non valido"); se quel seriale è **già in archivio** compare l'avviso con il pulsante per aprire la riparazione precedente (cliente che torna, garanzia).
+- **Pagina libera** (nessun campo selezionato): la lettura apre la riparazione che ha quel seriale o quel codice (R-AAAA-NNNN); più risultati → ricerca; nessun risultato → propone una nuova riparazione con quel seriale precompilato. Le scorciatoie `N` e `/` funzionano ancora (un tasto solo ≠ lettura: attesa di 130 ms).
+- **Ricerca in alto**: Invio con un solo risultato apre la scheda.
+- **Codice a barre Code 128** del numero riparazione stampato su **etichetta** (62×30 mm) e **scheda laboratorio**: la pistola lo legge e si apre la riparazione. Encoder scritto a mano (`officina/barcode.mjs`, nessuna dipendenza) e **verificato identico** alla libreria di riferimento JsBarcode su 5 stringhe (confronto fatto in una cartella temporanea, non nel repo); endpoint `GET /api/barcode?text=`.
+
+### Fotocamera (telefono/tablet)
+- Pulsante 📷 accanto al seriale e nella barra in alto sui dispositivi piccoli (`officina/public/scan.js`): usa `BarcodeDetector` del browser (Chrome/Android) e, dove manca (Safari iPhone), la libreria ZXing caricata al bisogno da jsDelivr.
+- **Limiti onesti**: (1) il browser consente la fotocamera solo in contesto sicuro (**https** o localhost); (2) oggi il gestionale gira solo sul PC (127.0.0.1) e non è raggiungibile dal telefono. Quindi la fotocamera **funzionerà solo dopo la messa online con https e l'autenticazione** (punto in discussione con l'utente). Senza contesto sicuro il pulsante spiega cosa fare (usare la pistola). **Non testata con una fotocamera vera** (Cypress verifica solo pulsante e messaggio); il ramo ZXing è anch'esso non provato.
+
+### Test
+- API: 11 test OK (nuovo: struttura Code128, endpoint, barcode in etichetta e scheda lab, ricerca per seriale/codice).
+- Cypress (`cypress-tests`, nuovo `scanner.cy.js`, 10 test, lettura simulata con `type({delay:0})`): IMEI valido/non valido, Invio che non perde il modulo, seriale già in archivio, lettura nella casella cliente → seriale, lettura a pagina libera per seriale e per codice, codice sconosciuto → nuova riparazione, ricerca con Invio, scorciatoie intatte, barcode in etichetta/scheda, pulsante fotocamera e messaggio. Totale suite: **66 test verdi** (13 + 43 + 10).
+- Manuale aggiornato: capitolo sulla pistola (uso, impostazione "tastiera + Invio finale", problemi comuni), nota sulla fotocamera, scorciatoie.
+
+### Da fare
+- Provare con una pistola vera (modello? impostazione tastiera italiana e suffisso Invio).
+- Fotocamera: provare dopo la messa online https; valutare l'ingresso da telefono con autenticazione.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".

@@ -128,6 +128,7 @@
     <div class="box"><b><span class="k">3</span>Avanza lo stato</b>In <i>Oggi</i> ogni riga ha un tasto nero col <b>prossimo passo</b>: un click e il cliente vede l'aggiornamento.</div>
     <div class="box"><b><span class="k">4</span>Avvisa con WhatsApp</b>Il tasto 💬 apre WhatsApp con il messaggio già scritto (preventivo, pronto, ritardo). Tu premi solo invio.</div>
     <div class="box"><b><span class="k">5</span>Consegna e incassa</b>Quando è pronto, tasto <b>Consegnato →</b>: controlla il totale, scegli come ha pagato, conferma. Parte la garanzia.</div>
+    <div class="box"><b><span class="k">★</span>Pistola codici a barre</b>Nella nuova riparazione spara sull'IMEI: finisce nella casella giusta. In qualsiasi altro momento, spara sul codice dell'etichetta (o sull'IMEI): si apre la riparazione.</div>
     <div class="box"><b><span class="k">6</span>Ogni settimana</b><i>Impostazioni → Scarica backup</i> e copialo su chiavetta o cloud. Sono tutti i tuoi dati.</div>
   </div>
   <div class="call warn" style="margin-top:1rem"><b>Da ricordare</b>Il link/QR del cliente, per ora, si apre <u>solo se il suo telefono è collegato al Wi-Fi del negozio</u>. Fuori dal negozio non funziona finché il sistema non sarà messo online: nel frattempo avvisalo con WhatsApp (tasto 💬).</div>
@@ -158,7 +159,7 @@
   <ol class="steps">
     <li><b>Premi “＋ Nuova riparazione”</b> (oppure <kbd>N</kbd>).</li>
     <li><b>Cliente.</b> Se è già stato da te, scrivi nome o telefono nella casella in alto e toccalo nell'elenco. Altrimenti compila <b>Nome</b> e <b>Telefono</b> (l'email è facoltativa).<small>Il telefono è importante: serve per WhatsApp e per riconoscere i clienti che tornano. Anche se lo scrivi in modi diversi (+39 333… / 333…) il programma capisce che è lo stesso numero.</small></li>
-    <li><b>Dispositivo.</b> Tocca il tipo (Smartphone, Tablet, Portatile…) e scrivi <b>marca e modello</b> (“iPhone 13”). Il seriale/IMEI è facoltativo ma utile.</li>
+    <li><b>Dispositivo.</b> Tocca il tipo (Smartphone, Tablet, Portatile…) e scrivi <b>marca e modello</b> (“iPhone 13”). <b>Seriale/IMEI</b>: <u>spara con la pistola</u> sul codice a barre della scatola o dell'etichetta del dispositivo (vedi sotto). Se non hai la pistola scrivilo a mano: è facoltativo ma utile.</li>
     <li><b>Problema.</b> Tocca le scelte rapide (“Schermo rotto”, “Non carica”…) e, se serve, aggiungi due parole a mano.</li>
     <li><b>Cosa lascia e in che stato.</b> Tocca gli accessori lasciati (Caricatore, Cover, SIM…) e le condizioni (Graffi, Display crepato…). Questo ti protegge in caso di contestazioni.</li>
     <li><b>PIN / schema di sblocco</b> (facoltativo): serve solo a te per provare il dispositivo. Il cliente <u>non lo vede mai</u>.</li>
@@ -198,6 +199,18 @@
     </div>
   </div>
   <div class="call warn"><b>Se la stampa non parte</b>Se il browser blocca la finestra, usa i pulsanti della schermata che compare dopo il salvataggio (“Stampa scheda cliente + laboratorio”). Nella pagina di anteprima premi <b>Stampa</b> (o <kbd>Ctrl</kbd>+<kbd>P</kbd>) e scegli la stampante. Per l'etichetta scegli la stampante etichette (formato 62×30 mm).</div>
+
+  <h3>Il lettore di codici a barre (la pistola)</h3>
+  <p>La pistola funziona come una tastiera velocissima: legge il codice, lo "scrive" da sola e preme Invio. Non serve installare nulla: basta collegarla al PC.</p>
+  <ul>
+    <li><b>All'accettazione</b>: apri “Nuova riparazione”, punta la pistola sull'<b>IMEI o sul seriale</b> (sulla scatola, sull'etichetta sotto il telefono, o dalle impostazioni digitando *#06#) e premi il grilletto. Il codice va nel campo <i>Seriale / IMEI</i> anche se avevi il cursore in un'altra casella (per esempio la ricerca cliente). Il programma:
+      <ul><li>controlla se un <b>IMEI</b> è valido (“✔ IMEI valido” oppure “⚠ non valido: controlla la lettura”);</li>
+          <li>ti avvisa se quel dispositivo è <b>già in archivio</b> (“⚠ Già in archivio: R-… · nome cliente”): è un cliente che torna, magari in garanzia. Un click e apri la riparazione precedente.</li></ul></li>
+    <li><b>Per ritrovare una riparazione</b>: in qualsiasi pagina, senza cliccare in nessuna casella, spara sul <b>codice a barre dell'etichetta</b> (o sull'IMEI/seriale del dispositivo): si apre subito la scheda. Se il codice non c'è ancora, ti propone di aprire una nuova riparazione con quel seriale.</li>
+    <li><b>Codice a barre stampato</b>: l'<b>etichetta</b> e la <b>scheda laboratorio</b> riportano il codice a barre del numero riparazione (R-2026-0001…): incolla l'etichetta sul dispositivo e, quando lo riprendi in mano, basta uno sparo.</li>
+  </ul>
+  <div class="call tip"><b>Come deve essere impostata la pistola</b>Deve essere in modalità “tastiera” (USB HID, di solito è quella predefinita) e <u>terminare con Invio</u>. Se dopo uno sparo il codice si scrive ma non succede nulla, o va a capo in modo strano, nel libretto della pistola c'è un codice da leggere per attivare il “suffisso Invio / CR”. Se invece non scrive proprio nulla, prova un altro cavo/porta USB.</div>
+  <div class="call warn"><b>Con la fotocamera del telefono</b>Sul telefono compare il pulsante <b>📷</b> (nella ricerca in alto e accanto al seriale) per leggere un codice con la fotocamera. Funziona <u>solo quando il gestionale sarà online con connessione sicura (https)</u> e raggiungibile dal telefono: oggi è solo sul PC, quindi usa la pistola. Su iPhone potrebbe servire un secondo caricamento del lettore al primo uso.</div>
 
   <h3>Dopo il salvataggio: la schermata del QR</h3>
   <ol class="steps">
@@ -398,6 +411,10 @@
     <dd>Serve WhatsApp Web/Desktop collegato sul PC. Se il cliente non ha il telefono nella scheda, il tasto 💬 non compare: aggiungilo con ✏️ Modifica dati.</dd>
     <dt>Il magazzino mostra un numero negativo</dt>
     <dd>Hai venduto o assegnato più pezzi di quelli registrati. Fai un <b>Registra carico</b> con la quantità giusta, oppure usa −1/+1.</dd>
+    <dt>La pistola non scrive niente, o scrive caratteri strani</dt>
+    <dd>Verifica che sia collegata e in modalità tastiera (USB HID). Se i caratteri sono sbagliati (es. lettere al posto dei numeri) la tastiera del PC è su una lingua diversa dall'italiano: imposta la pistola per tastiera “italiana” seguendo il suo libretto.</dd>
+    <dt>Dopo lo sparo non succede nulla</dt>
+    <dd>Manca il “suffisso Invio” sulla pistola (vedi il riquadro nel capitolo 2). Nel frattempo premi Invio a mano dopo lo sparo.</dd>
     <dt>Ho chiuso per sbaglio la finestra nera</dt>
     <dd>Nessun problema: i dati sono al sicuro. Rilancia AVVIA-OFFICINA.</dd>
   </dl>
@@ -409,6 +426,7 @@
     <tbody>
       <tr><td><kbd>N</kbd></td><td>Nuova riparazione (da qualsiasi pagina)</td></tr>
       <tr><td><kbd>/</kbd></td><td>Vai alla ricerca</td></tr>
+      <tr><td>🔫 sparo</td><td>Con la pagina libera: apre la riparazione col codice letto. Nel modulo di nuova riparazione: riempie il seriale/IMEI</td></tr>
       <tr><td><kbd>Esc</kbd></td><td>Chiudi la finestra aperta</td></tr>
       <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Stampa la pagina di stampa aperta</td></tr>
     </tbody>
