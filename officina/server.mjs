@@ -15,7 +15,8 @@ process.env.PUBLIC_PORT = String(PUBLIC_PORT);
 export function createApps() {
   // --- Admin: solo localhost ---
   const admin = express();
-  admin.use(express.static(join(HERE, 'public')));
+  // no-cache: il browser ricontrolla sempre i file (le modifiche allo stile si vedono subito, senza svuotare la cache)
+  admin.use(express.static(join(HERE, 'public'), { etag: true, setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') }));
   admin.use(adminRouter);
   admin.use(publicRouter); // anteprima dello stesso tracciamento
   admin.get('/t/:token', (req, res) => res.sendFile(join(HERE, 'public', 'track.html')));
