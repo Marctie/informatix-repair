@@ -699,3 +699,8 @@ Note tecniche: lettura PDF nel browser (pdf.js), schermata di revisione prima di
 
 ## Aggiunta (2026-10-13, notte) – Pagamento "non tracciato" e opzione cassa
 - Nuovo metodo di pagamento **"non tracciato"** su vendite, saldo/acconto riparazioni. Impostazioni → Cassa: "Conteggiali nella cassa" (default) oppure "Non mostrarli nella cassa" (setting `cash_show_untracked`). I pagamenti restano SEMPRE salvati nel database (magazzino e riparazioni coerenti); se esclusi non entrano in totali, grafico e incasso di oggi, e la Cassa mostra una nota col numero di pagamenti esclusi. Test API: 15 verdi.
+
+## Nuovo sviluppo richiesto (2026-10-13, notte) – Rotazione prodotti e invenduto (in coda, con l'import fornitori)
+- Grafico dei prodotti **piu' richiesti / meno richiesti** (pezzi venduti e usati nelle riparazioni nel periodo).
+- **Allarme "invenduto"**: se un prodotto in magazzino non si muove da troppo tempo (soglia in Impostazioni, globale e per prodotto) -> avviso in home/Notifiche con suggerimento "crea un'offerta" o "controlla il prezzo di vendita".
+- Dati gia' presenti: `sale_items`, `repair_parts`, `stock_moves`; serve solo calcolo "ultimo movimento di uscita" e vendite per periodo. Bozza grafico acquisti di Christian: punti etichettati "Fornitore · prezzo" nel tempo, anche tra fornitori diversi per lo stesso prodotto (da confermare con lui).
