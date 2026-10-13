@@ -44,6 +44,10 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 ### Pagamento "non tracciato"
 24. Il funzionamento attuale va bene? (Il pagamento resta salvato; in Impostazioni → Cassa scegli se conteggiarlo nei totali o no.)
 
+### Nota spese (PDF)
+34. La nota spese che ho creato (spese del negozio e rimborsi, con firme) e' quella che immaginavi, o ti serve un documento diverso (per esempio una nota spese verso un cliente)?
+35. Mancano campi o categorie di spesa? Vuoi inviarla anche per email al commercialista?
+
 ## Per Marco
 
 25. **Sito pubblico in `main`**: via libera esplicito a mettere online "Segui la tua riparazione" e il link "Area riservata" (branch `sito-segui-riparazione`)?

@@ -18,6 +18,7 @@ const addColumn = (table, column, ddl) => {
   if (!cols.includes(column)) raw.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
 };
 addColumn('repairs', 'urgent', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'last_seen_at', 'TEXT');
 
 let depth = 0;
 setDb({

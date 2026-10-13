@@ -6,6 +6,7 @@ import { useD1 } from './db-d1.mjs';
 import { ensureDefaults, ensureOwner } from './dbref.mjs';
 import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
+import { sendTelegram } from './notify.mjs';
 
 const adminApp = createAdminApp({ auth: accessAuth, trackBaseFallback: () => globalThis.__PUBLIC_BASE__ });
 const publicApp = createPublicApp();
@@ -28,6 +29,13 @@ async function init(env) {
 }
 
 const app = new Hono();
+app.onError(async (err, c) => {
+  console.error(err);
+  try { c.executionCtx.waitUntil(sendTelegram(c.env, `🔴 <b>ERRORE non gestito</b>
+${c.req.method} ${new URL(c.req.url).pathname}
+<code>${String(err.message || err).slice(0, 500)}</code>`)); } catch { /* ignora */ }
+  return c.json({ ok: false, error: 'Errore interno' }, 500);
+});
 app.use('*', async (c, next) => { await init(c.env); await next(); });
 
 // Host pubblico: SOLO tracciamento
@@ -75,6 +83,13 @@ export default {
   // Backup giornaliero (cron) nel bucket R2
   async scheduled(event, env) {
     await init(env);
-    await saveBackup(env);
+    try {
+      const key = await saveBackup(env);
+      await sendTelegram(env, key ? `💾 <b>Backup notturno completato</b>\n${key}` : '⚠️ <b>Backup notturno non eseguito</b>\nArchivio R2 non collegato.');
+    } catch (e) {
+      await sendTelegram(env, `🔴 <b>ERRORE nel backup notturno</b>
+<code>${String(e.message || e).slice(0, 500)}</code>`);
+      throw e;
+    }
   },
 };
