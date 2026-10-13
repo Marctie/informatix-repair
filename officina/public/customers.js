@@ -4,9 +4,9 @@ import { openRepairForm, openRepairDetail } from './repair.js';
 
 export async function customersView(el) {
   el.innerHTML = `
-    <div class="flex items-center justify-between gap-3 flex-wrap mb-4"><h1 class="font-heading font-extrabold text-2xl">Clienti</h1>
+    <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Clienti</h1>
       <button class="btn btn-primary" id="c-new">＋ Nuovo cliente</button></div>
-    <input id="c-q" placeholder="Cerca per nome, telefono o email…" class="mb-4" />
+    <input id="c-q" placeholder="Cerca per nome, telefono o email…" />
     <div class="card overflow-hidden" id="c-list"></div>`;
   const list = $('#c-list', el);
   async function load(q = '') {
