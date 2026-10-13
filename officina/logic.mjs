@@ -407,6 +407,7 @@ export function dashboard() {
     to_approve: open.filter((r) => r.status === 'quote_pending'),
     declined: open.filter((r) => r.quote_decision === 'declined'),
     waiting_parts: open.filter((r) => r.status === 'waiting_parts'),
+    in_progress: open.filter((r) => ['received', 'diagnosing', 'approved', 'repairing'].includes(r.status)),
     low_stock: lowStock(),
     cash_today: money(db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at)=?").get(today).s),
     today,
