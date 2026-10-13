@@ -45,7 +45,7 @@ function render(d) {
       <p class="hint">${esc(d.status_hint)}</p>
       ${d.cancelled ? '' : `<div class="bar ${done ? 'done' : ''}"><i style="width:${d.progress}%"></i></div>
       <div class="steps">${steps}</div>
-      <div style="margin-top:8px;font-size:12px;color:#6B7280"><span class="live"></span>Aggiornamento automatico<span class="pct">${d.progress}%</span></div>`}
+      <div style="margin-top:8px;font-size:12px;color:#6B7280"><span class="live"></span>Aggiornamento automatico<span class="pct ${done ? 'ok' : ''}">${d.progress}%</span></div>`}
       ${eta}
       ${d.customer_note ? `<div class="note"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.4 7.5L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg><span>${esc(d.customer_note)}</span></div>` : ''}
       ${warranty}
