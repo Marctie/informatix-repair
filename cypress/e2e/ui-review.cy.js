@@ -153,6 +153,9 @@ describe('Rassegna grafica di tutte le schermate', () => {
       page('fornitori', 'fornitori', 'Ricambi Napoli');
       page('cassa', 'cassa', 'Incassato nel periodo');
       page('impostazioni', 'impostazioni', 'Backup dei dati');
+      page('analisi', 'analisi', 'Riparazioni accettate');
+      page('analisi-magazzino', 'analisi?tab=magazzino', 'Prodotti a catalogo');
+      page('utenti', 'utenti', 'Nuovo utente');
 
       it('pagina vendite con carrello', () => {
         cy.visit('/#/vendite');
