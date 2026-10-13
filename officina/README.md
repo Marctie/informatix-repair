@@ -3,9 +3,11 @@
 Gestionale per il negozio: **riparazioni, clienti, magazzino, vendite, fornitori, cassa**, con tracciamento in tempo reale per il cliente.
 
 ## Avvio
+Doppio click su `AVVIA-OFFICINA.bat` (nella radice del progetto), oppure da terminale:
 ```
 npm run officina
 ```
+**Manuale per Christian:** `officina/public/manuale.html` (http://localhost:4950/manuale.html, stampabile).
 - Gestionale (solo questo PC, nessun login per ora): http://localhost:4950
 - Tracciamento clienti (raggiungibile dai telefoni in rete): `http://<IP-PC>:4951/t/<codice>` — l'IP esatto è stampato all'avvio.
 - Dati: `officina/data/officina.db` (SQLite, fuori da git). **Fare backup di questo file.**

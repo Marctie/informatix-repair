@@ -328,6 +328,45 @@ RepairDesk, RepairShopr, Vollstart Repair Desk, RepairWorkshop: ticket con stato
 - Provare il QR e il link da un telefono reale nella rete del negozio.
 - Idee future: notifiche automatiche al cambio stato (SMS/WhatsApp), foto del dispositivo all'ingresso, firma digitale del cliente, backup automatico del DB.
 
+## Sessione 2026-10-13 (3) – Revisione, responsive, manuale per Christian (branch `gestionale-officina`)
+
+### Direttive nuove dell'utente
+- **Nessun merge in main finché non lo dice lui** (salvato in memoria). Tutto resta sui branch `gestionale-officina` e `cypress-tests`.
+- Richiesta: revisione di tutto il codice, correzione errori, schermate potenziate, responsive su ogni dispositivo, CSS/testi/stile sistemati, e un **manuale per Christian** (veloce, pratico, completo, con i flussi).
+
+### Revisione backend (`officina/*.mjs`)
+- Date: tutte le date "di oggi" ora sono **locali** (`localDate()`), prima `toISOString()` usava l'UTC e vicino a mezzanotte sbagliava giorno (ritardi, incasso di oggi, report).
+- Validazioni: importi negativi rifiutati (preventivo, acconto, totale finale, costo/prezzo/scorta minima); quantità non valide.
+- Cliente: lo stesso telefono scritto in modi diversi (+39 340 111 2222 / 3401112222) ora è riconosciuto come stesso cliente (`phoneKey`).
+- Stato: una riparazione consegnata non si può più riaprire (409); impostare lo stato già attivo è rifiutato (niente doppie righe in cronologia).
+- Nuovi endpoint: `GET /api/backup` (copia coerente del DB via `VACUUM INTO`), `GET /api/stock/summary` (KPI magazzino), `by_day` in `/api/report` (grafico cassa).
+- Test API: 9 test OK (aggiunti controlli, backup, riepiloghi). Un bug mio (regex `/D/` al posto di `/\D/`) è stato scoperto dal test appena scritto.
+
+### Interfaccia (`officina/public/`)
+- Layout responsive completo: sidebar su desktop; su telefono/tablet barra in basso con 4 voci + "Altro", pulsante rosso fisso "＋" per la nuova riparazione, modali a schermata intera, campi a 16px (niente zoom su iPhone), area sicura iOS, tabelle scorrevoli.
+- **Ricerca globale** in alto (riparazioni e clienti) e scorciatoie: `N` nuova riparazione, `/` ricerca, `Esc` chiude.
+- Dashboard: riepilogo a parole sotto la data, KPI, sezioni per urgenza; filtri della lista riparazioni con contatori ("Aperte" di default).
+- Scheda riparazione: **Modifica dati** (cliente, modello, seriale, accessori, problema, PIN, garanzia); layout a due colonne con spaziatura corretta su mobile.
+- Magazzino: KPI (articoli, pezzi, valore a costo, sotto scorta). Vendite: scelta cliente facoltativa (compare nello storico cliente), carrello più leggibile su mobile. Cassa: grafico incassi per giorno. Impostazioni: **backup scaricabile**. Clienti: WhatsApp e chiamata.
+- Pagina cliente: passi della barra con pallini colorati (verde fatti, rosso attuale), etichette più corte ("Lavori", "Ritirato") e font fluido per non andare a capo su telefoni stretti.
+- Protezioni contro risposte che arrivano dopo un cambio pagina (errori "Cannot set properties of null" trovati da Cypress in modo intermittente).
+- `AVVIA-OFFICINA.bat` nella radice: doppio click, installa le dipendenze se mancano, apre il browser.
+
+### Manuale per Christian
+- `officina/public/manuale.html` (apribile dal menu "Manuale" o da http://localhost:4950/manuale.html; stampabile in A4/PDF dal pulsante). Contenuti: foglio rapido di una pagina, avvio, i 4 flussi (arriva un cliente → diagnosi e preventivo → si ripara → pronto e consegna), cosa vede il cliente, magazzino e ordini, vendite, clienti/fornitori/cassa, backup, casi particolari (rifiuto, preventivo cambiato, non riparabile, ritardo, ricambio mancante, ricevuta persa…), tabella degli stati, domande frequenti, scorciatoie.
+- Schermate reali in `officina/public/manuale/` generate da Cypress con dati di esempio: `npm run test:e2e -- --spec cypress/tools/manuale-screens.cy.js` (solo sul branch `cypress-tests`), poi copiare i PNG da `cypress/screenshots/manuale-screens.cy.js/`.
+- Il manuale dichiara onestamente il limite attuale: il link/QR del cliente funziona **solo dal Wi-Fi del negozio** finché non si mette online.
+
+### Cypress (branch `cypress-tests`)
+- `cypress/run.mjs` ora avvia **un database nuovo per ogni file di test** (nessuna dipendenza tra file); accetta `--spec` e `--open`.
+- Suite: `officina.cy.js` (13 flussi) + `responsive.cy.js` (40 test: 8 pagine × 3 schermi senza scorrimento orizzontale con screenshot, navigazione per dispositivo, accettazione, dettaglio e pagina cliente, ricerca globale, scorciatoie, modifica dati, sezioni dashboard, backup, vendita con cliente, manuale con immagini). **53 test, tutti verdi** in 4 esecuzioni consecutive.
+- Il generatore delle schermate del manuale sta in `cypress/tools/` (non gira nella suite normale).
+
+### Da fare / decisioni aperte
+- Messa online del tracciamento + autenticazione Firebase; poi aggiornare l'indirizzo pubblico in Impostazioni.
+- Merge in main: solo quando lo dice l'utente.
+- Prova reale su telefono (QR/link) e stampa su stampante etichette 62×30.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
