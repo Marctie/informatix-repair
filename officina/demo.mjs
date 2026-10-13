@@ -68,8 +68,8 @@ export async function loadDemo() {
   // ---- Riparazioni
   const E = (s) => ({ received: 'Dispositivo ricevuto in laboratorio.', diagnosing: 'Stiamo controllando il guasto.', quote_pending: 'Ti abbiamo inviato il preventivo: attendiamo la tua conferma.', approved: 'Preventivo approvato: si procede con la riparazione.', waiting_parts: 'Stiamo aspettando il ricambio necessario.', repairing: 'Il tecnico sta lavorando sul tuo dispositivo.', ready: 'Puoi passare a ritirare il tuo dispositivo.', delivered: 'Dispositivo consegnato. Grazie per averci scelto!', cancelled: 'La riparazione non è stata eseguita.' }[s]);
   const R = [
-    { id: -1, c: -1, type: 'smartphone', model: 'iPhone 13', serial: '356789012345671', problem: 'Schermo rotto dopo una caduta', acc: 'Cover, SIM', cond: 'Vetro posteriore graffiato', pass: '1234', status: 'received', quote: null, dep: 0, d: 0, eta: 3, urgent: 1, path: ['received'] },
-    { id: -2, c: -2, type: 'portatile', model: 'Lenovo ThinkPad E15', serial: 'PF2ABC12', problem: 'Si surriscalda e si spegne', acc: 'Alimentatore', cond: 'Buone', pass: '', status: 'received', quote: null, dep: 0, d: 1, eta: 5, path: ['received'] },
+    { id: -1, c: -1, type: 'smartphone', model: 'iPhone 13', serial: '356789012345671', problem: 'Schermo rotto dopo una caduta', acc: 'Cover, SIM', cond: 'Vetro posteriore graffiato', pass: '1234', status: 'received', quote: 120, dep: 30, d: 0, eta: 3, urgent: 1, path: ['received'] },
+    { id: -2, c: -2, type: 'portatile', model: 'Lenovo ThinkPad E15', serial: 'PF2ABC12', problem: 'Si surriscalda e si spegne', acc: 'Alimentatore', cond: 'Buone', pass: '', status: 'received', quote: 70, dep: 20, d: 1, eta: 5, path: ['received'] },
     { id: -3, c: -3, type: 'smartphone', model: 'Samsung Galaxy A54', serial: '351234567890123', problem: 'La batteria dura poche ore', acc: 'Nessuno', cond: 'Ottime', pass: '0000', status: 'diagnosing', quote: null, dep: 0, d: 2, eta: 4, path: ['received', 'diagnosing'] },
     { id: -4, c: -4, type: 'console', model: 'PlayStation 5', serial: 'PS5-98765', problem: 'Non legge i dischi', acc: 'Cavo alimentazione', cond: 'Polvere interna', pass: '', status: 'quote_pending', quote: 89, dep: 0, d: 3, eta: 7, path: ['received', 'diagnosing', 'quote_pending'] },
     { id: -5, c: -5, type: 'smartphone', model: 'iPhone 11', serial: '353456789012345', problem: 'Batteria gonfia', acc: 'Cover', cond: 'Display con graffi', pass: '4321', status: 'approved', quote: 69, dep: 20, d: 4, eta: 2, path: ['received', 'diagnosing', 'quote_pending', 'approved'], decision: 'accepted', parts: [[-2, 1]] },
@@ -106,18 +106,23 @@ export async function loadDemo() {
     [16, null, 'contanti', 0, [[-8, 2]]], [13, -5, 'carta', 0, [[-10, 1], [null, 'Clonazione disco', 1, 25]]], [11, null, 'contanti', 0, [[-7, 1], [-8, 1]]],
     [9, -7, 'carta', 0, [[-9, 1]]], [6, null, 'non tracciato', 0, [[-6, 1]]], [4, -4, 'carta', 0, [[-13, 1]]], [2, null, 'contanti', 0, [[-8, 1], [-6, 1], [-7, 1]]],
     [1, -8, 'bonifico', 0, [[-11, 2], [-10, 2]]],
+    [1, null, 'carta', 0, [[-9, 2], [-8, 1]]], [1, -1, 'contanti', 0, [[-6, 3], [-7, 2]]],
+    [0, null, 'contanti', 0, [[-6, 2], [-8, 1]]], [0, -6, 'carta', 0, [[-9, 1], [-6, 1]]],
+    [0, null, 'contanti', 0, [[-7, 2], [null, 'Configurazione WhatsApp', 1, 10]]], [0, -2, 'carta', 0, [[-3, 1]]],
   ];
+  const HOURS = ['09:40', '11:45', '13:10', '16:30', '18:05', '10:20', '17:25'];
   let sc = 0;
   for (const [d, cust, method, disc, items] of V) {
     const sid = --sc;
+    const hh = HOURS[-sid % HOURS.length];
     const code = `V-DEMO-${String(-sid).padStart(3, '0')}`;
     let total = 0;
     const rows = items.map((it) => (it[0] == null ? { pid: null, name: it[1], qty: it[2], price: it[3], cost: 0 } : { pid: it[0], name: prod[it[0]].name, qty: it[1], price: prod[it[0]].price, cost: prod[it[0]].cost }));
     rows.forEach((x) => { total += x.qty * x.price; });
     total = money(total - disc);
-    add('INSERT INTO sales (id,code,customer_id,total,discount,method,created_at) VALUES (?,?,?,?,?,?,?)', sid, code, cust, total, disc, method, ts(d, '11:45'));
+    add('INSERT INTO sales (id,code,customer_id,total,discount,method,created_at) VALUES (?,?,?,?,?,?,?)', sid, code, cust, total, disc, method, ts(d, hh));
     rows.forEach((x) => add('INSERT INTO sale_items (id,sale_id,product_id,name,qty,unit_price,unit_cost) VALUES (?,?,?,?,?,?,?)', --si, sid, x.pid, x.name, x.qty, x.price, x.cost));
-    add("INSERT INTO payments (id,kind,ref_id,label,amount,method,created_at) VALUES (?,?,?,?,?,?,?)", --pay, 'sale', sid, `Vendita ${code}`, total, method, ts(d, '11:45'));
+    add("INSERT INTO payments (id,kind,ref_id,label,amount,method,created_at) VALUES (?,?,?,?,?,?,?)", --pay, 'sale', sid, `Vendita ${code}`, total, method, ts(d, hh));
   }
 
   for (let i = 0; i < S.length; i += 80) await db.batch(S.slice(i, i + 80));
