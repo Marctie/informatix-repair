@@ -17,7 +17,7 @@ export function openRepairForm(onDone, preset = {}) {
       <section class="sec">
         <h3 class="sec-t">Cliente</h3>
         <div class="relative">
-          <input id="rf-search" placeholder="Cerca un cliente già registrato (nome o telefono)…" />
+          <input id="rf-search" placeholder="Cerca un cliente già registrato…" />
           <div id="rf-sugg" class="suggest card hidden"></div>
         </div>
         <div id="rf-picked" class="hidden"></div>
