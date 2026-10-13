@@ -14,7 +14,7 @@ npm run officina
 
 ## Come lavora Christian (pensato per essere veloce)
 1. **Nuova riparazione** (pulsante rosso in "Oggi"): cliente (si ritrova scrivendo nome o telefono), dispositivo, problema, accessori e condizioni con un tocco, preventivo e acconto, consegna stimata con un tocco. Un solo pulsante: salva.
-2. Compare subito il **QR** da far inquadrare al cliente, con stampa della scheda (QR e condizioni), etichetta 62×30 mm e invio del link su WhatsApp.
+2. **🖨️ Salva e stampa**: escono la **scheda cliente** (con QR per seguire la riparazione, condizioni e firme; mai il PIN) e la **scheda laboratorio** (per Christian: PIN, checklist di ingresso e collaudo, diagnosi, ricambi, tempi). Disponibili anche separatamente, con etichetta 62×30 mm e invio del link su WhatsApp.
 3. In "Oggi" e in "Riparazioni" ogni riga ha il pulsante **"prossimo stato"** (un click) e il pulsante **WhatsApp** con il messaggio già scritto (pronto per il ritiro, preventivo, ritardo).
 4. Il cliente dal link vede: barra di avanzamento, riepilogo del dispositivo, i suoi dati (telefono ed email mascherati), consegna stimata, preventivo/acconto/saldo, cronologia. Può **approvare o rifiutare il preventivo** con un tap.
 5. **Consegna e incasso**: calcola il saldo (totale meno acconti), registra l'incasso e fa partire la garanzia.
