@@ -132,7 +132,7 @@ async function dashboardView(el) {
     <div class="flex items-end justify-between gap-3 flex-wrap mb-5">
       <div><h1 class="font-heading font-extrabold text-2xl">Oggi</h1>
         <p class="text-sm text-gray-500 first-letter:uppercase">${new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}${parts.length ? ' · ' + parts.join(' · ') : ''}</p></div>
-      <button class="btn btn-primary btn-lg hidden sm:inline-flex" id="new-repair">＋ Nuova riparazione</button>
+      <button class="btn btn-primary btn-lg hidden sm:inline-flex lg:hidden" id="new-repair">＋ Nuova riparazione</button>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
       <a href="#/riparazioni?open=1" class="card kpi"><b>${todo}</b><span>Da lavorare</span></a>
@@ -160,7 +160,7 @@ async function repairsView(el, params) {
   el.innerHTML = `
     <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
       <h1 class="font-heading font-extrabold text-2xl">Riparazioni</h1>
-      <button class="btn btn-primary hidden sm:inline-flex" id="new-repair">＋ Nuova riparazione</button>
+      <button class="btn btn-primary hidden sm:inline-flex lg:hidden" id="new-repair">＋ Nuova riparazione</button>
     </div>
     <input id="q" type="search" placeholder="Filtra per cliente, telefono, modello, codice, seriale…" class="mb-3" />
     <div class="flex gap-2 flex-wrap mb-4" id="chips"></div>
