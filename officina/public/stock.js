@@ -70,20 +70,24 @@ async function productForm(id, done) {
   const [suppliers, p] = await Promise.all([api('GET', '/api/suppliers'), id ? api('GET', `/api/products?q=`).then((l) => l.find((x) => x.id === id)) : null]);
   const moves = id ? await api('GET', `/api/products/${id}/moves`) : [];
   const m = openModal(
-    `<div class="grid grid-cols-2 gap-3">
-      <div class="col-span-2"><label class="l">Nome articolo *</label><input id="pf-name" value="${esc(p?.name || '')}" /></div>
-      <div><label class="l">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${CATEGORIES.map((c) => `<option>${c}</option>`).join('')}</datalist></div>
-      <div><label class="l">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
-      ${id ? `<div><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div><label class="l">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
-      <div><label class="l">Scorta minima (avviso riordino)</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /></div>
-      <div><label class="l">Costo d’acquisto €</label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>
-      <div><label class="l">Prezzo di vendita €</label><input id="pf-price" inputmode="decimal" value="${p?.price ?? ''}" /></div>
-      <div><label class="l">Fornitore</label><select id="pf-sup"><option value="">—</option>${suppliers.map((s) => `<option value="${s.id}" ${p?.supplier_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
-      <div><label class="l">Posizione (scaffale/cassetto)</label><input id="pf-loc" value="${esc(p?.location || '')}" /></div>
-      <div class="col-span-2"><label class="l">Note</label><input id="pf-notes" value="${esc(p?.notes || '')}" /></div>
-    </div>
-    ${id ? `<div class="sec-t">Carico merce</div><div class="flex gap-2"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" class="!w-40" /><button class="btn btn-outline btn-sm" id="pf-load">Registra carico</button></div>
-    <div class="sec-t">Ultimi movimenti</div><ul class="text-xs text-gray-600 space-y-1">${moves.slice(0, 8).map((x) => `<li>${fdt(x.created_at)} · <b class="${x.delta > 0 ? 'text-emerald-600' : 'text-secondary'}">${x.delta > 0 ? '+' : ''}${x.delta}</b> · ${esc(x.reason)} ${esc(x.ref || '')}</li>`).join('') || '<li>Nessuno</li>'}</ul>` : ''}`,
+    `<section class="sec">
+      <div class="field"><label class="l" for="pf-name">Nome articolo *</label><input id="pf-name" value="${esc(p?.name || '')}" /></div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="pf-cat">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${CATEGORIES.map((c) => `<option>${c}</option>`).join('')}</datalist></div>
+        <div class="field"><label class="l" for="pf-sku">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
+        ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
+        <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>
+        <div class="field"><label class="l" for="pf-cost">Costo d’acquisto €</label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>
+        <div class="field"><label class="l" for="pf-price">Prezzo di vendita €</label><input id="pf-price" inputmode="decimal" value="${p?.price ?? ''}" /></div>
+        <div class="field"><label class="l" for="pf-sup">Fornitore</label><select id="pf-sup"><option value="">—</option>${suppliers.map((s) => `<option value="${s.id}" ${p?.supplier_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+        <div class="field"><label class="l" for="pf-loc">Posizione</label><input id="pf-loc" placeholder="es. cassetto A2" value="${esc(p?.location || '')}" /></div>
+      </div>
+      <div class="field"><label class="l" for="pf-notes">Note</label><input id="pf-notes" value="${esc(p?.notes || '')}" /></div>
+    </section>
+    ${id ? `<section class="sec"><h3 class="sec-t">Carico merce</h3>
+      <div class="row" style="flex-wrap:nowrap"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" style="max-width:12rem" /><button class="btn btn-outline" id="pf-load">Registra carico</button></div></section>
+    <section class="sec"><h3 class="sec-t">Ultimi movimenti</h3>
+      <ul class="tl">${moves.slice(0, 8).map((x) => `<li><time>${fdt(x.created_at)}</time><span><b class="${x.delta > 0 ? 'text-emerald-600' : 'text-secondary'}">${x.delta > 0 ? '+' : ''}${x.delta}</b> · ${esc(x.reason)} ${esc(x.ref || '')}</span></li>`).join('') || '<li><span class="hint">Nessun movimento.</span></li>'}</ul></section>` : ''}`,
     { title: id ? 'Modifica articolo' : 'Nuovo articolo', wide: true,
       footer: `${id ? '<button class="btn btn-ghost mr-auto" id="pf-del">Archivia</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="pf-ok">Salva</button>` }
   );
@@ -130,10 +134,15 @@ export async function suppliersView(el) {
 
 function supplierForm(s, done) {
   const m = openModal(
-    `<div class="grid grid-cols-2 gap-3"><div class="col-span-2"><label class="l">Nome *</label><input id="sf-name" value="${esc(s?.name || '')}" /></div>
-     <div><label class="l">Telefono / WhatsApp</label><input id="sf-phone" value="${esc(s?.phone || '')}" /></div><div><label class="l">Email</label><input id="sf-email" value="${esc(s?.email || '')}" /></div>
-     <div class="col-span-2"><label class="l">Sito web</label><input id="sf-web" value="${esc(s?.website || '')}" /></div>
-     <div class="col-span-2"><label class="l">Note (tempi di consegna, minimo d’ordine…)</label><textarea id="sf-notes" rows="2">${esc(s?.notes || '')}</textarea></div></div>`,
+    `<section class="sec">
+      <div class="field"><label class="l" for="sf-name">Nome *</label><input id="sf-name" value="${esc(s?.name || '')}" /></div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="sf-phone">Telefono / WhatsApp</label><input id="sf-phone" inputmode="tel" value="${esc(s?.phone || '')}" /></div>
+        <div class="field"><label class="l" for="sf-email">Email</label><input id="sf-email" type="email" value="${esc(s?.email || '')}" /></div>
+      </div>
+      <div class="field"><label class="l" for="sf-web">Sito web</label><input id="sf-web" value="${esc(s?.website || '')}" /></div>
+      <div class="field"><label class="l" for="sf-notes">Note</label><textarea id="sf-notes" rows="3" placeholder="Tempi di consegna, minimo d’ordine…">${esc(s?.notes || '')}</textarea></div>
+    </section>`,
     { title: s ? 'Modifica fornitore' : 'Nuovo fornitore', footer: `${s ? '<button class="btn btn-ghost mr-auto" id="sf-del">Elimina</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="sf-ok">Salva</button>` }
   );
   $('#sf-ok', m.el).onclick = async () => {

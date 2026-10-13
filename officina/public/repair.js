@@ -13,54 +13,65 @@ const selected = (root, sel) => $$(`${sel} .chip.on`, root).map((c) => c.textCon
 // ---------- Nuova riparazione ----------
 export function openRepairForm(onDone, preset = {}) {
   const m = openModal(
-    `<form id="rf" class="space-y-1" autocomplete="off">
-      <div class="sec-t">Cliente</div>
-      <div class="relative">
-        <input id="rf-search" placeholder="Cerca cliente esistente (nome o telefono)…" />
-        <div id="rf-sugg" class="hidden absolute z-10 left-0 right-0 mt-1 card shadow-lg max-h-56 overflow-y-auto"></div>
-      </div>
-      <div id="rf-picked" class="hidden"></div>
-      <div id="rf-new" class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2">
-        <div><label class="l">Nome e cognome *</label><input id="rf-name" value="${esc(preset.name || '')}" /></div>
-        <div><label class="l">Telefono</label><input id="rf-phone" inputmode="tel" value="${esc(preset.phone || '')}" /></div>
-        <div><label class="l">Email</label><input id="rf-email" type="email" /></div>
-      </div>
-
-      <div class="sec-t">Dispositivo</div>
-      <div class="flex gap-2 flex-wrap mb-2" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div><label class="l">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
-        <div><label class="l">Seriale / IMEI <span class="font-normal text-gray-400">(spara col lettore)</span></label>
-          <div class="flex gap-2"><input id="rf-serial" autocomplete="off" placeholder="Scansiona o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
-          <div id="rf-serial-hint" class="text-xs mt-1 min-h-[1rem]"></div></div>
-      </div>
-
-      <div class="sec-t">Problema segnalato *</div>
-      <div class="flex gap-1.5 flex-wrap mb-2" id="rf-problems">${PROBLEMS.map((p) => `<span class="chip chip-red">${p}</span>`).join('')}</div>
-      <textarea id="rf-problem" rows="2" placeholder="Cosa non funziona? (le scelte rapide si aggiungono qui)"></textarea>
-
-      <div class="sec-t">Cosa lascia e in che stato</div>
-      <div class="flex gap-1.5 flex-wrap mb-2" id="rf-acc">${ACCESSORIES.map((p) => `<span class="chip">${p}</span>`).join('')}</div>
-      <div class="flex gap-1.5 flex-wrap mb-2" id="rf-cond">${CONDITIONS.map((p) => `<span class="chip">${p}</span>`).join('')}</div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <input id="rf-accnote" placeholder="Altri accessori / note sullo stato (facoltativo)" />
-        <input id="rf-pass" placeholder="PIN / schema di sblocco (facoltativo, solo uso interno)" />
-      </div>
-
-      <div class="sec-t">Preventivo e tempi</div>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
-        <div><label class="l">Preventivo €</label><input id="rf-quote" inputmode="decimal" placeholder="da definire" /></div>
-        <div><label class="l">Acconto €</label><input id="rf-deposit" inputmode="decimal" placeholder="0" /></div>
-        <div><label class="l">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
-        <label class="flex items-center gap-2 text-sm font-semibold pb-2"><input type="checkbox" id="rf-agreed" class="!w-auto" /> Già concordato</label>
-      </div>
-      <div class="mt-2"><label class="l">Consegna stimata</label>
-        <div class="flex gap-1.5 flex-wrap items-center" id="rf-eta">
-          ${[['Oggi', 0], ['Domani', 1], ['+3 giorni', 3], ['+1 settimana', 7], ['+2 settimane', 14]].map(([l, n]) => `<span class="chip" data-d="${n}">${l}</span>`).join('')}
-          <input type="date" id="rf-etadate" class="!w-auto" />
-          <label class="chip chip-red flex items-center gap-1.5"><input type="checkbox" id="rf-urgent" /> 🔥 Urgente</label>
+    `<form id="rf" autocomplete="off">
+      <section class="sec">
+        <h3 class="sec-t">Cliente</h3>
+        <div class="relative">
+          <input id="rf-search" placeholder="Cerca un cliente già registrato (nome o telefono)…" />
+          <div id="rf-sugg" class="suggest card hidden"></div>
         </div>
-      </div>
+        <div id="rf-picked" class="hidden"></div>
+        <div id="rf-new" class="fgrid c3">
+          <div class="field"><label class="l" for="rf-name">Nome e cognome *</label><input id="rf-name" value="${esc(preset.name || '')}" /></div>
+          <div class="field"><label class="l" for="rf-phone">Telefono</label><input id="rf-phone" inputmode="tel" value="${esc(preset.phone || '')}" /></div>
+          <div class="field"><label class="l" for="rf-email">Email</label><input id="rf-email" type="email" /></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Dispositivo</h3>
+        <div class="row tight" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="rf-model">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
+          <div class="field"><label class="l" for="rf-serial">Seriale / IMEI</label>
+            <div class="row" style="flex-wrap:nowrap"><input id="rf-serial" autocomplete="off" placeholder="Spara col lettore o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
+            <div id="rf-serial-hint" class="hint" style="min-height:1.1rem"></div></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Problema segnalato *</h3>
+        <div class="row tight" id="rf-problems">${PROBLEMS.map((p) => `<span class="chip chip-red">${p}</span>`).join('')}</div>
+        <textarea id="rf-problem" rows="2" placeholder="Cosa non funziona? Le scelte rapide si aggiungono qui, puoi scrivere altro."></textarea>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Cosa lascia e in che stato</h3>
+        <div class="row tight" id="rf-acc">${ACCESSORIES.map((p) => `<span class="chip">${p}</span>`).join('')}</div>
+        <div class="row tight" id="rf-cond">${CONDITIONS.map((p) => `<span class="chip">${p}</span>`).join('')}</div>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="rf-accnote">Altri accessori o note sullo stato</label><input id="rf-accnote" placeholder="Facoltativo" /></div>
+          <div class="field"><label class="l" for="rf-pass">PIN / schema di sblocco</label><input id="rf-pass" placeholder="Facoltativo" /><span class="hint">Solo uso interno: il cliente non lo vede mai.</span></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Preventivo e tempi</h3>
+        <div class="fgrid c4 m2">
+          <div class="field"><label class="l" for="rf-quote">Preventivo €</label><input id="rf-quote" inputmode="decimal" placeholder="da definire" /></div>
+          <div class="field"><label class="l" for="rf-deposit">Acconto €</label><input id="rf-deposit" inputmode="decimal" placeholder="0" /></div>
+          <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
+          <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
+        </div>
+        <div class="field">
+          <label class="l">Consegna stimata</label>
+          <div class="row tight">
+            <div class="row tight" id="rf-eta">${[['Oggi', 0], ['Domani', 1], ['+3 giorni', 3], ['+1 settimana', 7], ['+2 settimane', 14]].map(([l, n]) => `<span class="chip" data-d="${n}">${l}</span>`).join('')}</div>
+            <input type="date" id="rf-etadate" style="width:auto" aria-label="Data di consegna stimata" />
+          </div>
+        </div>
+        <label class="check box" style="align-self:flex-start"><input type="checkbox" id="rf-urgent" /> 🔥 Urgente</label>
+      </section>
     </form>`,
     { title: 'Nuova riparazione', wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-outline btn-lg" id="rf-save">Salva</button><button class="btn btn-primary btn-lg" id="rf-save-print">🖨️ Salva e stampa</button>` }
   );
@@ -128,7 +139,7 @@ export function openRepairForm(onDone, preset = {}) {
     const q = e.target.value.trim();
     if (q.length < 2) return sugg.classList.add('hidden');
     const list = await safe(() => api('GET', `/api/customers?q=${encodeURIComponent(q)}`));
-    sugg.innerHTML = (list || []).map((c) => `<div class="px-3 py-2 hover:bg-lightbg cursor-pointer text-sm border-b border-line last:border-0" data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone || '')}" data-email="${esc(c.email || '')}"><b>${esc(c.name)}</b> <span class="text-gray-500">${esc(c.phone || '')}</span>${c.repairs_count ? `<span class="text-xs text-gray-400"> · ${c.repairs_count} riparazioni</span>` : ''}</div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun cliente: compila i campi sotto per crearne uno nuovo.</div>';
+    sugg.innerHTML = (list || []).map((c) => `<div data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone || '')}" data-email="${esc(c.email || '')}"><b>${esc(c.name)}</b> <span class="text-gray-500">${esc(c.phone || '')}</span>${c.repairs_count ? `<span class="text-xs text-gray-400"> · ${c.repairs_count} riparazioni</span>` : ''}</div>`).join('') || '<div style="color:#9CA3AF;cursor:default">Nessun cliente trovato: compila i campi sotto per crearne uno nuovo.</div>';
     sugg.classList.remove('hidden');
   }, 200);
   sugg.onclick = (e) => {
@@ -223,65 +234,117 @@ export async function openRepairDetail(id, onChange) {
     const total = r.final_price ?? r.quote;
     const due = total == null ? null : Math.max(0, total - r.paid);
     const wa = (kind) => waLink(r.customer_phone, waMessage(kind, { ...r }));
+    const waKind = r.status === 'ready' ? 'ready' : r.status === 'quote_pending' ? 'quote' : 'generic';
+    const waHref = wa(waKind);
+    const statusOptions = Object.entries(META.statuses).filter(([k]) => k !== 'delivered' && k !== r.status).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
     body.innerHTML = `
-      <div class="flex items-center gap-2 flex-wrap mb-2">${statusBadge(r)}${done ? '' : `<button class="chip chip-red ${r.urgent ? 'on' : ''}" data-act="urgent">🔥 Urgente</button>`}${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato dal cliente</span>' : ''}${r.quote_decision === 'accepted' ? '<span class="badge bg-emerald-100 text-emerald-700">Preventivo approvato</span>' : ''}</div>
-      ${progressBar(r)}
-      ${!done ? `<div class="flex gap-2 flex-wrap mt-3">
-        ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
-        <select id="d-status" class="sm:!w-auto sel-full"><option value="">Cambia stato…</option>${Object.entries(META.statuses).filter(([k]) => k !== 'delivered' && k !== r.status).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select>
-        ${r.status === 'ready' || r.status === 'repairing' || r.status === 'approved' ? '<button class="btn btn-green" data-act="deliver">✔ Consegna e incassa</button>' : ''}
-      </div>` : ''}
-
-      <div class="grid sm:grid-cols-2 gap-x-6 grid-2col">
-      <div>
-        <div class="sec-t">Cliente</div>
-        <p class="font-semibold">${esc(r.customer_name)}</p>
-        <p class="text-sm text-gray-600">${esc(r.customer_phone || '—')} ${r.customer_email ? '· ' + esc(r.customer_email) : ''}</p>
-        <div class="flex gap-2 mt-2 flex-wrap">
-          ${wa('generic') ? `<a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="${wa(r.status === 'ready' ? 'ready' : r.status === 'quote_pending' ? 'quote' : 'generic')}">💬 WhatsApp</a>` : ''}
-          ${r.customer_phone ? `<a class="btn btn-outline btn-sm" href="tel:${esc(r.customer_phone)}">📞 Chiama</a>` : ''}
+      <div class="sticky-head">
+        <div class="badges">
+          ${statusBadge(r)}
+          ${done ? '' : `<button class="chip chip-red ${r.urgent ? 'on' : ''}" data-act="urgent">🔥 Urgente</button>`}
+          ${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}
+          ${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato dal cliente</span>' : ''}
         </div>
-        <div class="sec-t">Dispositivo</div>
-        <p class="text-sm"><b>${esc(r.brand_model)}</b> <span class="text-gray-500">(${esc(r.device_type)})</span></p>
-        <p class="text-sm text-gray-600">Seriale: ${esc(r.serial || '—')}</p>
-        <p class="text-sm text-gray-600">Problema: ${esc(r.problem)}</p>
-        <p class="text-sm text-gray-600">Accessori: ${esc(r.accessories || '—')} · Stato: ${esc(r.condition_notes || '—')}</p>
-        ${r.passcode ? `<p class="text-sm text-gray-600">🔒 Sblocco: <span class="font-mono bg-lightbg px-1.5 rounded">${esc(r.passcode)}</span> <span class="text-xs text-gray-400">(solo interno)</span></p>` : ''}
-        <div class="sec-t">Link e stampe</div>
-        <div class="flex gap-2 flex-wrap">
-          <a class="btn btn-dark btn-sm" target="_blank" href="/print/both/${r.id}">🖨️ Stampa tutto</a>
-          <a class="btn btn-outline btn-sm" target="_blank" href="/print/customer/${r.id}">👤 Scheda cliente</a>
-          <a class="btn btn-outline btn-sm" target="_blank" href="/print/lab/${r.id}">🔧 Scheda laboratorio</a>
-          <a class="btn btn-outline btn-sm" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta</a>
-          <a class="btn btn-outline btn-sm" target="_blank" href="/t/${r.token}">👁️ Vista cliente</a>
-          <button class="btn btn-outline btn-sm" data-act="copylink">📋 Copia link</button>
-          <button class="btn btn-outline btn-sm" data-act="edit">✏️ Modifica dati</button>
+        ${progressBar(r)}
+        ${!done ? `<div class="row">
+          ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
+          <select id="d-status" style="width:auto;min-width:11rem" aria-label="Cambia stato"><option value="">Cambia stato…</option>${statusOptions}</select>
+          ${['ready', 'repairing', 'approved'].includes(r.status) ? '<button class="btn btn-green" data-act="deliver">✔ Consegna e incassa</button>' : ''}
+        </div>` : ''}
+      </div>
+
+      <div class="cols">
+        <div class="col">
+          <section class="sec">
+            <h3 class="sec-t">Cliente</h3>
+            <div><b style="font-size:1.05rem">${esc(r.customer_name)}</b></div>
+            <dl class="kv"><dt>Telefono</dt><dd>${esc(r.customer_phone || '—')}</dd>${r.customer_email ? `<dt>Email</dt><dd>${esc(r.customer_email)}</dd>` : ''}</dl>
+            <div class="row tight">
+              ${waHref ? `<a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="${waHref}">💬 WhatsApp</a>` : ''}
+              ${r.customer_phone ? `<a class="btn btn-outline btn-sm" href="tel:${esc(r.customer_phone)}">📞 Chiama</a>` : ''}
+            </div>
+          </section>
+
+          <section class="sec">
+            <h3 class="sec-t">Dispositivo</h3>
+            <dl class="kv">
+              <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b> <span class="hint">(${esc(r.device_type)})</span></dd>
+              <dt>Seriale / IMEI</dt><dd>${esc(r.serial || '—')}</dd>
+              <dt>Problema</dt><dd>${esc(r.problem)}</dd>
+              <dt>Accessori</dt><dd>${esc(r.accessories || '—')}</dd>
+              <dt>Stato estetico</dt><dd>${esc(r.condition_notes || '—')}</dd>
+              ${r.passcode ? `<dt>🔒 Sblocco</dt><dd><span class="font-mono" style="background:var(--bg);padding:.1rem .5rem;border-radius:.4rem">${esc(r.passcode)}</span> <span class="hint">solo interno</span></dd>` : ''}
+            </dl>
+          </section>
+
+          <section class="sec">
+            <h3 class="sec-t">Stampe e link</h3>
+            <div class="row tight">
+              <a class="btn btn-dark btn-sm" target="_blank" href="/print/both/${r.id}">🖨️ Stampa tutto</a>
+              <a class="btn btn-outline btn-sm" target="_blank" href="/print/customer/${r.id}">👤 Scheda cliente</a>
+              <a class="btn btn-outline btn-sm" target="_blank" href="/print/lab/${r.id}">🔧 Scheda laboratorio</a>
+              <a class="btn btn-outline btn-sm" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta</a>
+            </div>
+            <div class="row tight">
+              <a class="btn btn-outline btn-sm" target="_blank" href="/t/${r.token}">👁️ Vista cliente</a>
+              <button class="btn btn-outline btn-sm" data-act="copylink">📋 Copia link</button>
+              <button class="btn btn-outline btn-sm" data-act="edit">✏️ Modifica dati</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="col">
+          <section class="sec">
+            <h3 class="sec-t">Preventivo e pagamenti</h3>
+            <div class="fgrid c2 m2">
+              <div class="field"><label class="l" for="d-quote">Preventivo €</label><input id="d-quote" inputmode="decimal" value="${r.quote ?? ''}" ${done ? 'disabled' : ''} /></div>
+              <div class="field"><label class="l" for="d-eta">Consegna stimata</label><input id="d-eta" type="date" value="${r.eta_date || ''}" ${done ? 'disabled' : ''} /></div>
+            </div>
+            <div class="total-box">
+              <span>Versato <b>${eur(r.paid)}</b></span>
+              <span>${done ? 'Totale' : 'Da saldare'} <b style="font-size:1.1rem">${eur(done ? total : due)}</b></span>
+            </div>
+            ${!done ? `
+              <div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><button class="btn btn-outline" data-act="deposit">Registra acconto</button></div>
+              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${r.quote != null && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+            ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
+          </section>
+
+          <section class="sec">
+            <h3 class="sec-t">Ricambi usati</h3>
+            <div class="plist">
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}</span></span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+            </div>
+            ${!done ? `<div class="relative"><input id="d-part" placeholder="Aggiungi un ricambio dal magazzino (scrivi per cercare)…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>` : ''}
+          </section>
         </div>
       </div>
-      <div>
-        <div class="sec-t">Preventivo e pagamenti</div>
-        <div class="grid grid-cols-2 gap-2 text-sm">
-          <div><label class="l">Preventivo €</label><input id="d-quote" inputmode="decimal" value="${r.quote ?? ''}" ${done ? 'disabled' : ''} /></div>
-          <div><label class="l">Consegna stimata</label><input id="d-eta" type="date" value="${r.eta_date || ''}" ${done ? 'disabled' : ''} /></div>
+
+      <section class="sec">
+        <h3 class="sec-t">Note del tecnico</h3>
+        <p class="sec-sub">Interne: finiscono sulla scheda laboratorio, il cliente non le vede.</p>
+        <div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea id="d-tech" rows="2" placeholder="Diagnosi, prove fatte, cosa manca…">${esc(r.tech_notes || '')}</textarea><button class="btn btn-outline" data-act="savetech">Salva</button></div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Messaggio visibile al cliente</h3>
+        <p class="sec-sub">Compare in evidenza sulla pagina che il cliente apre dal QR.</p>
+        <div class="row" style="flex-wrap:nowrap"><input id="d-cnote" value="${esc(r.customer_note || '')}" placeholder="es. Stiamo aspettando il display, arriva giovedì" ${done ? 'disabled' : ''} />${!done ? '<button class="btn btn-outline" data-act="savecnote">Salva</button>' : ''}</div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Aggiungi una nota alla cronologia</h3>
+        <div class="row">
+          <input id="d-note" class="grow" placeholder="Scrivi una nota…" aria-label="Nota" />
+          <label class="check"><input type="checkbox" id="d-notepub" checked /> Visibile al cliente</label>
+          <button class="btn btn-outline" data-act="note">Aggiungi</button>
         </div>
-        <p class="text-sm mt-2">Versato: <b>${eur(r.paid)}</b> · ${done ? 'Totale' : 'Da saldare'}: <b>${eur(done ? total : due)}</b></p>
-        ${!done ? `<div class="flex gap-2 mt-2"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" /><button class="btn btn-outline btn-sm" data-act="deposit">Registra acconto</button></div>
-        <div class="flex gap-2 mt-2 flex-wrap"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo/data</button>${r.quote != null && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
-        ${r.delivered_at ? `<p class="text-sm text-gray-600 mt-2">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
+      </section>
 
-        <div class="sec-t">Ricambi usati</div>
-        ${r.parts.map((p) => `<div class="flex justify-between items-center text-sm py-1 border-b border-line"><span>${esc(p.name)} ×${p.qty}</span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="text-secondary ml-2" data-rmpart="${p.id}" title="Rimuovi">✕</button>` : ''}</span></div>`).join('') || '<p class="text-sm text-gray-400">Nessun ricambio registrato.</p>'}
-        ${!done ? `<div class="relative mt-2"><input id="d-part" placeholder="Aggiungi ricambio dal magazzino (cerca)…" /><div id="d-part-s" class="hidden absolute z-10 left-0 right-0 mt-1 card shadow-lg max-h-48 overflow-y-auto"></div></div>` : ''}
-      </div></div>
-
-      <div class="sec-t">Note del tecnico (interne: finiscono sulla scheda laboratorio)</div>
-      <div class="flex gap-2 items-start"><textarea id="d-tech" rows="2" placeholder="Diagnosi, prove fatte, cosa manca…">${esc(r.tech_notes || '')}</textarea><button class="btn btn-outline btn-sm" data-act="savetech">Salva</button></div>
-      <div class="sec-t">Messaggio visibile al cliente</div>
-      <div class="flex gap-2"><input id="d-cnote" value="${esc(r.customer_note || '')}" placeholder="es. Stiamo aspettando il display, arriva giovedì" ${done ? 'disabled' : ''} />${!done ? '<button class="btn btn-outline btn-sm" data-act="savecnote">Salva</button>' : ''}</div>
-      <div class="sec-t">Aggiungi nota alla cronologia</div>
-      <div class="flex gap-2 items-center"><input id="d-note" placeholder="Nota…" /><label class="text-xs flex items-center gap-1 whitespace-nowrap"><input type="checkbox" id="d-notepub" class="!w-auto" checked /> visibile al cliente</label><button class="btn btn-outline btn-sm" data-act="note">Aggiungi</button></div>
-      <div class="sec-t">Cronologia</div>
-      <ul class="text-sm space-y-1.5">${r.events.map((e) => `<li class="flex gap-2"><span class="text-gray-400 w-24 shrink-0 text-xs pt-0.5">${fdt(e.created_at)}</span><span>${esc(e.note || '')} ${e.is_public ? '' : '<span class="badge bg-gray-100 text-gray-500">interna</span>'}</span></li>`).join('')}</ul>`;
+      <section class="sec">
+        <h3 class="sec-t">Cronologia</h3>
+        <ul class="tl">${r.events.map((e) => `<li><time>${fdt(e.created_at)}</time><span>${esc(e.note || '')} ${e.is_public ? '' : '<span class="badge bg-gray-100 text-gray-500">interna</span>'}</span></li>`).join('')}</ul>
+      </section>`;
 
     // ricerca ricambi
     const ps = $('#d-part', body);
@@ -292,12 +355,12 @@ export async function openRepairDetail(id, onChange) {
       if (q.length < 2) return box.classList.add('hidden');
       const list = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
       if (!box.isConnected) return; // finestra chiusa nel frattempo
-      box.innerHTML = (list || []).map((p) => `<div class="px-3 py-2 hover:bg-lightbg cursor-pointer text-sm flex justify-between" data-pid="${p.id}"><span>${esc(p.name)}</span><span class="text-gray-500">${p.qty} pz · ${eur(p.price)}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun prodotto: aggiungilo dal Magazzino.</div>';
+      box.innerHTML = (list || []).map((p) => `<div data-pid="${p.id}" style="display:flex;justify-content:space-between;gap:.75rem"><span>${esc(p.name)}</span><span class="hint">${p.qty} pz · ${eur(p.price)}</span></div>`).join('') || '<div style="color:#9CA3AF;cursor:default">Nessun prodotto: aggiungilo dal Magazzino.</div>';
       box.classList.remove('hidden');
     }, 200);
   }
 
-  const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); if (msg) toast(msg); await render(); } };
+  const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
     const rm = e.target.closest('[data-rmpart]');
     if (rm) return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)');
@@ -329,10 +392,14 @@ export function deliverDialog(id, done) {
   api('GET', `/api/repairs/${id}`).then((r) => {
     const total = r.final_price ?? r.quote ?? 0;
     const m = openModal(
-      `<p class="text-sm mb-3">Importo totale della riparazione (già versato: <b>${eur(r.paid)}</b>).</p>
-       <div class="grid grid-cols-2 gap-3"><div><label class="l">Totale finale €</label><input id="dl-final" inputmode="decimal" value="${total}" /></div>
-       <div><label class="l">Incassato con</label><select id="dl-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div></div>
-       <p class="text-xs text-gray-500 mt-3">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>`,
+      `<section class="sec">
+        <p>Già versato: <b>${eur(r.paid)}</b>. Controlla il totale finale e scegli come ha pagato il saldo.</p>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="dl-final">Totale finale €</label><input id="dl-final" inputmode="decimal" value="${total}" /></div>
+          <div class="field"><label class="l" for="dl-method">Incassato con</label><select id="dl-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
+        </div>
+        <p class="hint">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>
+      </section>`,
       { title: 'Consegna e incasso', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-green btn-lg" id="dl-ok">Conferma consegna</button>` }
     );
     $('#dl-ok', m.el).onclick = async () => {
@@ -349,15 +416,22 @@ export function deliverDialog(id, done) {
 async function editDialog(id, done) {
   const r = await safe(() => api('GET', `/api/repairs/${id}`));
   if (!r) return;
-  const f = (k, label, val, extra = '') => `<div><label class="l">${label}</label><input data-k="${k}" value="${esc(val ?? '')}" ${extra} /></div>`;
+  const f = (k, label, val, extra = '') => `<div class="field"><label class="l">${label}</label><input data-k="${k}" value="${esc(val ?? '')}" ${extra} /></div>`;
   const m = openModal(
-    `<div class="sec-t">Cliente</div>
-     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">${f('c_name', 'Nome', r.customer_name)}${f('c_phone', 'Telefono', r.customer_phone, 'inputmode="tel"')}${f('c_email', 'Email', r.customer_email)}</div>
-     <div class="sec-t">Dispositivo</div>
-     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', 'Seriale / IMEI', r.serial)}
-       ${f('accessories', 'Accessori lasciati', r.accessories)}${f('condition_notes', 'Stato del dispositivo', r.condition_notes)}
-       ${f('passcode', 'PIN / schema (solo interno)', r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
-     <div class="sec-t">Problema segnalato</div><textarea data-k="problem" rows="3">${esc(r.problem)}</textarea>`,
+    `<section class="sec">
+      <h3 class="sec-t">Cliente</h3>
+      <div class="fgrid c3">${f('c_name', 'Nome', r.customer_name)}${f('c_phone', 'Telefono', r.customer_phone, 'inputmode="tel"')}${f('c_email', 'Email', r.customer_email)}</div>
+    </section>
+    <section class="sec">
+      <h3 class="sec-t">Dispositivo</h3>
+      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', 'Seriale / IMEI', r.serial)}
+        ${f('accessories', 'Accessori lasciati', r.accessories)}${f('condition_notes', 'Stato del dispositivo', r.condition_notes)}
+        ${f('passcode', 'PIN / schema (solo interno)', r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
+    </section>
+    <section class="sec">
+      <h3 class="sec-t">Problema segnalato</h3>
+      <textarea data-k="problem" rows="3" aria-label="Problema segnalato">${esc(r.problem)}</textarea>
+    </section>`,
     { title: `Modifica ${r.code}`, wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ed-ok">Salva modifiche</button>` }
   );
   $('#ed-ok', m.el).onclick = async () => {
