@@ -1,5 +1,5 @@
 // Layout su telefono, tablet e desktop + funzioni di comodità (ricerca globale, modifica dati, backup).
-// Gira dopo officina.cy.js (stesso DB isolato): crea qualche riparazione in più per avere schermate "piene".
+// Parte da un DB vuoto: nel before() crea i dati di esempio (fornitore, articolo, clienti, riparazioni).
 // pagina -> testo che compare solo quando i dati sono stati caricati
 const ROUTES = { oggi: 'Preventivo da approvare', riparazioni: 'Samsung Galaxy S23', clienti: 'Mario Rossi', magazzino: 'Display iPhone 13', vendite: 'Ultime vendite', fornitori: 'Ricambi Napoli', cassa: 'Incassato nel periodo', impostazioni: 'Backup dei dati' };
 const SCREENS = [
@@ -16,6 +16,9 @@ const noHorizontalScroll = () =>
 
 describe('Responsive e comodità', () => {
   before(() => {
+    cy.request('POST', '/api/suppliers', { name: 'Ricambi Napoli', phone: '0811234567' }).then((sup) =>
+      cy.request('POST', '/api/products', { name: 'Display iPhone 13', category: 'Ricambi', qty: 3, min_qty: 2, cost: 60, price: 129, supplier_id: sup.body.id }));
+    cy.request('POST', '/api/customers', { name: 'Mario Rossi', phone: '3331234567' });
     const mk = (name, phone, model, problem, quote, eta) =>
       cy.request('POST', '/api/repairs', { customer: { name, phone }, brand_model: model, problem, quote, eta_date: eta, deposit: 20, accessories: 'Caricatore, Cover', condition_notes: 'Graffi' })
         .then((r) => { tokens.push(r.body.token); return r.body; });
@@ -155,7 +158,22 @@ describe('Comodità', () => {
     cy.get('.modal-bg [data-close]').first().click();
   });
 
-  it('il manuale è raggiungibile', () => {
-    cy.request('/manuale.html').its('status').should('eq', 200);
+  it('il manuale è raggiungibile, con immagini caricate e leggibile su ogni schermo', () => {
+    SCREENS.forEach(([name, w, h]) => {
+      cy.viewport(w, h);
+      cy.visit('/manuale.html');
+      cy.contains('h2', 'Foglio rapido');
+      cy.get('main section').should('have.length.at.least', 14);
+      cy.get('figure img').each(($img) => {
+        $img[0].loading = 'eager'; // le immagini "lazy" fuori schermo non si caricano da sole
+        cy.wrap($img).should(($i) => expect($i[0].naturalWidth, `immagine ${$i[0].getAttribute('src')}`).to.be.greaterThan(0));
+      });
+      noHorizontalScroll();
+      cy.scrollTo('top');
+      cy.screenshot(`manuale-${name}`, { capture: 'viewport', overwrite: true });
+    });
+    cy.viewport(1280, 800);
+    cy.visit('/#/oggi');
+    cy.get('#nav a[href="/manuale.html"]').should('have.attr', 'target', '_blank');
   });
 });
