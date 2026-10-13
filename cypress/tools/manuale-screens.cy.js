@@ -1,5 +1,5 @@
 // Genera le schermate del manuale per Christian con dati di esempio realistici (DB isolato).
-// Uso:  npm run test:e2e -- --spec cypress/e2e/manuale-screens.cy.js
+// Uso:  npm run test:e2e -- --spec cypress/tools/manuale-screens.cy.js
 // Poi copiare cypress/screenshots/manuale-screens.cy.js/*.png in officina/public/manuale/.
 const api = (method, url, body) => cy.request({ method, url, body });
 const ids = {};

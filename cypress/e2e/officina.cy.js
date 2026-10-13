@@ -7,7 +7,7 @@ describe('Gestionale officina', () => {
     cy.visit('/');
     cy.contains('h1', 'Oggi');
     cy.contains('Nessuna riparazione aperta');
-    cy.get('#new-repair').should('be.visible');
+    cy.get('#top-new').should('be.visible');
     cy.get('#nav a').should('have.length', 9);
   });
 
@@ -34,7 +34,7 @@ describe('Gestionale officina', () => {
 
   it('accettazione veloce: scheda, QR e link di tracciamento', () => {
     cy.visit('/');
-    cy.get('#new-repair').click();
+    cy.get('#top-new').click();
     cy.get('#rf-name').type('Mario Rossi');
     cy.get('#rf-phone').type('3331234567');
     cy.get('#rf-types .chip').contains('Smartphone').should('have.class', 'on');
@@ -64,7 +64,7 @@ describe('Gestionale officina', () => {
 
   it('validazione: senza nome, modello e problema non salva', () => {
     cy.visit('/');
-    cy.get('#new-repair').click();
+    cy.get('#top-new').click();
     cy.get('#rf-save').click();
     cy.get('#toast').should('be.visible').and('contain', 'obbligatorio');
     cy.get('.modal-bg [data-close]').first().click();
