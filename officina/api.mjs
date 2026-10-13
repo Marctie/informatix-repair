@@ -8,7 +8,7 @@ import { rmSync } from 'node:fs';
 import QRCode from 'qrcode';
 import { db, getSettings, tx } from './db.mjs';
 import * as L from './logic.mjs';
-import { printRepair, printLabel, printSale } from './print.mjs';
+import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const wrap = (fn) => async (req, res) => {
   try {
@@ -236,21 +236,20 @@ A.get('/api/backup', (req, res) => {
   }
 });
 
-// Stampe (HTML pronto per la stampante)
-A.get('/print/repair/:id', (req, res) => {
+// Stampe (HTML pronto per la stampante). ?noprint=1 = niente stampa automatica (anteprima).
+const printRoute = (render) => (req, res) => {
   try {
     const r = L.getRepair(req.params.id);
-    res.type('html').send(printRepair(r, trackUrl(r.token), getSettings()));
+    res.type('html').send(render(r, trackUrl(r.token), getSettings(), { noprint: req.query.noprint === '1' }));
   } catch (e) { res.status(e.status || 500).send(e.message); }
-});
-A.get('/print/label/:id', (req, res) => {
-  try {
-    const r = L.getRepair(req.params.id);
-    res.type('html').send(printLabel(r, trackUrl(r.token)));
-  } catch (e) { res.status(e.status || 500).send(e.message); }
-});
+};
+A.get('/print/customer/:id', printRoute(printCustomer));
+A.get('/print/repair/:id', printRoute(printCustomer)); // vecchio indirizzo, resta valido
+A.get('/print/lab/:id', printRoute(printLab));
+A.get('/print/both/:id', printRoute(printBoth));
+A.get('/print/label/:id', printRoute((r, url, s, req) => printLabel(r, url, req)));
 A.get('/print/sale/:id', (req, res) => {
   try {
-    res.type('html').send(printSale(L.getSale(req.params.id), getSettings()));
+    res.type('html').send(printSale(L.getSale(req.params.id), getSettings(), { noprint: req.query.noprint === '1' }));
   } catch (e) { res.status(e.status || 500).send(e.message); }
 });

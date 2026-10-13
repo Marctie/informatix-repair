@@ -90,7 +90,7 @@ function repairRow(r, { showAdvance = true, wa } = {}) {
   return `<div class="row-h flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-open="${r.id}">
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-1.5 flex-wrap"><span class="font-bold text-sm">${esc(r.brand_model)}</span>${statusBadge(r)}
-        ${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato</span>' : ''}</div>
+        ${r.urgent ? '<span class="badge bg-red-600 text-white">🔥 Urgente</span>' : ''}${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato</span>' : ''}</div>
       <p class="text-xs text-gray-500 truncate">${esc(r.customer_name)} · ${esc(r.code)} · ${esc(r.problem)}${r.eta_date ? ` · consegna ${fdate(r.eta_date)}` : ''}</p>
       <div class="mt-1.5 max-w-xs">${progressBar(r)}</div>
     </div>
