@@ -260,7 +260,7 @@ export async function openRepairDetail(id, onChange) {
   await render();
 }
 
-function deliverDialog(id, done) {
+export function deliverDialog(id, done) {
   api('GET', `/api/repairs/${id}`).then((r) => {
     const total = r.final_price ?? r.quote ?? 0;
     const m = openModal(

@@ -1,6 +1,6 @@
 // Router e viste principali: Oggi (dashboard) e Riparazioni.
 import { $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, META, loadMeta, statusBadge, progressBar, waLink, waMessage, today } from './util.js';
-import { openRepairForm, openRepairDetail } from './repair.js';
+import { openRepairForm, openRepairDetail, deliverDialog } from './repair.js';
 import { customersView } from './customers.js';
 import { stockView, suppliersView } from './stock.js';
 import { salesView, cashView, settingsView } from './sales.js';
@@ -53,7 +53,7 @@ function bindRepairList(root, reload) {
     const adv = e.target.closest('[data-advance]');
     if (adv) {
       e.stopPropagation();
-      if (adv.dataset.next === 'delivered') return openRepairDetail(Number(adv.dataset.advance), reload);
+      if (adv.dataset.next === 'delivered') return deliverDialog(Number(adv.dataset.advance), reload);
       await safe(async () => { await api('POST', `/api/repairs/${adv.dataset.advance}/advance`); toast('Stato aggiornato'); });
       return reload();
     }
@@ -80,6 +80,7 @@ async function dashboardView(el) {
       ${stat('Preventivi da approvare', c.quote_pending || 0, 'status=quote_pending', 'text-amber-600')}
       <a href="#/cassa" class="card p-4 hover:shadow-md transition"><p class="text-3xl font-heading font-extrabold text-secondary">${eur(d.cash_today)}</p><p class="text-xs text-gray-500 font-semibold mt-1">Incasso di oggi</p></a>
     </div>
+    ${section('🔧 In lavorazione', d.in_progress)}
     ${section('📞 Pronte: avvisa il cliente', d.ready, { showAdvance: true, wa: 'ready' })}
     ${section('⏰ In ritardo', d.late)}
     ${section('✋ Preventivo da approvare', d.to_approve)}
