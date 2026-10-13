@@ -2,6 +2,7 @@
 //  - createAdminApp: tutto il gestionale (protetto da Cloudflare Access o solo localhost)
 //  - createPublicApp: solo il tracciamento per il cliente
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { renderSVG } from 'uqr';
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
 import * as L from './logic.mjs';
@@ -34,6 +35,8 @@ export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
 // ---------- Pubblico ----------
 export function createPublicApp() {
   const app = new Hono();
+  // Il sito pubblico (altro dominio) chiama la ricerca per numero ricevuta
+  app.use('/api/lookup', cors({ origin: ['https://informatixrepair.com', 'https://www.informatixrepair.com'], allowMethods: ['POST', 'OPTIONS'], allowHeaders: ['content-type'] }));
   app.get('/api/track/:token', h((req) => L.publicView(req.params.token)));
   app.post('/api/track/:token/decision', h((req) => L.customerDecision(req.params.token, !!req.body?.accept)));
   // Ricerca "per anziani": numero ricevuta + ultime 4 cifre del telefono -> codice di tracciamento
