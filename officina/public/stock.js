@@ -16,10 +16,11 @@ export async function stockView(el, params) {
   const list = $('#p-list', el);
 
   async function load() {
+    if (!$('#p-q', el)) return; // pagina cambiata nel frattempo
     $$('[data-t]', el).forEach((c) => c.classList.toggle('on', c.dataset.t === tab));
     $('#p-q', el).classList.toggle('hidden', tab === 'reorder');
     const sum = await safe(() => api('GET', '/api/stock/summary'));
-    if (sum) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], [eur(sum.value_cost), 'Valore a costo', ''], [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
+    if (sum && $('#p-kpi', el)) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], [eur(sum.value_cost), 'Valore a costo', ''], [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
     if (tab === 'reorder') return loadReorder();
     const rows = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
     list.innerHTML = `<div class="tbl-wrap"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th><th>Costo</th><th>Prezzo</th><th></th></tr></thead><tbody>` +
