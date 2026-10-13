@@ -24,9 +24,16 @@ export async function customersView(el) {
 
 function editCustomer(c, done) {
   const m = openModal(
-    `<div class="grid gap-3"><div><label class="l">Nome e cognome *</label><input id="ce-name" value="${esc(c?.name || '')}" /></div>
-     <div class="grid grid-cols-2 gap-3"><div><label class="l">Telefono</label><input id="ce-phone" value="${esc(c?.phone || '')}" /></div><div><label class="l">Email</label><input id="ce-email" value="${esc(c?.email || '')}" /></div></div>
-     <div><label class="l">Note</label><textarea id="ce-notes" rows="2">${esc(c?.notes || '')}</textarea></div></div>`,
+    `<div class="sec">
+      <div class="fgrid">
+        <div class="field"><label class="l" for="ce-name">Nome e cognome *</label><input id="ce-name" value="${esc(c?.name || '')}" /></div>
+      </div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="ce-phone">Telefono</label><input id="ce-phone" inputmode="tel" value="${esc(c?.phone || '')}" /></div>
+        <div class="field"><label class="l" for="ce-email">Email</label><input id="ce-email" type="email" value="${esc(c?.email || '')}" /></div>
+      </div>
+      <div class="field"><label class="l" for="ce-notes">Note</label><textarea id="ce-notes" rows="3" placeholder="Informazioni utili sul cliente (facoltative)">${esc(c?.notes || '')}</textarea></div>
+    </div>`,
     { title: c ? 'Modifica cliente' : 'Nuovo cliente', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ce-ok">Salva</button>` }
   );
   $('#ce-ok', m.el).onclick = async () => {
@@ -40,12 +47,23 @@ export async function openCustomer(id, done) {
   const c = await safe(() => api('GET', `/api/customers/${id}`));
   if (!c) return;
   const m = openModal(
-    `<p class="text-sm text-gray-600">${esc(c.phone || '—')} ${c.email ? '· ' + esc(c.email) : ''}</p>${c.notes ? `<p class="text-sm mt-1">📝 ${esc(c.notes)}</p>` : ''}
-     <div class="flex gap-2 mt-3 flex-wrap">${c.phone ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${waLink(c.phone, 'Ciao ' + c.name.split(' ')[0] + ',')}">💬 WhatsApp</a><a class="btn btn-outline btn-sm" href="tel:${esc(c.phone)}">📞 Chiama</a>` : ''}<button class="btn btn-primary btn-sm" id="cu-new">＋ Nuova riparazione</button><button class="btn btn-outline btn-sm" id="cu-edit">Modifica</button><button class="btn btn-ghost btn-sm" id="cu-del">Elimina</button></div>
-     <div class="sec-t">Riparazioni (${c.repairs.length})</div>
-     ${c.repairs.map((r) => `<div class="row-h flex items-center gap-2 py-2 border-b border-line cursor-pointer text-sm" data-rid="${r.id}"><b>${esc(r.brand_model)}</b> ${statusBadge(r)}<span class="text-gray-500 ml-auto">${esc(r.code)} · ${fdate(r.created_at)}</span></div>`).join('') || '<p class="text-sm text-gray-400">Nessuna.</p>'}
-     <div class="sec-t">Acquisti (${c.sales.length})</div>
-     ${c.sales.map((s) => `<div class="flex justify-between text-sm py-1.5 border-b border-line"><span>${esc(s.code)} · ${fdate(s.created_at)}</span><b>${eur(s.total)}</b></div>`).join('') || '<p class="text-sm text-gray-400">Nessuno.</p>'}`,
+    `<section class="sec">
+      <dl class="kv"><dt>Telefono</dt><dd>${esc(c.phone || '—')}</dd><dt>Email</dt><dd>${esc(c.email || '—')}</dd>${c.notes ? `<dt>Note</dt><dd>${esc(c.notes)}</dd>` : ''}</dl>
+      <div class="row tight">
+        ${c.phone ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${waLink(c.phone, 'Ciao ' + c.name.split(' ')[0] + ',')}">💬 WhatsApp</a><a class="btn btn-outline btn-sm" href="tel:${esc(c.phone)}">📞 Chiama</a>` : ''}
+        <button class="btn btn-primary btn-sm" id="cu-new">＋ Nuova riparazione</button>
+        <button class="btn btn-outline btn-sm" id="cu-edit">Modifica</button>
+        <button class="btn btn-ghost btn-sm" id="cu-del">Elimina</button>
+      </div>
+    </section>
+    <section class="sec">
+      <h3 class="sec-t">Riparazioni (${c.repairs.length})</h3>
+      <div class="plist">${c.repairs.map((r) => `<div class="row-h" style="cursor:pointer;flex-wrap:wrap" data-rid="${r.id}"><span class="row tight"><b>${esc(r.brand_model)}</b> ${statusBadge(r)}</span><span class="hint">${esc(r.code)} · ${fdate(r.created_at)}</span></div>`).join('') || '<p class="hint">Nessuna riparazione.</p>'}</div>
+    </section>
+    <section class="sec">
+      <h3 class="sec-t">Acquisti (${c.sales.length})</h3>
+      <div class="plist">${c.sales.map((s) => `<div><span>${esc(s.code)} <span class="hint">${fdate(s.created_at)}</span></span><b>${eur(s.total)}</b></div>`).join('') || '<p class="hint">Nessun acquisto.</p>'}</div>
+    </section>`,
     { title: c.name, wide: true }
   );
   $('#cu-new', m.el).onclick = () => { m.close(); openRepairForm(done, { name: c.name, phone: c.phone }); };
