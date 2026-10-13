@@ -4,40 +4,41 @@ import { $, esc, eur, fdate, api, safe, META } from './util.js';
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
 const shift = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const TABS = [['riparazioni', 'Riparazioni'], ['incassi', 'Incassi'], ['vendite', 'Vendite'], ['magazzino', 'Magazzino']];
-const TYPES = { smartphone: 'Smartphone', tablet: 'Tablet', portatile: 'Portatile', pc: 'PC fisso', console: 'Console', altro: 'Altro' };
-
-/** Barre orizzontali: etichetta, barra e valore scritto (leggibile anche senza colore). */
-function hbars(rows, { value = (r) => r.n, label = (r) => r.name, fmt = (v) => String(v), empty = 'Nessun dato nel periodo.' } = {}) {
-  if (!rows.length) return `<p class="empty">${empty}</p>`;
-  const max = Math.max(1, ...rows.map(value));
-  return `<ul class="an-bars">${rows.map((r) => `<li><span class="an-l">${esc(label(r))}</span>
-    <span class="an-track" aria-hidden="true"><i style="width:${Math.max(3, (value(r) / max) * 100)}%"></i></span><b class="an-v">${fmt(value(r))}</b></li>`).join('')}</ul>`;
-}
-
-const kpi = (v, l, cls = '') => `<div class="card kpi"><b class="${cls}">${v}</b><span>${l}</span></div>`;
-
-export async function analyticsView(el, qs) {
-  let from = qs.get('from') || shift(today(), -29);
-  let to = qs.get('to') || today();
-  let tab = qs.get('tab') || 'riparazioni';
-  el.innerHTML = `
-    <style>
-      #an-out{display:grid;gap:var(--s4,1rem);margin-top:var(--s4,1rem)}
-      #an-out .sec-t{margin-bottom:.4rem}
+export const AN_CSS = `<style>
+      [data-an]{display:grid;gap:1.6rem;margin-top:1.6rem}
+      [data-an] .sec-t{margin-bottom:.4rem}
       .an-bars{list-style:none;margin:0;padding:0;display:grid;gap:.55rem}
       .an-bars li{display:grid;grid-template-columns:minmax(7rem,44%) 1fr auto;gap:.6rem;align-items:center;font-size:.9rem}
       .an-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .an-track{height:.7rem;border-radius:99px;background:#eceff3;overflow:hidden}
       .an-track i{display:block;height:100%;border-radius:99px;background:var(--red,#dc2626)}
       .an-v{font-variant-numeric:tabular-nums;text-align:right}
-      .an-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:var(--s4,1rem)}
+      .an-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:1.6rem}
       @media (max-width:520px){.an-bars li{grid-template-columns:1fr auto}.an-track{grid-column:1/-1;order:3}}
-    </style>
+    </style>`;
+const TYPES = { smartphone: 'Smartphone', tablet: 'Tablet', portatile: 'Portatile', pc: 'PC fisso', console: 'Console', altro: 'Altro' };
+
+/** Barre orizzontali: etichetta, barra e valore scritto (leggibile anche senza colore). */
+export function hbars(rows, { value = (r) => r.n, label = (r) => r.name, fmt = (v) => String(v), empty = 'Nessun dato nel periodo.' } = {}) {
+  if (!rows.length) return `<p class="empty">${empty}</p>`;
+  const max = Math.max(1, ...rows.map(value));
+  return `<ul class="an-bars">${rows.map((r) => `<li><span class="an-l">${esc(label(r))}</span>
+    <span class="an-track" aria-hidden="true"><i style="width:${Math.max(3, (value(r) / max) * 100)}%"></i></span><b class="an-v">${fmt(value(r))}</b></li>`).join('')}</ul>`;
+}
+
+export const kpi = (v, l, cls = '') => `<div class="card kpi"><b class="${cls}">${v}</b><span>${l}</span></div>`;
+
+export async function analyticsView(el, qs) {
+  let from = qs.get('from') || shift(today(), -29);
+  let to = qs.get('to') || today();
+  let tab = qs.get('tab') || 'riparazioni';
+  el.innerHTML = `
+    ${AN_CSS}
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Analisi</h1></div>
     <div class="flex gap-2 items-center flex-wrap" id="an-period"><span class="chip" data-r="0">Oggi</span><span class="chip" data-r="6">7 giorni</span><span class="chip" data-r="29">30 giorni</span><span class="chip" data-r="89">90 giorni</span><span class="chip" data-r="364">Anno</span>
       <input type="date" id="an-from" class="!w-auto" value="${from}" aria-label="Dal" /><span class="text-gray-400">→</span><input type="date" id="an-to" class="!w-auto" value="${to}" aria-label="Al" /></div>
     <div class="flex gap-2 flex-wrap" id="an-tabs" role="tablist">${TABS.map(([id, l]) => `<button class="chip ${id === tab ? 'on' : ''}" role="tab" aria-selected="${id === tab}" data-tab="${id}">${l}</button>`).join('')}</div>
-    <div id="an-out"></div>`;
+    <div id="an-out" data-an></div>`;
   const out = $('#an-out', el);
 
   async function load() {
