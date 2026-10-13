@@ -12,10 +12,15 @@ const { createApps } = await import('../server.mjs');
 const { closeDb } = await import('../db-node.mjs');
 const { serve } = await import('@hono/node-server');
 
+// Vetrina usati: publisher finto (non scrive mai su GitHub) e archivio foto in memoria
+const { memoryMedia } = await import('../media.mjs');
+const fakePub = { mode: 'fake', enabled: true, calls: [], fail: null, async publish(b) { if (this.fail) throw new Error(this.fail); this.calls.push(b); return { published: true, changed: true, commits: 1 }; } };
+const fakeMedia = memoryMedia();
+
 let admin, pub, A, P;
 const listen = (app) => new Promise((r) => { const srv = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, () => r(srv)); });
 before(async () => {
-  const apps = createApps();
+  const apps = createApps({ usati: { publisher: () => fakePub, media: () => fakeMedia, siteUrl: () => 'https://sito.test' } });
   admin = await listen(apps.admin);
   pub = await listen(apps.pub);
   A = `http://127.0.0.1:${admin.address().port}`;
@@ -34,7 +39,7 @@ const call = async (base, method, path, body) => {
   const data = ct.includes('json') ? await res.json() : await res.text();
   return { status: res.status, data };
 };
-const a = (m, p, b) => call(A, m, p, b);
+const a = (m, p, b, qs = '') => call(A, m, p + qs, b);
 
 test('magazzino: prodotto con carico iniziale, movimenti e sotto scorta', async () => {
   const sup = (await a('POST', '/api/suppliers', { name: 'Ricambi Napoli', phone: '0811234567' })).data;
@@ -366,4 +371,192 @@ test('spese e nota spese in PDF', async () => {
   assert.equal(big.status, 200);
   assert.ok((await big.arrayBuffer()).byteLength > buf.length);
   assert.equal((await a('DELETE', `/api/expenses/${e.id}`)).data.ok, true);
+});
+
+// ---------- Vetrina usati ----------
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 1, 2, 3, 4]).toString('base64');
+
+test('usati: crea, valida, modifica, venduto e pubblicazione con il publisher finto', async () => {
+  fakePub.calls.length = 0;
+  assert.equal((await a('POST', '/api/usati', { name: '', condition: 'usato' })).status, 400);
+  assert.equal((await a('POST', '/api/usati', { name: 'Pixel 9', condition: 'rotto' })).status, 400);
+  assert.equal((await a('POST', '/api/usati', { name: 'Pixel 9', condition: 'usato', price: -3 })).status, 400);
+  const c = await a('POST', '/api/usati', { name: 'Pixel 9', memory: '256 GB', color: 'Nero', condition: 'usato', price: '420,50', specs: [['Chip', 'Tensor G4'], ['', 'x']], featured: true });
+  assert.equal(c.status, 200);
+  const it = c.data;
+  assert.equal(it.slug, 'pixel-9-256-gb-nero');
+  assert.equal(it.price, 420.5);
+  assert.equal(it.conditionLabel, 'Usato');
+  assert.deepEqual(it.specs, [['Chip', 'Tensor G4']]);
+  assert.equal(it.status, 'active');
+  assert.equal(it.publish.state, 'published');
+  assert.equal(fakePub.calls.length, 1);
+  const json = JSON.parse(fakePub.calls[0].jsonText);
+  assert.equal(fakePub.calls[0].jsonPath, 'content/usati/usati.json');
+  assert.equal(json.items[0].slug, 'pixel-9-256-gb-nero');
+  assert.ok(!json.items[0].sold);
+  // stesso nome: lo slug resta unico
+  assert.equal((await a('POST', '/api/usati', { name: 'Pixel 9', memory: '256 GB', color: 'Nero', condition: 'usato', price: 400 }, '?publish=0')).data.slug, 'pixel-9-256-gb-nero-2');
+  // modifica parziale: i campi non inviati restano
+  const up = (await a('PUT', `/api/usati/${it.slug}`, { price: 399, tagline: 'Come nuovo' })).data;
+  assert.equal(up.price, 399);
+  assert.equal(up.memory, '256 GB');
+  assert.equal(up.tagline, 'Come nuovo');
+  // venduto / rimesso in vetrina
+  const sold = (await a('POST', `/api/usati/${it.slug}/sold`)).data;
+  assert.equal(sold.sold, true);
+  assert.equal(sold.status, 'sold');
+  assert.equal(sold.daysLeft, 7);
+  assert.equal(JSON.parse(fakePub.calls.at(-1).jsonText).items.find((x) => x.slug === it.slug).sold, true);
+  assert.equal((await a('POST', `/api/usati/${it.slug}/unsold`)).data.status, 'active');
+  assert.equal((await a('GET', '/api/usati/non-esiste')).status, 404);
+  const list = (await a('GET', '/api/usati')).data;
+  assert.ok(list.items.length >= 2);
+  assert.equal(list.publish.mode, 'fake');
+  // eliminazione
+  const del = (await a('DELETE', `/api/usati/${it.slug}-2`)).data;
+  assert.equal(del.ok, true);
+  assert.equal((await a('DELETE', '/api/usati/pixel-9-256-gb-nero')).data.ok, true);
+});
+
+test('usati: gli articoli di content/usati/usati.json si importano e il sito riceve lo stesso JSON', async () => {
+  const { importItems, buildSiteJson } = await import('../usati.mjs');
+  const { readFileSync } = await import('node:fs');
+  const orig = JSON.parse(readFileSync(new URL('../../content/usati/usati.json', import.meta.url), 'utf8'));
+  assert.equal(await importItems(orig.items), orig.items.length);
+  assert.equal(await importItems(orig.items), 0); // ripetibile
+  const out = JSON.parse(await buildSiteJson());
+  // sold:false e le stringhe vuote sono lo stesso che campo assente
+  const norm = (i) => Object.fromEntries(Object.entries(i).filter(([k, v]) => v !== '' && !(!i.sold && (k === 'sold' || k === 'soldAt'))));
+  assert.deepEqual(out.items.map(norm), orig.items.map(norm));
+  assert.equal((await a('GET', '/api/usati')).data.items.length, orig.items.length);
+  // le foto storiche si vedono dal sito, quelle nuove dall'archivio del gestionale
+  const first = (await a('GET', `/api/usati/${orig.items.find((i) => i.photos).slug}`)).data;
+  assert.match(first.photo_urls[0].thumb, /^https:\/\/sito\.test\/images\/usati\/.+\/1-t\.jpg$/);
+});
+
+test('usati: foto (controlli), pubblicazione con foto nuove, riordino e rimozione', async () => {
+  const it = (await a('POST', '/api/usati', { name: 'Foto Test', condition: 'nuovo', price: 10 }, '?publish=0')).data;
+  const url = `/api/usati/${it.slug}/photos`;
+  assert.equal((await a('POST', url, { image: Buffer.from('non una foto').toString('base64'), thumb: JPEG })).status, 400);
+  assert.equal((await a('POST', url, { image: Buffer.alloc(1_600_000, 1).toString('base64'), thumb: JPEG })).status, 400); // non JPEG
+  const big = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(1_600_000)]).toString('base64');
+  assert.equal((await a('POST', url, { image: big, thumb: JPEG })).status, 413);
+  const p1 = (await a('POST', url, { image: JPEG, thumb: JPEG })).data;
+  const p2 = (await a('POST', url, { image: JPEG, thumb: JPEG })).data;
+  assert.equal(p2.photos, 2);
+  const [n1, n2] = p2.photo_urls.map((p) => p.name);
+  assert.ok(p1.photo_urls[0].thumb.startsWith(`/media/usati/${it.slug}/`));
+  // anteprima servita dall'archivio
+  const img = await fetch(`${A}${p2.photo_urls[0].thumb}`);
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get('content-type'), 'image/jpeg');
+  assert.equal((await fetch(`${A}/media/usati/${it.slug}/..%2Fx.jpg`)).status, 404);
+  // riordino: la prima e' la copertina
+  assert.equal((await a('PUT', `${url}/order`, { order: [n2] })).status, 400);
+  assert.equal((await a('PUT', `${url}/order`, { order: [n2, n1] })).data.photo_urls[0].name, n2);
+  // pubblicazione: il publisher riceve le due foto (grande + miniatura) e il JSON con i nomi dei file
+  fakePub.calls.length = 0;
+  const pub = (await a('POST', '/api/usati/publish')).data;
+  assert.equal(pub.state, 'published');
+  const call = fakePub.calls[0];
+  assert.deepEqual(call.files.map((f) => f.path).sort(), [n1, n2].flatMap((n) => [`public/images/usati/${it.slug}/${n}.jpg`, `public/images/usati/${it.slug}/${n}-t.jpg`]).sort());
+  assert.deepEqual(JSON.parse(call.jsonText).items.find((x) => x.slug === it.slug).files, [n2, n1]);
+  // seconda pubblicazione: le foto non si caricano di nuovo
+  fakePub.calls.length = 0;
+  await a('POST', '/api/usati/publish');
+  assert.equal(fakePub.calls[0].files.length, 0);
+  // foto gia' pubblicata e poi tolta: il file va cancellato dal sito
+  assert.equal((await a('DELETE', `${url}/${n1}`)).data.photos, 1);
+  fakePub.calls.length = 0;
+  await a('POST', '/api/usati/publish');
+  assert.deepEqual(fakePub.calls[0].deletes.sort(), [`public/images/usati/${it.slug}/${n1}-t.jpg`, `public/images/usati/${it.slug}/${n1}.jpg`].sort());
+  fakePub.calls.length = 0;
+  await a('POST', '/api/usati/publish');
+  assert.equal(fakePub.calls[0].deletes.length, 0);
+  assert.equal((await a('DELETE', `${url}/inesistente`)).status, 404);
+  await a('DELETE', `/api/usati/${it.slug}`);
+});
+
+test('usati: errore di pubblicazione, stato "da pubblicare" e riprova', async () => {
+  fakePub.fail = 'GitHub PUT x: 401 Bad credentials';
+  const it = (await a('POST', '/api/usati', { name: 'Errore Test', condition: 'usato' })).data;
+  assert.equal(it.publish.state, 'error');
+  assert.match(it.publish.message, /non riuscita.*401/);
+  assert.equal(it.publish.dirty, true);
+  assert.equal((await a('GET', '/api/usati')).data.publish.error, 'GitHub PUT x: 401 Bad credentials');
+  fakePub.fail = null;
+  const ok = (await a('POST', '/api/usati/publish')).data;
+  assert.equal(ok.state, 'published');
+  assert.equal(ok.dirty, false);
+  assert.equal(ok.error, null);
+  await a('DELETE', `/api/usati/${it.slug}`);
+});
+
+test('usati: senza token resta bozza; senza archivio foto errore chiaro; lo staff non elimina', async () => {
+  const { createAdminApp } = await import('../app.mjs');
+  const { draftPublisher, DRAFT_MESSAGE } = await import('../publisher.mjs');
+  const { missingMedia } = await import('../media.mjs');
+  const staff = createAdminApp({ auth: async (c, next) => { c.set('user', { email: 's@x.it', role: 'staff' }); await next(); }, usati: { publisher: () => draftPublisher(), media: () => missingMedia() } });
+  const req = async (m, p, b) => { const r = await staff.request(p, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }); return { status: r.status, data: await r.json() }; };
+  const it = (await req('POST', '/api/usati', { name: 'Bozza Test', condition: 'usato' })).data;
+  assert.equal(it.publish.state, 'draft');
+  assert.equal(it.publish.message, DRAFT_MESSAGE);
+  assert.match(DRAFT_MESSAGE, /non ancora attiva/);
+  const ph = await req('POST', `/api/usati/${it.slug}/photos`, { image: JPEG, thumb: JPEG });
+  assert.equal(ph.status, 503);
+  assert.match(ph.data.error, /officina-media/);
+  assert.equal((await req('DELETE', `/api/usati/${it.slug}`)).status, 403);
+  assert.equal((await a('DELETE', `/api/usati/${it.slug}`)).data.ok, true);
+});
+
+test('publisher GitHub: foto, poi JSON, poi cancellazioni; nessun commit se il JSON e uguale', async () => {
+  const { githubPublisher, createPublisher } = await import('../publisher.mjs');
+  assert.equal(createPublisher({}).enabled, false);
+  assert.equal(createPublisher({ GITHUB_TOKEN: 'x' }).enabled, false);
+  assert.equal(createPublisher({ GITHUB_TOKEN: 'x', GITHUB_REPO: 'o/r' }).mode, 'github');
+  const calls = [];
+  const remote = { 'content/usati/usati.json': { sha: 'j1', content: Buffer.from('{"old":1}').toString('base64') }, 'public/images/usati/s/old.jpg': { sha: 'o1' } };
+  const fetcher = async (url, init) => {
+    const path = decodeURIComponent(new URL(url).pathname.replace('/repos/o/r/contents/', ''));
+    calls.push({ method: init.method, path, body: init.body && JSON.parse(init.body), auth: init.headers.authorization, ref: new URL(url).searchParams.get('ref') });
+    if (init.method === 'GET') return remote[path] ? new Response(JSON.stringify(remote[path])) : new Response('{"message":"Not Found"}', { status: 404 });
+    return new Response(JSON.stringify({ content: {} }), { status: 200 });
+  };
+  const p = githubPublisher({ token: 'T0KEN', repo: 'o/r', branch: 'test-branch', fetcher });
+  const out = await p.publish({ jsonPath: 'content/usati/usati.json', jsonText: '{"new":2}\n', files: [{ path: 'public/images/usati/s/n.jpg', base64: 'QUJD' }], deletes: ['public/images/usati/s/old.jpg', 'public/images/usati/s/mai.jpg'] });
+  assert.equal(out.published, true);
+  const writes = calls.filter((c) => c.method !== 'GET');
+  assert.deepEqual(writes.map((w) => `${w.method} ${w.path}`), ['PUT public/images/usati/s/n.jpg', 'PUT content/usati/usati.json', 'DELETE public/images/usati/s/old.jpg']);
+  assert.ok(writes.every((w) => w.auth === 'Bearer T0KEN' && w.body.branch === 'test-branch'));
+  assert.equal(writes[1].body.sha, 'j1');
+  assert.equal(Buffer.from(writes[1].body.content, 'base64').toString(), '{"new":2}\n');
+  assert.equal(calls[0].ref, 'test-branch');
+  // JSON identico: nessuna scrittura
+  remote['content/usati/usati.json'] = { sha: 'j2', content: Buffer.from('{"new":2}\n').toString('base64') };
+  calls.length = 0;
+  const same = await p.publish({ jsonPath: 'content/usati/usati.json', jsonText: '{"new":2}\n' });
+  assert.equal(same.changed, false);
+  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
+  // errore dell'API: messaggio senza il token
+  const bad = githubPublisher({ token: 'T0KEN', repo: 'o/r', fetcher: async () => new Response('{"message":"Bad credentials"}', { status: 401 }) });
+  await assert.rejects(() => bad.publish({ jsonPath: 'x', jsonText: 'y' }), (e) => /401 Bad credentials/.test(e.message) && !/T0KEN/.test(e.message));
+});
+
+test('notifiche Telegram: azioni sulla vetrina usati ed errori di pubblicazione', async () => {
+  const { describeEvent } = await import('../notify.mjs');
+  const user = { name: 'Christian', email: 'c@x.it' };
+  const ev = (method, path, result, body = {}, status = 200) => describeEvent({ method, path, status, user, body, result });
+  const base = { name: 'iPhone 15', memory: '128 GB', color: 'Giallo', price: 650, conditionLabel: 'Usato', publish: { state: 'published' } };
+  assert.match(ev('POST', '/api/usati', base), /Nuovo articolo usato.*iPhone 15 128 GB Giallo.*650,00.*Pubblicato sul sito/s);
+  assert.match(ev('PUT', '/api/usati/x', base), /Articolo usato modificato/);
+  assert.match(ev('POST', '/api/usati/x/sold', base), /Usato VENDUTO/);
+  assert.match(ev('POST', '/api/usati/x/unsold', base), /rimesso in vetrina/);
+  assert.match(ev('DELETE', '/api/usati/x', { name: 'iPhone 15', publish: { state: 'draft' } }), /eliminato.*Solo bozza/s);
+  assert.match(ev('POST', '/api/usati/x/photos', base), /Foto aggiunta/);
+  assert.match(ev('POST', '/api/usati/publish', { state: 'published', message: 'Pubblicato' }), /Vetrina usati pubblicata/);
+  assert.match(ev('POST', '/api/usati/publish', { state: 'error', message: 'GitHub 401' }), /NON riuscita.*GitHub 401/s);
+  assert.match(ev('POST', '/api/usati', { ...base, publish: { state: 'error', message: 'GitHub 401' } }), /Pubblicazione sul sito NON riuscita/);
+  assert.match(ev('POST', '/api/usati', { error: 'Nome obbligatorio' }, {}, 400), /non riuscito/);
+  assert.equal(ev('GET', '/api/usati', {}), null);
 });
