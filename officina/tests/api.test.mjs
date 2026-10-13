@@ -308,6 +308,10 @@ test('dati demo: si caricano, si vedono ovunque e si cancellano senza toccare i 
   assert.ok(dash.ready.length >= 2 && dash.to_approve.length >= 1 && dash.low_stock.length >= 1);
   const an = (await a('GET', '/api/analytics?from=2000-01-01&to=2099-12-31')).data;
   assert.ok(an.sales.count >= 13 && an.income.total > 0);
+  // la cassa di oggi non e' vuota (cosi' si vede subito qualcosa)
+  const oggi = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+  const cassa = (await a('GET', `/api/report?from=${oggi}&to=${oggi}`)).data;
+  assert.ok(cassa.rows.length >= 4 && cassa.total > 0);
   // tracciamento pubblico di una riparazione demo
   assert.equal((await call(P, 'GET', '/api/track/demo-token-4')).data.status, 'quote_pending');
   // un cliente demo si ritrova con la ricerca per ricevuta + telefono

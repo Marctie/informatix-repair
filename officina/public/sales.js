@@ -1,4 +1,5 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
+import { hbars, kpi, AN_CSS } from './analytics.js';
 import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta } from './util.js';
 
 export async function salesView(el) {
@@ -120,31 +121,53 @@ export async function salesView(el) {
   await recent();
 }
 
-export async function cashView(el) {
-  let from = today(), to = today();
-  el.innerHTML = `<div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Cassa</h1></div>
-    <div class="flex gap-2 items-center flex-wrap"><span class="chip" data-r="0">Oggi</span><span class="chip" data-r="7">7 giorni</span><span class="chip" data-r="30">30 giorni</span>
-    <input type="date" id="c-from" class="!w-auto" value="${from}" aria-label="Dal" /><span class="text-gray-400">→</span><input type="date" id="c-to" class="!w-auto" value="${to}" aria-label="Al" /></div><div id="c-out"></div>`;
+export async function cashView(el, qs = new URLSearchParams()) {
+  const days0 = Math.max(0, Number(qs.get('days')) || 0);
+  let from = days0 ? addDays(-days0) : today(), to = today();
+  const DOW = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+  el.innerHTML = `${AN_CSS}
+    <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Cassa</h1></div>
+    <div class="flex gap-2 items-center flex-wrap" id="c-period"><span class="chip" data-r="0">Oggi</span><span class="chip" data-r="7">7 giorni</span><span class="chip" data-r="30">30 giorni</span><span class="chip" data-r="90">90 giorni</span>
+    <input type="date" id="c-from" class="!w-auto" value="${from}" aria-label="Dal" /><span class="text-gray-400">→</span><input type="date" id="c-to" class="!w-auto" value="${to}" aria-label="Al" /></div><div id="c-out" data-an></div>`;
   async function load() {
     const r = await safe(() => api('GET', `/api/report?from=${from}&to=${to}`));
     if (!r || !$('#c-out', el)) return;
     const max = Math.max(1, ...r.by_day.map((d) => d.total));
+    const days = Math.max(1, Math.round((new Date(`${r.to}T00:00:00Z`) - new Date(`${r.from}T00:00:00Z`)) / 86400000) + 1);
+    // raggruppamenti calcolati sull'elenco dei singoli incassi
+    const group = (keyOf) => {
+      const m = new Map();
+      for (const p of r.rows) { const k = keyOf(p); const g = m.get(k) || { name: k, total: 0, n: 0 }; g.total += p.amount; g.n += 1; m.set(k, g); }
+      return [...m.values()].map((g) => ({ ...g, total: Math.round(g.total * 100) / 100 }));
+    };
+    const byKind = group((p) => (p.kind === 'sale' ? 'Vendite' : 'Riparazioni')).sort((x, y) => y.total - x.total);
+    const byHour = group((p) => `${p.created_at.slice(11, 13)}:00`).sort((x, y) => (x.name < y.name ? -1 : 1));
+    const byDow = group((p) => DOW[new Date(`${p.created_at.slice(0, 10)}T12:00:00Z`).getUTCDay()]).sort((x, y) => DOW.indexOf(x.name) - DOW.indexOf(y.name));
+    const pct = (v) => (r.total > 0 ? ` · ${Math.round((v / r.total) * 100)}%` : '');
     $('#c-out', el).innerHTML = `
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="card kpi"><b class="text-secondary">${eur(r.total)}</b><span>Incassato nel periodo</span></div>
-        ${r.by_method.map((m) => `<div class="card kpi"><b>${eur(m.total)}</b><span>${esc(m.method)} (${m.n})</span></div>`).join('')}
-        <div class="card kpi"><b class="text-gray-600">${eur(r.parts_cost)}</b><span>Costo ricambi e merce venduta</span></div>
+        ${kpi(eur(r.total), 'Incassato nel periodo', 'text-secondary')}
+        ${kpi(r.rows.length, r.rows.length === 1 ? 'Operazione' : 'Operazioni')}
+        ${kpi(eur(r.total / days), 'Media al giorno')}
+        ${kpi(eur(r.parts_cost), 'Costo ricambi e merce venduta', 'text-gray-600')}
       </div>
       ${r.untracked_excluded ? `<p class="hint">${r.untracked_excluded} ${r.untracked_excluded === 1 ? 'pagamento “non tracciato” non è conteggiato' : 'pagamenti “non tracciato” non sono conteggiati'} (impostazione in Impostazioni → Cassa).</p>` : ''}
-      ${r.by_day.length > 1 ? `<div class="card panel sec"><h3 class="sec-t">Incassi per giorno</h3>
-        <div class="flex items-end gap-1.5 h-36 overflow-x-auto pb-1">${r.by_day.map((d) => `<div class="flex flex-col items-center justify-end h-full min-w-[2.2rem] flex-1" title="${fdate(d.day)}: ${eur(d.total)}">
-          <span class="text-[10px] text-gray-500 mb-1">${Math.round(d.total)}</span><div class="w-full rounded-t bg-secondary" style="height:${Math.max(4, (d.total / max) * 100)}%"></div>
-          <span class="text-[10px] text-gray-400 mt-1">${d.day.slice(8)}/${d.day.slice(5, 7)}</span></div>`).join('')}</div></div>` : ''}
-      <div class="card overflow-hidden">
+      ${r.rows.length ? `<div class="an-cols">
+        <section class="card panel sec"><h3 class="sec-t">Per metodo di pagamento</h3>${hbars([...r.by_method].sort((x, y) => y.total - x.total), { value: (m) => m.total, label: (m) => `${m.method} (${m.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
+        <section class="card panel sec"><h3 class="sec-t">Riparazioni e vendite</h3>${hbars(byKind, { value: (g) => g.total, label: (g) => `${g.name} (${g.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
+        ${r.by_day.length > 1 ? `<section class="card panel sec" style="grid-column:1/-1"><h3 class="sec-t">Incassi per giorno</h3>
+          <div class="flex items-end gap-1.5 h-40 overflow-x-auto pb-1">${r.by_day.map((d) => `<div class="flex flex-col items-center justify-end h-full min-w-[2.4rem] flex-1" title="${fdate(d.day)}: ${eur(d.total)}">
+            <span class="text-[10px] text-gray-500 mb-1">${Math.round(d.total)}</span><div class="w-full rounded-t bg-secondary" style="height:${Math.max(4, (d.total / max) * 100)}%"></div>
+            <span class="text-[10px] text-gray-400 mt-1">${d.day.slice(8)}/${d.day.slice(5, 7)}</span></div>`).join('')}</div></section>` : ''}
+        ${days > 1 ? `<section class="card panel sec"><h3 class="sec-t">Giorno della settimana</h3>${hbars(byDow, { value: (g) => g.total, fmt: eur })}</section>` : ''}
+        <section class="card panel sec"><h3 class="sec-t">Ora del giorno</h3>${hbars(byHour, { value: (g) => g.total, fmt: eur })}</section>
+      </div>` : ''}
+      <section class="card overflow-hidden">
+        <h3 class="sec-t" style="padding:1rem 1rem .2rem">Elenco degli incassi</h3>
         <div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Data</th><th>Voce</th><th>Metodo</th><th style="text-align:right">Importo</th></tr></thead><tbody>
         ${r.rows.map((p) => `<tr><td style="white-space:nowrap">${fdt(p.created_at)}</td><td>${esc(p.label)}</td><td>${esc(p.method)}</td><td style="text-align:right"><b>${eur(p.amount)}</b></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nessun incasso nel periodo.</td></tr>'}</tbody></table></div>
         <div class="only-narrow">${r.rows.map((p) => `<div class="pcard"><div class="top"><span class="name">${esc(p.label)}</span><b>${eur(p.amount)}</b></div><div class="sub">${fdt(p.created_at)} · ${esc(p.method)}</div></div>`).join('') || '<p class="empty">Nessun incasso nel periodo.</p>'}</div>
-      </div>
+      </section>
       <p class="hint">Riepilogo gestionale non fiscale: scontrini e fatture vanno emessi con il registratore telematico o il programma di fatturazione.</p>`;
   }
   el.addEventListener('click', (e) => {
@@ -191,6 +214,7 @@ export async function settingsView(el) {
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>
       </section>
+      <div class="grid gap-5">
       <section class="card panel sec">
         <h2 class="sec-t">Backup dei dati</h2>
         <p style="font-size:.92rem">${ONLINE ? 'Ogni notte il sistema salva da solo una copia di tutti i dati (si conservano le ultime 30). Puoi anche scaricarne una tu o salvarne una subito.' : 'Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.'}</p>
@@ -202,6 +226,7 @@ export async function settingsView(el) {
         <p class="hint">Carica clienti, riparazioni in ogni stato, magazzino, vendite e incassi di esempio per vedere tutto il gestionale al lavoro. Sono segnati come “(DEMO)” e si cancellano con un click, senza toccare i dati veri.</p>
         <div class="row tight" id="st-demo-btns"><span class="hint">Controllo…</span></div>
       </section>
+      </div>
     </div>`;
   const drawDemo = async () => {
     const d = await safe(() => api('GET', '/api/demo'));

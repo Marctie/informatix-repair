@@ -84,6 +84,7 @@
     #rapido{break-after:page;border:2px solid #000}
     a{color:#000;text-decoration:none}
   }
+  main b, main code{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
@@ -343,7 +344,13 @@
   <p>L'elenco di tutte le riparazioni. In alto i filtri per stato con il numero accanto (<b>Aperte</b> è quello normale; <b>Tutte</b> include le consegnate). Puoi anche cercare per nome, telefono, modello o seriale.</p>
   <figure><img src="/manuale/02-riparazioni.png" alt="Elenco riparazioni" loading="lazy"><figcaption>L'elenco riparazioni con filtri per stato.</figcaption></figure>
   <h3>Cassa</h3>
-  <p>Quanto hai incassato <b>oggi</b>, negli ultimi <b>7</b> o <b>30 giorni</b> o in un periodo a scelta, diviso per contanti / carta / bonifico / non tracciato, con il grafico dei giorni e l'elenco dei singoli incassi (acconti, saldi, vendite). Vedi anche il costo dei ricambi venduti.</p>
+  <p>Quanto hai incassato <b>oggi</b>, negli ultimi <b>7, 30 o 90 giorni</b> o in un periodo a scelta. In alto i numeri: <b>incassato</b>, <b>operazioni</b>, <b>media al giorno</b> e <b>costo dei ricambi</b>. Sotto i grafici:</p>
+  <ul>
+    <li><b>Per metodo di pagamento</b> e <b>riparazioni e vendite</b>, con importo e percentuale.</li>
+    <li><b>Incassi per giorno</b>, per vedere i giorni forti e quelli deboli.</li>
+    <li><b>Giorno della settimana</b> e <b>ora del giorno</b>, per capire quando il negozio incassa di più.</li>
+    <li>In fondo l'<b>elenco di tutti gli incassi</b> (acconti, saldi, vendite).</li>
+  </ul>
   <p><b>Pagamento “non tracciato”</b>: alla cassa, alla consegna e nelle vendite trovi anche questa voce tra i metodi di pagamento. In <b>Impostazioni → Cassa</b> scegli se questi pagamenti <b>entrano</b> nei totali della cassa oppure <b>no</b>. In ogni caso restano salvati: il magazzino e le riparazioni restano corretti. Se li escludi, la Cassa ti ricorda con una nota quanti ne sono stati esclusi.</p>
   <figure><img src="/manuale/04-cassa.png" alt="Cassa" loading="lazy"><figcaption>La cassa del periodo scelto.</figcaption></figure>
 </section>
@@ -470,7 +477,7 @@
   <p class="lead">Per vedere il gestionale “pieno” senza inserire niente a mano.</p>
   <ol class="steps">
     <li>Vai su <b>Impostazioni</b> → riquadro <b>Dati demo</b> → <b>Carica i dati demo</b>.</li>
-    <li>Compaiono clienti, riparazioni in tutti gli stati, magazzino con scorte basse, vendite e incassi degli ultimi due mesi. Tutto è segnato <b>(DEMO)</b> o con codice <b>DEMO-…</b>.</li>
+    <li>Compaiono clienti, riparazioni in tutti gli stati, magazzino con scorte basse, vendite e incassi degli ultimi due mesi, <b>compresi quelli di oggi e di ieri</b>, così la Cassa si vede piena subito. Tutto è segnato <b>(DEMO)</b> o con codice <b>DEMO-…</b>.</li>
     <li>Quando hai finito, torna nello stesso riquadro e premi <b>Elimina i dati demo</b>: spariscono solo quelli, i dati veri restano.</li>
   </ol>
   <div class="call tip"><b>Per il cliente</b>Le riparazioni demo hanno anche il link di tracciamento: la ricerca “numero ricevuta + ultime 4 cifre” funziona, ad esempio con <b>DEMO-004</b> e <b>0104</b>.</div>
