@@ -2,7 +2,9 @@
 //  - adminRouter: tutto il gestionale (si monta SOLO su 127.0.0.1, nessun login per ora)
 //  - publicRouter: solo il tracciamento per il cliente (può essere esposto in rete/online)
 import express from 'express';
-import { networkInterfaces } from 'node:os';
+import { networkInterfaces, tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { rmSync } from 'node:fs';
 import QRCode from 'qrcode';
 import { db, getSettings, tx } from './db.mjs';
 import * as L from './logic.mjs';
@@ -125,6 +127,13 @@ A.delete('/api/suppliers/:id', wrap((req) => {
 
 // Magazzino
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
+function checkProduct(b) {
+  for (const k of ['cost', 'price', 'min_qty']) {
+    const n = num(b[k]);
+    if (!Number.isFinite(n) || n < 0) throw new L.HttpError(400, `Valore non valido: ${k === 'cost' ? 'costo' : k === 'price' ? 'prezzo' : 'scorta minima'}`);
+  }
+  if (b.qty !== undefined && !Number.isFinite(num(b.qty))) throw new L.HttpError(400, 'Quantità non valida');
+}
 A.get('/api/products', wrap((req) => {
   const q = str(req.query.q);
   const where = ['p.active = 1'];
@@ -137,6 +146,7 @@ A.get('/api/reorder', wrap(() => L.lowStock()));
 A.post('/api/products', wrap((req) => {
   const b = req.body;
   if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+  checkProduct(b);
   const qty = Math.round(num(b.qty));
   const id = tx(() => {
     const r = db.prepare('INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes) VALUES (?,?,?,?,?,?,?,?,?,?)')
@@ -150,6 +160,7 @@ A.post('/api/products', wrap((req) => {
 A.put('/api/products/:id', wrap((req) => {
   const b = req.body;
   if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+  checkProduct(b);
   const r = db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=? WHERE id=?')
     .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), req.params.id);
   if (!r.changes) throw new L.HttpError(404, 'Prodotto non trovato');
@@ -206,7 +217,24 @@ A.post('/api/repairs/:id/deposit', wrap((req) => {
 A.get('/api/sales', wrap(() => db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id=s.customer_id ORDER BY s.id DESC LIMIT 200').all()));
 A.post('/api/sales', wrap((req) => L.createSale(req.body)));
 A.get('/api/sales/:id', wrap((req) => L.getSale(req.params.id)));
-A.get('/api/report', wrap((req) => L.report(str(req.query.from), str(req.query.to))));
+A.get('/api/report', wrap((req) => {
+  const r = L.report(str(req.query.from), str(req.query.to));
+  return { ...r, by_day: L.reportByDay(r.from, r.to) };
+}));
+A.get('/api/stock/summary', wrap(() => L.stockSummary()));
+
+// Backup del database: copia coerente scaricabile dal browser
+A.get('/api/backup', (req, res) => {
+  const file = join(tmpdir(), `officina-backup-${Date.now()}.db`);
+  try {
+    db.exec(`VACUUM INTO '${file.replaceAll("'", "''")}'`);
+    const stamp = L.localDate();
+    res.download(file, `officina-backup-${stamp}.db`, () => rmSync(file, { force: true }));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: 'Backup non riuscito' });
+  }
+});
 
 // Stampe (HTML pronto per la stampante)
 A.get('/print/repair/:id', (req, res) => {

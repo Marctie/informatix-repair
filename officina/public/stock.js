@@ -1,5 +1,5 @@
 // Magazzino (con "Da ordinare") e Fornitori.
-import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal } from './util.js';
+import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, waLink } from './util.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
 
@@ -9,17 +9,20 @@ export async function stockView(el, params) {
   el.innerHTML = `
     <div class="flex items-center justify-between gap-3 flex-wrap mb-4"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
       <button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></div>
+    <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
     <div class="flex gap-2 mb-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><span class="chip" data-t="reorder">📉 Da ordinare</span>
-      <input id="p-q" placeholder="Cerca nome, codice, categoria…" class="!w-64 ml-auto" /></div>
+      <input id="p-q" type="search" placeholder="Cerca nome, codice, categoria…" class="sm:!w-64 w-full sm:ml-auto" /></div>
     <div class="card overflow-hidden" id="p-list"></div>`;
   const list = $('#p-list', el);
 
   async function load() {
     $$('[data-t]', el).forEach((c) => c.classList.toggle('on', c.dataset.t === tab));
     $('#p-q', el).classList.toggle('hidden', tab === 'reorder');
+    const sum = await safe(() => api('GET', '/api/stock/summary'));
+    if (sum) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], [eur(sum.value_cost), 'Valore a costo', ''], [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
     if (tab === 'reorder') return loadReorder();
     const rows = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
-    list.innerHTML = `<table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th><th>Costo</th><th>Prezzo</th><th></th></tr></thead><tbody>` +
+    list.innerHTML = `<div class="tbl-wrap"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th><th>Costo</th><th>Prezzo</th><th></th></tr></thead><tbody>` +
       ((rows || []).map((p) => {
         const low = p.min_qty > 0 && p.qty <= p.min_qty;
         return `<tr class="row-h cursor-pointer" data-id="${p.id}"><td><b>${esc(p.name)}</b><div class="text-xs text-gray-400">${esc(p.sku || '')} ${p.location ? '· ' + esc(p.location) : ''} ${p.supplier_name ? '· ' + esc(p.supplier_name) : ''}</div></td>
@@ -27,7 +30,7 @@ export async function stockView(el, params) {
           <td><span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span></td>
           <td>${eur(p.cost)}</td><td><b>${eur(p.price)}</b></td>
           <td class="whitespace-nowrap" data-stop><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="-1">−1</button> <button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="1">+1</button></td></tr>`;
-      }).join('') || '<tr><td colspan="6" class="text-center text-gray-400 py-8">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</td></tr>') + '</tbody></table>';
+      }).join('') || '<tr><td colspan="6" class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</td></tr>') + '</tbody></table></div>';
   }
 
   async function loadReorder() {
@@ -37,13 +40,13 @@ export async function stockView(el, params) {
     list.innerHTML = Object.entries(groups).map(([name, items]) => {
       const sup = items[0];
       const text = `Buongiorno, vorrei ordinare:\n${items.map((p) => `- ${p.name}: ${Math.max(1, p.min_qty * 2 - p.qty)} pz`).join('\n')}\nGrazie.`;
-      const wa = sup.supplier_phone ? `https://wa.me/${('39' + sup.supplier_phone.replace(/\D/g, '')).replace(/^3939/, '39')}?text=${encodeURIComponent(text)}` : null;
+      const wa = waLink(sup.supplier_phone, text);
       const mail = sup.supplier_email ? `mailto:${sup.supplier_email}?subject=${encodeURIComponent('Ordine')}&body=${encodeURIComponent(text)}` : null;
       return `<div class="border-b border-line last:border-0"><div class="px-4 py-3 bg-lightbg flex items-center justify-between gap-2 flex-wrap"><b>🚚 ${esc(name)}</b>
         <div class="flex gap-2">${wa ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${wa}">💬 Ordina su WhatsApp</a>` : ''}${mail ? `<a class="btn btn-outline btn-sm" href="${mail}">✉️ Email</a>` : ''}
         <button class="btn btn-outline btn-sm" data-copy="${esc(text)}">📋 Copia ordine</button></div></div>
         ${items.map((p) => `<div class="px-4 py-2 flex justify-between text-sm border-t border-line"><span>${esc(p.name)}</span><span class="text-gray-500">${p.qty} in magazzino · minimo ${p.min_qty} · suggerito ${Math.max(1, p.min_qty * 2 - p.qty)}</span></div>`).join('')}</div>`;
-    }).join('') || '<p class="p-8 text-center text-gray-400 text-sm">Niente da riordinare: tutte le scorte sono sopra il minimo ✔</p>';
+    }).join('') || '<p class="empty">Niente da riordinare: tutte le scorte sono sopra il minimo ✔</p>';
   }
 
   el.addEventListener('click', async (e) => {
@@ -112,7 +115,7 @@ export async function suppliersView(el) {
     list.innerHTML = (rows || []).map((s) => `<div class="row-h flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-id="${s.id}">
       <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(s.name)}</p><p class="text-xs text-gray-500">${esc(s.phone || '')} ${s.email ? '· ' + esc(s.email) : ''} ${s.website ? '· ' + esc(s.website) : ''}</p></div>
       <span class="text-xs text-gray-500">${s.products_count} articoli</span>
-      ${s.phone ? `<a class="btn btn-outline btn-sm" data-stop href="tel:${esc(s.phone)}">📞</a>` : ''}</div>`).join('') || '<p class="p-8 text-center text-gray-400 text-sm">Nessun fornitore. Aggiungili per collegarli agli articoli e generare gli ordini.</p>';
+      ${s.phone ? `<a class="btn btn-outline btn-sm" data-stop href="tel:${esc(s.phone)}">📞</a>` : ''}</div>`).join('') || '<p class="empty">Nessun fornitore. Aggiungili per collegarli agli articoli e generare gli ordini.</p>';
     list._rows = rows;
   }
   list.onclick = (e) => {

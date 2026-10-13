@@ -41,6 +41,9 @@ export const progressPct = (status) => {
 };
 
 // ---------- Utilità ----------
+/** Data locale YYYY-MM-DD (toISOString userebbe l'UTC e sbaglierebbe giorno vicino a mezzanotte). */
+export const localDate = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const num = (v, def = null) => {
   if (v === '' || v == null) return def;
   const n = Number(String(v).replace(',', '.'));
@@ -85,6 +88,11 @@ function addPayment(kind, refId, label, amount, method) {
 }
 
 // ---------- Clienti ----------
+/** Chiave per riconoscere lo stesso numero scritto in modi diversi (+39 333 123 4567 = 3331234567). */
+const phoneKey = (p) => {
+  const d = String(p || '').replace(/\D/g, '');
+  return d.length >= 7 ? d.slice(-9) : d;
+};
 export function upsertCustomer({ id, name, phone, email, notes }) {
   if (id) {
     const c = db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
@@ -95,8 +103,11 @@ export function upsertCustomer({ id, name, phone, email, notes }) {
   // evita doppioni: stesso telefono => stesso cliente
   const ph = str(phone);
   if (ph) {
-    const same = db.prepare('SELECT id FROM customers WHERE phone = ?').get(ph);
-    if (same) return same.id;
+    const key = phoneKey(ph);
+    if (key) {
+      const same = db.prepare('SELECT id, phone FROM customers WHERE phone IS NOT NULL').all().find((c) => phoneKey(c.phone) === key);
+      if (same) return same.id;
+    }
   }
   const r = db.prepare('INSERT INTO customers (name, phone, email, notes) VALUES (?,?,?,?)').run(n, ph, str(email), str(notes));
   return Number(r.lastInsertRowid);
@@ -109,6 +120,7 @@ export function createRepair(b) {
     const settings = getSettings();
     const quote = num(b.quote);
     const deposit = num(b.deposit, 0);
+    if ((quote != null && quote < 0) || deposit < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
     const code = nextCode('repairs', 'R');
     const token = newToken();
     const r = db.prepare(
@@ -150,14 +162,14 @@ function decorateRepair(r, full = false) {
     progress: progressPct(r.status),
     next_status: NEXT_STATUS[r.status] || null,
     next_label: NEXT_STATUS[r.status] ? STATUSES[NEXT_STATUS[r.status]].label : null,
-    late: !!(r.eta_date && !['ready', 'delivered', 'cancelled'].includes(r.status) && r.eta_date < new Date().toISOString().slice(0, 10)),
+    late: !!(r.eta_date && !['ready', 'delivered', 'cancelled'].includes(r.status) && r.eta_date < localDate()),
   };
   if (full) {
     out.events = db.prepare('SELECT * FROM repair_events WHERE repair_id = ? ORDER BY id DESC').all(r.id);
     out.parts = db.prepare('SELECT * FROM repair_parts WHERE repair_id = ? ORDER BY id').all(r.id);
     out.paid = money(db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id).s);
     const warrantyUntil = r.delivered_at ? new Date(new Date(r.delivered_at.replace(' ', 'T')).getTime() + r.warranty_days * 86400000) : null;
-    out.warranty_until = warrantyUntil ? warrantyUntil.toISOString().slice(0, 10) : null;
+    out.warranty_until = warrantyUntil ? localDate(warrantyUntil) : null;
   }
   return out;
 }
@@ -187,7 +199,7 @@ export function updateRepair(id, b) {
     for (const k of EDITABLE) {
       if (!(k in b)) continue;
       let v = b[k];
-      if (['quote', 'final_price'].includes(k)) v = num(v);
+      if (['quote', 'final_price'].includes(k)) { v = num(v); if (v != null && v < 0) throw new HttpError(400, 'Gli importi non possono essere negativi'); }
       else if (k === 'warranty_days') v = num(v, 90);
       else v = str(v);
       if (['brand_model', 'problem'].includes(k) && !v) throw new HttpError(400, `${k} obbligatorio`);
@@ -219,6 +231,8 @@ export function setStatus(id, status, note, isPublic = true) {
     const r = db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
     if (!STATUSES[status]) throw new HttpError(400, 'Stato non valido');
+    if (r.status === 'delivered') throw new HttpError(409, 'La riparazione è già stata consegnata.');
+    if (r.status === status) throw new HttpError(400, 'La riparazione è già in questo stato.');
     if (status === 'delivered') throw new HttpError(400, 'Per consegnare usa "Consegna e incassa".');
     if (status === 'quote_pending' && r.quote == null) throw new HttpError(400, 'Inserisci prima il preventivo.');
     db.prepare("UPDATE repairs SET status = ?, quote_decision = CASE WHEN ?='quote_pending' THEN NULL ELSE quote_decision END WHERE id = ?").run(status, status, id);
@@ -397,7 +411,7 @@ export function customerDecision(token, accept) {
 // ---------- Dashboard / report / magazzino ----------
 export function dashboard() {
   const counts = Object.fromEntries(db.prepare('SELECT status, COUNT(*) AS n FROM repairs GROUP BY status').all().map((r) => [r.status, r.n]));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDate();
   const open = listRepairs({ open: true });
   return {
     counts,
@@ -421,7 +435,7 @@ export function lowStock() {
 }
 
 export function report(from, to) {
-  const f = from || new Date().toISOString().slice(0, 10);
+  const f = from || localDate();
   const t = to || f;
   const byMethod = db.prepare("SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method").all(f, t);
   const byKind = db.prepare("SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY kind").all(f, t);
@@ -430,4 +444,15 @@ export function report(from, to) {
     + db.prepare(`SELECT COALESCE(SUM(rp.qty*rp.unit_cost),0) AS c FROM repair_parts rp JOIN repairs r ON r.id=rp.repair_id WHERE r.delivered_at IS NOT NULL AND date(r.delivered_at) BETWEEN ? AND ?`).get(f, t).c;
   const total = money(rows.reduce((a, r) => a + r.amount, 0));
   return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows };
+}
+
+export function reportByDay(from, to) {
+  return db.prepare("SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY day ORDER BY day").all(from, to);
+}
+
+export function stockSummary() {
+  const s = db.prepare(`SELECT COUNT(*) AS items, COALESCE(SUM(qty),0) AS units,
+    COALESCE(SUM(MAX(qty,0)*cost),0) AS value_cost, COALESCE(SUM(MAX(qty,0)*price),0) AS value_price
+    FROM products WHERE active = 1`).get();
+  return { ...s, value_cost: money(s.value_cost), value_price: money(s.value_price), low: lowStock().length };
 }
