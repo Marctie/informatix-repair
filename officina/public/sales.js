@@ -22,7 +22,7 @@ export async function salesView(el) {
           <div class="relative"><input id="s-cust" placeholder="Cerca per nome o telefono" autocomplete="off" /><div id="s-cust-s" class="suggest card hidden"></div></div>
           <div id="s-cust-pick" class="hidden"></div>
         </div>
-        <div id="s-cart"></div>
+        <div id="s-cart" class="sec" style="margin-top:.4rem"></div>
       </section>
       <section class="card panel sec lg:col-span-2">
         <h2 class="sec-t">Ultime vendite</h2><div id="s-recent" class="plist"></div>
