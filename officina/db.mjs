@@ -92,6 +92,13 @@ CREATE INDEX IF NOT EXISTS idx_events_repair ON repair_events(repair_id);
 CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
 `);
 
+// Migrazioni leggere: aggiungono colonne ai database creati con versioni precedenti.
+function addColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+}
+addColumn('repairs', 'urgent', 'INTEGER NOT NULL DEFAULT 0');
+
 export const DEFAULT_SETTINGS = {
   shop_name: 'Informatix Repair',
   shop_address: 'Via Pecorari 178, Nocera Superiore (SA)',

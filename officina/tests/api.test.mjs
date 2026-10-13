@@ -188,3 +188,30 @@ test('backup, riepilogo magazzino e incassi per giorno', async () => {
   assert.equal(rep.by_day.length, 1);
   assert.equal(rep.by_day[0].total, rep.total);
 });
+
+test('schede di stampa: cliente (senza PIN) e laboratorio (con PIN, diagnosi e checklist)', async () => {
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Rita Conti', phone: '3290001111' }, brand_model: 'iPhone 12', problem: 'Non carica', passcode: '987654', urgent: true, quote: 70, deposit: 10 })).data;
+  assert.equal(r.urgent, 1);
+  await a('PATCH', `/api/repairs/${r.id}`, { tech_notes: 'Connettore di carica ossidato, pulizia e sostituzione.' });
+
+  const cust = (await a('GET', `/print/customer/${r.id}?noprint=1`)).data;
+  assert.ok(cust.includes('Scheda cliente') && cust.includes(r.code) && cust.includes('/api/qr?text=') && cust.includes('Rita Conti'));
+  assert.ok(cust.includes('URGENTE'));
+  assert.ok(!cust.includes('987654'), 'il PIN non deve comparire sulla copia del cliente');
+  assert.ok(!cust.includes('Connettore di carica ossidato'), 'le note tecniche non vanno al cliente');
+  assert.ok(!cust.includes('window.print()') || !cust.includes("addEventListener('load'"), 'con noprint=1 non parte la stampa automatica');
+
+  const lab = (await a('GET', `/print/lab/${r.id}?noprint=1`)).data;
+  assert.ok(lab.includes('Scheda laboratorio') && lab.includes('987654') && lab.includes('Connettore di carica ossidato'));
+  assert.ok(lab.includes('Collaudo finale') && lab.includes('Controllo all'));
+
+  const both = (await a('GET', `/print/both/${r.id}`)).data;
+  assert.ok(both.includes('Scheda cliente') && both.includes('Scheda laboratorio'));
+  assert.ok(both.includes("addEventListener('load'"), 'senza noprint la stampa parte da sola');
+  assert.equal((await a('GET', '/print/lab/99999')).status, 404);
+
+  // le urgenti vengono per prime nell'elenco
+  const list = (await a('GET', '/api/repairs?open=1')).data;
+  assert.equal(list[0].id, r.id);
+  assert.equal((await a('PATCH', `/api/repairs/${r.id}`, { urgent: false })).data.urgent, 0);
+});
