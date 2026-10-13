@@ -14,3 +14,6 @@ dist
 __pycache__/
 # Gestionale officina (dati locali: clienti, riparazioni, ecc.)
 /officina/data/
+# Cypress
+/cypress/screenshots
+/cypress/videos

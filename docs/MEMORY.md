@@ -76,6 +76,13 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Gestionale: per ora locale e **senza autenticazione** (login rimosso il 2026-10-13; poi auth con il Firebase dell'utente). Sostituisce, per ora, la decisione "login custom nel Worker" qui sotto.
 - Bot Telegram: scrivere il codice ma non installarlo/testarlo finché l'utente non ha il telefono e lo chiede. Bot di esempio: `C:\1Marco Peluso\Lavoro da eliminare\Bot Telegram`.
 
+## Gestionale Officina (branch `gestionale-officina`, richiesto il 2026-10-13)
+- Cartella `officina/` (README dentro): riparazioni, clienti, magazzino, vendite, fornitori, cassa + tracciamento cliente via QR/link. Express 5 + `node:sqlite`, DB in `officina/data/officina.db` (non in git). Gestionale su 127.0.0.1:4950 (nessun login per ora), tracciamento su 0.0.0.0:4951 (`/t/<token>`).
+- Regola guida: **Christian ha poco tempo, quindi tutto a pochi click** (scelte rapide, pulsante "prossimo stato", WhatsApp precompilato, QR subito all'accettazione).
+- Privacy: PIN di sblocco e note interne mai nella vista cliente; telefono ed email mascherati. Il cliente può approvare o rifiutare il preventivo dal link.
+- Documenti non fiscali. Messa online e autenticazione (Firebase) da fare. Test: `npm run test:officina` (API) e `npm run test:e2e` (Cypress, solo branch `cypress-tests`, mai su main).
+- Dettagli e cronologia: CHATLOG, sessione 2026-10-13 (2).
+
 ## Gestionale Usati (pannello admin) — in evoluzione, vedi CHATLOG 2026-09-27 (sera)
 - **Stato 2026-10-13**: pannello locale senza login (127.0.0.1:4848) funzionante; bot Telegram scritto in `bot/` (vedi `bot/README.md`) e testato solo con Update simulati, non su Telegram reale né installato. API del gestionale: GET/POST `/api/items`, PUT/PATCH/DELETE `/api/items/:slug`, POST `/api/items/:slug/sold|unsold`.
 - **Prototipo locale (esistente, funzionante)**: cartella `admin/` (Express + Multer + Sharp, `npm run admin` → porta 4848). Fa CRUD su `usati.json` + foto, rigenera `usati.html` a ogni salvataggio, login email/password locale (`express-session`, credenziali in `admin/auth.local.json`, generato al primo avvio, **escluso da git** — riga esplicita `/admin/auth.local.json` in `.gitignore`, il pattern generico `*.local` NON basta perché non matcha `nome.local.json`). Commit locali `77c9b79` e `861568d` su `main`, **non pushati** (l'utente ha chiesto di non pubblicarli finché non si decide l'architettura definitiva).

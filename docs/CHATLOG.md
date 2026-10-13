@@ -306,6 +306,28 @@ RepairDesk, RepairShopr, Vollstart Repair Desk, RepairWorkshop: ticket con stato
 - Test: `npm run test:officina` (7 test su DB temporaneo, tutti OK): magazzino, ingresso riparazione e deduplica cliente per telefono, privacy della vista pubblica (verificato che PIN/telefono/email completi non compaiano), isolamento del server pubblico dal gestionale, flusso stati + approvazione online + consegna e incasso (saldo = preventivo - acconto), nuova approvazione dopo cambio preventivo, vendite e cassa, stampe, protezione eliminazione clienti.
 - Da fare: interfaccia web (dashboard, scheda ingresso veloce, ecc.), pagina cliente, test Cypress su branch dedicato.
 
+### Funzionalità 2 – Interfaccia web + pagina di tracciamento cliente (testata con Cypress)
+- Interfaccia in `officina/public/` (JS a moduli, stile del sito rosso/inchiostro): Oggi, Riparazioni, Clienti, Magazzino (+ Da ordinare), Vendite, Fornitori, Cassa, Impostazioni. Su mobile la navigazione sta in basso.
+- **Accettazione veloce** (`repair.js`): scelte a tocco per tipo dispositivo, problema, accessori, condizioni, consegna stimata; cliente esistente ritrovato da nome/telefono; al salvataggio schermata con QR grande, stampa scheda, etichetta, WhatsApp, copia link.
+- **Pagina cliente** (`track.html`/`track.js`): barra di avanzamento a 6 passi, riepilogo dispositivo e dati, consegna stimata, preventivo/versato/da saldare, cronologia, approvazione preventivo, garanzia; si aggiorna da sola ogni 8 secondi; nessun dato riservato.
+- Dashboard: sezioni "In lavorazione", "Pronte: avvisa il cliente" (WhatsApp precompilato), "In ritardo", "Preventivo da approvare", "In attesa ricambi", "Da riordinare". Il pulsante sulla riga porta al prossimo stato; "Consegnato" apre direttamente l'incasso.
+- Corretto `lanIp()`: sceglie la scheda Wi-Fi/Ethernet reale ed esclude quelle virtuali (VirtualBox 192.168.56.x), così il link nel QR funziona dai telefoni.
+- Bug trovati dai test e risolti: la dashboard non mostrava le riparazioni appena ricevute (aggiunta "In lavorazione"); dalla lista "Consegnato" si apriva il dettaglio invece dell'incasso.
+- Aggiunto `officina/README.md` con le istruzioni d'uso.
+
+### Cypress (branch `cypress-tests`, sempre vivo, solo per i test)
+- Il branch `cypress-tests` parte da `gestionale-officina` e contiene Cypress 13 (devDependencies), `cypress.config.js`, `cypress/run.mjs` (avvia un'istanza isolata con DB temporaneo e porte 4960/4961, lancia Cypress e poi la spegne) e `cypress/e2e/officina.cy.js`.
+- 13 test E2E, **tutti verdi** (circa 15 secondi): dashboard, fornitore e articolo, accettazione con QR, validazione, vista cliente senza dati riservati, approvazione preventivo dal link, ricambio che scala la giacenza + nota pubblica + lista ordini, consegna e incasso + cassa + garanzia, vendita con sconto e stampa, clienti, impostazioni, isolamento del server pubblico, vista mobile senza scorrimento orizzontale.
+- Nota ambiente: l'estensione VS Code imposta `ELECTRON_RUN_AS_NODE=1` e impedisce a Cypress di partire ("bad option: --smoke-test"); `cypress/run.mjs` la rimuove. Per lanciare Cypress a mano: `env -u ELECTRON_RUN_AS_NODE npx cypress ...`.
+- Il codice applicativo si sviluppa su `gestionale-officina` e poi si fa merge in `cypress-tests`; Cypress non va mai portato su `main`.
+- `.gitignore` corretto (le righe aggiunte avevano fine linea CRLF e git non le applicava): ora ignorati `/officina/data/`, `/cypress/screenshots`, `/cypress/videos`.
+
+### Da fare / decisioni aperte
+- Autenticazione (Firebase) e messa online del tracciamento (oggi solo rete locale).
+- Decidere se fare il merge di `gestionale-officina` in `main` (la richiesta era "su un altro branch": per ora non fatto).
+- Provare il QR e il link da un telefono reale nella rete del negozio.
+- Idee future: notifiche automatiche al cambio stato (SMS/WhatsApp), foto del dispositivo all'ingresso, firma digitale del cliente, backup automatico del DB.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
