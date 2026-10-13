@@ -7,6 +7,7 @@ import { renderSVG } from 'uqr';
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
 import * as L from './logic.mjs';
 import { barcodeSvg } from './barcode.mjs';
+import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -101,6 +102,22 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     if (u.protected) throw new L.HttpError(409, 'Il proprietario è protetto: non si elimina.');
     await db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
     return { ok: true };
+  }));
+
+  // Dati demo (caricabili e cancellabili dalle Impostazioni; non toccano mai i dati veri)
+  app.get('/api/demo', h(async (req) => { adminOnly(req); return demoStatus(); }));
+  app.post('/api/demo', h(async (req) => {
+    adminOnly(req);
+    const out = await loadDemo();
+    if (out.already) throw new L.HttpError(409, 'I dati demo sono già presenti.');
+    return out;
+  }));
+  app.delete('/api/demo', h(async (req) => {
+    adminOnly(req);
+    try { return await deleteDemo(); } catch (e) {
+      if (/FOREIGN KEY|constraint/i.test(String(e.message))) throw new L.HttpError(409, 'Un cliente o un prodotto demo è stato usato in una riparazione o vendita vera: eliminala prima, poi riprova.');
+      throw e;
+    }
   }));
 
   // QR e codice a barre (SVG)

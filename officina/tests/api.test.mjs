@@ -294,3 +294,28 @@ test('analisi: riparazioni, incassi e vendite del periodo', async () => {
   assert.ok(r.sales.count >= 1 && r.sales.top.length >= 1);
   assert.equal((await a('GET', '/api/analytics?from=2030-02-01&to=2030-01-01')).status, 400);
 });
+
+test('dati demo: si caricano, si vedono ovunque e si cancellano senza toccare i dati veri', async () => {
+  const realCustomers = (await a('GET', '/api/customers')).data.length;
+  const realRepairs = (await a('GET', '/api/repairs')).data.length;
+  assert.equal((await a('GET', '/api/demo')).data.loaded, false);
+  const loaded = await a('POST', '/api/demo');
+  assert.equal(loaded.status, 200);
+  assert.equal((await a('POST', '/api/demo')).status, 409); // non si caricano due volte
+  assert.ok((await a('GET', '/api/customers')).data.length >= realCustomers + 8);
+  assert.ok((await a('GET', '/api/repairs')).data.length >= realRepairs + 14);
+  const dash = (await a('GET', '/api/dashboard')).data;
+  assert.ok(dash.ready.length >= 2 && dash.to_approve.length >= 1 && dash.low_stock.length >= 1);
+  const an = (await a('GET', '/api/analytics?from=2000-01-01&to=2099-12-31')).data;
+  assert.ok(an.sales.count >= 13 && an.income.total > 0);
+  // tracciamento pubblico di una riparazione demo
+  assert.equal((await call(P, 'GET', '/api/track/demo-token-4')).data.status, 'quote_pending');
+  // un cliente demo si ritrova con la ricerca per ricevuta + telefono
+  assert.equal((await call(P, 'POST', '/api/lookup', { code: 'DEMO-004', phone4: '0104' })).status, 200);
+  const del = await a('DELETE', '/api/demo');
+  assert.equal(del.status, 200);
+  assert.equal((await a('GET', '/api/customers')).data.length, realCustomers);
+  assert.equal((await a('GET', '/api/repairs')).data.length, realRepairs);
+  assert.equal((await a('GET', '/api/demo')).data.loaded, false);
+  assert.equal((await a('GET', '/api/products')).data.filter((p) => p.id < 0).length, 0);
+});
