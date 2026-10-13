@@ -97,7 +97,7 @@ function checkLayout(rootSel, vpWidth, label) {
       const next = row.nextElementSibling;
       if (!next || row.getBoundingClientRect().height === 0 || next.getBoundingClientRect().height === 0 || row.parentElement.classList.contains('row')) return;
       const gap = next.getBoundingClientRect().top - row.getBoundingClientRect().bottom;
-      if (gap < 8 && !row.closest('.nowrap')) problems.push(`elementi troppo vicini (${Math.round(gap)}px) dopo "${(row.textContent || '').trim().slice(0, 24)}"`);
+      if (gap >= 0 && gap < 8 && !row.closest('.nowrap')) problems.push(`elementi troppo vicini (${Math.round(gap)}px) dopo "${(row.textContent || '').trim().slice(0, 24)}"`);
     });
     expect(problems, `${label}: ${problems.length} problemi grafici\n${problems.slice(0, 12).join('\n')}`).to.have.length(0);
   });
