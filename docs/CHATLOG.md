@@ -647,6 +647,11 @@ Struttura degli indirizzi: `/` = Portale, `/officina` e `/usati` nella stessa sh
 - Conferma del ruolo del proprietario (`marcopeluso99@gmail.com`): admin protetto?
 - Email delle 4 postazioni/utenti (da Christian); se usare gli alias con Email Routing.
 
+## Sessione 2026-10-13 (13) – Utenti per fasi e stima in token
+
+- L'utente non ha ancora le email di Christian: gli appunti sugli utenti restano validi, i profili si creano quando arrivano le email. **Stasera si crea solo il profilo del proprietario** (`marcopeluso99@gmail.com`, admin protetto) per poter entrare a fine lavori.
+- Domanda sulla stima in **token**: risposta data in chat (ordine di grandezza 3-6 milioni di token per il piano completo, margine ±50%; il vincolo reale è il tempo e la lunghezza della conversazione, non il budget). Nessuna azione di sviluppo.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
