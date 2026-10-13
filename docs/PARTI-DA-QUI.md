@@ -20,15 +20,16 @@ Questo file serve a riprendere il lavoro in una **sessione nuova e leggera**. Il
 4. Le **prove con l'hardware** (pistola, stampante, etichette, fotocamera) le fa Christian: dire cosa provare.
 5. Nessun merge in `main` finché non è tutto finito e testato; poi via libera già dato.
 
-## Piano della serata (ordine di priorità)
-1. **Cloudflare**: Zero Trust/Access, `wrangler login` (segnalati scope mancanti `k2.read`/`k2.write`), Worker + D1 + R2. Host `gestionale.informatixrepair.com` (Access) e `riparazioni.informatixrepair.com` (pubblico). Piano B: Tunnel + Access con PC acceso.
-2. **Portare l'officina su Workers + D1** (Hono, logica asincrona, `db.batch` al posto delle transazioni, QR compatibile coi Worker, backup giornaliero su R2), test API e Cypress riportati e verdi.
-3. **Utenti e Portale unico**: Access su "chiunque con codice email", il Worker decide chi entra dalla tabella `users`; Christian admin e **unico** a fare CRUD utenti; postazioni Cassa/Laboratorio/Vendite = `staff` senza restrizioni; stasera si crea **solo** `marcopeluso99@gmail.com` (admin protetto); gli altri quando arrivano le email. Portale dopo "Area riservata" con Officina + Vetrina usati + Manuale: veloce, responsive, **accessibile** (cypress-axe).
-4. **Sito pubblico** (ramo a parte, poi `main`): sezione "Segui la tua riparazione" molto semplice per anziani (QR, oppure numero ricevuta + ultime 4 cifre del telefono, chiama/WhatsApp, endpoint `POST /api/lookup`) + link "Area riservata" nel piede di pagina verso `gestionale.informatixrepair.com`.
-5. **Vetrina Usati** integrata nello stesso design system e sullo stesso Worker (scrive su GitHub; foto ridimensionate nel browser).
-6. Manuale e guide aggiornati (`docs/ONLINE.md`), CHATLOG/MEMORY, commit e push.
+## Stato (2026-10-13, notte) – ONLINE
+Fatto: Officina su Cloudflare Workers + D1, Access (One-time PIN, policy Everyone), pagina Utenti, `/api/lookup`, sito sul branch `sito-segui-riparazione` (non in main). Dettagli: `docs/CHATLOG.md`, sezione "Officina ONLINE su Cloudflare".
+Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-repair`).
 
-Stima 90%: **20-30 ore di lavoro** totali; la serata copre i punti 1-2 e, se possibile, 3.
+## Da fare (ordine)
+1. Attivare R2 (dashboard) e backup giornaliero (cron) sul Worker.
+2. Ripassare Cypress: merge di `gestionale-officina` in `cypress-tests`, riportare i test sul nuovo motore (Hono/async).
+3. Vetrina Usati sullo stesso Worker (foto ridimensionate nel browser) e Portale unico dopo "Area riservata"; manuale/`docs/ONLINE.md`.
+4. Via libera dell'utente -> sito in `main` (branch `sito-segui-riparazione`).
+5. Prove hardware di Christian (pistola, stampante, etichette, fotocamera in https).
 
 ## Domande ancora aperte
 - Email di Christian e delle 3 postazioni (arrivano da Christian); alias con Cloudflare Email Routing per le postazioni?
