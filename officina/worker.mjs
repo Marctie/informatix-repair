@@ -7,8 +7,15 @@ import { ensureDefaults, ensureOwner } from './dbref.mjs';
 import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
+import { createPublisher } from './publisher.mjs';
+import { r2Media } from './media.mjs';
 
-const adminApp = createAdminApp({ auth: accessAuth, trackBaseFallback: () => globalThis.__PUBLIC_BASE__ });
+// Vetrina Usati: pubblicazione su GitHub se c'e' GITHUB_TOKEN (altrimenti bozza); foto nel bucket R2 con binding MEDIA (se manca: errore chiaro)
+const adminApp = createAdminApp({
+  auth: accessAuth,
+  trackBaseFallback: () => globalThis.__PUBLIC_BASE__,
+  usati: { publisher: (c) => createPublisher(c.env), media: (c) => r2Media(c.env.MEDIA), siteUrl: (c) => c.env.SITE_URL },
+});
 const publicApp = createPublicApp();
 
 const NO_STORE = { 'Cache-Control': 'no-cache' };

@@ -11,6 +11,9 @@ import { listExpenses, createExpense, updateExpense, deleteExpense, CATEGORIES, 
 import { buildNotaSpese } from './notaspese.mjs';
 import { notifyMiddleware } from './notify.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
+import { mountUsati } from './usati.mjs';
+import { draftPublisher } from './publisher.mjs';
+import { missingMedia } from './media.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -22,7 +25,7 @@ const h = (fn) => async (c) => {
   try {
     const m = c.req.method;
     const body = m === 'GET' || m === 'DELETE' ? {} : await c.req.json().catch(() => ({}));
-    return c.json(await fn({ params: c.req.param(), query: c.req.query(), body: body || {}, user: c.get('user') }));
+    return c.json(await fn({ params: c.req.param(), query: c.req.query(), body: body || {}, user: c.get('user'), c }));
   } catch (e) {
     const status = e.status || 500;
     if (status === 500) { console.error(e); c.set('err', e); }
@@ -50,7 +53,8 @@ export function createPublicApp() {
 }
 
 // ---------- Admin ----------
-export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
+// usati = { publisher:(c)=>publisher, media:(c)=>archivio foto, siteUrl:(c)=>url del sito } per la Vetrina Usati (senza: bozza e nessun archivio foto)
+export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } = {}) {
   const app = new Hono();
   app.use('*', notifyMiddleware); // prima dell'accesso: segnala anche i tentativi negati e gli errori
   if (auth) app.use('*', auth);
@@ -76,6 +80,9 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     }
     return getSettings();
   }));
+
+  // Vetrina Usati (articoli, foto, pubblicazione sul sito)
+  mountUsati(app, { h, adminOnly, publisher: usati.publisher || (() => draftPublisher()), media: usati.media || (() => missingMedia()), siteUrl: usati.siteUrl });
 
   // Utenti (solo amministratore)
   app.get('/api/users', h(async (req) => {
@@ -330,7 +337,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'payments', 'expenses'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'payments', 'expenses', 'usati_items', 'usati_trash'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };

@@ -13,6 +13,8 @@ import { readFileSync, rmSync } from 'node:fs';
 import { raw } from './db-node.mjs';
 import { createAdminApp, createPublicApp } from './app.mjs';
 import { localDate } from './logic.mjs';
+import { fsMedia } from './media-node.mjs';
+import { draftPublisher, createPublisher } from './publisher.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADMIN_PORT = Number(process.env.OFFICINA_PORT || 4950);
@@ -37,8 +39,15 @@ export function lanIp() {
 const noCache = (c, next) => next().then(() => { c.res.headers.set('Cache-Control', 'no-cache'); });
 const trackPage = (c) => c.html(readFileSync(join(HERE, 'public', 'track.html'), 'utf8'));
 
-export function createApps() {
+// `usati` permette ai test di iniettare un publisher finto e un archivio foto in memoria.
+// Sul PC la Vetrina Usati resta in bozza: pubblica sul sito solo con OFFICINA_USATI_PUBLISH=github (e GITHUB_TOKEN/GITHUB_REPO).
+export function createApps({ usati } = {}) {
   const adminApi = createAdminApp({
+    usati: usati || {
+      publisher: () => (process.env.OFFICINA_USATI_PUBLISH === 'github' ? createPublisher(process.env) : draftPublisher()),
+      media: () => fsMedia(process.env.OFFICINA_MEDIA || join(HERE, 'data', 'media')),
+      siteUrl: () => process.env.SITE_URL,
+    },
     trackBaseFallback: () => process.env.PUBLIC_BASE_URL || `http://${lanIp()}:${PUBLIC_PORT}`,
     // backup SQLite: copia coerente del file, scaricabile dal browser
     backup: async (c) => {
