@@ -7,6 +7,7 @@ import { customersView, openCustomer } from './customers.js';
 import { stockView, suppliersView } from './stock.js';
 import { salesView, cashView, settingsView } from './sales.js';
 import { usersView } from './users.js';
+import { analyticsView } from './analytics.js';
 
 const VIEWS = [
   { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true },
@@ -17,6 +18,7 @@ const VIEWS = [
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView },
+  { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true },
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true },
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.

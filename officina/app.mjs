@@ -262,6 +262,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     const r = await L.report(str(req.query.from), str(req.query.to));
     return { ...r, by_day: await L.reportByDay(r.from, r.to) };
   }));
+  app.get('/api/analytics', h(async (req) => { adminOnly(req); return L.analytics(str(req.query.from), str(req.query.to)); }));
   app.get('/api/stock/summary', h(() => L.stockSummary()));
 
   // Backup: tutte le tabelle in un file JSON scaricabile (D1 non ha VACUUM INTO). Un motore con un backup suo (SQLite locale) lo passa in `backup`.
