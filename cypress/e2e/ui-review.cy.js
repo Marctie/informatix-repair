@@ -324,6 +324,10 @@ describe('Rassegna grafica di tutte le schermate', () => {
         cy.visit('/manuale.html');
         cy.contains('h2', 'Foglio rapido');
         checkLayout('main', w, `${vp}/manuale`);
+        cy.screenshot(`ui-${vp}-manuale-1`, { capture: 'viewport', overwrite: true });
+        cy.get('#accettazione').scrollIntoView();
+        cy.wait(300);
+        cy.screenshot(`ui-${vp}-manuale-2`, { capture: 'viewport', overwrite: true });
       });
       if (w < 1024) {
         it('menu "Altro" del telefono', () => {
