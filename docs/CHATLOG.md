@@ -586,6 +586,43 @@ Controllati `docs/MEMORY.md`, `docs/CHATLOG.md` e la memoria di Claude. Trovato 
 - **mancavano**: stima dei tempi e tappe, email autorizzata e ordine di inserimento di Christian, destino della **Vetrina Usati e del bot Telegram** online (decisione aperta), 19 rami remoti `claude/upbeat-fermi-*` da pulire, cambio orario routine blog del 25 ottobre, indicazione che Cypress non va in `main` → aggiunti;
 - memoria di Claude: file `project-online-cloudflare` e `project-gestionale-usati` allineati, aggiunto il profilo dell'utente e dell'ambiente.
 
+## Sessione 2026-10-13 (11) – Punti ESSENZIALI aggiunti: Portale unico per Christian e gestione utenti
+
+### Richiesta dell'utente
+1. Cliccando "Area riservata" Christian deve vedere **sia la gestione degli usati sia il gestionale vero**, con una grafica **veloce, responsive e accessibile**: "se non esiste creala ora oppure prendine nota, è un punto essenziale non saltarlo".
+2. Creazione utenti: dipende dall'utente (portale Cloudflare) o Christian può essere autonomo? In ogni caso **predisporre 4 utenti**; le email le farà mandare da Christian (configurazione dei login a fine serata).
+
+### Stato oggi (verificato)
+- Esistono **due app separate**: Officina (porta 4950) e Vetrina Usati (porta 4848). Non c'era nessuna pagina comune né collegamento.
+- Verifica grafica sulla Vetrina Usati con Cypress (`cypress/tools/usati-audit.cy.js`): **stesso difetto delle caselle** (padding 0 per il reset di Tailwind) → **corretto oggi** in `admin/public/index.html` (campi alti 44 px, bordo più visibile, select con freccia, etichette più leggibili). Restano emoji al posto delle icone e nessuna barra inferiore su telefono.
+- **Collegamenti reciproci aggiunti**: nel menu dell'Officina la voce "Vetrina usati"; nell'intestazione degli Usati il link "← Officina". È una soluzione ponte, NON il portale.
+
+### PUNTO ESSENZIALE: "Portale unico" (da fare nella serata, non saltare)
+**Cosa vede Christian dopo il login** (indirizzo `gestionale.informatixrepair.com`): una pagina **Portale** con
+- grandi pulsanti/schede: **Officina** (riparazioni, clienti, magazzino, vendite, fornitori, cassa), **Vetrina usati/nuovi**, **Manuale**;
+- azioni rapide in alto: **Nuova riparazione**, **Cerca / scansiona un codice**, contatori cliccabili **Pronte da ritirare**, **Preventivi da approvare**, **In ritardo**;
+- nome dell'utente connesso e pulsante **Esci** (logout di Access).
+Struttura degli indirizzi: `/` = Portale, `/officina` e `/usati` nella stessa shell grafica (stesso menu, stessa barra inferiore su telefono, stesse icone).
+**Requisiti (criteri di accettazione)**
+- **Veloce**: nessuna libreria pesante; prima schermata utile in meno di 1 secondo; da qualsiasi pagina al "Nuova riparazione" in 1 tocco.
+- **Responsive**: 320, 390, 768, 1280, 1536 px senza scorrimento orizzontale (stesso controllo `ui-review`).
+- **Accessibile**: bersagli di tocco ≥ 44 px, contrasto almeno AA, navigazione completa da tastiera, focus sempre visibile, `aria-label` sui pulsanti con sola icona, gerarchia dei titoli, testo ≥ 16 px nei campi, rispetto di `prefers-reduced-motion`, lingua `it`. Test automatici con **cypress-axe** (sul branch `cypress-tests`) oltre a `ui-review`.
+- La **Vetrina Usati va portata nello stesso design system** (sec/fgrid/field, icone SVG, barra inferiore, controlli 44 px) e sullo stesso Worker/Access.
+**Tecnica per la Vetrina Usati online**: decisione del 27/09 riconfermata per la parte dati: il Worker scrive su GitHub (Contents API) i file `usati.json` e le foto (ridimensionate nel browser, `sharp` non esiste nei Worker), Cloudflare Pages ripubblica il sito. Il bot Telegram userà le stesse API (da decidere se tonight).
+**Stima aggiuntiva**: Portale 1,5 h; Vetrina Usati su design system + Worker/GitHub 4-6 h; audit accessibilità 1 h → il totale del piano sale da ~17 h a **~24-28 h (intervallo 20-30 h)**. Da spezzare su più sere se serve; **ordine di priorità**: 1) Access + Worker/D1 + tracciamento pubblico, 2) Portale e utenti, 3) sito (Segui la riparazione, Area riservata), 4) Vetrina Usati integrata.
+
+### Utenti (domanda dell'utente): come funziona e cosa si predispone
+- **Per accedere** Christian non ha bisogno di un account Cloudflare né di una password: inserisce la sua email e riceve un **codice** (oppure usa il login Google). 
+- **Chi decide chi entra**: la lista di email autorizzate sta nella *policy* di Cloudflare Access, che si modifica **solo dal pannello Cloudflare** (serve l'account dell'utente). Aggiungere un utente = 1 minuto (Zero Trust → Access → Applications → Policy → email).
+- **Autonomia di Christian (opzionale, da costruire)**: pagina **"Utenti"** visibile solo agli amministratori, con un elenco in D1 (`users`: email, nome, ruolo, attivo) usato dal Worker come lista di autorizzati. Due modi: (a) Access impostato su "chiunque abbia ricevuto un codice via email" e il Worker accetta solo le email presenti nell'elenco → un amministratore aggiunge/toglie utenti dall'app senza toccare Cloudflare; (b) la pagina aggiorna la policy Access tramite API Cloudflare (richiede un token con permesso ristretto da custodire come segreto). **Consigliato per ora**: policy Access con le email esplicite (più sicura) + tabella `users` già pronta con ruoli; l'autonomia piena (a) si attiva solo se l'utente la vuole.
+- **Predisposizione per 4 utenti**: tabella `users` con 4 posti: (1) `marcopeluso99@gmail.com` – amministratore; (2) Christian – operatore (email da ricevere); (3) e (4) da definire. Ruoli proposti: **amministratore** (tutto, incluse Impostazioni, Cassa, Utenti, backup), **operatore** (riparazioni, clienti, magazzino, vendite; senza Impostazioni/Utenti; Cassa da decidere). Il Worker legge l'email dal JWT di Access e applica il ruolo; ogni azione importante può registrare l'utente (extra utile: "chi ha fatto cosa" in cronologia).
+- **Passi a fine serata**: l'utente fa mandare da Christian (e dagli altri due) le email → inserimento in Access (pannello) e nella tabella `users`; prova di login di ogni utente da telefono.
+
+### Domande aperte da chiarire con l'utente
+- Ruolo di Christian: operatore o amministratore? L'operatore può vedere la Cassa?
+- Chi sono gli utenti 3 e 4?
+- Vuole l'autonomia piena degli utenti da dentro l'app (opzione a)?
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
