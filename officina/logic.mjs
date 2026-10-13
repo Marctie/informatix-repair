@@ -489,3 +489,52 @@ export async function lookup(code, phone4) {
   if (!r || !r.customer_phone || String(r.customer_phone).replace(/\D/g, '').slice(-4) !== last4) throw fail();
   return { token: r.token };
 }
+
+// ---------- Analisi (riparazioni, incassi, vendite) ----------
+const addDays = (ymd, n) => {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const daysBetween = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000) + 1;
+
+export async function analytics(from, to) {
+  const f = from || addDays(localDate(), -29);
+  const t = to || localDate();
+  if (f > t) throw new HttpError(400, 'Il periodo non è valido');
+  const len = daysBetween(f, t);
+  const pf = addDays(f, -len);
+  const pt = addDays(f, -1);
+  const cf = await cashFilter();
+  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf}`).get(a, b)).s);
+
+  // Riparazioni entrate nel periodo
+  const byStatus = await db.prepare('SELECT status, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY status ORDER BY n DESC').all(f, t);
+  const intake = await db.prepare('SELECT COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ?').get(f, t);
+  const avg = await db.prepare("SELECT AVG(julianday(delivered_at) - julianday(created_at)) AS d, COUNT(*) AS n FROM repairs WHERE delivered_at IS NOT NULL AND date(delivered_at) BETWEEN ? AND ?").get(f, t);
+  const models = await db.prepare('SELECT brand_model AS name, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY LOWER(brand_model) ORDER BY n DESC, name LIMIT 10').all(f, t);
+  const types = await db.prepare('SELECT device_type AS name, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY device_type ORDER BY n DESC').all(f, t);
+  const declined = await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE quote_decision = 'declined' AND date(created_at) BETWEEN ? AND ?").get(f, t);
+  const lateNow = (await listRepairs({ open: true })).filter((r) => r.late).length;
+
+  // Incassi
+  const total = await sum(f, t);
+  const prevTotal = await sum(pf, pt);
+  const byDay = await reportByDay(f, t);
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY method ORDER BY total DESC`).all(f, t);
+  const rep = await report(f, t);
+
+  // Vendite
+  const sales = await db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(total),0) AS s FROM sales WHERE date(created_at) BETWEEN ? AND ?').get(f, t);
+  const sold = await db.prepare(`SELECT si.name AS name, SUM(si.qty) AS qty, ROUND(SUM(si.qty*si.unit_price),2) AS revenue
+    FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE date(s.created_at) BETWEEN ? AND ? GROUP BY LOWER(si.name) ORDER BY qty DESC, revenue DESC`).all(f, t);
+  const used = await db.prepare(`SELECT rp.name AS name, SUM(rp.qty) AS qty FROM repair_parts rp JOIN repairs r ON r.id = rp.repair_id
+    WHERE date(r.created_at) BETWEEN ? AND ? GROUP BY LOWER(rp.name) ORDER BY qty DESC`).all(f, t);
+
+  return {
+    from: f, to: t, days: len, prev: { from: pf, to: pt, total: prevTotal },
+    repairs: { intake: intake.n, by_status: byStatus, avg_days: avg.n ? Math.round(avg.d * 10) / 10 : null, delivered: avg.n, models, types, declined: declined.n, late_now: lateNow },
+    income: { total, prev_total: prevTotal, change_pct: prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 1000) / 10 : null, by_day: byDay, by_method: byMethod, parts_cost: rep.parts_cost, margin: money(total - rep.parts_cost), avg_per_day: money(total / len) },
+    sales: { count: sales.n, revenue: money(sales.s), avg_ticket: sales.n ? money(sales.s / sales.n) : 0, top: sold.slice(0, 10), bottom: sold.length > 10 ? sold.slice(-5).reverse() : [], parts_used: used.slice(0, 10) },
+  };
+}

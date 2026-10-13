@@ -115,6 +115,9 @@
   <a href="#stati">12 · Gli stati</a>
   <a href="#problemi">13 · Qualcosa non va?</a>
   <a href="#scorciatoie">14 · Scorciatoie</a>
+  <p>Per l'amministratore</p>
+  <a href="#utenti">15 · Utenti</a>
+  <a href="#analisi">16 · Analisi</a>
 </nav>
 
 <main>
@@ -129,26 +132,27 @@
     <div class="box"><b><span class="k">4</span>Avvisa con WhatsApp</b>Il tasto 💬 apre WhatsApp con il messaggio già scritto (preventivo, pronto, ritardo). Tu premi solo invio.</div>
     <div class="box"><b><span class="k">5</span>Consegna e incassa</b>Quando è pronto, tasto <b>Consegnato →</b>: controlla il totale, scegli come ha pagato, conferma. Parte la garanzia.</div>
     <div class="box"><b><span class="k">★</span>Pistola codici a barre</b>Nella nuova riparazione spara sull'IMEI: finisce nella casella giusta. In qualsiasi altro momento, spara sul codice dell'etichetta (o sull'IMEI): si apre la riparazione.</div>
-    <div class="box"><b><span class="k">6</span>Ogni settimana</b><i>Impostazioni → Scarica backup</i> e copialo su chiavetta o cloud. Sono tutti i tuoi dati.</div>
+    <div class="box"><b><span class="k">6</span>Ogni settimana</b><i>Impostazioni → Scarica backup</i> e copialo su chiavetta o cloud (il sistema salva già da solo ogni notte). Sono tutti i tuoi dati.</div>
   </div>
   <div class="call warn" style="margin-top:1rem"><b>Da ricordare</b>Il link/QR del cliente, per ora, si apre <u>solo se il suo telefono è collegato al Wi-Fi del negozio</u>. Fuori dal negozio non funziona finché il sistema non sarà messo online: nel frattempo avvisalo con WhatsApp (tasto 💬).</div>
 </section>
 
 <section id="avvio">
   <h2><span class="n">1</span>Accendere e aprire</h2>
-  <p class="lead">Due click e sei dentro. Nessuna password per ora.</p>
+  <p class="lead">Il gestionale è online: lo apri da qualsiasi PC, tablet o telefono, senza accendere niente.</p>
   <ol class="steps">
-    <li>Sul PC del negozio fai <b>doppio click</b> su <b>AVVIA-OFFICINA</b> (nella cartella del programma).<small>Si apre una finestra nera: <b>lasciala aperta</b> tutto il giorno. Se la chiudi, il gestionale si spegne.</small></li>
-    <li>Dopo pochi secondi si apre il browser su <b>http://localhost:4950</b> e vedi la pagina <b>Oggi</b>.<small>Se non si apre da solo, scrivi quell'indirizzo nel browser.</small></li>
-    <li>Per spegnere a fine giornata: chiudi la finestra nera.</li>
+    <li>Apri il browser e vai su <b>gestionale.informatixrepair.com</b>.<small>Salvalo tra i preferiti o aggiungilo alla schermata Home del telefono.</small></li>
+    <li>Scrivi la tua <b>email</b> e premi <b>Send login code</b>. Arriva un <b>codice</b> via email: incollalo e sei dentro.<small>Non servono password. Se il codice non arriva, guarda in <b>Spam</b>. Entrano solo le email abilitate dall'amministratore (vedi “Utenti”).</small></li>
+    <li>Vedi la pagina <b>Oggi</b>. Per uscire basta chiudere il browser: dopo un po' di tempo il sistema ti richiede il codice.</li>
   </ol>
+  <div class="call tip"><b>Se non c'è internet</b>Senza connessione il gestionale online non si apre. Se serve, sul PC del negozio resta la vecchia versione locale (doppio click su <b>AVVIA-OFFICINA</b>, indirizzo <b>http://localhost:4950</b>), ma i dati sono separati: chiedi prima di usarla.</div>
   <h3>Come è fatta la schermata</h3>
   <ul>
-    <li><b>A sinistra</b> (sul telefono: <b>in basso</b>) il menu: Oggi · Riparazioni · Clienti · Magazzino · Vendite · Fornitori · Cassa · Impostazioni · Manuale.</li>
+    <li><b>A sinistra</b> (sul telefono: <b>in basso</b>) il menu: Oggi · Riparazioni · Clienti · Magazzino · Vendite · Fornitori · Cassa · Impostazioni · Analisi e Utenti (solo amministratori) · Manuale.</li>
     <li><b>In alto</b> la <b>ricerca</b>: scrivi un nome, un telefono, un modello o un codice e trovi subito la scheda. Premi <kbd>/</kbd> per scrivere lì senza usare il mouse.</li>
     <li>Il tasto rosso <b>＋ Nuova riparazione</b> è sempre a portata di mano (sul telefono è il pulsante rosso <b>Nuova</b> al centro della barra in basso).</li>
   </ul>
-  <div class="call tip"><b>Dove si usa</b>Il gestionale vive solo sul PC del negozio (per sicurezza non è raggiungibile da altri dispositivi). Le pagine sono comunque adattate a ogni schermo, quindi vanno bene anche in una finestra piccola o su un tablet collegato al PC.</div>
+  <div class="call tip"><b>Dove si usa</b>Da qualsiasi dispositivo con internet. Le pagine si adattano a ogni schermo: PC, tablet e telefono. Il cliente, invece, vede solo la sua riparazione su <b>riparazioni.informatixrepair.com</b>.</div>
   <figure><img src="/manuale/01-oggi.png" alt="Pagina Oggi" loading="lazy"><figcaption>La pagina <b>Oggi</b>: in alto i numeri, poi le cose da fare ordinate per urgenza.</figcaption></figure>
 </section>
 
@@ -338,20 +342,21 @@
   <p>L'elenco di tutte le riparazioni. In alto i filtri per stato con il numero accanto (<b>Aperte</b> è quello normale; <b>Tutte</b> include le consegnate). Puoi anche cercare per nome, telefono, modello o seriale.</p>
   <figure><img src="/manuale/02-riparazioni.png" alt="Elenco riparazioni" loading="lazy"><figcaption>L'elenco riparazioni con filtri per stato.</figcaption></figure>
   <h3>Cassa</h3>
-  <p>Quanto hai incassato <b>oggi</b>, negli ultimi <b>7</b> o <b>30 giorni</b> o in un periodo a scelta, diviso per contanti / carta / bonifico, con il grafico dei giorni e l'elenco dei singoli incassi (acconti, saldi, vendite). Vedi anche il costo dei ricambi venduti.</p>
+  <p>Quanto hai incassato <b>oggi</b>, negli ultimi <b>7</b> o <b>30 giorni</b> o in un periodo a scelta, diviso per contanti / carta / bonifico / non tracciato, con il grafico dei giorni e l'elenco dei singoli incassi (acconti, saldi, vendite). Vedi anche il costo dei ricambi venduti.</p>
+  <p><b>Pagamento “non tracciato”</b>: alla cassa, alla consegna e nelle vendite trovi anche questa voce tra i metodi di pagamento. In <b>Impostazioni → Cassa</b> scegli se questi pagamenti <b>entrano</b> nei totali della cassa oppure <b>no</b>. In ogni caso restano salvati: il magazzino e le riparazioni restano corretti. Se li escludi, la Cassa ti ricorda con una nota quanti ne sono stati esclusi.</p>
   <figure><img src="/manuale/04-cassa.png" alt="Cassa" loading="lazy"><figcaption>La cassa del periodo scelto.</figcaption></figure>
 </section>
 
 <section id="backup">
   <h2><span class="n">10</span>Backup (importante)</h2>
-  <p class="lead">I dati stanno solo su questo PC. Se il PC si rompe e non hai un backup, li perdi.</p>
-  <ol class="steps">
-    <li>Vai su <b>Impostazioni</b> → riquadro <b>💾 Backup dei dati</b> → <b>Scarica backup</b>.</li>
-    <li>Copia il file scaricato (si chiama <code>officina-backup-AAAA-MM-GG.db</code>) su una <b>chiavetta</b> o nel <b>cloud</b>.</li>
-    <li>Fallo <b>almeno una volta a settimana</b>, meglio a fine giornata.</li>
-  </ol>
-  <div class="call stop"><b>Per ripristinare</b>Chiudi il gestionale e sostituisci il file <code>officina/data/officina.db</code> con il backup (rinominandolo <code>officina.db</code>). In caso di dubbi chiedi prima di toccare.</div>
-  <p>In <b>Impostazioni</b> puoi anche cambiare nome, indirizzo e telefono del negozio, i giorni di garanzia standard e il testo delle condizioni che si stampa sulla scheda di ingresso.</p>
+  <p class="lead">I dati sono al sicuro nel cloud e ogni notte il sistema ne salva una copia da solo.</p>
+  <ul>
+    <li><b>Copia automatica</b>: ogni notte, in automatico. Si conservano le ultime <b>30 copie</b>.</li>
+    <li><b>Salva ora nel cloud</b>: in <b>Impostazioni → Backup dei dati</b> (solo amministratori) crea subito una copia, per esempio prima di una modifica importante.</li>
+    <li><b>Scarica backup</b>: scarica un file <code>officina-backup-AAAA-MM-GG.json</code> sul tuo dispositivo. Conservalo su una chiavetta o nel tuo cloud personale: fallo ogni tanto, meglio a fine mese.</li>
+  </ul>
+  <div class="call stop"><b>Per ripristinare</b>Non si ripristina da soli: scrivici prima di cancellare qualcosa di importante e recuperiamo la copia giusta.</div>
+  <p>In <b>Impostazioni</b> puoi anche cambiare nome, indirizzo e telefono del negozio, i giorni di garanzia standard, il testo delle condizioni che si stampa sulla scheda di ingresso e come trattare i pagamenti “non tracciato” in cassa.</p>
 </section>
 
 <section id="casi">
@@ -402,11 +407,13 @@
   <h2><span class="n">13</span>Qualcosa non va?</h2>
   <dl class="qa">
     <dt>La pagina non si apre / “impossibile raggiungere il sito”</dt>
-    <dd>Il programma non è acceso: rilancia <b>AVVIA-OFFICINA</b> e aspetta qualche secondo.</dd>
+    <dd>Controlla la connessione internet. Il gestionale è online su <b>gestionale.informatixrepair.com</b>: se il resto del web funziona e questa pagina no, scrivici.</dd>
+    <dt>Mi chiede il codice ma non arriva l'email</dt>
+    <dd>Guarda in <b>Spam</b> e aspetta un minuto. Se continua, la tua email forse non è abilitata: chiedi all'amministratore di aggiungerla in <b>Utenti</b>.</dd>
     <dt>Il cliente dice che il link non si apre</dt>
-    <dd>Il suo telefono deve essere sul <b>Wi-Fi del negozio</b>. Se è fuori, usa WhatsApp. Se anche dal Wi-Fi non va, controlla che il PC del negozio sia acceso con la finestra nera aperta.</dd>
+    <dd>Il link funziona ovunque, anche fuori dal negozio, con internet. Se non si apre, controlla che il QR/link sia quello della scheda (inizia con <b>riparazioni.informatixrepair.com</b>) o invialo di nuovo su WhatsApp.</dd>
     <dt>Il QR porta a un indirizzo con “localhost”</dt>
-    <dd>Vuol dire che il PC non ha trovato la rete. Controlla la connessione Wi-Fi/cavo e riavvia il programma. Poi stampa di nuovo la scheda.</dd>
+    <dd>Succede solo con la versione locale. Con il gestionale online il QR è già corretto: apri <b>gestionale.informatixrepair.com</b> e ristampa la scheda da lì.</dd>
     <dt>WhatsApp non si apre</dt>
     <dd>Serve WhatsApp Web/Desktop collegato sul PC. Se il cliente non ha il telefono nella scheda, il tasto 💬 non compare: aggiungilo con ✏️ Modifica.</dd>
     <dt>Il magazzino mostra un numero negativo</dt>
@@ -415,8 +422,8 @@
     <dd>Verifica che sia collegata e in modalità tastiera (USB HID). Se i caratteri sono sbagliati (es. lettere al posto dei numeri) la tastiera del PC è su una lingua diversa dall'italiano: imposta la pistola per tastiera “italiana” seguendo il suo libretto.</dd>
     <dt>Dopo lo sparo non succede nulla</dt>
     <dd>Manca il “suffisso Invio” sulla pistola (vedi il riquadro nel capitolo 2). Nel frattempo premi Invio a mano dopo lo sparo.</dd>
-    <dt>Ho chiuso per sbaglio la finestra nera</dt>
-    <dd>Nessun problema: i dati sono al sicuro. Rilancia AVVIA-OFFICINA.</dd>
+    <dt>Ho chiuso per sbaglio la pagina</dt>
+    <dd>Nessun problema: i dati sono già salvati online. Riapri <b>gestionale.informatixrepair.com</b>.</dd>
   </dl>
 </section>
 
@@ -441,6 +448,34 @@
 </section>
 
 <footer>Manuale Officina · Informatix Repair · versione 1.0 · ottobre 2026</footer>
+<section id="utenti">
+  <h2><span class="n">15</span>Utenti (solo amministratore)</h2>
+  <p class="lead">Decidi tu chi può entrare nel gestionale.</p>
+  <ol class="steps">
+    <li>Apri <b>Utenti</b> dal menu (lo vedono solo gli amministratori).</li>
+    <li>Premi <b>＋ Nuovo utente</b>, scrivi l'<b>email</b> della persona o della postazione (Cassa, Laboratorio, Vendite) e scegli il ruolo.</li>
+    <li>Da quel momento quella persona può entrare con il codice via email. Per togliere l'accesso: <b>Modifica</b> → togli la spunta <b>Può accedere</b>, oppure <b>Elimina</b>.</li>
+  </ol>
+  <ul>
+    <li><b>Amministratore</b>: usa tutto, gestisce utenti, impostazioni e analisi.</li>
+    <li><b>Postazione / collaboratore</b>: usa riparazioni, clienti, magazzino, vendite e cassa.</li>
+    <li>Il profilo del <b>proprietario</b> (🔒) è protetto: non si può modificare né eliminare.</li>
+  </ul>
+  <div class="call tip"><b>Chi non è in elenco</b>Può chiedere il codice, ma dopo vede “Questo indirizzo email non è abilitato” e non entra.</div>
+</section>
+
+<section id="analisi">
+  <h2><span class="n">16</span>Analisi (solo amministratore)</h2>
+  <p class="lead">I numeri del negozio in un colpo d'occhio, per il periodo che scegli.</p>
+  <ul>
+    <li><b>Periodo</b>: in alto scegli Oggi, 7, 30, 90 giorni, Anno oppure due date.</li>
+    <li><b>Riparazioni</b>: quante ne sono entrate e consegnate, tempo medio di lavorazione, quelle in ritardo, i modelli più riparati, i tipi di dispositivo e gli stati.</li>
+    <li><b>Incassi</b>: totale, media al giorno, confronto con il periodo precedente, grafico dei giorni, metodi di pagamento e <b>margine</b> (incasso meno costo dei ricambi).</li>
+    <li><b>Vendite</b>: numero di vendite, fatturato, scontrino medio, prodotti più e meno venduti e ricambi più usati nelle riparazioni.</li>
+  </ul>
+  <p>Presto arriveranno anche magazzino, avvisi su prezzi e scorte e il grafico dei prezzi dei fornitori.</p>
+</section>
+
 </main>
 </div>
 </body>

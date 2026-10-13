@@ -283,3 +283,14 @@ test('metodo "non tracciato": salvato sempre, fuori dai totali di cassa se l’i
   assert.equal((await a('GET', '/api/sales')).data.filter((s) => s.method === 'non tracciato').length >= 1, true); // la vendita resta salvata
   await a('PUT', '/api/settings', { cash_show_untracked: '1' });
 });
+
+test('analisi: riparazioni, incassi e vendite del periodo', async () => {
+  const day = new Date().toISOString().slice(0, 10);
+  const r = (await a('GET', `/api/analytics?from=${day}&to=${day}`)).data;
+  assert.equal(r.days, 1);
+  assert.ok(r.repairs.intake >= 1);
+  assert.ok(Array.isArray(r.repairs.models) && r.repairs.models[0].n >= 1);
+  assert.ok(r.income.total >= 0 && 'prev_total' in r.income && 'margin' in r.income);
+  assert.ok(r.sales.count >= 1 && r.sales.top.length >= 1);
+  assert.equal((await a('GET', '/api/analytics?from=2030-02-01&to=2030-01-01')).status, 400);
+});
