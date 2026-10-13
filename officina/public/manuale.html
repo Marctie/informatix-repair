@@ -120,6 +120,7 @@
   <a href="#utenti">15 · Utenti</a>
   <a href="#analisi">16 · Analisi</a>
   <a href="#demo">17 · Dati demo</a>
+  <a href="#telegram">18 · Avvisi su Telegram</a>
 </nav>
 
 <main>
@@ -351,6 +352,10 @@
     <li><b>Giorno della settimana</b> e <b>ora del giorno</b>, per capire quando il negozio incassa di più.</li>
     <li>In fondo l'<b>elenco di tutti gli incassi</b> (acconti, saldi, vendite).</li>
   </ul>
+  <h3>Spese e nota spese (PDF)</h3>
+  <p>Oltre agli incassi puoi registrare le <b>spese</b> del negozio (ricambi, bollette, carburante, pranzi di lavoro…). In Cassa premi <b>＋ Nuova spesa</b> e compila: data, importo, descrizione, categoria, fornitore, giustificativo (scontrino, fattura o ricevuta) con il suo numero, IVA, come hai pagato e chi ha anticipato. Se è una spesa anticipata da te, spunta <b>Da rimborsare</b>. Le spese del periodo compaiono in fondo alla Cassa; cliccandone una la modifichi o la elimini.</p>
+  <p>Premi <b>📄 Genera nota spese (PDF)</b>: scegli a nome di chi è (compare sul documento) e, se vuoi, <b>solo le spese da rimborsare</b>. Si apre un PDF in formato A4 con l'intestazione del negozio, il periodo, l'elenco delle voci (data, causale, categoria, documento, IVA, importo), il totale, il riepilogo per categoria, l'avvertenza di allegare i giustificativi originali e gli spazi per le <b>firme</b> (di chi ha sostenuto la spesa e di chi approva). Stampalo, allega scontrini e fatture e firma.</p>
+  <div class="call tip"><b>Importante</b>La nota spese è un documento gestionale, non fiscale. Conserva sempre gli scontrini e le fatture originali: le voci senza giustificativo compaiono in rosso nel PDF e possono essere rimborsate solo secondo le regole interne. Per la deducibilità chiedi al commercialista.</div>
   <p><b>Pagamento “non tracciato”</b>: alla cassa, alla consegna e nelle vendite trovi anche questa voce tra i metodi di pagamento. In <b>Impostazioni → Cassa</b> scegli se questi pagamenti <b>entrano</b> nei totali della cassa oppure <b>no</b>. In ogni caso restano salvati: il magazzino e le riparazioni restano corretti. Se li escludi, la Cassa ti ricorda con una nota quanti ne sono stati esclusi.</p>
   <figure><img src="/manuale/04-cassa.png" alt="Cassa" loading="lazy"><figcaption>La cassa del periodo scelto.</figcaption></figure>
 </section>
@@ -470,6 +475,17 @@
     <li>Il profilo del <b>proprietario</b> (🔒) è protetto: non si può modificare né eliminare.</li>
   </ul>
   <div class="call tip"><b>Chi non è in elenco</b>Può chiedere il codice, ma dopo vede “Questo indirizzo email non è abilitato” e non entra.</div>
+</section>
+
+<section id="telegram">
+  <h2><span class="n">18</span>Avvisi su Telegram (proprietario)</h2>
+  <p class="lead">Il proprietario riceve un messaggio sul telefono per ogni cosa che accade nel gestionale.</p>
+  <ul>
+    <li><b>Cosa arriva</b>: nuove riparazioni, cambi di stato, consegne e incassi, acconti, note, ricambi, vendite, spese, modifiche a clienti, fornitori e magazzino, utenti e impostazioni, backup, stampe e la risposta del cliente al preventivo.</li>
+    <li><b>Sicurezza</b>: accessi al gestionale, tentativi di accesso con email non abilitate ed eventuali <b>errori</b>, con il dettaglio.</li>
+    <li><b>Privacy</b>: i PIN di sblocco dei dispositivi e le password non vengono mai inviati; i telefoni compaiono mascherati.</li>
+    <li>Il bot è solo per il proprietario: non risponde a nessun altro e non si possono dargli comandi.</li>
+  </ul>
 </section>
 
 <section id="demo">
