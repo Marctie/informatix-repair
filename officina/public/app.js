@@ -1,4 +1,5 @@
 // Router, navigazione, ricerca globale e viste principali: Oggi (dashboard) e Riparazioni.
+import './icons.js';
 import { $, esc, eur, fdate, api, toast, safe, debounce, META, loadMeta, statusBadge, progressBar, waLink, waMessage, openModal, isScanEnter } from './util.js';
 import { scanWithCamera } from './scan.js';
 import { openRepairForm, openRepairDetail, deliverDialog } from './repair.js';
