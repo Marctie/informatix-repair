@@ -8,6 +8,8 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "officina", "database_id": "77a96da4-ca9b-4262-b16c-2f9233186ffd", "migrations_dir": "migrations" }
   ],
+  "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "officina-backups" }],
+  "triggers": { "crons": ["30 2 * * *"] },
   "routes": [
     { "pattern": "gestionale.informatixrepair.com", "custom_domain": true },
     { "pattern": "riparazioni.informatixrepair.com", "custom_domain": true }
