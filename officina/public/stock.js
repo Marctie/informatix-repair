@@ -7,10 +7,10 @@ export async function stockView(el, params) {
   let tab = params.get('tab') === 'reorder' ? 'reorder' : 'all';
   let q = '';
   el.innerHTML = `
-    <div class="flex items-center justify-between gap-3 flex-wrap mb-4"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
+    <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
       <button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></div>
-    <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
-    <div class="flex gap-2 mb-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><span class="chip" data-t="reorder">📉 Da ordinare</span>
+    <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+    <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><span class="chip" data-t="reorder">📉 Da ordinare</span>
       <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
     <div class="card overflow-hidden" id="p-list"></div>`;
   const list = $('#p-list', el);
@@ -120,7 +120,7 @@ async function productForm(id, done) {
 
 // ---------- Fornitori ----------
 export async function suppliersView(el) {
-  el.innerHTML = `<div class="flex items-center justify-between gap-3 flex-wrap mb-4"><h1 class="font-heading font-extrabold text-2xl">Fornitori</h1>
+  el.innerHTML = `<div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Fornitori</h1>
     <button class="btn btn-primary" id="s-new">＋ Nuovo fornitore</button></div><div class="card overflow-hidden" id="s-list"></div>`;
   const list = $('#s-list', el);
   async function load() {
