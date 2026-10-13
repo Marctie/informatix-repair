@@ -440,6 +440,33 @@ Apre ogni pagina e ogni finestra a **telefono 390×844, tablet 768×1024, deskto
 ### Regola per il futuro (anche in memoria)
 Usare solo il sistema di spaziatura; per ogni schermata nuova o modificata guardare gli screenshot a 3 formati e far girare `ui-review` prima di consegnare.
 
+## Sessione 2026-10-13 (7) – Seconda revisione grafica (causa vera dei campi "attaccati")
+
+### Segnalazione dell'utente
+Screenshot della finestra "Nuova riparazione": "il CSS è rimasto uguale"; richiesta di una revisione di tutto il CSS **almeno 10 volte**, stile perfetto.
+
+### Causa vera trovata
+Il CDN di Tailwind inietta il suo reset (preflight) **dopo** il nostro `<style>` e azzerava `padding` e `font` di input/select/textarea: per questo il testo nei campi era attaccato al bordo (visibile anche nelle prime schermate dell'utente) e i campi sembravano "rimasti uguali". I controlli automatici precedenti non misuravano il padding. Corretto con selettori più specifici (`html body input…`) che vincono in qualsiasi ordine di caricamento.
+
+### Passate di revisione (ognuna con screenshot guardati a occhio su telefono/tablet/desktop)
+1. **Fondamenta**: controlli con altezza unica 44 px (`--ctl`), bordi più visibili, font 15 px, freccia dei select disegnata, chip più grandi, etichette più leggibili, sezioni delle finestre separate da una linea sottile, spazi interni regolari.
+2. **Icone**: le emoji colorate sono sostituite in automatico da **icone a linea coerenti** (`officina/public/icons.js`, MutationObserver: nessun template da modificare); icona fotocamera e pulsanti allineati ai campi.
+3. **Distanze**: etichetta→campo regolare (prima 0 px per un errore mio), suggerimenti vuoti senza spazio riservato, plurali corretti ("1 riparazione"), segnaposto brevi su telefono, filtri senza barra di scorrimento, percentuale e ultimo passo in verde a lavoro completato.
+4. **Schermi piccoli (320 px)**: pulsanti di avanzamento che vanno a capo, riga "voce libera" delle vendite a due righe, tabelle del manuale scorrevoli.
+5. **Barra inferiore su telefono**: il tasto fluttuante (che copriva i pulsanti delle righe) è sostituito da un pulsante rosso **Nuova** al centro della barra.
+6. **Piede delle finestre su telefono**: azione principale a tutta larghezza, gli altri pulsanti in una riga equilibrata.
+7. **Pagina cliente e stampe**: icone SVG al posto delle emoji, nota con icona allineata, controllo di etichetta e schede a occhio.
+8. **Gruppi di scelte rapide** con etichetta (tipo di dispositivo, accessori lasciati, stato estetico).
+9. Campi nascosti che restavano visibili per colpa della nuova regola (`.hidden`) corretti; ricerca senza la "X" nativa.
+10. Manuale e schermate del manuale rigenerate con la grafica nuova; cache dei file statici disabilitata (`Cache-Control: no-cache`) così le modifiche si vedono subito.
+
+### Controlli automatici (`cypress/e2e/ui-review.cy.js`) — ora 5 formati: 320, 390, 768, 1280, 1536 px
+Oltre a fuori-schermo/sovrapposizioni/campi piccoli, misura: **padding dei campi (≥10 px)**, font ≥14 px nei campi, bordo presente, altezza campi, **stessa altezza** in una riga campo+pulsante, **distanza etichetta-campo (3-12 px)**, **spazio tra sezioni (20-70 px)**, gruppi di chip/pulsanti non appiccicati all'elemento successivo, carattere minimo 10 px. Fotografa anche i documenti di stampa (scheda cliente, laboratorio, etichetta), la pagina cliente consegnata e il manuale.
+- Suite completa: officina 13 + responsive 43 + scanner 10 + ui-review 109 = **175 test verdi**; API 11 test verdi.
+
+### Nota
+Il pulsante "Modifica dati" si chiama ora "Modifica"; il tasto fluttuante `#fab` non esiste più (c'è `#nav-new` nella barra).
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
