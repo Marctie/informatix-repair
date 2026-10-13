@@ -176,7 +176,7 @@ describe('Rassegna grafica di tutte le schermate', () => {
         checkLayout('.modal-panel', w, `${vp}/${name}`);
         cy.screenshot(`ui-${vp}-m-${name}`, { capture: 'viewport', overwrite: true });
       });
-      const openNew = () => (w < 1024 ? cy.get('#fab').click() : cy.get('#top-new').click());
+      const openNew = () => (w < 1024 ? cy.get('#nav-new').click() : cy.get('#top-new').click());
       modal('nuova-riparazione', openNew, 'Seriale / IMEI');
       it('finestra nuova-riparazione compilata + suggerimenti cliente', () => {
         cy.visit('/#/oggi');
