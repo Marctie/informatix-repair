@@ -156,6 +156,8 @@ export async function cashView(el) {
   await load();
 }
 
+const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
+
 export async function settingsView(el) {
   const s = await api('GET', '/api/settings');
   const f = (k, l, extra = '') => `<div class="field"><label class="l" for="st-${k}">${l}</label><input id="st-${k}" data-k="${k}" value="${esc(s[k] || '')}" ${extra} /></div>`;
@@ -177,11 +179,15 @@ export async function settingsView(el) {
       </section>
       <section class="card panel sec">
         <h2 class="sec-t">Backup dei dati</h2>
-        <p style="font-size:.92rem">Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.</p>
-        <a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>
-        <p class="hint">Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.</p>
+        <p style="font-size:.92rem">${ONLINE ? 'Ogni notte il sistema salva da solo una copia di tutti i dati (si conservano le ultime 30). Puoi anche scaricarne una tu o salvarne una subito.' : 'Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.'}</p>
+        <div class="row tight"><a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>${ONLINE ? '<button class="btn btn-outline" id="st-r2">Salva ora nel cloud</button>' : ''}</div>
+        <p class="hint">${ONLINE ? 'Per ripristinare una copia serve l’assistenza: scrivici prima di cancellare qualcosa di importante.' : 'Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.'}</p>
       </section>
     </div>`;
+  if ($('#st-r2', el)) $('#st-r2', el).onclick = async () => {
+    const out = await safe(() => api('POST', '/api/backup/r2', {}));
+    if (out?.ok) toast('Copia salvata nel cloud');
+  };
   $('#st-save', el).onclick = async () => {
     const body = {};
     el.querySelectorAll('[data-k]').forEach((i) => { body[i.dataset.k] = i.value; });

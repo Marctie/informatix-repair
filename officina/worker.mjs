@@ -43,16 +43,37 @@ app.use('*', async (c, next) => {
 // Host gestionale (e qualunque altro): dietro Access
 app.get('/t/:token', (c) => serveAsset(c.env, c.req.raw, '/track')); // pagina vuota del tracciamento: i dati arrivano da /api/track (pubblico)
 app.route('/', publicApp);
+app.post('/api/backup/r2', async (c) => {
+  // passa dal controllo Access/utenti come tutte le rotte admin
+  const gate = new Hono();
+  gate.use('*', accessAuth);
+  gate.post('*', async (c2) => {
+    if (c2.get('user')?.role !== 'admin') return c2.json({ ok: false, error: 'Solo l’amministratore può farlo.' }, 403);
+    const key = await saveBackup(c2.env);
+    return c2.json(key ? { ok: true, file: key } : { ok: false, error: 'Archivio R2 non collegato.' }, key ? 200 : 503);
+  });
+  return gate.fetch(c.req.raw, c.env, c.executionCtx);
+});
 app.route('/', adminApp);
 app.get('*', (c) => c.env.ASSETS.fetch(c.req.raw));
 
+/** Salva una copia JSON nel bucket R2 e tiene le ultime 30. Restituisce il nome del file. */
+async function saveBackup(env) {
+  if (!env.BACKUPS) return null;
+  const dump = await dumpAll();
+  const key = `officina-${dump.created_at.replace(' ', '_').replaceAll(':', '-')}.json`;
+  await env.BACKUPS.put(key, JSON.stringify(dump), { httpMetadata: { contentType: 'application/json' } });
+  const list = await env.BACKUPS.list({ prefix: 'officina-' });
+  const old = list.objects.map((o) => o.key).sort().slice(0, -30);
+  if (old.length) await env.BACKUPS.delete(old);
+  return key;
+}
+
 export default {
   fetch: app.fetch,
-  // Backup giornaliero: copia JSON nel bucket R2 (se collegato)
+  // Backup giornaliero (cron) nel bucket R2
   async scheduled(event, env) {
     await init(env);
-    if (!env.BACKUPS) return;
-    const dump = await dumpAll();
-    await env.BACKUPS.put(`officina-${dump.created_at.slice(0, 10)}.json`, JSON.stringify(dump));
+    await saveBackup(env);
   },
 };
