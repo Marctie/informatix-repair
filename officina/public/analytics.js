@@ -5,7 +5,7 @@ const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/R
 const shift = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 const TABS = [['riparazioni', 'Riparazioni'], ['incassi', 'Incassi'], ['vendite', 'Vendite'], ['magazzino', 'Magazzino']];
 export const AN_CSS = `<style>
-      [data-an]{display:grid;gap:var(--s4,1rem);margin-top:var(--s4,1rem)}
+      [data-an]{display:grid;gap:1.6rem;margin-top:1.6rem}
       [data-an] .sec-t{margin-bottom:.4rem}
       .an-bars{list-style:none;margin:0;padding:0;display:grid;gap:.55rem}
       .an-bars li{display:grid;grid-template-columns:minmax(7rem,44%) 1fr auto;gap:.6rem;align-items:center;font-size:.9rem}
@@ -13,7 +13,7 @@ export const AN_CSS = `<style>
       .an-track{height:.7rem;border-radius:99px;background:#eceff3;overflow:hidden}
       .an-track i{display:block;height:100%;border-radius:99px;background:var(--red,#dc2626)}
       .an-v{font-variant-numeric:tabular-nums;text-align:right}
-      .an-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:var(--s4,1rem)}
+      .an-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr));gap:1.6rem}
       @media (max-width:520px){.an-bars li{grid-template-columns:1fr auto}.an-track{grid-column:1/-1;order:3}}
     </style>`;
 const TYPES = { smartphone: 'Smartphone', tablet: 'Tablet', portatile: 'Portatile', pc: 'PC fisso', console: 'Console', altro: 'Altro' };

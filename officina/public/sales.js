@@ -214,6 +214,7 @@ export async function settingsView(el) {
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>
       </section>
+      <div class="grid gap-5">
       <section class="card panel sec">
         <h2 class="sec-t">Backup dei dati</h2>
         <p style="font-size:.92rem">${ONLINE ? 'Ogni notte il sistema salva da solo una copia di tutti i dati (si conservano le ultime 30). Puoi anche scaricarne una tu o salvarne una subito.' : 'Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.'}</p>
@@ -225,6 +226,7 @@ export async function settingsView(el) {
         <p class="hint">Carica clienti, riparazioni in ogni stato, magazzino, vendite e incassi di esempio per vedere tutto il gestionale al lavoro. Sono segnati come “(DEMO)” e si cancellano con un click, senza toccare i dati veri.</p>
         <div class="row tight" id="st-demo-btns"><span class="hint">Controllo…</span></div>
       </section>
+      </div>
     </div>`;
   const drawDemo = async () => {
     const d = await safe(() => api('GET', '/api/demo'));
