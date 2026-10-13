@@ -102,3 +102,30 @@ export function waMessage(kind, r) {
     default: return `Ciao ${first}, ti scriviamo da ${shop} riguardo al tuo ${r.brand_model}.${link}`;
   }
 }
+
+// ---------- Pistola lettore codici a barre ----------
+// Le pistole USB si comportano come una tastiera velocissima: scrivono i caratteri a raffica e chiudono con Invio.
+// Teniamo il conto dei tasti consecutivi "troppo veloci per una persona" per riconoscere quell'Invio finale.
+let scanRun = 0;
+let scanLast = 0;
+document.addEventListener('keydown', (e) => {
+  if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = performance.now();
+  scanRun = t - scanLast < 50 ? scanRun + 1 : 1;
+  scanLast = t;
+}, true);
+/** Vero se questo Invio è la chiusura di una lettura con la pistola (almeno 4 caratteri a raffica appena prima). */
+export const isScanEnter = (e) => e.key === 'Enter' && scanRun >= 4 && performance.now() - scanLast < 150;
+
+/** Controllo IMEI (15 cifre, algoritmo di Luhn). */
+export function imeiCheck(s) {
+  const v = String(s || '').trim();
+  if (!/^\d{15}$/.test(v)) return null; // non è un IMEI: nessun giudizio (può essere un seriale)
+  let sum = 0;
+  for (let i = 0; i < 15; i++) {
+    let n = Number(v[14 - i]);
+    if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
+    sum += n;
+  }
+  return sum % 10 === 0;
+}

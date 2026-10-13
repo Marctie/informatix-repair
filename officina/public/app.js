@@ -1,5 +1,6 @@
 // Router, navigazione, ricerca globale e viste principali: Oggi (dashboard) e Riparazioni.
-import { $, esc, eur, fdate, api, toast, safe, debounce, META, loadMeta, statusBadge, progressBar, waLink, waMessage } from './util.js';
+import { $, esc, eur, fdate, api, toast, safe, debounce, META, loadMeta, statusBadge, progressBar, waLink, waMessage, openModal, isScanEnter } from './util.js';
+import { scanWithCamera } from './scan.js';
 import { openRepairForm, openRepairDetail, deliverDialog } from './repair.js';
 import { customersView, openCustomer } from './customers.js';
 import { stockView, suppliersView } from './stock.js';
@@ -48,13 +49,51 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- Azioni rapide ----------
-const newRepair = () => openRepairForm(() => refresh());
-$('#fab').onclick = newRepair;
-$('#top-new').onclick = newRepair;
+const newRepair = (preset) => openRepairForm(() => refresh(), preset);
+$('#fab').onclick = () => newRepair();
+$('#top-new').onclick = () => newRepair();
+
+// Scorciatoie da tastiera + lettura con la pistola codici a barre quando nessun campo è selezionato.
+// La pistola "scrive" a raffica e chiude con Invio: se arrivano 4+ caratteri veloci è una lettura, non una scorciatoia.
+let scanBuf = '';
+let scanTimer = null;
+function shortcut(k) {
+  if ($('#modal-root').children.length) return;
+  if (k === 'n' || k === 'N') newRepair();
+  if (k === '/') $('#gsearch').focus();
+}
+async function onScan(code) {
+  const serialField = $('#rf-serial');
+  if (serialField) { // modulo di nuova riparazione aperto: il codice va nel seriale
+    serialField.value = code;
+    serialField.dispatchEvent(new Event('input'));
+    toast(`Letto: ${code}`);
+    return;
+  }
+  const list = await safe(() => api('GET', `/api/repairs?q=${encodeURIComponent(code)}`));
+  if (list?.length === 1) return openRepairDetail(list[0].id, refresh);
+  if (list?.length > 1) { gs.value = code; gs.dispatchEvent(new Event('input')); return toast(`${list.length} riparazioni trovate: scegli dall'elenco`); }
+  const m = openModal(
+    `<p class="text-sm">Nessuna riparazione con il codice <b class="font-mono">${esc(code)}</b>.</p><p class="text-sm text-gray-500 mt-1">Vuoi aprire una nuova riparazione con questo seriale?</p>`,
+    { title: 'Codice letto', footer: `<button class="btn btn-outline" data-close>No</button><button class="btn btn-primary" id="scan-new">＋ Nuova riparazione</button>` }
+  );
+  $('#scan-new', m.el).onclick = () => { m.close(); newRepair({ serial: code }); };
+}
 document.addEventListener('keydown', (e) => {
-  if (e.target.closest('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || $('#modal-root').children.length) return;
-  if (e.key === 'n' || e.key === 'N') { e.preventDefault(); newRepair(); }
-  if (e.key === '/') { e.preventDefault(); $('#gsearch').focus(); }
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest('input,textarea,select')) return;
+  if (e.key === 'Enter') {
+    if (scanBuf.length >= 4) { e.preventDefault(); const c = scanBuf; scanBuf = ''; clearTimeout(scanTimer); onScan(c); }
+    return;
+  }
+  if (e.key.length !== 1) return;
+  scanBuf += e.key;
+  clearTimeout(scanTimer);
+  scanTimer = setTimeout(() => { // nessun Invio: un tasto solo = scorciatoia; molti tasti veloci = lettura senza suffisso
+    const b = scanBuf;
+    scanBuf = '';
+    if (b.length === 1) shortcut(b);
+    else if (b.length >= 6) onScan(b);
+  }, 130);
 });
 
 // ---------- Ricerca globale ----------
@@ -75,6 +114,17 @@ gs.addEventListener('input', debounce(async () => {
     '<p class="p-4 text-sm text-gray-400">Nessun risultato.</p>';
   gsRes.classList.remove('hidden');
 }, 220));
+// Invio nella ricerca: se c'è un solo risultato (tipico dopo una lettura con la pistola) lo apre subito
+gs.addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = gs.value.trim();
+  if (q.length < 2) return;
+  const list = await safe(() => api('GET', `/api/repairs?q=${encodeURIComponent(q)}`));
+  if (list?.length === 1) { gs.value = ''; gsRes.classList.add('hidden'); openRepairDetail(list[0].id, refresh); }
+  else if (!list?.length && isScanEnter(e)) { gsRes.classList.add('hidden'); onScan(q); }
+});
+$('#scan-btn').onclick = async () => { const v = await scanWithCamera(); if (v) onScan(v); };
 gsRes.addEventListener('click', (e) => {
   const rid = e.target.closest('[data-rid]');
   const cid = e.target.closest('[data-cid]');
@@ -148,7 +198,7 @@ async function dashboardView(el) {
     ${d.low_stock.length ? `<section class="card overflow-hidden mb-4"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line flex justify-between gap-2">📉 Da riordinare (${d.low_stock.length}) <a href="#/magazzino?tab=reorder" class="text-secondary text-xs font-semibold">Lista ordini →</a></h3>
       ${d.low_stock.slice(0, 6).map((p) => `<div class="px-4 py-2.5 border-b border-line last:border-0 text-sm flex justify-between gap-3"><span class="min-w-0 truncate">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz (min. ${p.min_qty})</span></div>`).join('')}</section>` : ''}
     ${!d.open_total ? '<div class="card empty">Nessuna riparazione aperta. Tutto in ordine 🎉<br><span class="text-xs">Quando arriva un cliente premi “Nuova riparazione”.</span></div>' : ''}`;
-  $('#new-repair', el).onclick = newRepair;
+  $('#new-repair', el).onclick = () => newRepair();
   bindRepairList(el, refresh);
 }
 
