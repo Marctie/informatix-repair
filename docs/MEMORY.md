@@ -70,6 +70,12 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Foto originali in `C:\Mega.nz Sync\Lavoro\Dev\Sito Informatix.it\Foto vendite usati` (con "note per la vendita.txt").
 - Flusso "venduto": un articolo marcato venduto resta in vetrina con ribbon "VENDUTO" e CTA disattivata, poi **scompare da solo dopo 7 giorni**. Nessun cron: `src/usati.js` calcola lato client a ogni caricamento pagina i giorni trascorsi da `soldAt` e rimuove la card dal DOM se ≥7. Lo stato vive nei campi `sold`/`soldAt` di ogni articolo in `usati.json`.
 
+## Direttive di lavoro (utente, 2026-10-13)
+- Commit + push dopo ogni funzionalità completata e testata; tracciare su CHATLOG e MEMORY ogni aggiunta/modifica/eliminazione.
+- Cypress (se serve) su branch dedicato sempre vivo, solo per i test; merge in main solo del codice testato.
+- Gestionale: per ora locale e **senza autenticazione** (login rimosso il 2026-10-13; poi auth con il Firebase dell'utente). Sostituisce, per ora, la decisione "login custom nel Worker" qui sotto.
+- Bot Telegram: scrivere il codice ma non installarlo/testarlo finché l'utente non ha il telefono e lo chiede. Bot di esempio: `C:\1Marco Peluso\Lavoro da eliminare\Bot Telegram`.
+
 ## Gestionale Usati (pannello admin) — in evoluzione, vedi CHATLOG 2026-09-27 (sera)
 - **Prototipo locale (esistente, funzionante)**: cartella `admin/` (Express + Multer + Sharp, `npm run admin` → porta 4848). Fa CRUD su `usati.json` + foto, rigenera `usati.html` a ogni salvataggio, login email/password locale (`express-session`, credenziali in `admin/auth.local.json`, generato al primo avvio, **escluso da git** — riga esplicita `/admin/auth.local.json` in `.gitignore`, il pattern generico `*.local` NON basta perché non matcha `nome.local.json`). Commit locali `77c9b79` e `861568d` su `main`, **non pushati** (l'utente ha chiesto di non pubblicarli finché non si decide l'architettura definitiva).
 - **Stile approvato dall'utente ("mi piace un sacco", 2026-09-27)**: form a sezioni con titolo+icona, header/footer della modale fissi con corpo scrollabile, modale a schermo intero su mobile, checkbox come "pillole" cliccabili, card con badge di stato sovrapposto alla foto, tab stile segmented-control. **Prendere questo stile come riferimento per qualsiasi futura pagina interna del sito**, non solo per gli usati.
