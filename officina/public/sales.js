@@ -178,6 +178,15 @@ export async function settingsView(el) {
         <div class="field"><label class="l" for="st-untr">Pagamenti “non tracciato”</label>
           <select id="st-untr" data-k="cash_show_untracked"><option value="1" ${s.cash_show_untracked !== '0' ? 'selected' : ''}>Conteggiali nella cassa</option><option value="0" ${s.cash_show_untracked === '0' ? 'selected' : ''}>Non mostrarli nella cassa</option></select>
           <span class="hint">Il metodo “non tracciato” si sceglie su vendite e riparazioni. Con “non mostrarli” restano salvati nel gestionale ma non entrano nei totali, nel grafico e nell’incasso di oggi.</span></div>
+        <h2 class="sec-t" style="margin-top:.6rem">Avvisi</h2>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="st-lsd">Scorta minima generale (pezzi)</label><input id="st-lsd" data-k="low_stock_default" type="number" min="0" inputmode="numeric" value="${esc(s.low_stock_default ?? '0')}" />
+            <span class="hint">Vale per i prodotti senza soglia propria. 0 = spenta. Ogni prodotto può avere la sua nella scheda del magazzino.</span></div>
+          <div class="field"><label class="l" for="st-sd">Prodotto fermo dopo (giorni)</label><input id="st-sd" data-k="stale_days" type="number" min="0" inputmode="numeric" value="${esc(s.stale_days ?? '90')}" />
+            <span class="hint">Avviso se un prodotto non esce da tanti giorni. 0 = spento.</span></div>
+        </div>
+        <div class="field"><label class="l" for="st-rd">Riparazione pronta non ritirata dopo (giorni)</label><input id="st-rd" data-k="ready_days" type="number" min="0" inputmode="numeric" value="${esc(s.ready_days ?? '7')}" />
+          <span class="hint">Ti ricorda di avvisare il cliente. 0 = spento.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Scheda di ingresso</h2>
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>
@@ -188,7 +197,28 @@ export async function settingsView(el) {
         <div class="row tight"><a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>${ONLINE ? '<button class="btn btn-outline" id="st-r2">Salva ora nel cloud</button>' : ''}</div>
         <p class="hint">${ONLINE ? 'Per ripristinare una copia serve l’assistenza: scrivici prima di cancellare qualcosa di importante.' : 'Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.'}</p>
       </section>
+      <section class="card panel sec" id="st-demo">
+        <h2 class="sec-t">Dati demo</h2>
+        <p class="hint">Carica clienti, riparazioni in ogni stato, magazzino, vendite e incassi di esempio per vedere tutto il gestionale al lavoro. Sono segnati come “(DEMO)” e si cancellano con un click, senza toccare i dati veri.</p>
+        <div class="row tight" id="st-demo-btns"><span class="hint">Controllo…</span></div>
+      </section>
     </div>`;
+  const drawDemo = async () => {
+    const d = await safe(() => api('GET', '/api/demo'));
+    const box = $('#st-demo-btns', el);
+    if (!d || !box) return;
+    box.innerHTML = d.loaded
+      ? `<button class="btn btn-outline" id="st-demo-del">🗑️ Elimina i dati demo</button><span class="hint">Presenti: ${d.customers} clienti, ${d.repairs} riparazioni, ${d.sales} vendite.</span>`
+      : '<button class="btn btn-primary" id="st-demo-load">Carica i dati demo</button>';
+    if ($('#st-demo-load', box)) $('#st-demo-load', box).onclick = async () => {
+      if (await safe(() => api('POST', '/api/demo', {}))) { toast('Dati demo caricati: esplora il gestionale'); drawDemo(); }
+    };
+    if ($('#st-demo-del', box)) $('#st-demo-del', box).onclick = async () => {
+      if (!confirm('Eliminare tutti i dati demo? I dati veri non vengono toccati.')) return;
+      if (await safe(() => api('DELETE', '/api/demo'))) { toast('Dati demo eliminati'); drawDemo(); }
+    };
+  };
+  drawDemo();
   if ($('#st-r2', el)) $('#st-r2', el).onclick = async () => {
     const out = await safe(() => api('POST', '/api/backup/r2', {}));
     if (out?.ok) toast('Copia salvata nel cloud');

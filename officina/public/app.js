@@ -7,6 +7,7 @@ import { customersView, openCustomer } from './customers.js';
 import { stockView, suppliersView } from './stock.js';
 import { salesView, cashView, settingsView } from './sales.js';
 import { usersView } from './users.js';
+import { analyticsView } from './analytics.js';
 
 const VIEWS = [
   { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true },
@@ -17,6 +18,7 @@ const VIEWS = [
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView },
+  { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true },
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true },
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
@@ -28,6 +30,27 @@ const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖' };
 const USATI = { href: `${location.protocol}//${location.hostname}:4848/`, label: 'Vetrina usati', icon: '🛒' };
 
 const view = $('#view');
+
+// ---------- Avvisi: campanella e riquadro in home ----------
+const ALERT_ICO = { out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞' };
+const alertRow = (a) => `<a href="${a.link}" class="flex gap-3 px-4 py-3 border-b border-line last:border-0 text-sm hover:bg-lightbg" data-alert>
+  <span aria-hidden="true">${ALERT_ICO[a.type] || '🔔'}</span><span class="min-w-0"><b class="block">${esc(a.title)}</b><span class="text-gray-500">${esc(a.detail)}</span></span></a>`;
+export async function refreshBell() {
+  const d = await safe(() => api('GET', '/api/alerts'));
+  const n = $('#bell-n');
+  if (!d || !n) return d;
+  n.textContent = d.count > 99 ? '99+' : d.count;
+  n.classList.toggle('hidden', !d.count);
+  $('#bell').setAttribute('aria-label', d.count ? `Avvisi: ${d.count}` : 'Avvisi');
+  return d;
+}
+document.addEventListener('click', async (e) => {
+  if (!e.target.closest('#bell')) return;
+  const d = await refreshBell();
+  if (!d) return;
+  const m = openModal(d.items.length ? `<div class="card overflow-hidden">${d.items.map(alertRow).join('')}</div>` : '<p class="empty">Nessun avviso: è tutto a posto 👍</p>', { title: `Avvisi (${d.count})` });
+  m.el.addEventListener('click', (ev) => { if (ev.target.closest('[data-alert]')) m.close(); });
+});
 export const refresh = () => route();
 
 async function route() {
@@ -47,6 +70,7 @@ async function route() {
   view.innerHTML = '<p class="text-gray-400 text-sm">Caricamento…</p>';
   window.scrollTo(0, 0);
   await safe(() => v.render(view, new URLSearchParams(qs)));
+  refreshBell();
 }
 
 // menu "Altro" (mobile) e chiusura dei popup cliccando fuori
@@ -185,6 +209,7 @@ function bindRepairList(root, reload) {
 // ---------- Oggi ----------
 async function dashboardView(el) {
   const d = await api('GET', '/api/dashboard');
+  const al = await refreshBell();
   const section = (title, list, opts = {}) =>
     list.length ? `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line">${title} <span class="text-gray-400 font-normal">(${list.length})</span></h3>${list.map((r) => repairRow(r, opts)).join('')}</section>` : '';
   const c = d.counts;
@@ -205,6 +230,7 @@ async function dashboardView(el) {
       <a href="#/riparazioni?status=quote_pending" class="card kpi"><b class="text-amber-600">${c.quote_pending || 0}</b><span>Preventivi da approvare</span></a>
       <a href="#/cassa" class="card kpi"><b class="text-secondary">${eur(d.cash_today)}</b><span>Incasso di oggi</span></a>
     </div>
+    ${al && al.items.length ? `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line flex justify-between gap-2">🔔 Avvisi (${al.count}) <button class="text-secondary text-xs font-semibold" id="open-bell">Vedi tutti →</button></h3>${al.items.slice(0, 5).map(alertRow).join('')}</section>` : ''}
     ${section('📞 Pronte: avvisa il cliente', d.ready, { wa: 'ready' })}
     ${section('⏰ In ritardo', d.late)}
     ${section('✋ Preventivo da approvare', d.to_approve)}
@@ -213,6 +239,7 @@ async function dashboardView(el) {
     ${d.low_stock.length ? `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line flex justify-between gap-2">📉 Da riordinare (${d.low_stock.length}) <a href="#/magazzino?tab=reorder" class="text-secondary text-xs font-semibold">Lista ordini →</a></h3>
       ${d.low_stock.slice(0, 6).map((p) => `<div class="px-4 py-2.5 border-b border-line last:border-0 text-sm flex justify-between gap-3"><span class="min-w-0 truncate">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz (min. ${p.min_qty})</span></div>`).join('')}</section>` : ''}
     ${!d.open_total ? '<div class="card empty">Nessuna riparazione aperta. Tutto in ordine 🎉<br><span class="text-xs">Quando arriva un cliente premi “Nuova riparazione”.</span></div>' : ''}`;
+  $('#open-bell', el)?.addEventListener('click', () => $('#bell').click());
   $('#new-repair', el).onclick = () => newRepair();
   bindRepairList(el, refresh);
 }
