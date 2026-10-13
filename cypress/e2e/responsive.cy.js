@@ -167,7 +167,7 @@ describe('Comodità', () => {
   it('modifica dei dati di ingresso', () => {
     cy.visit('/#/riparazioni');
     cy.contains('[data-open]', 'MacBook Air M1').click();
-    cy.contains('button', 'Modifica dati').click();
+    cy.contains('button', 'Modifica').click();
     cy.get('[data-k="brand_model"]').clear().type('MacBook Air M2');
     cy.get('[data-k="c_phone"]').clear().type('3355559999');
     cy.get('#ed-ok').click();

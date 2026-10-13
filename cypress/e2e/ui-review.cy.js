@@ -236,7 +236,7 @@ describe('Rassegna grafica di tutte le schermate', () => {
       it('finestra modifica dati e consegna', () => {
         cy.visit('/#/riparazioni');
         cy.contains('[data-open]', 'iPhone 13 Pro Max').click();
-        cy.contains('button', 'Modifica dati').click();
+        cy.contains('button', 'Modifica').click();
         cy.get('#ed-ok').should('be.visible');
         cy.wait(300);
         checkLayout('.modal-panel', w, `${vp}/modifica-dati`);
