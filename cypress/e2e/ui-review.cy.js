@@ -250,7 +250,7 @@ describe('Rassegna grafica di tutte le schermate', () => {
       });
       it('finestre cliente: nuovo e dettaglio', () => {
         cy.visit('/#/clienti');
-        cy.contains('＋ Nuovo cliente').click();
+        cy.contains('button', 'Nuovo cliente').click();
         cy.get('#ce-name').should('be.visible');
         cy.wait(250);
         checkLayout('.modal-panel', w, `${vp}/nuovo-cliente`);
