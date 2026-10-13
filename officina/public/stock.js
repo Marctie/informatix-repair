@@ -11,7 +11,7 @@ export async function stockView(el, params) {
       <button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></div>
     <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"></div>
     <div class="flex gap-2 mb-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><span class="chip" data-t="reorder">📉 Da ordinare</span>
-      <input id="p-q" type="search" placeholder="Cerca nome, codice, categoria…" class="sm:!w-64 w-full sm:ml-auto" /></div>
+      <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
     <div class="card overflow-hidden" id="p-list"></div>`;
   const list = $('#p-list', el);
 
