@@ -568,6 +568,24 @@ Autenticazione con **Cloudflare Access** (scelta dall'utente tra le alternative:
 - Posizione del link per Christian nel sito pubblico (e se il link "Area riservata" va nel piè di pagina o sul logo).
 - Via libera a toccare `main` per il sito (sezione "Segui la riparazione" + link di accesso).
 
+## Sessione 2026-10-13 (10) – Conferme finali dell'utente, stima dei tempi, audit degli appunti
+
+### Conferme dell'utente
+- Autenticazione: **Cloudflare Access**; per ora solo `marcopeluso99@gmail.com` ("password a tuo piacimento": Access non usa password, codice via email o Google); **Christian per ultimo**.
+- Link nel sito: **"Area riservata" nel piede di pagina**, verso `gestionale.informatixrepair.com`.
+- Nomi degli indirizzi come proposti, se Cloudflare li permette: `gestionale.informatixrepair.com`, `riparazioni.informatixrepair.com`.
+- Si parte **stasera dal punto 1 (Cloudflare/Access)** quando l'utente torna a casa; **test, commit e push a ogni funzionalita**; le **prove con l'hardware** (pistola, stampante, etichette, fotocamera) le fa **Christian**; **extra utili** possono essere aggiunti di iniziativa se **utili, veloci ed efficaci** per Christian.
+- **Via libera a toccare `main`** quando tutto sara finito e testato (Cypress sempre escluso da `main`).
+
+### Stima del tempo (90% di precisione)
+Circa **17 ore** di lavoro mio (intervallo **14-21 h**): Cloudflare/Access 0,75; Worker+D1 4,5; Access nel programma, limiti, backup R2 2; test API+Cypress 3; deploy e prove da telefono 1; sito (sezione clienti, lookup, Area riservata, test) 4; manuale e guide 1,5. Tappe: **stasera ~8 h** (online con login e tracciamento), **domani 6-8 h** (sito, manuale, passaggio in `main`), **poi 1-2 h** (account di Christian e prove hardware). Alternativa veloce Tunnel+Access: 3-4 h ma PC sempre acceso e sito da fare. Non stimabili: tempi dei passaggi sul pannello Cloudflare e prove con hardware reale.
+
+### Audit degli appunti (fatto su richiesta dell'utente)
+Controllati `docs/MEMORY.md`, `docs/CHATLOG.md` e la memoria di Claude. Trovato e corretto:
+- decisioni **superate** ancora scritte come valide (Firebase; login custom nel Worker; "Cloudflare Access scartata"; Tunnel con PC acceso come piano principale) → ora segnate "SUPERATO/A" e rimandano alla nuova sezione **"ONLINE: decisioni e piano VALIDI"** in testa a `docs/MEMORY.md`;
+- **mancavano**: stima dei tempi e tappe, email autorizzata e ordine di inserimento di Christian, destino della **Vetrina Usati e del bot Telegram** online (decisione aperta), 19 rami remoti `claude/upbeat-fermi-*` da pulire, cambio orario routine blog del 25 ottobre, indicazione che Cypress non va in `main` → aggiunti;
+- memoria di Claude: file `project-online-cloudflare` e `project-gestionale-usati` allineati, aggiunto il profilo dell'utente e dell'ambiente.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
