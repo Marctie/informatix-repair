@@ -1,0 +1,99 @@
+// Helper condivisi dall'interfaccia del gestionale officina.
+export const $ = (sel, root = document) => root.querySelector(sel);
+export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const eur = (n) => (n == null || n === '' ? '—' : Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' }));
+export const fdate = (s) => (s ? new Date(s.length === 10 ? s + 'T00:00:00' : s.replace(' ', 'T')).toLocaleDateString('it-IT') : '—');
+export const fdt = (s) => (s ? new Date(s.replace(' ', 'T')).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+export const today = () => new Date().toISOString().slice(0, 10);
+export const addDays = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+
+export async function api(method, path, body) {
+  const res = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  let data = null;
+  try { data = await res.json(); } catch { /* risposta non JSON */ }
+  if (!res.ok) throw new Error(data?.error || `Errore ${res.status}`);
+  return data;
+}
+
+export function toast(msg, ok = true) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.style.background = ok ? '#0B0F19' : '#B91C1C';
+  t.classList.remove('hidden');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.add('hidden'), 2800);
+}
+
+// Esegue un'azione mostrando eventuali errori come toast.
+export async function safe(fn) {
+  try { return await fn(); } catch (e) { toast(e.message, false); return undefined; }
+}
+
+export const debounce = (fn, ms = 250) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
+
+let modalStack = [];
+/** Apre un modale; ritorna { el, close }. html = contenuto del corpo. */
+export function openModal(html, { title = '', wide = false, footer = '' } = {}) {
+  const root = $('#modal-root');
+  const wrap = document.createElement('div');
+  wrap.className = 'modal-bg fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4';
+  wrap.innerHTML = `<div class="modal-panel bg-white w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-xl'} rounded-t-2xl sm:rounded-2xl shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-3.5 border-b border-line"><h2 class="font-heading font-bold text-lg">${esc(title)}</h2>
+      <button class="btn btn-ghost btn-sm" data-close aria-label="Chiudi">✕</button></div>
+    <div class="modal-body p-5">${html}</div>${footer ? `<div class="px-5 py-3 border-t border-line flex gap-2 justify-end flex-wrap">${footer}</div>` : ''}</div>`;
+  root.appendChild(wrap);
+  const close = () => { wrap.remove(); modalStack = modalStack.filter((m) => m !== api2); };
+  wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) close(); });
+  wrap.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) close(); });
+  const api2 = { el: wrap, close };
+  modalStack.push(api2);
+  return api2;
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalStack.length) modalStack[modalStack.length - 1].close(); });
+
+// ---------- WhatsApp / contatti ----------
+export function waLink(phone, text) {
+  let p = String(phone || '').replace(/[^\d+]/g, '');
+  if (!p) return null;
+  if (p.startsWith('+')) p = p.slice(1);
+  else if (p.startsWith('00')) p = p.slice(2);
+  else if (!p.startsWith('39') || p.length < 11) p = '39' + p;
+  return `https://wa.me/${p}?text=${encodeURIComponent(text)}`;
+}
+
+export const STATUS_STYLE = {
+  received: 'bg-gray-100 text-gray-700',
+  diagnosing: 'bg-blue-100 text-blue-700',
+  quote_pending: 'bg-amber-100 text-amber-800',
+  approved: 'bg-indigo-100 text-indigo-700',
+  waiting_parts: 'bg-orange-100 text-orange-800',
+  repairing: 'bg-sky-100 text-sky-700',
+  ready: 'bg-emerald-100 text-emerald-700',
+  delivered: 'bg-gray-200 text-gray-600',
+  cancelled: 'bg-red-100 text-red-700',
+};
+export const statusBadge = (r) => `<span class="badge ${STATUS_STYLE[r.status]}">${esc(r.status_label)}</span>`;
+export const progressBar = (r) => `<div class="bar ${r.status === 'ready' || r.status === 'delivered' ? 'green' : ''}" title="${r.progress}%"><i style="width:${r.progress}%"></i></div>`;
+
+export const META = { statuses: {}, settings: {}, track_base: '' };
+export const trackUrl = (token) => `${META.track_base}/t/${token}`;
+export async function loadMeta() {
+  const m = await api('GET', '/api/meta');
+  META.statuses = m.statuses;
+  META.settings = m.settings;
+  META.track_base = m.track_base;
+}
+
+/** Messaggi WhatsApp precompilati. */
+export function waMessage(kind, r) {
+  const shop = META.settings.shop_name || 'Informatix Repair';
+  const link = r.track_url ? `\nSegui la riparazione: ${r.track_url}` : '';
+  const first = String(r.customer_name || '').split(' ')[0];
+  switch (kind) {
+    case 'ready': return `Ciao ${first}, il tuo ${r.brand_model} è pronto per il ritiro! ${r.quote != null ? `Importo da saldare: ${eur((r.final_price ?? r.quote) - (r.paid ?? r.deposit ?? 0))}. ` : ''}Ti aspettiamo da ${shop}.${link}`;
+    case 'quote': return `Ciao ${first}, per il tuo ${r.brand_model} il preventivo è di ${eur(r.quote)}${r.eta_date ? `, consegna stimata ${fdate(r.eta_date)}` : ''}. Puoi approvarlo direttamente dal link, oppure rispondi a questo messaggio.${link}`;
+    case 'late': return `Ciao ${first}, ti scriviamo da ${shop}: la riparazione del tuo ${r.brand_model} richiede qualche giorno in più del previsto. Ti aggiorniamo appena possibile, grazie per la pazienza.${link}`;
+    default: return `Ciao ${first}, ti scriviamo da ${shop} riguardo al tuo ${r.brand_model}.${link}`;
+  }
+}

@@ -5,20 +5,12 @@
 import express from 'express';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { networkInterfaces } from 'node:os';
-import { adminRouter, publicRouter } from './api.mjs';
+import { adminRouter, publicRouter, lanIp } from './api.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADMIN_PORT = Number(process.env.OFFICINA_PORT || 4950);
 const PUBLIC_PORT = Number(process.env.PUBLIC_PORT || 4951);
 process.env.PUBLIC_PORT = String(PUBLIC_PORT);
-
-export function lanIp() {
-  for (const list of Object.values(networkInterfaces())) {
-    for (const n of list || []) if (n.family === 'IPv4' && !n.internal) return n.address;
-  }
-  return 'localhost';
-}
 
 export function createApps() {
   // --- Admin: solo localhost ---
