@@ -518,6 +518,56 @@ Autenticazione con **Cloudflare Access** (scelta dall'utente tra le alternative:
 - Cambio orario UTC della routine blog il 25 ottobre (`0 8,17 * * *`), ripristino a marzo 2027.
 - Altri TODO storici: dati legali privacy/cookie, foto reali del negozio, redirect `.it`/`.eu`, email del `.com`, icone dell'app Android.
 
+## Sessione 2026-10-13 (9) – Appunti: migrazione su Cloudflare (Workers + D1) e sezione "Segui la riparazione" nel sito
+
+### Decisioni dell'utente (aggiornano il "piano della serata" qui sopra)
+- **Si applica stasera, insieme a tutto il resto, la migrazione su Cloudflare** (Workers + D1 + Access) invece del solo Tunnel: il PC del negozio non dovrà più restare acceso. Il Tunnel resta come **piano B** se la migrazione non si chiude in serata.
+- Nomi degli indirizzi: **`gestionale.informatixrepair.com`** (protetto da Access) e **`riparazioni.informatixrepair.com`** (pubblico, tracciamento), "se Cloudflare lo permette" (il dominio è su Cloudflare, quindi i sottodomini si possono creare liberamente).
+- Nuova richiesta per il **sito principale**: sezione per il cliente per **scansionare il QR e accedere al tracciamento live**, pensata in modo che anche un **cliente anziano** ci arrivi facilmente.
+
+### A) Migrazione del gestionale officina su Cloudflare (Workers + D1)
+**Architettura obiettivo**
+- Worker (consigliato framework **Hono**) al posto di Express: route admin (host `gestionale.…`, dietro Access) e route pubbliche (`riparazioni.…`: `/t/:token`, `/api/track/*`, ricerca per codice) nello stesso Worker, distinte per hostname/percorso. Pagine statiche (`officina/public`) servite con **Workers Static Assets**.
+- Database **D1** (SQLite gestito) al posto di `node:sqlite`; schema da `officina/db.mjs`. Backup: export D1 + **Cron Trigger** giornaliero che salva una copia su **R2** (e il pulsante "Scarica backup" resta, via export).
+- Login: **Cloudflare Access** davanti all'host del gestionale; il Worker verifica anche il JWT `Cf-Access-Jwt-Assertion` (claim `aud`/`iss`, chiavi del team) come seconda barriera. Segreti (`ACCESS_AUD`, team domain) con `wrangler secret`/variabili.
+- Rate limiting sulla parte pubblica (regola di rate limiting Cloudflare + limite nel Worker).
+- QR: libreria compatibile con i Worker (es. `uqr`/`qrcode` build browser) al posto del `qrcode` Node; barcode Code128 già senza dipendenze (`barcode.mjs`).
+
+**Cosa va riscritto / attenzione**
+- `db.mjs`/`logic.mjs`/`api.mjs`: da sincrono a **async**; D1 **non ha transazioni interattive** → operazioni multi-passo (ricambi che scalano il magazzino, vendite, consegna + incasso, numerazione R-AAAA-NNNN) vanno riprogettate con `db.batch([...])` atomici e contatori sicuri (tabella contatori con `UPDATE … RETURNING`) per evitare doppioni.
+- `print.mjs`, `barcode.mjs`, `icons`/UI statica: invariati (sono stringhe/JS puro). Lo stile e il manuale non cambiano.
+- `server.mjs` (due porte) sparisce: due hostname invece di due porte; `public_base_url` = `https://riparazioni.informatixrepair.com`.
+- Test: API test da rifare su **wrangler dev / Miniflare** (o vitest-pool-workers); Cypress (`cypress-tests`) punta a `wrangler dev` con D1 locale temporaneo invece del server Node (`cypress/run.mjs` da adattare). Obiettivo: ritrovare gli stessi 175 test verdi.
+- Dati attuali: solo dati di prova → nessuna migrazione dati reali; se serve, export SQL del vecchio DB → import su D1.
+- Costi: piano gratuito (Workers 100.000 richieste/giorno, D1 5 GB e 100.000 scritture/giorno, R2 10 GB): abbondante per il negozio.
+
+**Passi in serata (ordine proposto)**
+1. Account/Zero Trust: attivare Access, creare l'applicazione sull'host del gestionale (email autorizzate), annotare AUD e team domain. (Utente, guidato)
+2. Creare progetto Worker + D1 + R2 con `wrangler` (login già eseguito sul PC: verificare gli scope OAuth mancanti `k2.read/k2.write` ed eventualmente rifare `wrangler login`).
+3. Portare schema e logica su D1 (Hono), partendo da `logic.mjs` come specifica; far passare i test API.
+4. Adattare Cypress e far passare la suite; `ui-review` invariato.
+5. Deploy, collegare i due hostname (`gestionale.…` con Access, `riparazioni.…` pubblico), impostare `public_base_url`, backup giornaliero su R2.
+6. Prove reali dal telefono su rete dati: QR, approvazione preventivo, fotocamera (ora in https), lettura codice con la pistola, stampa.
+7. Documentazione (`docs/ONLINE.md`), CHATLOG/MEMORY, commit e push.
+- **Piano B** (se non si chiude): Cloudflare Tunnel verso il PC + Access; la migrazione prosegue il giorno dopo.
+
+### B) Sito principale: sezione "Segui la tua riparazione" (da fare su un ramo a parte, merge solo con via libera)
+**Obiettivo**: il cliente (anche anziano) arriva alla pagina di tracciamento in pochi tocchi, senza account né password.
+- **Posizione**: blocco molto visibile in alto nella home ("Hai lasciato un dispositivo da noi? Guarda a che punto è la riparazione") + voce fissa nel menu "Segui la riparazione" + pagina dedicata (`/segui-riparazione.html`).
+- **Tre modi, in ordine di semplicità**, con pulsanti grandi e testo ≥ 20 px, alto contrasto, poche parole:
+  1. **Inquadra il QR** della ricevuta con la fotocamera del telefono (istruzioni illustrate in 3 passi: "1 Apri la fotocamera, 2 Punta il QR sul foglio, 3 Tocca il link"); e un pulsante "Apri la fotocamera qui" che scansiona il QR direttamente dalla pagina (BarcodeDetector/ZXing, funziona in https).
+  2. **Scrivi il numero della ricevuta** (es. R-2026-0001) **e le ultime 4 cifre del tuo telefono** → pulsante grande "Mostra la mia riparazione" (la sola numerazione è indovinabile: la seconda informazione evita che altri possano curiosare; con limite ai tentativi).
+  3. **Chiamaci / WhatsApp**: numero e pulsanti "Chiama" e "Scrivi su WhatsApp" sempre in vista per chi preferisce non usare il telefono.
+- Dettagli di accessibilità: font grande, pulsanti ≥ 56 px, nessun gergo, messaggi d'errore gentili ("Non troviamo la riparazione: controlla il numero o chiamaci"), funziona senza JavaScript pesante, bilingue IT/EN come il resto del sito (`src/i18n.js`).
+- **Backend**: endpoint pubblico del Worker `POST /api/lookup {code, phone_last4}` (con CORS verso il sito e rate limiting) che risponde con l'indirizzo `/t/<token>` oppure errore; la pagina del sito reindirizza.
+- Dove: repo del sito (`index.html`, nuova pagina, `src/main.js`/`i18n.js`, build Vite); coerente con lo stile del sito (nero/rosso). **Tocca `main` → serve il via libera**; fino ad allora branch dedicato (es. `sito-segui-riparazione`).
+- Test: Cypress sul branch dei test (sezione visibile in home, ricerca con codice+4 cifre corretta/sbagliata, limite tentativi, accessibilità di base).
+
+### Domande ancora aperte per la serata
+- Email autorizzate in Access (Christian + utente).
+- Posizione del link per Christian nel sito pubblico (e se il link "Area riservata" va nel piè di pagina o sul logo).
+- Via libera a toccare `main` per il sito (sezione "Segui la riparazione" + link di accesso).
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
