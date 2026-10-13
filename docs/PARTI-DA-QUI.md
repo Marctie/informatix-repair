@@ -31,6 +31,7 @@ Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-r
 4. Via libera dell'utente -> sito in `main` (branch `sito-segui-riparazione`).
 5. Prove hardware di Christian (pistola, stampante, etichette, fotocamera in https).
 6. **Import ordini fornitore (PDF) + storico prezzi + avvisi scorte** (richiesta di Christian, dettagli in CHATLOG "Nuovo sviluppo richiesto"): servono PDF di esempio.
+7. **Rotazione prodotti**: grafico piu'/meno richiesti e allarme invenduto con suggerimento offerta/controllo prezzo (CHATLOG "Rotazione prodotti e invenduto").
 
 ## Domande ancora aperte
 - Email di Christian e delle 3 postazioni (arrivano da Christian); alias con Cloudflare Email Routing per le postazioni?
