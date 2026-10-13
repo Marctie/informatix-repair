@@ -8,3 +8,7 @@ dist
 # Generati da scripts/build-usati.mjs
 /usati.html
 /public/usati.json
+# Bot Telegram del gestionale
+/bot/.venv
+/bot/.env
+__pycache__/

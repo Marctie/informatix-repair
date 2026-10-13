@@ -195,6 +195,23 @@ app.put('/api/items/:slug', upload.array('photos', 10), async (req, res) => {
   }
 });
 
+// Modifica parziale (usata dal bot Telegram): solo i campi semplici elencati, foto invariate.
+const PATCHABLE = ['price', 'name', 'conditionLabel', 'description', 'tagline', 'featured', 'contact'];
+app.patch('/api/items/:slug', (req, res) => {
+  const data = readData();
+  const it = data.items.find((i) => i.slug === req.params.slug);
+  if (!it) return res.status(404).json({ ok: false, error: 'Articolo non trovato' });
+  for (const k of PATCHABLE) {
+    if (!(k in (req.body || {}))) continue;
+    if (k === 'price') it.price = req.body.price === '' || req.body.price == null ? null : Number(req.body.price);
+    else it[k] = req.body[k];
+  }
+  if (it.price !== null && Number.isNaN(it.price)) return res.status(400).json({ ok: false, error: 'Prezzo non valido' });
+  writeData(data);
+  runBuild();
+  res.json({ ok: true });
+});
+
 app.post('/api/items/:slug/sold', (req, res) => {
   const data = readData();
   const it = data.items.find((i) => i.slug === req.params.slug);

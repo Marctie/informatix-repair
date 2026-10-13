@@ -273,6 +273,18 @@ Registro delle sessioni di lavoro: cosa è stato **aggiunto**, **modificato** e 
 - Il server ora ascolta solo su `127.0.0.1:4848` (non raggiungibile dalla rete locale, dato che non c'è più il login).
 - Test: avvio server, `GET /api/items` e `GET /` rispondono correttamente.
 
+### Funzionalità 1 – Gestionale locale senza login (committata e pushata, `a6ccf64`)
+Vedi sopra: login rimosso, server solo su 127.0.0.1.
+
+### Funzionalità 2 – Bot Telegram `bot/` + endpoint `PATCH /api/items/:slug`
+- Nuova API `PATCH /api/items/:slug` in `admin/server.mjs`: modifica parziale (price, name, conditionLabel, description, tagline, featured, contact), foto invariate, rigenera `usati.html`.
+- Nuova cartella `bot/` (Python, python-telegram-bot 21.4, pattern ricavato da `Promemoria-Bot-Telegram`): `main.py`, `src/{config,api,bot}.py`, `requirements.txt`, `.env.example`, `README.md`, `tests/test_e2e.py`. Il bot chiama le API HTTP del gestionale (nessuna logica duplicata; `API_BASE` configurabile).
+- Comandi: `/nuovo` (conversazione: foto → nome → categoria → condizione → prezzo → note → conferma), `/lista`, `/venduto n`, `/riattiva n`, `/prezzo n importo`, `/elimina n` (con conferma), `/annulla`, `/help`, `/id`. Accesso limitato agli ID in `TELEGRAM_ALLOWED_USER_IDS` (se vuoto nessuno può usarlo, tranne `/id`).
+- Test: `bot/tests/test_e2e.py` avvia il vero server e simula gli Update: crea articolo (con foto e prezzo "1.299,50"), prezzo errato, `/prezzo`, venduto/riattiva, numero inesistente, elimina con annulla/conferma, utente non autorizzato, server spento. Risultato: OK; `usati.json` e foto ripristinati a fine test.
+- **Non testato su Telegram reale** (nessun token creato, telefono non disponibile) e **non installato** su alcun dispositivo.
+- `.gitignore`: aggiunti `/bot/.venv`, `/bot/.env`, `__pycache__/`.
+- Per usarlo servirà: creare il bot con @BotFather (token nel `bot/.env`) e inserire il proprio ID (comando `/id`).
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
