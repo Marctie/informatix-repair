@@ -198,6 +198,7 @@ export async function openRepairDetail(id, onChange) {
           <a class="btn btn-outline btn-sm" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta</a>
           <a class="btn btn-outline btn-sm" target="_blank" href="/t/${r.token}">👁️ Vista cliente</a>
           <button class="btn btn-outline btn-sm" data-act="copylink">📋 Copia link</button>
+          <button class="btn btn-outline btn-sm" data-act="edit">✏️ Modifica dati</button>
         </div>
       </div>
       <div>
@@ -251,6 +252,7 @@ export async function openRepairDetail(id, onChange) {
       case 'deposit': return act(() => api('POST', `/api/repairs/${id}/deposit`, { amount: $('#d-dep', body).value }), 'Acconto registrato');
       case 'savecnote': return act(() => api('PATCH', `/api/repairs/${id}`, { customer_note: $('#d-cnote', body).value }), 'Messaggio aggiornato');
       case 'note': { const t = $('#d-note', body).value; if (!t.trim()) return; return act(() => api('POST', `/api/repairs/${id}/note`, { note: t, public: $('#d-notepub', body).checked }), 'Nota aggiunta'); }
+      case 'edit': return editDialog(id, () => { reloadList(); render(); });
       case 'copylink': { await navigator.clipboard?.writeText(trackUrl((await api('GET', `/api/repairs/${id}`)).token)); return toast('Link copiato'); }
     }
   });
@@ -278,4 +280,30 @@ export function deliverDialog(id, done) {
       done();
     };
   });
+}
+
+// Modifica dei dati di ingresso (cliente, dispositivo, problema, accessori, sblocco, garanzia).
+async function editDialog(id, done) {
+  const r = await safe(() => api('GET', `/api/repairs/${id}`));
+  if (!r) return;
+  const f = (k, label, val, extra = '') => `<div><label class="l">${label}</label><input data-k="${k}" value="${esc(val ?? '')}" ${extra} /></div>`;
+  const m = openModal(
+    `<div class="sec-t">Cliente</div>
+     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">${f('c_name', 'Nome', r.customer_name)}${f('c_phone', 'Telefono', r.customer_phone, 'inputmode="tel"')}${f('c_email', 'Email', r.customer_email)}</div>
+     <div class="sec-t">Dispositivo</div>
+     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', 'Seriale / IMEI', r.serial)}
+       ${f('accessories', 'Accessori lasciati', r.accessories)}${f('condition_notes', 'Stato del dispositivo', r.condition_notes)}
+       ${f('passcode', 'PIN / schema (solo interno)', r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
+     <div class="sec-t">Problema segnalato</div><textarea data-k="problem" rows="3">${esc(r.problem)}</textarea>`,
+    { title: `Modifica ${r.code}`, wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ed-ok">Salva modifiche</button>` }
+  );
+  $('#ed-ok', m.el).onclick = async () => {
+    const v = (k) => $(`[data-k="${k}"]`, m.el).value;
+    const out = await safe(() => api('PATCH', `/api/repairs/${id}`, {
+      brand_model: v('brand_model'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
+      passcode: v('passcode'), warranty_days: v('warranty_days'), problem: v('problem'),
+      customer: { name: v('c_name'), phone: v('c_phone'), email: v('c_email') },
+    }));
+    if (out) { m.close(); toast('Dati aggiornati'); done(); }
+  };
 }
