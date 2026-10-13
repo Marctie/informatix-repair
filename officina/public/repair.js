@@ -30,7 +30,7 @@ export function openRepairForm(onDone, preset = {}) {
 
       <section class="sec">
         <h3 class="sec-t">Dispositivo</h3>
-        <div class="row tight" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div>
+        <div class="field"><label class="l">Tipo di dispositivo</label><div class="row tight" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-model">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
           <div class="field"><label class="l" for="rf-serial">Seriale / IMEI</label>
@@ -47,8 +47,8 @@ export function openRepairForm(onDone, preset = {}) {
 
       <section class="sec">
         <h3 class="sec-t">Cosa lascia e in che stato</h3>
-        <div class="row tight" id="rf-acc">${ACCESSORIES.map((p) => `<span class="chip">${p}</span>`).join('')}</div>
-        <div class="row tight" id="rf-cond">${CONDITIONS.map((p) => `<span class="chip">${p}</span>`).join('')}</div>
+        <div class="field"><label class="l">Accessori lasciati</label><div class="row tight" id="rf-acc">${ACCESSORIES.map((p) => `<span class="chip">${p}</span>`).join('')}</div></div>
+        <div class="field"><label class="l">Stato estetico</label><div class="row tight" id="rf-cond">${CONDITIONS.map((p) => `<span class="chip">${p}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-accnote">Altri accessori o note sullo stato</label><input id="rf-accnote" placeholder="Facoltativo" /></div>
           <div class="field"><label class="l" for="rf-pass">PIN / schema di sblocco</label><input id="rf-pass" placeholder="Facoltativo" /><span class="hint">Solo uso interno: il cliente non lo vede mai.</span></div>
