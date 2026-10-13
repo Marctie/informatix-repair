@@ -55,8 +55,10 @@ export async function salesView(el) {
   $('#s-cust', el).oninput = debounce(async (e) => {
     const q = e.target.value.trim();
     const box = $('#s-cust-s', el);
+    if (!box) return;
     if (q.length < 2) return box.classList.add('hidden');
     const rows = await safe(() => api('GET', `/api/customers?q=${encodeURIComponent(q)}`));
+    if (!box.isConnected) return; // l'utente ha cambiato pagina nel frattempo
     box.innerHTML = (rows || []).map((c) => `<div class="px-3 py-2.5 hover:bg-lightbg cursor-pointer text-sm" data-cust="${c.id}" data-name="${esc(c.name)}"><b>${esc(c.name)}</b> <span class="text-gray-500">${esc(c.phone || '')}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun cliente trovato.</div>';
     box.classList.remove('hidden');
   }, 200);
@@ -112,7 +114,7 @@ export async function cashView(el) {
     <input type="date" id="c-from" class="!w-auto" value="${from}" aria-label="Dal" /><span class="text-gray-400">→</span><input type="date" id="c-to" class="!w-auto" value="${to}" aria-label="Al" /></div><div id="c-out"></div>`;
   async function load() {
     const r = await safe(() => api('GET', `/api/report?from=${from}&to=${to}`));
-    if (!r) return;
+    if (!r || !$('#c-out', el)) return;
     const max = Math.max(1, ...r.by_day.map((d) => d.total));
     $('#c-out', el).innerHTML = `
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
