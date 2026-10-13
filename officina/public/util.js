@@ -46,7 +46,7 @@ export function openModal(html, { title = '', wide = false, footer = '' } = {}) 
   wrap.innerHTML = `<div class="modal-panel bg-white w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-xl'} rounded-t-2xl sm:rounded-2xl shadow-2xl">
     <div class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-line"><h2 class="font-heading font-bold text-lg truncate">${esc(title)}</h2>
       <button class="btn btn-ghost btn-sm" data-close aria-label="Chiudi">✕</button></div>
-    <div class="modal-body p-4 sm:p-5">${html}</div>${footer ? `<div class="px-4 sm:px-5 py-3 border-t border-line flex gap-2 justify-end flex-wrap" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">${footer}</div>` : ''}</div>`;
+    <div class="modal-body p-4 sm:p-5">${html}</div>${footer ? `<div class="modal-foot px-4 sm:px-5 py-3 border-t border-line flex gap-2 justify-end flex-wrap" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">${footer}</div>` : ''}</div>`;
   root.appendChild(wrap);
   const close = () => { wrap.remove(); modalStack = modalStack.filter((m) => m !== api2); };
   wrap.addEventListener('mousedown', (e) => { if (e.target === wrap) close(); });

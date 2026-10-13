@@ -213,7 +213,7 @@ async function repairsView(el, params) {
       <button class="btn btn-primary hidden sm:inline-flex lg:hidden" id="new-repair">＋ Nuova riparazione</button>
     </div>
     <input id="q" type="search" placeholder="Filtra per cliente, telefono, modello, codice, seriale…" class="mb-3" />
-    <div class="flex gap-2 flex-wrap mb-4" id="chips"></div>
+    <div class="flex gap-2 flex-wrap chips-scroll mb-4" id="chips"></div>
     <div class="card overflow-hidden" id="list"></div>`;
   const chipsEl = $('#chips', el);
   const listEl = $('#list', el);
