@@ -193,7 +193,7 @@ describe('Gestionale officina', () => {
   it('clienti: ricerca e storico', () => {
     cy.visit('/#/clienti');
     cy.get('#c-q').type('Rossi');
-    cy.contains('[data-id]', 'Mario Rossi').should('contain', '1 riparazioni').click();
+    cy.contains('[data-id]', 'Mario Rossi').should('contain', '1 riparazione').click();
     cy.contains('Riparazioni (1)');
     cy.contains('iPhone 13');
   });
