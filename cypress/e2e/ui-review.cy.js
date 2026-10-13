@@ -303,6 +303,23 @@ describe('Rassegna grafica di tutte le schermate', () => {
         checkLayout('main', w, `${vp}/tracciamento-approva`);
         cy.screenshot(`ui-${vp}-t-approva`, { capture: 'viewport', overwrite: true });
       });
+      it('pagina del cliente: riparazione consegnata', () => {
+        cy.visit(`/t/${ids.done.token}`);
+        cy.get('.status').should('contain', 'Consegnato');
+        cy.wait(900);
+        checkLayout('main', w, `${vp}/tracciamento-consegnata`);
+        cy.screenshot(`ui-${vp}-t-consegnata`, { capture: 'viewport', overwrite: true });
+      });
+      if (vp === 'desktop') {
+        it('documenti di stampa (cliente, laboratorio, etichetta, vendita)', () => {
+          cy.viewport(860, 1220);
+          const shots = (url, name, ready) => { cy.visit(url); cy.get(ready).should(($i) => expect($i[0].naturalWidth).to.be.greaterThan(0)); cy.screenshot(name, { capture: 'fullPage', overwrite: true }); };
+          shots(`/print/customer/${ids.main.id}?noprint=1`, 'ui-print-cliente', 'img[alt="QR"]');
+          shots(`/print/lab/${ids.main.id}?noprint=1`, 'ui-print-laboratorio', 'img[alt="QR"]');
+          cy.viewport(420, 220);
+          shots(`/print/label/${ids.main.id}?noprint=1`, 'ui-print-etichetta', 'img[alt="QR"]');
+        });
+      }
       it('manuale', () => {
         cy.visit('/manuale.html');
         cy.contains('h2', 'Foglio rapido');
