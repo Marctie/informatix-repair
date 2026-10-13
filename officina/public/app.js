@@ -6,6 +6,7 @@ import { openRepairForm, openRepairDetail, deliverDialog } from './repair.js';
 import { customersView, openCustomer } from './customers.js';
 import { stockView, suppliersView } from './stock.js';
 import { salesView, cashView, settingsView } from './sales.js';
+import { usersView } from './users.js';
 
 const VIEWS = [
   { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true },
@@ -16,7 +17,12 @@ const VIEWS = [
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView },
+  { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true },
 ];
+// L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
+let ME = null;
+const visible = () => VIEWS.filter((x) => !x.admin || ME?.role === 'admin');
+const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
 const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖' };
 // Gestionale Vetrina Usati (per ora un'app separata sulla porta 4848: in futuro stessa sede, vedi piano "Portale unico")
 const USATI = { href: `${location.protocol}//${location.hostname}:4848/`, label: 'Vetrina usati', icon: '🛒' };
@@ -26,10 +32,10 @@ export const refresh = () => route();
 
 async function route() {
   const [, id = 'oggi', qs = ''] = location.hash.match(/^#\/([a-z]+)(?:\?(.*))?$/) || [];
-  const v = VIEWS.find((x) => x.id === id) || VIEWS[0];
+  const v = visible().find((x) => x.id === id) || VIEWS[0];
   $('#nav').innerHTML =
-    VIEWS.map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`).join('') +
-    `<a href="${USATI.href}" target="_blank" rel="noopener"><span class="ico">📦</span>${USATI.label}</a>` +
+    visible().map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`).join('') +
+    (ONLINE ? '' : `<a href="${USATI.href}" target="_blank" rel="noopener"><span class="ico">📦</span>${USATI.label}</a>`) +
     `<a href="${MANUAL.href}" target="_blank" rel="noopener"><span class="ico">${MANUAL.icon}</span>${MANUAL.label}</a>`;
   const inMore = !v.bottom;
   const bottomItems = VIEWS.filter((x) => x.bottom).map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`);
@@ -48,7 +54,7 @@ document.addEventListener('click', (e) => {
   const menu = $('#more-menu');
   if (e.target.closest('#more-btn')) {
     const item = (href, icon, label, extra = '') => `<a href="${href}" ${extra} class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-lightbg font-semibold text-sm">${icon} ${label}</a>`;
-    menu.innerHTML = VIEWS.filter((x) => !x.bottom).map((x) => item(`#/${x.id}`, x.icon, x.label)).join('') + item(USATI.href, '📦', USATI.label, 'target="_blank" rel="noopener"') + item(MANUAL.href, MANUAL.icon, MANUAL.label, 'target="_blank" rel="noopener"');
+    menu.innerHTML = visible().filter((x) => !x.bottom).map((x) => item(`#/${x.id}`, x.icon, x.label)).join('') + (ONLINE ? '' : item(USATI.href, '📦', USATI.label, 'target="_blank" rel="noopener"')) + item(MANUAL.href, MANUAL.icon, MANUAL.label, 'target="_blank" rel="noopener"');
     menu.classList.toggle('hidden');
   } else if (!e.target.closest('#more-menu')) menu.classList.add('hidden');
   if (!e.target.closest('#gsearch') && !e.target.closest('#gsearch-res')) $('#gsearch-res').classList.add('hidden');
@@ -259,5 +265,6 @@ async function repairsView(el, params) {
 window.addEventListener('hashchange', route);
 (async () => {
   await safe(loadMeta);
+  ME = (await safe(() => api('GET', '/api/me')))?.user || null;
   route();
 })();
