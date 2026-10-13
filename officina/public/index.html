@@ -140,6 +140,7 @@
   .free-row{display:grid;grid-template-columns:minmax(0,1fr) 6.5rem auto;gap:.5rem}
   @media (max-width:479px){ .free-row{grid-template-columns:minmax(0,1fr) auto} .free-row > input:first-child{grid-column:1 / -1} }
   @media (max-width:559px){
+    .modal-foot .btn-lg{min-height:2.9rem;padding-top:.5rem;padding-bottom:.5rem}
     .modal-foot{display:grid!important;grid-template-columns:1fr 1fr;gap:.5rem}
     .modal-foot .btn{width:100%}
     .modal-foot .btn-primary,.modal-foot .btn-green{grid-column:1 / -1;order:-1}
@@ -174,15 +175,17 @@
   .nav a.on{background:var(--red);color:#fff}
   .nav a .ico{width:1.4rem;text-align:center}
   #bottom-nav{display:none}
-  #fab{display:none}
   @media (max-width:1023px){
     #side{display:none}
     #bottom-nav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--ink);padding:.35rem .35rem calc(.35rem + env(safe-area-inset-bottom));justify-content:space-around}
     #bottom-nav a,#bottom-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:.05rem;padding:.35rem .2rem;border-radius:.7rem;color:#9CA3AF;font-size:.65rem;font-weight:600;text-decoration:none;min-height:3rem;justify-content:center}
     #bottom-nav a.on{color:#fff;background:rgba(220,38,38,.9)}
     #bottom-nav .ico{font-size:1.25rem;line-height:1.1}
-    #fab{display:flex;position:fixed;right:1rem;bottom:calc(4.6rem + env(safe-area-inset-bottom));z-index:29;width:3.5rem;height:3.5rem;border-radius:999px;background:var(--red);color:#fff;font-size:1.9rem;align-items:center;justify-content:center;box-shadow:0 10px 24px -6px rgb(220 38 38/.55);line-height:1}
-    main{padding-bottom:9rem!important}
+    #bottom-nav .nav-new{color:#fff;font-weight:700;position:relative}
+    #bottom-nav .nav-new .plus{width:2.9rem;height:2.9rem;margin-top:-1.35rem;border-radius:999px;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:1.5rem;box-shadow:0 8px 18px -6px rgb(220 38 38/.65),0 0 0 4px var(--ink)}
+    #bottom-nav .nav-new .plus .ic-wrap{width:1.5rem;height:1.5rem}
+    #bottom-nav{padding-top:.5rem}
+    main{padding-bottom:6.5rem!important}
     body{font-size:15px}
     input,select,textarea{font-size:16px} /* evita lo zoom automatico su iPhone */
     .kpi b{font-size:1.4rem}
@@ -223,7 +226,6 @@
 </div>
 
 <nav id="bottom-nav" aria-label="Navigazione"></nav>
-<button id="fab" aria-label="Nuova riparazione">＋</button>
 <div id="more-menu" class="hidden card shadow-2xl p-1.5"></div>
 <div id="modal-root"></div>
 <div id="toast" class="hidden fixed bottom-28 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl text-white text-sm font-semibold"></div>
