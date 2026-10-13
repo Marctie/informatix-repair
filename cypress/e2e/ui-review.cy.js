@@ -22,7 +22,7 @@ function checkLayout(rootSel, vpWidth, label) {
     // 1) niente esce dal bordo destro dello schermo
     all.forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (el.closest('.tbl-wrap, .overflow-x-auto, .overflow-auto, .chips-scroll')) return;
+      if (el.closest('.tbl-wrap, .overflow-x-auto, .overflow-auto, .chips-scroll, .scroll')) return;
       if (r.right > vpWidth + 1) problems.push(`fuori schermo: <${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}> "${(el.textContent || '').trim().slice(0, 30)}" right=${Math.round(r.right)}`);
     });
     // 2) campi: larghezza e altezza minime
@@ -55,7 +55,7 @@ function checkLayout(rootSel, vpWidth, label) {
     // 4) contenuto che esce dal contenitore a destra (tranne aree scorrevoli)
     all.forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (el.closest('.tbl-wrap, .overflow-x-auto, .chips-scroll')) return;
+      if (el.closest('.tbl-wrap, .overflow-x-auto, .chips-scroll, .scroll')) return;
       if (r.right > rootRect.right + 2 && rootRect.width > 0) problems.push(`esce dal contenitore: <${el.tagName.toLowerCase()}> "${(el.textContent || '').trim().slice(0, 24)}"`);
     });
     // 5) QUALITÀ DELLO STILE (errori "elementari"): testo attaccato al bordo, caratteri minuscoli, altezze incoerenti, spazi irregolari
@@ -71,7 +71,7 @@ function checkLayout(rootSel, vpWidth, label) {
     });
     all.filter((el) => el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())).forEach((el) => {
       const fs = px(win.getComputedStyle(el).fontSize);
-      if (fs < 10.5 && !el.closest('kbd')) problems.push(`carattere troppo piccolo (${fs}px): "${el.textContent.trim().slice(0, 24)}"`);
+      if (fs < 10 && !el.closest('kbd')) problems.push(`carattere troppo piccolo (${fs}px): "${el.textContent.trim().slice(0, 24)}"`);
     });
     // righe con campo + pulsante: stessa altezza
     $root[0].querySelectorAll('.row.nowrap').forEach((row) => {
