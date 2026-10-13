@@ -95,6 +95,56 @@ describe('Responsive e comodità', () => {
 describe('Comodità', () => {
   beforeEach(() => cy.viewport(1280, 800));
 
+  it('stampa rapida: "Salva e stampa" apre cliente + laboratorio senza passaggi in più', () => {
+    cy.visit('/');
+    cy.get('#top-new').click();
+    cy.get('#rf-name').type('Fabio Stampa');
+    cy.get('#rf-phone').type('3200009999');
+    cy.get('#rf-model').type('Pixel 8');
+    cy.get('#rf-problems .chip').contains('Non carica').click();
+    cy.get('#rf-pass').type('2468');
+    cy.get('#rf-urgent').check({ force: true });
+    cy.get('#rf-save-print').click();
+    cy.contains('Riparazione registrata');
+    cy.window().its('__opened').should('have.length', 1).its(0).should('match', /\/print\/both\/\d+$/);
+    cy.contains('button', 'Fatto').click();
+    cy.contains('[data-open]', 'Pixel 8').should('contain', 'Urgente');
+  });
+
+  it('schede di stampa: cliente senza PIN, laboratorio con PIN e checklist', () => {
+    cy.request('/api/repairs?q=Pixel 8').then((r) => {
+      const id = r.body[0].id;
+      cy.visit(`/print/customer/${id}?noprint=1`);
+      cy.contains('Scheda cliente');
+      cy.contains('Fabio Stampa');
+      cy.get('img[alt="QR"]').should('be.visible');
+      cy.get('body').should('not.contain', '2468');
+      cy.visit(`/print/lab/${id}?noprint=1`);
+      cy.contains('Scheda laboratorio');
+      cy.get('.pass').should('contain', '2468');
+      cy.contains('Collaudo finale');
+      cy.contains('URGENTE');
+    });
+  });
+
+  it('dettaglio: pulsanti di stampa, note del tecnico e priorità', () => {
+    cy.visit('/#/riparazioni');
+    cy.contains('[data-open]', 'Pixel 8').click();
+    cy.contains('a', 'Stampa tutto').should('have.attr', 'href').and('match', /\/print\/both\//);
+    cy.contains('a', 'Scheda cliente').should('have.attr', 'href').and('match', /\/print\/customer\//);
+    cy.contains('a', 'Scheda laboratorio').should('have.attr', 'href').and('match', /\/print\/lab\//);
+    cy.get('#d-tech').type('Connettore ossidato, pulizia con alcool isopropilico.');
+    cy.get('[data-act="savetech"]').click();
+    cy.get('#toast').should('contain', 'Note del tecnico salvate');
+    cy.get('[data-act="urgent"]').should('have.class', 'on').click();
+    cy.get('#toast').should('contain', 'Priorità aggiornata');
+    cy.get('[data-act="urgent"]').should('not.have.class', 'on');
+    cy.get('.modal-bg [data-close]').first().click();
+    cy.request('/api/repairs?q=Pixel 8').then((r) => {
+      cy.request(`/print/lab/${r.body[0].id}?noprint=1`).its('body').should('include', 'Connettore ossidato');
+    });
+  });
+
   it('ricerca globale: trova riparazioni e clienti e apre la scheda', () => {
     cy.visit('/');
     cy.get('#gsearch').type('Esposito');

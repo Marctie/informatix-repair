@@ -78,6 +78,21 @@ describe('Schermate per il manuale', () => {
     cy.screenshot('07-dettaglio', { capture: 'viewport' });
   });
 
+  it('schede di stampa: cliente e laboratorio', () => {
+    cy.viewport(860, 1220);
+    cy.request('/api/repairs?q=Anna').then((r) => {
+      const id = r.body[0].id;
+      cy.request('POST', `/api/repairs/${id}/parts`, { name: 'Batteria Samsung A54', qty: 1, unit_price: 49 });
+      cy.request('PATCH', `/api/repairs/${id}`, { passcode: '4821', tech_notes: 'Batteria gonfia, rimossa. Test di carica ok.', urgent: true });
+      cy.visit(`/print/customer/${id}?noprint=1`);
+      cy.get('img[alt="QR"]').should(($i) => expect($i[0].naturalWidth).to.be.greaterThan(0));
+      cy.screenshot('12-scheda-cliente', { capture: 'fullPage' });
+      cy.visit(`/print/lab/${id}?noprint=1`);
+      cy.get('img[alt="QR"]').should(($i) => expect($i[0].naturalWidth).to.be.greaterThan(0));
+      cy.screenshot('13-scheda-laboratorio', { capture: 'fullPage' });
+    });
+  });
+
   it('desktop: vendita al banco', () => {
     cy.viewport(1280, 860);
     cy.visit('/#/vendite');

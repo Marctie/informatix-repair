@@ -53,7 +53,9 @@ describe('Gestionale officina', () => {
     cy.contains('Riparazione registrata');
     cy.contains(/R-\d{4}-0001/);
     cy.get('img[alt="QR tracciamento"]').should('be.visible').and(($img) => expect($img[0].naturalWidth).to.be.greaterThan(0));
-    cy.contains('Stampa scheda con QR').should('have.attr', 'href').and('match', /\/print\/repair\/\d+/);
+    cy.contains('Stampa scheda cliente + laboratorio').should('have.attr', 'href').and('match', /\/print\/both\/\d+/);
+    cy.contains('Solo scheda cliente').should('have.attr', 'href').and('match', /\/print\/customer\/\d+/);
+    cy.contains('Solo scheda laboratorio').should('have.attr', 'href').and('match', /\/print\/lab\/\d+/);
     cy.get('.break-all').invoke('text').then((t) => {
       expect(t).to.match(/\/t\/[\w-]{12}$/);
       token = t.trim().split('/t/')[1];
