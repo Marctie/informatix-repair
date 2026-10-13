@@ -10,7 +10,10 @@ const env = { ...process.env, OFFICINA_DB: join(dir, 'e2e.db'), OFFICINA_PORT: '
 delete env.ELECTRON_RUN_AS_NODE; // impostata da VS Code: impedisce a Cypress (Electron) di partire
 
 const server = spawn(process.execPath, ['officina/server.mjs'], { env, stdio: 'ignore' });
-const stop = () => { server.kill(); rmSync(dir, { recursive: true, force: true }); };
+const stop = () => {
+  server.kill();
+  setTimeout(() => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* DB ancora bloccato: pulizia a cura del sistema */ } }, 1000);
+};
 
 for (let i = 0; i < 40; i++) {
   try { if ((await fetch('http://127.0.0.1:4960/api/meta')).ok) break; } catch { /* non ancora pronto */ }
@@ -18,4 +21,4 @@ for (let i = 0; i < 40; i++) {
 }
 const args = process.argv.includes('--open') ? ['open', '--e2e'] : ['run'];
 const cy = spawn('npx', ['cypress', ...args], { env, stdio: 'inherit', shell: true });
-cy.on('exit', (code) => { stop(); process.exit(code ?? 1); });
+cy.on('exit', (code) => { stop(); setTimeout(() => process.exit(code ?? 1), 1500); });
