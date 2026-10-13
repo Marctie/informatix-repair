@@ -60,13 +60,13 @@
   .cheat{border:2px solid var(--ink)}
   .cheat .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.8rem}
   .cheat .box{background:var(--bg);border-radius:.9rem;padding:.8rem}
-  .cheat .box b{font-family:Poppins,sans-serif;display:block;margin-bottom:.2rem}
+  .cheat .box>b:first-child{font-family:Poppins,sans-serif;display:block;margin-bottom:.2rem}
   .cheat .box span.k{display:inline-block;background:var(--red);color:#fff;border-radius:.4rem;font-size:.7rem;font-weight:800;padding:0 .4rem;margin-right:.3rem}
   footer{text-align:center;color:var(--muted);font-size:.8rem;padding:1rem}
   @media (max-width:860px){
     .wrap{grid-template-columns:1fr;gap:1rem}
-    nav.toc{position:static;max-height:none;display:flex;flex-wrap:wrap;gap:.2rem}
-    nav.toc p{display:none} nav.toc a{background:var(--bg);font-size:.8rem}
+    nav.toc{position:static;max-height:none;display:flex;flex-wrap:nowrap;gap:.35rem;overflow-x:auto;padding:.5rem;-webkit-overflow-scrolling:touch}
+    nav.toc p{display:none} nav.toc a{background:var(--bg);font-size:.8rem;white-space:nowrap;flex:none}
     .pair{grid-template-columns:1fr} .cheat .grid{grid-template-columns:1fr}
     section{padding:1.1rem 1rem}
     section h2{font-size:1.25rem}
@@ -123,7 +123,7 @@
   <h2>Foglio rapido</h2>
   <p class="lead">Tutto quello che serve nel 90% dei giorni. Il resto del manuale è per quando hai un dubbio.</p>
   <div class="grid">
-    <div class="box"><b><span class="k">1</span>Arriva un cliente</b>Tasto rosso <b style="display:inline">＋ Nuova riparazione</b> (o premi <kbd>N</kbd>). Tocca le scelte rapide, scrivi nome, telefono e modello. <b style="display:inline">Salva</b>.</div>
+    <div class="box"><b><span class="k">1</span>Arriva un cliente</b>Tasto rosso <b>＋ Nuova riparazione</b> (o premi <kbd>N</kbd>). Tocca le scelte rapide, scrivi nome, telefono e modello. <b>Salva</b>.</div>
     <div class="box"><b><span class="k">2</span>Fai vedere il QR</b>Appare il QR: il cliente lo inquadra col telefono. Stampa la scheda con QR e fagli firmare. Metti l'etichetta sul dispositivo.</div>
     <div class="box"><b><span class="k">3</span>Avanza lo stato</b>In <i>Oggi</i> ogni riga ha un tasto nero col <b>prossimo passo</b>: un click e il cliente vede l'aggiornamento.</div>
     <div class="box"><b><span class="k">4</span>Avvisa con WhatsApp</b>Il tasto 💬 apre WhatsApp con il messaggio già scritto (preventivo, pronto, ritardo). Tu premi solo invio.</div>
