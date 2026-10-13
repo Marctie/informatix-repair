@@ -32,6 +32,7 @@ Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-r
 5. Prove hardware di Christian (pistola, stampante, etichette, fotocamera in https).
 6. **Import ordini fornitore (PDF) + storico prezzi + avvisi scorte** (richiesta di Christian, dettagli in CHATLOG "Nuovo sviluppo richiesto"): servono PDF di esempio.
 7. **Rotazione prodotti**: grafico piu'/meno richiesti e allarme invenduto con suggerimento offerta/controllo prezzo (CHATLOG "Rotazione prodotti e invenduto").
+8. **Progetto Analisi** (CHATLOG "Progetto Analisi") e, per ultimi, **Buoni sconto/regalo** e **Carte fedelta' NFC** (CHATLOG "Nuovi sviluppi richiesti ... Buoni"): il regolamento punti arriva da Christian.
 
 ## Domande ancora aperte
 - Email di Christian e delle 3 postazioni (arrivano da Christian); alias con Cloudflare Email Routing per le postazioni?
