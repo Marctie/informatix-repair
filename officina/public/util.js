@@ -31,6 +31,7 @@ export async function safe(fn) {
   try { return await fn(); } catch (e) { toast(e.message, false); return undefined; }
 }
 
+export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 export const debounce = (fn, ms = 250) => { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; };
 
 let modalStack = [];

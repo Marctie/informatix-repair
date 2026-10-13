@@ -131,6 +131,7 @@
   .pcard .sub{font-size:.78rem;color:var(--muted);line-height:1.4}
   .chips-scroll{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:.4rem;margin-right:-1rem;padding-right:1rem;scrollbar-width:thin}
   .chips-scroll .chip{flex:none}
+  .chips-scroll{scrollbar-width:none} .chips-scroll::-webkit-scrollbar{display:none}
   @media (min-width:720px){ .chips-scroll{flex-wrap:wrap!important;overflow:visible;margin-right:0;padding-right:0;padding-bottom:0} }
   .btn-wrap{white-space:normal;text-align:center;line-height:1.25}
   @media (max-width:559px){
@@ -145,6 +146,8 @@
   .nav .ic-wrap{width:1.3rem;height:1.3rem}
   #bottom-nav .ic-wrap{width:1.45rem;height:1.45rem}
   section.card > h3 .ic-wrap{color:var(--red);margin-right:.15rem}
+  .badge-lg{padding:.3rem .8rem;font-size:.8rem}
+  .badges .chip{padding:.28rem .8rem;font-size:.8rem}
   .badges{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
   .check{display:flex;align-items:center;gap:.6rem;min-height:var(--ctl);font-size:.88rem;font-weight:600;color:#374151;cursor:pointer;user-select:none}
   .check input{flex:none}
@@ -195,7 +198,7 @@
       <div><p class="font-heading font-bold text-sm leading-tight">Officina</p><p class="text-[11px] text-gray-400 leading-tight">Informatix Repair</p></div>
     </div>
     <nav class="nav flex flex-col gap-1" id="nav"></nav>
-    <p class="mt-auto text-[11px] text-gray-500 leading-relaxed">Solo locale · nessun login<br>Scorciatoie: <kbd>N</kbd> nuova riparazione, <kbd>/</kbd> cerca</p>
+    <div class="mt-auto text-[11.5px] text-gray-500 leading-relaxed" style="display:flex;flex-direction:column;gap:.35rem"><span><kbd>N</kbd> Nuova riparazione</span><span><kbd>/</kbd> Cerca</span><span style="color:#6B7280">Solo locale · nessun login</span></div>
   </aside>
 
   <div class="flex-1 min-w-0 flex flex-col">
