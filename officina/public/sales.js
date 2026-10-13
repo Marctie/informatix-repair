@@ -178,6 +178,15 @@ export async function settingsView(el) {
         <div class="field"><label class="l" for="st-untr">Pagamenti “non tracciato”</label>
           <select id="st-untr" data-k="cash_show_untracked"><option value="1" ${s.cash_show_untracked !== '0' ? 'selected' : ''}>Conteggiali nella cassa</option><option value="0" ${s.cash_show_untracked === '0' ? 'selected' : ''}>Non mostrarli nella cassa</option></select>
           <span class="hint">Il metodo “non tracciato” si sceglie su vendite e riparazioni. Con “non mostrarli” restano salvati nel gestionale ma non entrano nei totali, nel grafico e nell’incasso di oggi.</span></div>
+        <h2 class="sec-t" style="margin-top:.6rem">Avvisi</h2>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="st-lsd">Scorta minima generale (pezzi)</label><input id="st-lsd" data-k="low_stock_default" type="number" min="0" inputmode="numeric" value="${esc(s.low_stock_default ?? '0')}" />
+            <span class="hint">Vale per i prodotti senza soglia propria. 0 = spenta. Ogni prodotto può avere la sua nella scheda del magazzino.</span></div>
+          <div class="field"><label class="l" for="st-sd">Prodotto fermo dopo (giorni)</label><input id="st-sd" data-k="stale_days" type="number" min="0" inputmode="numeric" value="${esc(s.stale_days ?? '90')}" />
+            <span class="hint">Avviso se un prodotto non esce da tanti giorni. 0 = spento.</span></div>
+        </div>
+        <div class="field"><label class="l" for="st-rd">Riparazione pronta non ritirata dopo (giorni)</label><input id="st-rd" data-k="ready_days" type="number" min="0" inputmode="numeric" value="${esc(s.ready_days ?? '7')}" />
+          <span class="hint">Ti ricorda di avvisare il cliente. 0 = spento.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Scheda di ingresso</h2>
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>

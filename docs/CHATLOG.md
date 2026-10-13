@@ -723,3 +723,6 @@ Scelta hardware (da validare con prova di Christian): la carta contiene solo l'U
 
 ## Dati demo (2026-10-13, notte)
 `officina/demo.mjs`: dati dimostrativi completi (3 fornitori, 14 prodotti con scorte basse/esaurite/invenduto, 8 clienti, 14 riparazioni in tutti gli stati, 13 vendite, incassi, anche "non tracciato"). Tutte le righe demo hanno **id negativo** (i dati veri sono positivi): "Elimina demo" cancella solo `id < 0` ed e' sicuro. API `GET/POST/DELETE /api/demo` (admin) e riquadro "Dati demo" in Impostazioni. Codici DEMO-001..014, token demo-token-N (ricerca: DEMO-004 + 0104). Manuale: sezione 17. Test API: 17 verdi.
+
+## Avvisi e scheda Magazzino (2026-10-14)
+`logic.alerts()` + `GET /api/alerts`: esaurito, sotto scorta, prodotto fermo (ultima uscita da stock_moves/vendite/ricambi), riparazione in ritardo, preventivo rifiutato, pronta non ritirata. Soglie in Impostazioni → Avvisi (`low_stock_default`, `stale_days`, `ready_days`; 0 = spenta). UI: campanella con badge, riquadro in Oggi, scheda Magazzino in Analisi. Manuale aggiornato. Test API: 18 verdi (corretti 2 test che usavano la data UTC invece di quella di Roma). Da fare: avvisi di variazione prezzo d'acquisto (con import PDF), Cypress per campanella/Analisi, schermate del manuale.

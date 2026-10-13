@@ -271,7 +271,7 @@ test('ricerca cliente: il sito pubblico può chiamarla da un altro dominio (CORS
 });
 
 test('metodo "non tracciato": salvato sempre, fuori dai totali di cassa se l’impostazione lo esclude', async () => {
-  const day = new Date().toISOString().slice(0, 10);
+  const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
   const before = (await a('GET', `/api/report?from=${day}&to=${day}`)).data.total;
   await a('POST', '/api/sales', { items: [{ name: 'Cavo', unit_price: 10 }], method: 'non tracciato' });
   assert.equal((await a('GET', `/api/report?from=${day}&to=${day}`)).data.total, before + 10); // di default conta
@@ -285,7 +285,7 @@ test('metodo "non tracciato": salvato sempre, fuori dai totali di cassa se l’i
 });
 
 test('analisi: riparazioni, incassi e vendite del periodo', async () => {
-  const day = new Date().toISOString().slice(0, 10);
+  const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
   const r = (await a('GET', `/api/analytics?from=${day}&to=${day}`)).data;
   assert.equal(r.days, 1);
   assert.ok(r.repairs.intake >= 1);
@@ -318,4 +318,23 @@ test('dati demo: si caricano, si vedono ovunque e si cancellano senza toccare i 
   assert.equal((await a('GET', '/api/repairs')).data.length, realRepairs);
   assert.equal((await a('GET', '/api/demo')).data.loaded, false);
   assert.equal((await a('GET', '/api/products')).data.filter((p) => p.id < 0).length, 0);
+});
+
+test('avvisi: scorta bassa/esaurita, prodotto fermo, soglie da Impostazioni', async () => {
+  await a('POST', '/api/demo');
+  let al = (await a('GET', '/api/alerts')).data;
+  assert.ok(al.items.some((x) => x.type === 'out_of_stock' && /USB-C/.test(x.title)));
+  assert.ok(al.items.some((x) => x.type === 'low_stock'));
+  assert.ok(al.items.some((x) => x.type === 'stale' && /ASUS/.test(x.title)));
+  assert.ok(al.items.some((x) => x.type === 'declined'));
+  // spegnendo la soglia dei fermi, quegli avvisi spariscono
+  await a('PUT', '/api/settings', { stale_days: '0' });
+  al = (await a('GET', '/api/alerts')).data;
+  assert.ok(!al.items.some((x) => x.type === 'stale'));
+  // una soglia generale alta fa scattare altri prodotti
+  const before = al.items.filter((x) => x.type === 'low_stock').length;
+  await a('PUT', '/api/settings', { low_stock_default: '50' });
+  assert.ok((await a('GET', '/api/alerts')).data.items.filter((x) => x.type === 'low_stock').length > before);
+  await a('PUT', '/api/settings', { low_stock_default: '0', stale_days: '90' });
+  await a('DELETE', '/api/demo');
 });

@@ -3,7 +3,7 @@ import { $, esc, eur, fdate, api, safe, META } from './util.js';
 
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
 const shift = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const TABS = [['riparazioni', 'Riparazioni'], ['incassi', 'Incassi'], ['vendite', 'Vendite']];
+const TABS = [['riparazioni', 'Riparazioni'], ['incassi', 'Incassi'], ['vendite', 'Vendite'], ['magazzino', 'Magazzino']];
 const TYPES = { smartphone: 'Smartphone', tablet: 'Tablet', portatile: 'Portatile', pc: 'PC fisso', console: 'Console', altro: 'Altro' };
 
 /** Barre orizzontali: etichetta, barra e valore scritto (leggibile anche senza colore). */
@@ -22,8 +22,10 @@ export async function analyticsView(el, qs) {
   let tab = qs.get('tab') || 'riparazioni';
   el.innerHTML = `
     <style>
+      #an-out{display:grid;gap:var(--s4,1rem);margin-top:var(--s4,1rem)}
+      #an-out .sec-t{margin-bottom:.4rem}
       .an-bars{list-style:none;margin:0;padding:0;display:grid;gap:.55rem}
-      .an-bars li{display:grid;grid-template-columns:minmax(6rem,34%) 1fr auto;gap:.6rem;align-items:center;font-size:.9rem}
+      .an-bars li{display:grid;grid-template-columns:minmax(7rem,44%) 1fr auto;gap:.6rem;align-items:center;font-size:.9rem}
       .an-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .an-track{height:.7rem;border-radius:99px;background:#eceff3;overflow:hidden}
       .an-track i{display:block;height:100%;border-radius:99px;background:var(--red,#dc2626)}
@@ -41,6 +43,12 @@ export async function analyticsView(el, qs) {
   async function load() {
     const d = await safe(() => api('GET', `/api/analytics?from=${from}&to=${to}`));
     if (!d || !$('#an-out', el)) return;
+    if (tab === 'magazzino') {
+      const [sum, al] = await Promise.all([safe(() => api('GET', '/api/stock/summary')), safe(() => api('GET', '/api/alerts'))]);
+      if (!$('#an-out', el)) return;
+      out.innerHTML = stockTab(d, sum || {}, al?.items || []);
+      return;
+    }
     out.innerHTML = { riparazioni: repairsTab, incassi: incomeTab, vendite: salesTab }[tab](d);
   }
   const setRange = (days) => { to = today(); from = shift(to, -days); $('#an-from', el).value = from; $('#an-to', el).value = to; load(); };
@@ -105,4 +113,21 @@ function salesTab(d) {
       <section class="card panel sec"><h3 class="sec-t">Prodotti meno venduti</h3>${s.bottom.length ? hbars(s.bottom, { value: (x) => x.qty, fmt: (v) => `${v} pz` }) : '<p class="empty">Servono più di 10 prodotti diversi venduti per mostrare la classifica dei meno venduti.</p>'}</section>
       <section class="card panel sec"><h3 class="sec-t">Ricambi più usati nelle riparazioni</h3>${hbars(s.parts_used, { value: (x) => x.qty, fmt: (v) => `${v} pz` })}</section>
     </div>`;
+}
+
+function stockTab(d, sum, items) {
+  const by = (t) => items.filter((x) => x.type === t);
+  const list = (rows, empty) => (rows.length ? `<div class="card overflow-hidden">${rows.map((x) => `<a href="${x.link}" class="block px-4 py-3 border-b border-line last:border-0 text-sm hover:bg-lightbg"><b class="block">${esc(x.title)}</b><span class="text-gray-500">${esc(x.detail)}</span></a>`).join('')}</div>` : `<p class="empty">${empty}</p>`);
+  return `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      ${kpi(sum.items ?? '—', 'Prodotti a catalogo')}
+      ${kpi(sum.units ?? '—', 'Pezzi in magazzino')}
+      ${kpi(eur(sum.value_cost || 0), 'Valore a costo')}
+      ${kpi(eur(sum.value_price || 0), 'Valore a prezzo di vendita', 'text-secondary')}
+    </div>
+    <div class="an-cols">
+      <section class="card panel sec"><h3 class="sec-t">Più richiesti nel periodo</h3>${hbars(d.sales.top.slice(0, 8), { value: (x) => x.qty, fmt: (v) => `${v} pz` })}</section>
+      <section class="card panel sec"><h3 class="sec-t">Meno richiesti nel periodo</h3>${d.sales.bottom.length ? hbars(d.sales.bottom, { value: (x) => x.qty, fmt: (v) => `${v} pz` }) : '<p class="empty">Servono più di 10 prodotti diversi venduti per mostrare i meno richiesti.</p>'}</section>
+    </div>
+    <section class="sec"><h3 class="sec-t">🛑 Esauriti e sotto scorta (${by('out_of_stock').length + by('low_stock').length})</h3>${list([...by('out_of_stock'), ...by('low_stock')], 'Tutte le scorte sono a posto.')}</section>
+    <section class="sec"><h3 class="sec-t">🐌 Fermi da troppo tempo (${by('stale').length})</h3>${list(by('stale'), 'Nessun prodotto fermo. La soglia si imposta in Impostazioni → Avvisi.')}</section>`;
 }
