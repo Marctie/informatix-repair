@@ -7,6 +7,8 @@ import { renderSVG } from 'uqr';
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
 import * as L from './logic.mjs';
 import { barcodeSvg } from './barcode.mjs';
+import { listExpenses, createExpense, updateExpense, deleteExpense, CATEGORIES, DOC_TYPES } from './expenses.mjs';
+import { buildNotaSpese } from './notaspese.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
@@ -103,6 +105,22 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     await db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
     return { ok: true };
   }));
+
+  // Spese (uscite) e nota spese in PDF
+  app.get('/api/expenses/meta', h(() => ({ categories: CATEGORIES, doc_types: DOC_TYPES })));
+  app.get('/api/expenses', h((req) => listExpenses({ from: str(req.query.from), to: str(req.query.to), reimbursable: req.query.reimbursable === '1', paid_by: str(req.query.paid_by) })));
+  app.post('/api/expenses', h((req) => createExpense(req.body)));
+  app.put('/api/expenses/:id', h((req) => updateExpense(req.params.id, req.body)));
+  app.delete('/api/expenses/:id', h((req) => deleteExpense(req.params.id)));
+  app.get('/api/expenses-pdf', async (c) => {
+    try {
+      const data = await listExpenses({ from: str(c.req.query('from')), to: str(c.req.query('to')), reimbursable: c.req.query('reimbursable') === '1', paid_by: str(c.req.query('paid_by')) });
+      const bytes = await buildNotaSpese({ shop: await getSettings(), data, who: str(c.req.query('who')) || str(c.req.query('paid_by')) || '' });
+      return c.body(bytes, 200, { 'content-type': 'application/pdf', 'content-disposition': `inline; filename="nota-spese-${data.from}_${data.to}.pdf"`, 'cache-control': 'no-store' });
+    } catch (e) {
+      return c.json({ ok: false, error: e.status ? e.message : 'Impossibile creare il PDF' }, e.status || 500);
+    }
+  });
 
   // Dati demo (caricabili e cancellabili dalle Impostazioni; non toccano mai i dati veri)
   app.get('/api/demo', h(async (req) => { adminOnly(req); return demoStatus(); }));
@@ -309,7 +327,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'payments'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'payments', 'expenses'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
