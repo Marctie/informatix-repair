@@ -4,7 +4,7 @@
   "compatibility_date": "2026-09-01",
   "workers_dev": false,
   "preview_urls": false,
-  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true, "html_handling": "none" },
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   "d1_databases": [
     { "binding": "DB", "database_name": "officina", "database_id": "77a96da4-ca9b-4262-b16c-2f9233186ffd", "migrations_dir": "migrations" }
   ],
@@ -15,7 +15,8 @@
   "vars": {
     "PUBLIC_HOST": "riparazioni.informatixrepair.com",
     "PUBLIC_BASE_URL": "https://riparazioni.informatixrepair.com",
-    "OWNER_EMAIL": "marcopeluso99@gmail.com"
-    // ACCESS_TEAM_DOMAIN e ACCESS_AUD si aggiungono dopo aver creato l'applicazione in Cloudflare Access
+    "OWNER_EMAIL": "marcopeluso99@gmail.com",
+    "ACCESS_TEAM_DOMAIN": "fragrant-frog-e75a.cloudflareaccess.com",
+    "ACCESS_AUD": "70f87bbf5f546580502cd6a7d71863e911bdb7b7f7fe41c6a20fd5a9d208970b"
   }
 }
