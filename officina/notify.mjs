@@ -12,6 +12,10 @@ const maskPhone = (p) => (p ? String(p).replace(/\s/g, '').replace(/.(?=.{3})/g,
 const STATUS = { received: 'Ricevuto', diagnosing: 'In diagnosi', quote_pending: 'Preventivo da approvare', approved: 'Preventivo approvato', waiting_parts: 'In attesa ricambi', repairing: 'In riparazione', ready: 'Pronto per il ritiro', delivered: 'Consegnato', cancelled: 'Annullato' };
 const FIELD = { brand_model: 'dispositivo', problem: 'problema', quote: 'preventivo', eta_date: 'data stimata', final_price: 'prezzo finale', tech_notes: 'note tecniche', customer_note: 'nota al cliente', serial: 'seriale', accessories: 'accessori', condition_notes: 'condizioni', urgent: 'urgenza', warranty_days: 'garanzia', device_type: 'tipo' };
 
+const SETTING = { shop_name: 'nome negozio', shop_address: 'indirizzo', shop_phone: 'telefono negozio', public_base_url: 'indirizzo pubblico', default_warranty_days: 'garanzia', terms: 'condizioni', cash_show_untracked: 'cassa: mostra non tracciati', low_stock_default: 'soglia scorta', stale_days: 'giorni riparazione ferma', ready_days: 'giorni pronto al ritiro' };
+/** Toglie dai testi d'errore qualunque cosa somigli a un token di bot. */
+const scrub = (t) => String(t ?? '').replace(/\d{6,}:[A-Za-z0-9_-]{30,}/g, '[token]');
+
 /** Elenca i campi inviati (senza i valori sensibili). */
 const fields = (body, map = FIELD) => Object.keys(body || {}).filter((k) => !SECRET_KEYS.test(k)).map((k) => map[k] || k).join(', ');
 
@@ -23,12 +27,12 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
 
   if (denied) return `🚫 <b>Accesso negato</b>\nL’indirizzo ${esc(denied)} ha provato a entrare nel gestionale ma non è nell’elenco utenti.${foot}`;
   if (login) return `🔑 <b>Accesso al gestionale</b>${foot}`;
-  if (status >= 500) return `🔴 <b>ERRORE ${status}</b>\n${esc(method)} ${esc(path)}\n${error ? `<code>${esc(short(error, 600))}</code>` : 'Errore interno'}${foot}`;
+  if (status >= 500) return `🔴 <b>ERRORE ${status}</b>\n${esc(method)} ${esc(path)}\n${error ? `<code>${esc(short(scrub(error), 600))}</code>` : 'Errore interno'}${foot}`;
 
   const m = method.toUpperCase();
   const r = result || {};
   const isOk = status >= 200 && status < 300;
-  const fail = (what) => `⚠️ <b>${esc(what)} non riuscito</b> (${status})\n${esc(short(r.error || '', 200))}${foot}`;
+  const fail = (what) => `⚠️ <b>${esc(what)}: operazione non riuscita</b> (${status})\n${esc(short(r.error || '', 200))}${foot}`;
 
   // ---- Riparazioni
   let x;
@@ -38,7 +42,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/deliver$/)) && m === 'POST') return isOk ? `📦 <b>Consegna ${esc(r.code)}</b>\n${esc(r.brand_model)} · ${esc(r.customer_name)}\n💶 Incassato ${eur(r.collected)} (${esc(body.method || 'contanti')}) · totale ${eur(r.final_price)}${foot}` : fail('Consegna');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/deposit$/)) && m === 'POST') return isOk ? `💶 <b>Acconto ${eur(body.amount)}</b> su ${esc(r.code)} (${esc(body.method || 'contanti')})\n${esc(r.brand_model)} · ${esc(r.customer_name)}${foot}` : fail('Acconto');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/note$/)) && m === 'POST') return isOk ? `📝 <b>Nota su ${esc(r.code)}</b> (${body.public === false ? 'interna' : 'visibile al cliente'})\n${esc(short(body.note, 250))}${foot}` : fail('Nota');
-  if ((x = path.match(/^\/api\/repairs\/(\d+)\/parts(\/\d+)?$/))) return isOk ? `🔩 <b>Ricambi ${m === 'DELETE' ? 'rimossi' : 'aggiunti'}</b> su ${esc(r.code)}\n${m === 'DELETE' ? '' : esc(short(body.name || (body.product_id ? `prodotto #${body.product_id}` : ''), 100)) + (body.qty ? ` ×${esc(body.qty)}` : '')}${foot}` : fail('Ricambi');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/parts(\/\d+)?$/))) return isOk ? `🔩 <b>Ricambi ${m === 'DELETE' ? 'rimossi' : 'aggiunti'}</b> su ${esc(r.code)}${m === 'DELETE' ? '' : `\n${esc(short(body.name || (r.parts || []).at(-1)?.name || (body.product_id ? `prodotto #${body.product_id}` : ''), 100))} ×${esc(body.qty || 1)}`}${foot}` : fail('Ricambi');
   if ((x = path.match(/^\/api\/repairs\/(\d+)$/)) && m === 'PATCH') return isOk ? `✏️ <b>Riparazione ${esc(r.code)} modificata</b>\nCampi: ${esc(fields(body)) || '—'}${body.quote != null ? `\nPreventivo: ${eur(body.quote)}` : ''}${foot}` : fail('Modifica riparazione');
   if ((x = path.match(/^\/api\/track\/([^/]+)\/decision$/)) && m === 'POST') return isOk ? `${body.accept ? '✅' : '❌'} <b>Il cliente ha ${body.accept ? 'APPROVATO' : 'RIFIUTATO'} il preventivo</b>\n${esc(r.code)} · ${esc(r.device?.model)} · ${esc(r.customer?.name)}${foot}` : fail('Risposta del cliente al preventivo');
 
@@ -46,27 +50,27 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (m === 'POST' && path === '/api/sales') return isOk ? `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)} (${esc(r.method)})\n${(r.items || []).map((i) => `• ${esc(short(i.name, 50))} ×${esc(i.qty)}`).join('\n')}${r.discount ? `\nSconto ${eur(r.discount)}` : ''}${r.method === 'non tracciato' ? '\n⚠️ pagamento NON TRACCIATO' : ''}${foot}` : fail('Vendita');
   if (path === '/api/expenses' && m === 'POST') return isOk ? `🧾 <b>Nuova spesa</b> ${eur(r.amount)}\n${esc(short(r.description, 100))} · ${esc(r.category)}${r.vendor ? ` · ${esc(r.vendor)}` : ''}${r.reimbursable ? ' · da rimborsare' : ''}${foot}` : fail('Nuova spesa');
   if (path.startsWith('/api/expenses/') && (m === 'PUT' || m === 'DELETE')) return isOk ? `🧾 <b>Spesa ${m === 'DELETE' ? 'eliminata' : 'modificata'}</b>${r.description ? `\n${esc(short(r.description, 100))} · ${eur(r.amount)}` : ''}${foot}` : fail('Spesa');
-  if (path === '/api/expenses-pdf') return `📄 <b>Nota spese PDF generata</b>${foot}`;
+  if (path === '/api/expenses-pdf') return isOk ? `📄 <b>Nota spese PDF generata</b>${foot}` : fail('Nota spese PDF');
 
   // ---- Anagrafiche e magazzino
   const CRUD = [[/^\/api\/customers/, '👤', 'Cliente'], [/^\/api\/suppliers/, '🚚', 'Fornitore'], [/^\/api\/products\/(\d+)\/move/, '📦', 'Movimento di magazzino'], [/^\/api\/products/, '📦', 'Prodotto']];
   for (const [re, ico, label] of CRUD) {
     if (re.test(path) && m !== 'GET') {
       const verb = m === 'POST' && !/move/.test(path) ? 'creato' : m === 'DELETE' ? 'eliminato' : 'modificato';
-      const name = r.name || body.name || '';
+      const name = r.name || body.name || (m === 'DELETE' ? `n. ${path.match(/(\d+)$/)?.[1] || '?'}` : '');
       const extra = /move/.test(path) ? `\n${esc(r.name)} ${Number(body.delta) > 0 ? '+' : ''}${esc(body.delta)} (${esc(body.reason || '—')}) → ora ${esc(r.qty)} pz` : '';
-      return isOk ? `${ico} <b>${label} ${/move/.test(path) ? '' : verb}</b>${name && !extra ? `: ${esc(short(name, 80))}` : ''}${extra}${foot}` : fail(label);
+      return isOk ? `${ico} <b>${label}${/move/.test(path) ? '' : ` ${verb}`}</b>${name && !extra ? `: ${esc(short(name, 80))}` : ''}${extra}${foot}` : fail(label);
     }
   }
 
   // ---- Utenti e impostazioni (sicurezza)
   if (path === '/api/users' && m === 'POST') return isOk ? `🔐 <b>Nuovo utente</b>: ${esc(r.email)} (${esc(r.role)})${foot}` : fail('Nuovo utente');
   if (path.startsWith('/api/users/') && (m === 'PUT' || m === 'DELETE')) return isOk ? `🔐 <b>Utente ${m === 'DELETE' ? 'eliminato' : 'modificato'}</b>${r.email ? `: ${esc(r.email)} (${esc(r.role)}${r.active === 0 ? ', disattivato' : ''})` : ''}${foot}` : fail('Utente');
-  if (path === '/api/settings' && m === 'PUT') return isOk ? `⚙️ <b>Impostazioni modificate</b>\nCampi: ${esc(fields(body)) || '—'}${foot}` : fail('Impostazioni');
+  if (path === '/api/settings' && m === 'PUT') return isOk ? `⚙️ <b>Impostazioni modificate</b>\nCampi: ${esc(fields(body, SETTING)) || '—'}${foot}` : fail('Impostazioni');
   if (path === '/api/demo') return isOk ? `🧪 <b>Dati demo ${m === 'POST' ? 'caricati' : 'eliminati'}</b>${foot}` : fail('Dati demo');
   if (path === '/api/backup/r2') return isOk ? `💾 <b>Backup salvato nel cloud</b>\n${esc(r.file || '')}${foot}` : fail('Backup nel cloud');
-  if (path === '/api/backup') return `💾 <b>Backup scaricato</b>${foot}`;
-  if (/^\/print\//.test(path)) return `🖨️ <b>Stampa</b> ${esc(path.replace('/print/', ''))}${foot}`;
+  if (path === '/api/backup') return isOk ? `💾 <b>Backup scaricato</b>${foot}` : fail('Backup');
+  if (/^\/print\//.test(path)) return isOk ? `🖨️ <b>Stampa</b> ${esc(path.replace('/print/', ''))}${foot}` : null;
 
   if (m === 'GET') return null; // le letture normali non si segnalano
   if (status >= 400) return `⚠️ <b>Richiesta rifiutata ${status}</b>\n${esc(m)} ${esc(path)}\n${esc(short(r.error || '', 200))}${foot}`;

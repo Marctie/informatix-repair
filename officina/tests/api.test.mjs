@@ -367,3 +367,19 @@ test('spese e nota spese in PDF', async () => {
   assert.ok((await big.arrayBuffer()).byteLength > buf.length);
   assert.equal((await a('DELETE', `/api/expenses/${e.id}`)).data.ok, true);
 });
+
+test('notifiche Telegram: testo chiaro, escape HTML, niente segreti', async () => {
+  const { describeEvent } = await import('../notify.mjs');
+  const u = { name: 'Marco', email: 'm@example.com' };
+  const e500 = describeEvent({ method: 'POST', path: '/api/sales', status: 500, user: u, error: 'boom <x> & 123456789:AAAbbbCCCdddEEEfffGGGhhhIIIjjjKKK12' });
+  assert.match(e500, /ERRORE 500/);
+  assert.ok(e500.includes('&lt;x&gt; &amp;') && e500.includes('[token]') && !e500.includes('AAAbbb'));
+  assert.match(describeEvent({ method: 'POST', path: '/api/sales', status: 400, user: u, result: { error: 'Aggiungi almeno un articolo' } }), /Vendita: operazione non riuscita/);
+  const p = describeEvent({ method: 'POST', path: '/api/repairs/1/parts', status: 200, user: u, body: { product_id: 3, qty: 2 }, result: { code: 'R-1', parts: [{ name: 'Display <A&B>' }] } });
+  assert.ok(p.includes('Display &lt;A&amp;B&gt; ×2'));
+  const s = describeEvent({ method: 'PUT', path: '/api/settings', status: 200, user: u, body: { shop_name: 'x', admin_password: 'segreto' } });
+  assert.ok(s.includes('nome negozio') && !s.includes('password') && !s.includes('segreto'));
+  const n = describeEvent({ method: 'POST', path: '/api/repairs', status: 200, user: u, body: { problem: 'x', passcode: '9876' }, result: { code: 'R-1', customer_phone: '3331234567', passcode: '9876' } });
+  assert.ok(!n.includes('9876') && !n.includes('3331234567'));
+  assert.equal(describeEvent({ method: 'GET', path: '/print/customer/9', status: 404, user: u }), null);
+});
