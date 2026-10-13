@@ -48,7 +48,7 @@ describe('Responsive e comodità', () => {
         cy.get('#view').should('not.contain', 'Caricamento…');
         if (w < 1024) {
           cy.get('#bottom-nav').should('be.visible');
-          cy.get('#fab').should('be.visible');
+          cy.get('#nav-new').should('be.visible');
           cy.get('#side').should('not.be.visible');
           cy.get('#more-btn').click();
           cy.get('#more-menu').should('be.visible').and('contain', 'Vendite').and('contain', 'Manuale');
@@ -61,7 +61,7 @@ describe('Responsive e comodità', () => {
 
       it('accettazione veloce usabile (modulo e QR)', () => {
         cy.visit('/');
-        (w < 1024 ? cy.get('#fab') : cy.get('#top-new')).click();
+        (w < 1024 ? cy.get('#nav-new') : cy.get('#top-new')).click();
         cy.get('#rf-name').should('be.visible');
         cy.get('#rf-save').should('be.visible');
         noHorizontalScroll();
