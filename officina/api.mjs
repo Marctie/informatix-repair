@@ -2,6 +2,7 @@
 //  - adminRouter: tutto il gestionale (si monta SOLO su 127.0.0.1, nessun login per ora)
 //  - publicRouter: solo il tracciamento per il cliente (può essere esposto in rete/online)
 import express from 'express';
+import { networkInterfaces } from 'node:os';
 import QRCode from 'qrcode';
 import { db, getSettings, tx } from './db.mjs';
 import * as L from './logic.mjs';
@@ -18,10 +19,27 @@ const wrap = (fn) => async (req, res) => {
 };
 const str = (v) => (v == null ? null : String(v).trim() || null);
 
-export function trackUrl(token, req) {
-  const base = getSettings().public_base_url || process.env.PUBLIC_BASE_URL || `http://${req?.hostname || 'localhost'}:${process.env.PUBLIC_PORT || 4951}`;
-  return `${base.replace(/\/$/, '')}/t/${token}`;
+// IP del PC in rete locale: preferisce Wi-Fi/Ethernet reali, scarta schede virtuali (VirtualBox, VMware, WSL, Docker...).
+export function lanIp() {
+  const cands = [];
+  for (const [name, list] of Object.entries(networkInterfaces())) {
+    for (const n of list || []) {
+      if (n.family !== 'IPv4' || n.internal) continue;
+      const virtual = /vbox|virtual|vmware|vethernet|wsl|docker|hyper-v|loopback|bluetooth/i.test(name) || n.address.startsWith('192.168.56.') || n.address.startsWith('169.254.');
+      const wifi = /wi-?fi|wlan|wireless/i.test(name);
+      cands.push({ address: n.address, score: (virtual ? 0 : 10) + (wifi ? 2 : 0) });
+    }
+  }
+  cands.sort((x, y) => y.score - x.score);
+  return cands[0]?.address || 'localhost';
 }
+
+// Base del link di tracciamento: impostazione "public_base_url" (quando il sito sarà online) oppure IP del PC in rete locale.
+export function trackBase() {
+  const base = getSettings().public_base_url || process.env.PUBLIC_BASE_URL || `http://${lanIp()}:${process.env.PUBLIC_PORT || 4951}`;
+  return base.replace(/\/$/, '');
+}
+export const trackUrl = (token) => `${trackBase()}/t/${token}`;
 
 // ---------- Pubblico ----------
 export const publicRouter = express.Router();
@@ -34,7 +52,7 @@ export const adminRouter = express.Router();
 adminRouter.use(express.json({ limit: '1mb' }));
 const A = adminRouter;
 
-A.get('/api/meta', wrap(() => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: getSettings() })));
+A.get('/api/meta', wrap(() => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: getSettings(), track_base: trackBase() })));
 A.get('/api/dashboard', wrap(() => L.dashboard()));
 A.get('/api/settings', wrap(() => getSettings()));
 A.put('/api/settings', wrap((req) => {
@@ -154,11 +172,11 @@ A.get('/api/products/:id/moves', wrap((req) => db.prepare('SELECT * FROM stock_m
 A.get('/api/repairs', wrap((req) => L.listRepairs({ status: str(req.query.status), q: str(req.query.q), open: req.query.open === '1', customer_id: req.query.customer_id })));
 A.post('/api/repairs', wrap((req) => {
   const r = L.createRepair(req.body);
-  return { ...r, track_url: trackUrl(r.token, req) };
+  return { ...r, track_url: trackUrl(r.token) };
 }));
 A.get('/api/repairs/:id', wrap((req) => {
   const r = L.getRepair(req.params.id);
-  return { ...r, track_url: trackUrl(r.token, req) };
+  return { ...r, track_url: trackUrl(r.token) };
 }));
 A.patch('/api/repairs/:id', wrap((req) => L.updateRepair(req.params.id, req.body)));
 A.post('/api/repairs/:id/status', wrap((req) => L.setStatus(req.params.id, req.body.status, str(req.body.note), req.body.public !== false)));
@@ -194,13 +212,13 @@ A.get('/api/report', wrap((req) => L.report(str(req.query.from), str(req.query.t
 A.get('/print/repair/:id', (req, res) => {
   try {
     const r = L.getRepair(req.params.id);
-    res.type('html').send(printRepair(r, trackUrl(r.token, req), getSettings()));
+    res.type('html').send(printRepair(r, trackUrl(r.token), getSettings()));
   } catch (e) { res.status(e.status || 500).send(e.message); }
 });
 A.get('/print/label/:id', (req, res) => {
   try {
     const r = L.getRepair(req.params.id);
-    res.type('html').send(printLabel(r, trackUrl(r.token, req)));
+    res.type('html').send(printLabel(r, trackUrl(r.token)));
   } catch (e) { res.status(e.status || 500).send(e.message); }
 });
 A.get('/print/sale/:id', (req, res) => {

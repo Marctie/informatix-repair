@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Officina · Informatix Repair</title>
+<link rel="icon" href="data:," />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: {
+    colors: { ink:'#0B0F19', primary:'#111827', secondary:{DEFAULT:'#DC2626',dark:'#B91C1C',light:'#FEE2E2'}, lightbg:'#F5F6F8', line:'#E5E7EB' },
+    fontFamily: { heading:['Poppins','system-ui','sans-serif'], body:['Inter','system-ui','sans-serif'] },
+  } } };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',system-ui,sans-serif;background:#F5F6F8}
+  h1,h2,h3,.font-heading{font-family:'Poppins',system-ui,sans-serif}
+  .card{background:#fff;border:1px solid #E5E7EB;border-radius:1rem}
+  .btn{font-weight:600;border-radius:.7rem;padding:.55rem 1rem;display:inline-flex;align-items:center;justify-content:center;gap:.4rem;transition:.15s;white-space:nowrap;font-size:.875rem;cursor:pointer}
+  .btn-primary{background:#DC2626;color:#fff} .btn-primary:hover{background:#B91C1C} .btn-primary:active{transform:scale(.98)} .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-dark{background:#0B0F19;color:#fff} .btn-dark:hover{background:#1F2937}
+  .btn-green{background:#059669;color:#fff} .btn-green:hover{background:#047857}
+  .btn-outline{border:1px solid #E5E7EB;background:#fff;color:#111827} .btn-outline:hover{background:#F5F6F8;border-color:#D1D5DB}
+  .btn-ghost{color:#6B7280} .btn-ghost:hover{color:#111827;background:#F5F6F8}
+  .btn-sm{padding:.35rem .7rem;font-size:.78rem;border-radius:.55rem}
+  .btn-lg{padding:.85rem 1.4rem;font-size:1rem;border-radius:.9rem}
+  input,select,textarea{border:1px solid #E5E7EB;border-radius:.6rem;padding:.55rem .75rem;width:100%;font-size:.9rem;background:#fff;color:#111827;transition:.15s}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#DC2626;box-shadow:0 0 0 3px rgb(220 38 38/.12)}
+  label.l{font-size:.75rem;font-weight:600;color:#4B5563;margin-bottom:.3rem;display:block}
+  .badge{display:inline-flex;align-items:center;gap:.3rem;border-radius:999px;padding:.2rem .65rem;font-size:.7rem;font-weight:700;white-space:nowrap}
+  .chip{border:1px solid #E5E7EB;background:#fff;border-radius:999px;padding:.3rem .8rem;font-size:.78rem;font-weight:600;color:#4B5563;cursor:pointer;transition:.15s;user-select:none}
+  .chip:hover{border-color:#D1D5DB;color:#111827}
+  .chip.on{background:#0B0F19;color:#fff;border-color:#0B0F19}
+  .chip-red.on{background:#FEF2F2;color:#B91C1C;border-color:#DC2626}
+  .nav a{display:flex;align-items:center;gap:.5rem;padding:.6rem .85rem;border-radius:.7rem;color:#9CA3AF;font-weight:600;font-size:.88rem;transition:.15s}
+  .nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+  .nav a.on{background:#DC2626;color:#fff}
+  .bar{height:7px;background:#EEF0F2;border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:#DC2626;border-radius:99px}
+  .bar.green>i{background:#059669}
+  .modal-bg{background:rgba(11,15,25,.62);backdrop-filter:blur(3px)}
+  .modal-panel{display:flex;flex-direction:column;max-height:calc(100vh - 2rem)}
+  .modal-body{overflow-y:auto}
+  .sec-t{font-size:.7rem;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.06em;margin:1rem 0 .5rem}
+  .sec-t:first-child{margin-top:0}
+  .row-h:hover{background:#FAFAFB}
+  table.t{width:100%;font-size:.85rem} table.t th{text-align:left;font-size:.7rem;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;padding:.5rem .75rem;border-bottom:1px solid #E5E7EB} table.t td{padding:.6rem .75rem;border-bottom:1px solid #F1F2F4;vertical-align:middle}
+  #toast{box-shadow:0 8px 24px -6px rgb(0 0 0/.35)}
+  @media (max-width:1023px){ .sidebar{position:fixed;bottom:0;left:0;right:0;top:auto!important;height:auto!important;flex-direction:row!important;z-index:30;padding:.4rem!important} .sidebar .brand,.sidebar .foot{display:none} .nav{display:flex;width:100%;justify-content:space-around;gap:0!important} .nav a{flex-direction:column;gap:.1rem;font-size:.62rem;padding:.4rem .3rem} main{padding-bottom:5rem!important} }
+</style>
+</head>
+<body class="text-primary">
+<div class="lg:flex min-h-screen">
+  <aside class="sidebar bg-ink text-white lg:w-60 lg:sticky lg:top-0 lg:h-screen flex flex-col p-4 gap-6 shrink-0">
+    <div class="brand flex items-center gap-2.5">
+      <div class="w-10 h-10 rounded-lg flex items-center justify-center font-heading font-bold" style="background:linear-gradient(135deg,#DC2626,#B91C1C)">IX</div>
+      <div><p class="font-heading font-bold text-sm leading-tight">Officina</p><p class="text-[11px] text-gray-400 leading-tight">Informatix Repair</p></div>
+    </div>
+    <nav class="nav flex flex-col gap-1" id="nav"></nav>
+    <p class="foot mt-auto text-[11px] text-gray-500">Solo locale · nessun login<br>Dati in <code>officina/data</code></p>
+  </aside>
+  <main class="flex-1 p-4 lg:p-8 max-w-6xl w-full" id="view"></main>
+</div>
+<div id="modal-root"></div>
+<div id="toast" class="hidden fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl text-white text-sm font-semibold"></div>
+<script src="/app.js" type="module"></script>
+</body>
+</html>
