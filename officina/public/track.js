@@ -26,7 +26,7 @@ function render(d) {
   document.title = `${d.code} · ${d.status_label}`;
   document.getElementById('shop').textContent = d.shop.name;
   const done = d.status === 'delivered' || d.status === 'ready';
-  const steps = d.steps.map((l, i) => `<div class="${i <= d.step ? 'on' : ''} ${i === d.step ? 'now' : ''}">${esc(l)}</div>`).join('');
+  const steps = d.steps.map((l, i) => `<div class="${i <= d.step ? 'on' : ''} ${i === d.step ? 'now' : ''} ${i < d.step || d.status === 'delivered' ? 'done' : ''}"><i></i>${esc(l)}</div>`).join('');
   const eta = d.eta_date && !['delivered', 'cancelled'].includes(d.status)
     ? `<div class="eta"><span style="font-size:24px">🗓️</span><div><small style="color:#6B7280">Consegna stimata</small><br><b>${esc(fdate(d.eta_date))}</b></div></div>` : '';
   const ask = d.awaiting_decision && d.quote_decision !== 'declined'

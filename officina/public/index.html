@@ -60,6 +60,9 @@
   .kpi{padding:1rem;transition:box-shadow .15s} a.kpi:hover{box-shadow:0 6px 18px -8px rgb(16 24 40/.25)}
   .kpi b{display:block;font-family:Poppins,system-ui,sans-serif;font-weight:800;font-size:1.65rem;line-height:1.15}
   .kpi span{font-size:.75rem;color:var(--muted);font-weight:600}
+  .grid-2col > div + div{margin-top:1.1rem}
+  @media (min-width:640px){.grid-2col > div + div{margin-top:0}}
+  @media (max-width:639px){.sel-full{width:100%}}
   .truncate-2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 
   /* ---------- modali ---------- */
@@ -113,7 +116,7 @@
       <div class="max-w-6xl mx-auto w-full px-4 lg:px-8 py-2.5 flex items-center gap-3">
         <div class="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center font-heading font-bold text-white text-sm shrink-0" style="background:linear-gradient(135deg,#DC2626,#B91C1C)">IX</div>
         <div class="relative flex-1 min-w-0">
-          <input id="gsearch" type="search" placeholder="Cerca cliente, telefono, modello, codice…" autocomplete="off" />
+          <input id="gsearch" type="search" placeholder="Cerca cliente, modello, codice…" autocomplete="off" />
           <div id="gsearch-res" class="hidden absolute left-0 right-0 mt-1 card shadow-xl search-pop z-30"></div>
         </div>
         <button id="top-new" class="btn btn-primary hidden lg:inline-flex">＋ Nuova riparazione</button>
