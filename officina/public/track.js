@@ -28,7 +28,7 @@ function render(d) {
   const done = d.status === 'delivered' || d.status === 'ready';
   const steps = d.steps.map((l, i) => `<div class="${i <= d.step ? 'on' : ''} ${i === d.step ? 'now' : ''} ${i < d.step || d.status === 'delivered' ? 'done' : ''}"><i></i>${esc(l)}</div>`).join('');
   const eta = d.eta_date && !['delivered', 'cancelled'].includes(d.status)
-    ? `<div class="eta"><span style="font-size:24px">🗓️</span><div><small style="color:#6B7280">Consegna stimata</small><br><b>${esc(fdate(d.eta_date))}</b></div></div>` : '';
+    ? `<div class="eta"><span class="ico-cal"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><small style="color:#6B7280">Consegna stimata</small><br><b>${esc(fdate(d.eta_date))}</b></div></div>` : '';
   const ask = d.awaiting_decision && d.quote_decision !== 'declined'
     ? `<div class="card ask"><h2>Serve la tua conferma</h2>
         <p style="margin:0">Il preventivo per la riparazione è di <b>${eur(d.quote)}</b>. Vuoi procedere?</p>
@@ -36,7 +36,7 @@ function render(d) {
     : d.quote_decision === 'declined' && d.status === 'quote_pending'
       ? `<div class="card ask"><p style="margin:0">Hai rifiutato il preventivo. Ti contatteremo a breve, oppure chiamaci al <b>${esc(d.shop.phone)}</b>.</p></div>` : '';
   const warranty = d.status === 'delivered' && d.warranty_days
-    ? `<div class="note">Questa riparazione è coperta da garanzia di <b>${d.warranty_days} giorni</b> dalla consegna.</div>` : '';
+    ? `<div class="note"><span>Questa riparazione è coperta da garanzia di <b>${d.warranty_days} giorni</b> dalla consegna.</span></div>` : '';
 
   app.innerHTML = `
     <div class="card">
@@ -47,7 +47,7 @@ function render(d) {
       <div class="steps">${steps}</div>
       <div style="margin-top:8px;font-size:12px;color:#6B7280"><span class="live"></span>Aggiornamento automatico<span class="pct">${d.progress}%</span></div>`}
       ${eta}
-      ${d.customer_note ? `<div class="note">💬 ${esc(d.customer_note)}</div>` : ''}
+      ${d.customer_note ? `<div class="note"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.4 7.5L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg><span>${esc(d.customer_note)}</span></div>` : ''}
       ${warranty}
     </div>
     ${ask}

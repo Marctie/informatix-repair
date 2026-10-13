@@ -240,7 +240,7 @@ export async function openRepairDetail(id, onChange) {
     body.innerHTML = `
       <div class="sticky-head">
         <div class="badges">
-          ${statusBadge(r)}
+          ${statusBadge(r).replace('class="badge ', 'class="badge badge-lg ')}
           ${done ? '' : `<button class="chip chip-red ${r.urgent ? 'on' : ''}" data-act="urgent">🔥 Urgente</button>`}
           ${r.late ? '<span class="badge bg-red-100 text-red-700">⏰ In ritardo</span>' : ''}
           ${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato dal cliente</span>' : ''}
@@ -288,7 +288,7 @@ export async function openRepairDetail(id, onChange) {
             <div class="row tight">
               <a class="btn btn-outline btn-sm" target="_blank" href="/t/${r.token}">👁️ Vista cliente</a>
               <button class="btn btn-outline btn-sm" data-act="copylink">📋 Copia link</button>
-              <button class="btn btn-outline btn-sm" data-act="edit">✏️ Modifica dati</button>
+              <button class="btn btn-outline btn-sm" data-act="edit">✏️ Modifica</button>
             </div>
           </section>
         </div>
