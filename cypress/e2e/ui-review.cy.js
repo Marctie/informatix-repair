@@ -6,7 +6,7 @@
 //  - nessun campo di testo più stretto di 80 px o troppo basso per un dito (44 px sul telefono)
 // Uso:  npm run test:e2e -- --spec cypress/e2e/ui-review.cy.js     (le immagini finiscono in cypress/screenshots)
 const api = (method, url, body) => cy.request({ method, url, body });
-const VIEWPORTS = [['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 860]];
+const VIEWPORTS = [['small', 320, 640], ['phone', 390, 844], ['tablet', 768, 1024], ['desktop', 1280, 860], ['wide', 1536, 864]];
 
 // Verifiche geometriche sul contenuto visibile di una radice (pagina o finestra)
 function checkLayout(rootSel, vpWidth, label) {
