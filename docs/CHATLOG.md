@@ -285,6 +285,27 @@ Vedi sopra: login rimosso, server solo su 127.0.0.1.
 - `.gitignore`: aggiunti `/bot/.venv`, `/bot/.env`, `__pycache__/`.
 - Per usarlo servirà: creare il bot con @BotFather (token nel `bot/.env`) e inserire il proprio ID (comando `/id`).
 
+## Sessione 2026-10-13 (2) – Gestionale Officina (branch `gestionale-officina`)
+
+### Richiesta dell'utente
+Secondo gestionale per Christian, su branch separato: Magazzino, Clienti, Riparazioni, Vendite, Fornitori (+ extra a scelta), con scheda di lavoro veloce in ingresso, tracciamento riparazione per il cliente (progress bar, riepilogo dispositivo, dati personali, tempi stimati, preventivo) mostrato all'accettazione. Regola: **veloce e pratico**, Christian ha poco tempo. Carta bianca.
+
+### Analisi online (sintesi)
+RepairDesk, RepairShopr, Vollstart Repair Desk, RepairWorkshop: ticket con stato e barra di avanzamento, portale cliente senza registrazione, QR per ogni riparazione + etichetta, checklist/accessori in ingresso, approvazione preventivo online, magazzino con scorta minima e ordini fornitore, strumenti GDPR. Sono stati ripresi, semplificati, e aggiunto quel che manca ai software generici (WhatsApp precompilato, cassa giornaliera, garanzia).
+
+### Scelte di progetto
+- Cartella `officina/` (Express 5 + `node:sqlite` incluso in Node 22, nessuna dipendenza nativa; unica nuova dipendenza `qrcode`). Dati in `officina/data/officina.db` (ignorata da git).
+- **Due server**: gestionale su `127.0.0.1:4950` (solo questo PC, nessun login per ora, come da direttiva) e tracciamento cliente su `0.0.0.0:4951` (solo `/t/<token>` e `/api/track/*`, raggiungibile da telefono in rete). Il token del link è casuale (12 caratteri) e il QR lo contiene.
+- Pagina cliente: mai il codice di sblocco, mai note interne; telefono ed email mascherati; il cliente può **approvare/rifiutare il preventivo** dal link.
+- Stati: Ricevuto → In diagnosi → Preventivo da approvare → Approvato / In attesa ricambi → In riparazione → Pronto per il ritiro → Consegnato (+ Annullato). Barra del cliente in 6 passi. Pulsante rapido "Avanza".
+- Se il preventivo cambia a lavori iniziati si torna a "Preventivo da approvare" (nuova approvazione tracciata).
+- Ricambio assegnato a una riparazione scala il magazzino (e lo ripristina se rimosso). Vendite scalano il magazzino. Incassi (acconti, saldi, vendite) in tabella `payments` → cassa giornaliera/report. Documenti non fiscali (nessuno scontrino/fattura: da integrare col registratore telematico/commercialista).
+
+### Funzionalità 1 – Backend (API + DB + stampe + QR)
+- File: `officina/{db,logic,api,print,server}.mjs`. API per clienti, fornitori, prodotti (+movimenti, "da ordinare"), riparazioni (stati, note pubbliche/interne, ricambi, acconti, consegna), vendite, report, impostazioni, QR SVG, stampe (scheda con QR, etichetta 62×30 mm, ricevuta vendita).
+- Test: `npm run test:officina` (7 test su DB temporaneo, tutti OK): magazzino, ingresso riparazione e deduplica cliente per telefono, privacy della vista pubblica (verificato che PIN/telefono/email completi non compaiano), isolamento del server pubblico dal gestionale, flusso stati + approvazione online + consegna e incasso (saldo = preventivo - acconto), nuova approvazione dopo cambio preventivo, vendite e cassa, stampe, protezione eliminazione clienti.
+- Da fare: interfaccia web (dashboard, scheda ingresso veloce, ecc.), pagina cliente, test Cypress su branch dedicato.
+
 ## Routine automatica
 - 2026-09-28 18:03 – pubblicati 2 articoli: "iPhone 18 Pro, il bug che riavvia il telefono dopo un Face ID fallito" e "WhatsApp sta testando un avviso automatico contro le truffe nei messaggi".
 - 2026-09-30 09:03 – pubblicati 2 articoli: "Android, il bollettino di settembre corregge 180 vulnerabilità: il più corposo dell'anno" e "Batterie sostituibili dal 2027, per gli smartphone non ci sarà lo sportellino".
