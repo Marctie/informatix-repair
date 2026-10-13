@@ -150,7 +150,7 @@ function repairRow(r, { showAdvance = true, wa } = {}) {
     </div>
     <div class="flex items-center gap-1.5 shrink-0" data-stop>
       ${link ? `<a href="${link}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" title="Scrivi su WhatsApp" aria-label="WhatsApp">💬<span class="sm:hidden">WhatsApp</span></a>` : ''}
-      ${showAdvance && r.next_status ? `<button class="btn btn-dark btn-sm flex-1 sm:flex-none" data-advance="${r.id}" data-next="${r.next_status}">${esc(r.next_label)} →</button>` : ''}
+      ${showAdvance && r.next_status ? `<button class="btn btn-dark btn-sm btn-wrap flex-1 sm:flex-none" data-advance="${r.id}" data-next="${r.next_status}">${esc(r.next_label)} →</button>` : ''}
     </div>
   </div>`;
 }
