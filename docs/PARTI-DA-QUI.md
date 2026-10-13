@@ -35,6 +35,7 @@ Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-r
 8. **Progetto Analisi** (CHATLOG "Progetto Analisi") e, per ultimi, **Buoni sconto/regalo** e **Carte fedelta' NFC** (CHATLOG "Nuovi sviluppi richiesti ... Buoni"): il regolamento punti arriva da Christian.
 
 ## Domande ancora aperte
+**L'elenco completo e aggiornato e' in `docs/DOMANDE-APERTE.md`** (da mandare a Christian tutte insieme). Sotto, il riepilogo storico:
 - Email di Christian e delle 3 postazioni (arrivano da Christian); alias con Cloudflare Email Routing per le postazioni?
 - Ruolo del proprietario: admin protetto (default).
 - Destino del bot Telegram online.
