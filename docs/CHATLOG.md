@@ -715,3 +715,8 @@ Sezione "Buoni": creare buoni sconto (importo o %) e buoni regalo (credito) con 
 ### Carte fedelta' per cliente (NFC)
 Per ogni cliente: saldo punti (sempre consultabile dal gestionale, anche **senza carta**), CRUD punti (accredito, riscatto, rettifica) con storico; stato "carta creata si/no"; se manca e il cliente la chiede, parte il flusso "associa carta" con il lettore NFC. **Regolamento punti in arrivo da Christian** (per ora solo struttura: `loyalty_accounts` con `card_uid` univoco opzionale + `loyalty_moves` registro movimenti; i punti stanno nel database, MAI sulla carta). Acquisti incrementano i punti, riscatti li detraggono.
 Scelta hardware (da validare con prova di Christian): la carta contiene solo l'UID. Lettore USB "emulazione tastiera" (come la pistola codici: riusa `isScanEnter`) oppure telefono Android con Web NFC (https); lettori PC/SC tipo ACR122U NON sono leggibili dal browser senza software locale. Normalizzare il formato dell'UID (esadecimale/decimale, ordine byte) al primo abbinamento. Fallback: codice a barre sulla carta o ricerca per telefono.
+
+## Analisi - prima parte fatta (2026-10-13, notte)
+- `GET /api/analytics?from&to` (solo admin) + pagina **Analisi** (`officina/public/analytics.js`, schede Riparazioni / Incassi / Vendite, barre con valori scritti). Test API: 16 verdi. Online (deploy fatto).
+- **Manuale aggiornato** (`officina/public/manuale.html`): accesso online, backup nel cloud, pagamento "non tracciato", sezioni nuove 15 Utenti e 16 Analisi. REGOLA: ogni sviluppo aggiorna anche il manuale.
+- Da fare: test Cypress per Analisi/Utenti (ui-review e responsive) su `cypress-tests`; scheda Magazzino/rotazione/avvisi/notifiche; schermate del manuale per Analisi e Utenti.
