@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS = {
   shop_phone: '+39 376 234 4151',
   public_base_url: '',
   default_warranty_days: '90',
+  cash_show_untracked: '1',
   terms:
     'Il preventivo è indicativo fino all’approvazione. I dispositivi non ritirati entro 60 giorni dalla comunicazione di fine lavori possono essere trattenuti a copertura delle spese. Il negozio non risponde dei dati presenti sul dispositivo: si consiglia di effettuare un backup prima della consegna. Garanzia sulla riparazione secondo quanto indicato in ricevuta.',
 };

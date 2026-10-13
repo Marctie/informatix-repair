@@ -696,3 +696,6 @@ Richiesta di Christian: nel magazzino importare un PDF o riepilogo ordine del fo
 4. Avvisi (sezione Notifiche e/o home): al nuovo ordine, se un pezzo gia' in magazzino dello stesso fornitore ha prezzo diverso dall'ultimo ordine, mostrare il dettaglio (piu' alto / piu' basso della volta scorsa).
 5. Le vendite scalano gia' le scorte: aggiungere soglie di scorta minima **personalizzabili da Impostazioni** (globale + per prodotto) e avvisi (anche in home) "il prodotto X sta per esaurire, da riordinare".
 Note tecniche: lettura PDF nel browser (pdf.js), schermata di revisione prima di confermare (i PDF dei fornitori sono tutti diversi), PDF scansionati = OCR da valutare; tabella storico prezzi (`price_history`) e tabella `notifications`; D1 + Worker invariati. Serve almeno un PDF di esempio per fornitore.
+
+## Aggiunta (2026-10-13, notte) – Pagamento "non tracciato" e opzione cassa
+- Nuovo metodo di pagamento **"non tracciato"** su vendite, saldo/acconto riparazioni. Impostazioni → Cassa: "Conteggiali nella cassa" (default) oppure "Non mostrarli nella cassa" (setting `cash_show_untracked`). I pagamenti restano SEMPRE salvati nel database (magazzino e riparazioni coerenti); se esclusi non entrano in totali, grafico e incasso di oggi, e la Cassa mostra una nota col numero di pagamenti esclusi. Test API: 15 verdi.
