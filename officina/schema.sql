@@ -1,17 +1,3 @@
-// Database SQLite del gestionale officina (node:sqlite, nessuna dipendenza nativa).
-import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-export const DB_PATH = process.env.OFFICINA_DB || join(HERE, 'data', 'officina.db');
-if (DB_PATH !== ':memory:') mkdirSync(dirname(DB_PATH), { recursive: true });
-
-export const db = new DatabaseSync(DB_PATH);
-db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
-
-db.exec(`
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 CREATE TABLE IF NOT EXISTS customers (
@@ -45,7 +31,7 @@ CREATE TABLE IF NOT EXISTS repairs (
   customer_id INTEGER NOT NULL REFERENCES customers(id),
   device_type TEXT NOT NULL DEFAULT 'smartphone', brand_model TEXT NOT NULL, serial TEXT,
   problem TEXT NOT NULL, accessories TEXT, condition_notes TEXT, passcode TEXT,
-  status TEXT NOT NULL DEFAULT 'received',
+  status TEXT NOT NULL DEFAULT 'received', urgent INTEGER NOT NULL DEFAULT 0,
   quote REAL, deposit REAL NOT NULL DEFAULT 0, final_price REAL,
   eta_date TEXT, warranty_days INTEGER NOT NULL DEFAULT 90,
   quote_decision TEXT, quote_decided_at TEXT,
@@ -90,41 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_repairs_status ON repairs(status);
 CREATE INDEX IF NOT EXISTS idx_repairs_customer ON repairs(customer_id);
 CREATE INDEX IF NOT EXISTS idx_events_repair ON repair_events(repair_id);
 CREATE INDEX IF NOT EXISTS idx_payments_created ON payments(created_at);
-`);
-
-// Migrazioni leggere: aggiungono colonne ai database creati con versioni precedenti.
-function addColumn(table, column, ddl) {
-  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
-  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
-}
-addColumn('repairs', 'urgent', 'INTEGER NOT NULL DEFAULT 0');
-
-export const DEFAULT_SETTINGS = {
-  shop_name: 'Informatix Repair',
-  shop_address: 'Via Pecorari 178, Nocera Superiore (SA)',
-  shop_phone: '+39 376 234 4151',
-  public_base_url: '',
-  default_warranty_days: '90',
-  terms:
-    'Il preventivo è indicativo fino all’approvazione. I dispositivi non ritirati entro 60 giorni dalla comunicazione di fine lavori possono essere trattenuti a copertura delle spese. Il negozio non risponde dei dati presenti sul dispositivo: si consiglia di effettuare un backup prima della consegna. Garanzia sulla riparazione secondo quanto indicato in ricevuta.',
-};
-
-for (const [k, v] of Object.entries(DEFAULT_SETTINGS)) {
-  db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(k, v);
-}
-
-export const getSettings = () =>
-  Object.fromEntries(db.prepare('SELECT key, value FROM settings').all().map((r) => [r.key, r.value]));
-
-/** Esegue fn in transazione; se lancia, annulla tutto. */
-export function tx(fn) {
-  db.exec('BEGIN');
-  try {
-    const out = fn();
-    db.exec('COMMIT');
-    return out;
-  } catch (e) {
-    db.exec('ROLLBACK');
-    throw e;
-  }
-}
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL UNIQUE, name TEXT, role TEXT NOT NULL DEFAULT 'staff',
+  protected INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

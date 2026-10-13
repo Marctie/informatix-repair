@@ -17,3 +17,5 @@ __pycache__/
 # Cypress
 /cypress/screenshots
 /cypress/videos
+
+.wrangler/
