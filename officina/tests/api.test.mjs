@@ -132,7 +132,8 @@ test('cambio preventivo durante i lavori richiede una nuova approvazione', async
   await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: false });
   const dash = (await a('GET', '/api/dashboard')).data;
   assert.ok(dash.declined.some((x) => x.id === r.id));
-  assert.equal((await a('POST', `/api/repairs/${r.id}/status`, { status: 'quote_pending' })).status, 200);
+  // già in questo stato: nessuna doppia registrazione
+  assert.equal((await a('POST', `/api/repairs/${r.id}/status`, { status: 'quote_pending' })).status, 400);
 });
 
 test('vendite: scalano il magazzino, rispettano sconto e finiscono in cassa', async () => {
@@ -164,4 +165,26 @@ test('clienti: storico e protezione dall’eliminazione', async () => {
   const c = (await a('GET', `/api/customers/${list[0].id}`)).data;
   assert.ok(c.repairs.length >= 2);
   assert.equal((await a('DELETE', `/api/customers/${list[0].id}`)).status, 409);
+});
+
+test('controlli: importi negativi, telefono scritto in modi diversi, stato dopo la consegna', async () => {
+  assert.equal((await a('POST', '/api/repairs', { customer: { name: 'Neg' }, brand_model: 'x', problem: 'y', quote: -5 })).status, 400);
+  assert.equal((await a('POST', '/api/products', { name: 'Prova', price: -1 })).status, 400);
+  const c1 = (await a('POST', '/api/repairs', { customer: { name: 'Luca Bianchi', phone: '+39 340 111 2222' }, brand_model: 'Pixel 7', problem: 'Batteria' })).data;
+  const c2 = (await a('POST', '/api/repairs', { customer: { name: 'Luca B.', phone: '3401112222' }, brand_model: 'Pixel 8', problem: 'Display' })).data;
+  assert.equal(c1.customer_id, c2.customer_id, 'stesso numero => stesso cliente');
+  await a('POST', `/api/repairs/${c1.id}/deliver`, { final_price: 50 });
+  assert.equal((await a('POST', `/api/repairs/${c1.id}/status`, { status: 'repairing' })).status, 409);
+});
+
+test('backup, riepilogo magazzino e incassi per giorno', async () => {
+  const bk = await fetch(`${A}/api/backup`);
+  assert.equal(bk.status, 200);
+  const buf = Buffer.from(await bk.arrayBuffer());
+  assert.equal(buf.subarray(0, 15).toString(), 'SQLite format 3');
+  const sum = (await a('GET', '/api/stock/summary')).data;
+  assert.ok(sum.items >= 2 && sum.value_price > 0);
+  const rep = (await a('GET', '/api/report')).data;
+  assert.equal(rep.by_day.length, 1);
+  assert.equal(rep.by_day[0].total, rep.total);
 });
