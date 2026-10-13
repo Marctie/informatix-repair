@@ -16,7 +16,7 @@
     "PUBLIC_HOST": "riparazioni.informatixrepair.com",
     "PUBLIC_BASE_URL": "https://riparazioni.informatixrepair.com",
     "OWNER_EMAIL": "marcopeluso99@gmail.com",
-    "ACCESS_TEAM_DOMAIN": "fragrant-frog-e75a.cloudflareaccess.com",
+    "ACCESS_TEAM_DOMAIN": "team-informatix.cloudflareaccess.com",
     "ACCESS_AUD": "70f87bbf5f546580502cd6a7d71863e911bdb7b7f7fe41c6a20fd5a9d208970b"
   }
 }
