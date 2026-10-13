@@ -29,7 +29,7 @@ const BASE_CSS = `
   .pass{font-family:"Courier New",monospace;font-size:16px;font-weight:700;border:2px dashed #111;border-radius:6px;padding:5px 10px;min-height:32px}
   .page{page-break-after:always} .page:last-child{page-break-after:auto}
   .noprint{margin-bottom:12px} .noprint button{padding:8px 14px;font-weight:700;cursor:pointer}
-  @media print{ .noprint{display:none} body{padding:0} @page{size:A4;margin:12mm} }
+  @media print{ .noprint{display:none} body{padding:0;font-size:11px} h2{margin:9px 0 3px} .lines{height:14px} @page{size:A4;margin:12mm} }
 `;
 
 function page(title, body, extraCss = '', req = {}) {
