@@ -23,15 +23,23 @@ export async function stockView(el, params) {
     if (sum && $('#p-kpi', el)) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], [eur(sum.value_cost), 'Valore a costo', ''], [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
     if (tab === 'reorder') return loadReorder();
     const rows = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
-    list.innerHTML = `<div class="tbl-wrap"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th><th>Costo</th><th>Prezzo</th><th></th></tr></thead><tbody>` +
-      ((rows || []).map((p) => {
-        const low = p.min_qty > 0 && p.qty <= p.min_qty;
-        return `<tr class="row-h cursor-pointer" data-id="${p.id}"><td><b>${esc(p.name)}</b><div class="text-xs text-gray-400">${esc(p.sku || '')} ${p.location ? '· ' + esc(p.location) : ''} ${p.supplier_name ? '· ' + esc(p.supplier_name) : ''}</div></td>
-          <td class="text-gray-500">${esc(p.category || '—')}</td>
-          <td><span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span></td>
-          <td>${eur(p.cost)}</td><td><b>${eur(p.price)}</b></td>
-          <td class="whitespace-nowrap" data-stop><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="-1">−1</button> <button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="1">+1</button></td></tr>`;
-      }).join('') || '<tr><td colspan="6" class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</td></tr>') + '</tbody></table></div>';
+    const badge = (p) => {
+      const low = p.min_qty > 0 && p.qty <= p.min_qty;
+      return `<span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span>`;
+    };
+    const meta = (p) => [p.sku, p.location, p.supplier_name].filter(Boolean).map(esc).join(' · ');
+    const stepper = (p) => `<span class="row tight" data-stop><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="-1" aria-label="Togli uno">−1</button><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="1" aria-label="Aggiungi uno">+1</button></span>`;
+    const list2 = rows || [];
+    if (!list2.length) { list.innerHTML = '<p class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</p>'; return; }
+    list.innerHTML =
+      `<div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th><th>Costo</th><th>Prezzo</th><th></th></tr></thead><tbody>` +
+      list2.map((p) => `<tr class="row-h" style="cursor:pointer" data-id="${p.id}"><td><b>${esc(p.name)}</b><div class="hint">${meta(p)}</div></td>
+          <td class="hint" style="font-size:.85rem">${esc(p.category || '—')}</td><td>${badge(p)}</td><td>${eur(p.cost)}</td><td><b>${eur(p.price)}</b></td><td data-stop style="white-space:nowrap">${stepper(p)}</td></tr>`).join('') +
+      '</tbody></table></div>' +
+      `<div class="only-narrow">${list2.map((p) => `<div class="pcard" style="cursor:pointer" data-id="${p.id}">
+          <div class="top"><span class="name">${esc(p.name)}</span>${badge(p)}</div>
+          <div class="sub">${[p.category, meta(p)].filter(Boolean).join(' · ')}</div>
+          <div class="top" style="align-items:center"><span><span class="sub">Costo</span> ${eur(p.cost)} &nbsp;·&nbsp; <span class="sub">Prezzo</span> <b>${eur(p.price)}</b></span>${stepper(p)}</div></div>`).join('')}</div>`;
   }
 
   async function loadReorder() {
@@ -44,9 +52,9 @@ export async function stockView(el, params) {
       const wa = waLink(sup.supplier_phone, text);
       const mail = sup.supplier_email ? `mailto:${sup.supplier_email}?subject=${encodeURIComponent('Ordine')}&body=${encodeURIComponent(text)}` : null;
       return `<div class="border-b border-line last:border-0"><div class="px-4 py-3 bg-lightbg flex items-center justify-between gap-2 flex-wrap"><b>🚚 ${esc(name)}</b>
-        <div class="flex gap-2">${wa ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${wa}">💬 Ordina su WhatsApp</a>` : ''}${mail ? `<a class="btn btn-outline btn-sm" href="${mail}">✉️ Email</a>` : ''}
+        <div class="flex gap-2 flex-wrap">${wa ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${wa}">💬 Ordina su WhatsApp</a>` : ''}${mail ? `<a class="btn btn-outline btn-sm" href="${mail}">✉️ Email</a>` : ''}
         <button class="btn btn-outline btn-sm" data-copy="${esc(text)}">📋 Copia ordine</button></div></div>
-        ${items.map((p) => `<div class="px-4 py-2 flex justify-between text-sm border-t border-line"><span>${esc(p.name)}</span><span class="text-gray-500">${p.qty} in magazzino · minimo ${p.min_qty} · suggerito ${Math.max(1, p.min_qty * 2 - p.qty)}</span></div>`).join('')}</div>`;
+        ${items.map((p) => `<div class="px-4 py-2.5 border-t border-line" style="display:flex;justify-content:space-between;gap:.75rem;flex-wrap:wrap;font-size:.9rem"><span style="min-width:0;overflow-wrap:anywhere">${esc(p.name)}</span><span class="hint">${p.qty} in magazzino · minimo ${p.min_qty} · suggerito <b>${Math.max(1, p.min_qty * 2 - p.qty)}</b></span></div>`).join('')}</div>`;
     }).join('') || '<p class="empty">Niente da riordinare: tutte le scorte sono sopra il minimo ✔</p>';
   }
 
@@ -58,7 +66,7 @@ export async function stockView(el, params) {
     const mv = e.target.closest('[data-mv]');
     if (mv) { e.stopPropagation(); await safe(() => api('POST', `/api/products/${mv.dataset.mv}/move`, { delta: Number(mv.dataset.d), reason: 'rettifica rapida' })); return load(); }
     if (e.target.closest('[data-stop]')) return;
-    const row = e.target.closest('tr[data-id]');
+    const row = e.target.closest('tr[data-id], .pcard[data-id]');
     if (row) productForm(Number(row.dataset.id), load);
   });
   $('#p-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load(); });

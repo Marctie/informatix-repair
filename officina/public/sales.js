@@ -28,7 +28,7 @@ export async function salesView(el) {
           <div class="flex items-start justify-between gap-2"><span class="font-semibold min-w-0">${esc(i.name)}</span><button class="text-secondary p-1" data-rm="${idx}" aria-label="Rimuovi">✕</button></div>
           <div class="flex items-center gap-2 mt-1.5 flex-wrap">
             <button class="btn btn-outline btn-sm" data-q="${idx}" data-d="-1" aria-label="Meno">−</button><b class="w-6 text-center">${i.qty}</b><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="1" aria-label="Più">+</button>
-            <span class="text-gray-400">×</span><input class="!w-24 !min-h-0 !py-1" inputmode="decimal" data-p="${idx}" value="${i.unit_price}" aria-label="Prezzo unitario" />
+            <span class="text-gray-400">×</span><input style="width:6.5rem" inputmode="decimal" data-p="${idx}" value="${i.unit_price}" aria-label="Prezzo unitario" />
             <b class="ml-auto">${eur(i.qty * i.unit_price)}</b></div></div>`).join('')}
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 items-end"><div><label class="l">Sconto €</label><input id="s-disc" inputmode="decimal" value="0" /></div>
           <div><label class="l">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
@@ -127,8 +127,11 @@ export async function cashView(el) {
         <div class="flex items-end gap-1.5 h-36 overflow-x-auto pb-1">${r.by_day.map((d) => `<div class="flex flex-col items-center justify-end h-full min-w-[2.2rem] flex-1" title="${fdate(d.day)}: ${eur(d.total)}">
           <span class="text-[10px] text-gray-500 mb-1">${Math.round(d.total)}</span><div class="w-full rounded-t bg-secondary" style="height:${Math.max(4, (d.total / max) * 100)}%"></div>
           <span class="text-[10px] text-gray-400 mt-1">${d.day.slice(8)}/${d.day.slice(5, 7)}</span></div>`).join('')}</div></div>` : ''}
-      <div class="card overflow-hidden"><div class="tbl-wrap"><table class="t"><thead><tr><th>Data</th><th>Voce</th><th>Metodo</th><th style="text-align:right">Importo</th></tr></thead><tbody>
-      ${r.rows.map((p) => `<tr><td class="whitespace-nowrap">${fdt(p.created_at)}</td><td>${esc(p.label)}</td><td>${esc(p.method)}</td><td style="text-align:right"><b>${eur(p.amount)}</b></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nessun incasso nel periodo.</td></tr>'}</tbody></table></div></div>
+      <div class="card overflow-hidden">
+        <div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Data</th><th>Voce</th><th>Metodo</th><th style="text-align:right">Importo</th></tr></thead><tbody>
+        ${r.rows.map((p) => `<tr><td style="white-space:nowrap">${fdt(p.created_at)}</td><td>${esc(p.label)}</td><td>${esc(p.method)}</td><td style="text-align:right"><b>${eur(p.amount)}</b></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nessun incasso nel periodo.</td></tr>'}</tbody></table></div>
+        <div class="only-narrow">${r.rows.map((p) => `<div class="pcard"><div class="top"><span class="name">${esc(p.label)}</span><b>${eur(p.amount)}</b></div><div class="sub">${fdt(p.created_at)} · ${esc(p.method)}</div></div>`).join('') || '<p class="empty">Nessun incasso nel periodo.</p>'}</div>
+      </div>
       <p class="text-xs text-gray-400 mt-3">Riepilogo gestionale non fiscale: scontrini e fatture vanno emessi con il registratore telematico o il programma di fatturazione.</p>`;
   }
   el.addEventListener('click', (e) => {
