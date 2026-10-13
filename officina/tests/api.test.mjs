@@ -342,3 +342,28 @@ test('avvisi: scorta bassa/esaurita, prodotto fermo, soglie da Impostazioni', as
   await a('PUT', '/api/settings', { low_stock_default: '0', stale_days: '90' });
   await a('DELETE', '/api/demo');
 });
+
+test('spese e nota spese in PDF', async () => {
+  const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
+  assert.equal((await a('POST', '/api/expenses', { description: '', amount: 10 })).status, 400);
+  assert.equal((await a('POST', '/api/expenses', { description: 'Prova', amount: -5 })).status, 400);
+  assert.equal((await a('POST', '/api/expenses', { description: 'Prova', amount: 50, vat: 80 })).status, 400);
+  const e = (await a('POST', '/api/expenses', { spent_on: day, description: 'Cartucce stampante “àèìòù” € ★', category: 'attrezzatura', vendor: 'Cartoleria', amount: '45,50', vat: 8.2, doc_type: 'fattura', doc_number: '12/A', paid_by: 'Christian', reimbursable: true })).data;
+  assert.equal(e.amount, 45.5);
+  assert.equal((await a('PUT', `/api/expenses/${e.id}`, { ...e, amount: 50 })).data.amount, 50);
+  const list = (await a('GET', `/api/expenses?from=${day}&to=${day}`)).data;
+  assert.equal(list.total, 50);
+  assert.equal(list.to_reimburse, 50);
+  const res = await fetch(`${A}/api/expenses-pdf?from=${day}&to=${day}&who=Christian`);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'application/pdf');
+  const buf = Buffer.from(await res.arrayBuffer());
+  assert.equal(buf.subarray(0, 5).toString(), '%PDF-');
+  assert.ok(buf.length > 1500);
+  // molte righe: il PDF si estende su piu' pagine senza errori
+  for (let i = 0; i < 45; i++) await a('POST', '/api/expenses', { spent_on: day, description: `Voce lunga numero ${i} con una descrizione piuttosto estesa per verificare l’andata a capo`, amount: 10 + i, category: 'altro' });
+  const big = await fetch(`${A}/api/expenses-pdf?from=${day}&to=${day}`);
+  assert.equal(big.status, 200);
+  assert.ok((await big.arrayBuffer()).byteLength > buf.length);
+  assert.equal((await a('DELETE', `/api/expenses/${e.id}`)).data.ok, true);
+});

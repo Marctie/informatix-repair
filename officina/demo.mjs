@@ -125,6 +125,23 @@ export async function loadDemo() {
     add("INSERT INTO payments (id,kind,ref_id,label,amount,method,created_at) VALUES (?,?,?,?,?,?,?)", --pay, 'sale', sid, `Vendita ${code}`, total, method, ts(d, hh));
   }
 
+  // ---- Spese (per la nota spese): giorni fa, descrizione, categoria, fornitore, importo, IVA, metodo, documento, numero, chi ha pagato, da rimborsare
+  const X = [
+    [26, 'Ordine display e batterie', 'ricambi e merce', 'TechParts Italia', 366, 66, 'bonifico', 'fattura', '2026/118', 'Christian', 0],
+    [22, 'Bolletta energia elettrica', 'utenze', 'Energia Sud', 118.4, 21.35, 'bonifico', 'fattura', 'E-55821', 'Christian', 0],
+    [19, 'Carburante per ritiro merce', 'trasporti e carburante', 'Distributore Q8', 45, 8.11, 'contanti', 'scontrino', null, 'Christian', 1],
+    [15, 'Cacciaviti di precisione e stazione saldante', 'attrezzatura', 'Ferramenta Rossi', 89.9, 16.21, 'carta', 'scontrino', null, 'Christian', 0],
+    [12, 'Pranzo con fornitore', 'pasti e trasferte', 'Ristorante Da Gigi', 38, 3.45, 'contanti', 'ricevuta', 'R-204', 'Christian', 1],
+    [9, 'Affitto locale (mese)', 'affitto', 'Immobiliare Esposito', 650, 0, 'bonifico', 'ricevuta', 'AFF-10', 'Christian', 0],
+    [6, 'Consulenza commercialista (trimestre)', 'consulenze', 'Studio Verdi', 183, 33, 'bonifico', 'fattura', '48/2026', 'Christian', 0],
+    [3, 'Cavi e accessori per il negozio', 'ricambi e merce', 'Cavi&Co Distribuzione', 74.2, 13.38, 'carta', 'fattura', 'CC-9921', 'Christian', 0],
+    [1, 'Volantini promozionali', 'marketing', 'Tipografia Nocera', 52, 9.38, 'contanti', 'senza', null, 'Christian', 1],
+  ];
+  let xc = 0;
+  for (const [d, desc, cat, vendor, amount, vat, method, doc, num, by, reimb] of X) {
+    add("INSERT INTO expenses (id,spent_on,description,category,vendor,amount,vat,method,doc_type,doc_number,paid_by,reimbursable,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      --xc, ts(d, '12:00').slice(0, 10), `${desc} (DEMO)`, cat, vendor, amount, vat, method, doc === 'senza' ? 'nessuno' : doc, num, by, reimb, ts(d, '12:00'));
+  }
   for (let i = 0; i < S.length; i += 80) await db.batch(S.slice(i, i + 80));
   return { ok: true, ...(await demoStatus()) };
 }
@@ -132,6 +149,7 @@ export async function loadDemo() {
 export async function deleteDemo() {
   const D = [
     'DELETE FROM payments WHERE id < 0',
+    'DELETE FROM expenses WHERE id < 0',
     'DELETE FROM sale_items WHERE id < 0 OR sale_id < 0',
     'DELETE FROM sales WHERE id < 0',
     'DELETE FROM repair_parts WHERE id < 0 OR repair_id < 0',

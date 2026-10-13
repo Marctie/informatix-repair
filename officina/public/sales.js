@@ -1,6 +1,6 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
-import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta } from './util.js';
+import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
@@ -124,14 +124,18 @@ export async function salesView(el) {
 export async function cashView(el, qs = new URLSearchParams()) {
   const days0 = Math.max(0, Number(qs.get('days')) || 0);
   let from = days0 ? addDays(-days0) : today(), to = today();
+  let expRows = [];
   const DOW = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
   el.innerHTML = `${AN_CSS}
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Cassa</h1></div>
     <div class="flex gap-2 items-center flex-wrap" id="c-period"><span class="chip" data-r="0">Oggi</span><span class="chip" data-r="7">7 giorni</span><span class="chip" data-r="30">30 giorni</span><span class="chip" data-r="90">90 giorni</span>
-    <input type="date" id="c-from" class="!w-auto" value="${from}" aria-label="Dal" /><span class="text-gray-400">→</span><input type="date" id="c-to" class="!w-auto" value="${to}" aria-label="Al" /></div><div id="c-out" data-an></div>`;
+    <input type="date" id="c-from" class="!w-auto" value="${from}" aria-label="Dal" /><span class="text-gray-400">→</span><input type="date" id="c-to" class="!w-auto" value="${to}" aria-label="Al" /></div>
+    <div class="flex gap-2 flex-wrap"><button class="btn btn-outline" id="c-newexp">＋ Nuova spesa</button><button class="btn btn-dark" id="c-nota">📄 Genera nota spese (PDF)</button></div><div id="c-out" data-an></div>`;
   async function load() {
     const r = await safe(() => api('GET', `/api/report?from=${from}&to=${to}`));
-    if (!r || !$('#c-out', el)) return;
+    const ex = await safe(() => api('GET', `/api/expenses?from=${from}&to=${to}`));
+    if (!r || !ex || !$('#c-out', el)) return;
+    expRows = ex.rows;
     const max = Math.max(1, ...r.by_day.map((d) => d.total));
     const days = Math.max(1, Math.round((new Date(`${r.to}T00:00:00Z`) - new Date(`${r.from}T00:00:00Z`)) / 86400000) + 1);
     // raggruppamenti calcolati sull'elenco dei singoli incassi
@@ -145,11 +149,13 @@ export async function cashView(el, qs = new URLSearchParams()) {
     const byDow = group((p) => DOW[new Date(`${p.created_at.slice(0, 10)}T12:00:00Z`).getUTCDay()]).sort((x, y) => DOW.indexOf(x.name) - DOW.indexOf(y.name));
     const pct = (v) => (r.total > 0 ? ` · ${Math.round((v / r.total) * 100)}%` : '');
     $('#c-out', el).innerHTML = `
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
         ${kpi(eur(r.total), 'Incassato nel periodo', 'text-secondary')}
         ${kpi(r.rows.length, r.rows.length === 1 ? 'Operazione' : 'Operazioni')}
         ${kpi(eur(r.total / days), 'Media al giorno')}
         ${kpi(eur(r.parts_cost), 'Costo ricambi e merce venduta', 'text-gray-600')}
+        ${kpi(eur(ex.total), 'Spese nel periodo', 'text-amber-600')}
+        ${kpi(eur(r.total - ex.total), 'Incassi meno spese', r.total - ex.total >= 0 ? 'text-emerald-600' : 'text-red-600')}
       </div>
       ${r.untracked_excluded ? `<p class="hint">${r.untracked_excluded} ${r.untracked_excluded === 1 ? 'pagamento “non tracciato” non è conteggiato' : 'pagamenti “non tracciato” non sono conteggiati'} (impostazione in Impostazioni → Cassa).</p>` : ''}
       ${r.rows.length ? `<div class="an-cols">
@@ -168,9 +174,19 @@ export async function cashView(el, qs = new URLSearchParams()) {
         ${r.rows.map((p) => `<tr><td style="white-space:nowrap">${fdt(p.created_at)}</td><td>${esc(p.label)}</td><td>${esc(p.method)}</td><td style="text-align:right"><b>${eur(p.amount)}</b></td></tr>`).join('') || '<tr><td colspan="4" class="empty">Nessun incasso nel periodo.</td></tr>'}</tbody></table></div>
         <div class="only-narrow">${r.rows.map((p) => `<div class="pcard"><div class="top"><span class="name">${esc(p.label)}</span><b>${eur(p.amount)}</b></div><div class="sub">${fdt(p.created_at)} · ${esc(p.method)}</div></div>`).join('') || '<p class="empty">Nessun incasso nel periodo.</p>'}</div>
       </section>
+      <section class="card overflow-hidden">
+        <h3 class="sec-t" style="padding:1rem 1rem .2rem">Spese del periodo (${ex.rows.length})</h3>
+        ${ex.rows.length ? `<div>${ex.rows.map((x) => `<div class="row-h flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-exp="${x.id}">
+          <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(x.description)}</p><p class="text-xs text-gray-500">${fdate(x.spent_on)} · ${esc(x.category)}${x.vendor ? ' · ' + esc(x.vendor) : ''}${x.doc_type === 'nessuno' ? ' · <b class="text-red-600">senza giustificativo</b>' : ''}${x.reimbursable ? ' · da rimborsare' : ''}</p></div>
+          <b>${eur(x.amount)}</b></div>`).join('')}</div>` : '<p class="empty">Nessuna spesa registrata nel periodo.</p>'}
+      </section>
       <p class="hint">Riepilogo gestionale non fiscale: scontrini e fatture vanno emessi con il registratore telematico o il programma di fatturazione.</p>`;
   }
+  $('#c-newexp', el).onclick = () => expenseForm(null, load);
+  $('#c-nota', el).onclick = () => notaDialog(() => ({ from, to }));
   el.addEventListener('click', (e) => {
+    const x = e.target.closest('[data-exp]');
+    if (x) { expenseForm(expRows.find((r) => r.id === Number(x.dataset.exp)), load); return; }
     const c = e.target.closest('[data-r]'); if (!c) return;
     to = today(); from = addDays(-Number(c.dataset.r));
     $('#c-from', el).value = from; $('#c-to', el).value = to; load();
@@ -178,6 +194,71 @@ export async function cashView(el, qs = new URLSearchParams()) {
   $('#c-from', el).onchange = (e) => { from = e.target.value; load(); };
   $('#c-to', el).onchange = (e) => { to = e.target.value; load(); };
   await load();
+}
+
+const METHODS = ['contanti', 'carta', 'bonifico', 'non tracciato'];
+const DOC_LABEL = { scontrino: 'Scontrino', fattura: 'Fattura', ricevuta: 'Ricevuta', nessuno: 'Senza giustificativo' };
+const opt = (list, sel, label = (v) => v) => list.map((v) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(label(v))}</option>`).join('');
+
+async function expenseForm(x, done) {
+  const meta = await safe(() => api('GET', '/api/expenses/meta'));
+  if (!meta) return;
+  let lastBy = '';
+  try { lastBy = localStorage.getItem('ex-by') || ''; } catch { /* facoltativo */ }
+  const m = openModal(`<div class="sec">
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="ex-date">Data</label><input id="ex-date" type="date" value="${esc(x?.spent_on || today())}" /></div>
+        <div class="field"><label class="l" for="ex-amt">Importo (€) *</label><input id="ex-amt" inputmode="decimal" value="${x ? String(x.amount).replace('.', ',') : ''}" placeholder="0,00" /></div>
+      </div>
+      <div class="field"><label class="l" for="ex-desc">Descrizione / causale *</label><input id="ex-desc" value="${esc(x?.description || '')}" placeholder="Es. Cartucce per la stampante" /></div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="ex-cat">Categoria</label><select id="ex-cat">${opt(meta.categories, x?.category || 'altro')}</select></div>
+        <div class="field"><label class="l" for="ex-vendor">Fornitore / esercente</label><input id="ex-vendor" value="${esc(x?.vendor || '')}" /></div>
+      </div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="ex-doc">Giustificativo</label><select id="ex-doc">${opt(meta.doc_types, x?.doc_type || 'scontrino', (v) => DOC_LABEL[v] || v)}</select></div>
+        <div class="field"><label class="l" for="ex-num">Numero documento</label><input id="ex-num" value="${esc(x?.doc_number || '')}" /></div>
+      </div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="ex-vat">di cui IVA (€)</label><input id="ex-vat" inputmode="decimal" value="${x?.vat ? String(x.vat).replace('.', ',') : ''}" placeholder="0,00" /></div>
+        <div class="field"><label class="l" for="ex-method">Pagato con</label><select id="ex-method">${opt(METHODS, x?.method || 'contanti')}</select></div>
+      </div>
+      <div class="fgrid c2">
+        <div class="field"><label class="l" for="ex-by">Anticipata da</label><input id="ex-by" value="${esc(x?.paid_by || lastBy)}" placeholder="Es. Christian" /></div>
+        <label class="row tight" style="cursor:pointer;align-self:end;padding-bottom:.6rem"><input type="checkbox" id="ex-reimb" ${x?.reimbursable ? 'checked' : ''} /> Da rimborsare</label>
+      </div>
+    </div>`, { title: x ? 'Modifica spesa' : 'Nuova spesa', footer: `${x ? '<button class="btn btn-ghost" id="ex-del">Elimina</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ex-ok">Salva</button>` });
+  $('#ex-ok', m.el).onclick = async () => {
+    const body = { spent_on: $('#ex-date', m.el).value, amount: $('#ex-amt', m.el).value, description: $('#ex-desc', m.el).value, category: $('#ex-cat', m.el).value, vendor: $('#ex-vendor', m.el).value,
+      doc_type: $('#ex-doc', m.el).value, doc_number: $('#ex-num', m.el).value, vat: $('#ex-vat', m.el).value, method: $('#ex-method', m.el).value, paid_by: $('#ex-by', m.el).value, reimbursable: $('#ex-reimb', m.el).checked };
+    const out = await safe(() => (x ? api('PUT', `/api/expenses/${x.id}`, body) : api('POST', '/api/expenses', body)));
+    if (out) { try { localStorage.setItem('ex-by', body.paid_by || ''); } catch { /* facoltativo */ } m.close(); toast('Spesa salvata'); done?.(); }
+  };
+  if (x) $('#ex-del', m.el).onclick = async () => {
+    if (!confirm('Eliminare questa spesa?')) return;
+    if (await safe(() => api('DELETE', `/api/expenses/${x.id}`))) { m.close(); toast('Spesa eliminata'); done?.(); }
+  };
+}
+
+function notaDialog(range) {
+  const { from, to } = range();
+  let saved = '';
+  try { saved = localStorage.getItem('ex-by') || ''; } catch { /* facoltativo */ }
+  const m = openModal(`<div class="sec">
+      <p style="font-size:.92rem">Crea il PDF con tutte le spese registrate dal <b>${fdate(from)}</b> al <b>${fdate(to)}</b>: elenco voci, totali per categoria, avvertenza sui giustificativi e spazi per le firme.</p>
+      <div class="field"><label class="l" for="nt-who">Spese sostenute da (compare sul documento)</label><input id="nt-who" value="${esc(saved)}" placeholder="Es. Christian Pecoraro" /></div>
+      <label class="row tight" style="cursor:pointer"><input type="checkbox" id="nt-reimb" /> Solo le spese da rimborsare</label>
+      <p class="hint">Il periodo si cambia dalla Cassa. Stampa il PDF, allega scontrini e fatture originali e firma.</p>
+    </div>`, { title: 'Genera nota spese', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="nt-ok">📄 Crea PDF</button>' });
+  $('#nt-ok', m.el).onclick = () => {
+    const who = $('#nt-who', m.el).value.trim();
+    try { localStorage.setItem('ex-by', who); } catch { /* facoltativo */ }
+    const q = new URLSearchParams({ from, to });
+    if (who) q.set('who', who);
+    if ($('#nt-reimb', m.el).checked) q.set('reimbursable', '1');
+    window.open(`/api/expenses-pdf?${q}`, '_blank', 'noopener');
+    m.close();
+  };
 }
 
 const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
