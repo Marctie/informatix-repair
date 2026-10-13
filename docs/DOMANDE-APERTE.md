@@ -51,6 +51,10 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 27. Pulizia dei 19 rami remoti `claude/upbeat-fermi-*` (residui della routine del blog): si possono eliminare?
 28. Cambio orario UTC della routine del blog il 25 ottobre (`0 8,17 * * *`): da sistemare.
 29. Ruolo del proprietario nel gestionale: va bene come "amministratore protetto"?
+30. **Versione vendibile ai clienti**: pensi solo ad altri negozi di riparazioni o anche ad altri settori?
+31. Canone mensile o vendita una tantum?
+32. L'hosting lo gestisci tu (account tuo) o ogni cliente ha il suo account Cloudflare?
+33. Quanti clienti ipotizzi nel primo anno? (serve per scegliere il login e i piani Cloudflare)
 
 ## Risolte
 - (2026-10-13) Email di Christian: `djchri.cp@gmail.com`, amministratore.

@@ -34,6 +34,8 @@ Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-r
 7. **Rotazione prodotti**: grafico piu'/meno richiesti e allarme invenduto con suggerimento offerta/controllo prezzo (CHATLOG "Rotazione prodotti e invenduto").
 8. **Progetto Analisi** (CHATLOG "Progetto Analisi") e, per ultimi, **Buoni sconto/regalo** e **Carte fedelta' NFC** (CHATLOG "Nuovi sviluppi richiesti ... Buoni"): il regolamento punti arriva da Christian.
 
+9. **Dopo tutto**: versione vendibile ai clienti (installazioni separate + pannello centrale; CHATLOG "gestionale vendibile ai clienti").
+
 ## Domande ancora aperte
 **L'elenco completo e aggiornato e' in `docs/DOMANDE-APERTE.md`** (da mandare a Christian tutte insieme). Sotto, il riepilogo storico:
 - Email di Christian e delle 3 postazioni (arrivano da Christian); alias con Cloudflare Email Routing per le postazioni?
