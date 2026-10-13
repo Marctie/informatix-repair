@@ -99,6 +99,9 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- Ricerca globale ----------
 const gs = $('#gsearch');
+const setSearchHint = () => { gs.placeholder = window.innerWidth < 480 ? 'Cerca…' : 'Cerca cliente, modello, codice…'; };
+setSearchHint();
+window.addEventListener('resize', setSearchHint);
 const gsRes = $('#gsearch-res');
 gs.addEventListener('input', debounce(async () => {
   const q = gs.value.trim();
