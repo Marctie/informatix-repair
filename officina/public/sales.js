@@ -41,6 +41,7 @@ export async function salesView(el) {
 
   async function recent() {
     const rows = await safe(() => api('GET', '/api/sales'));
+    if (!$('#s-recent', el)) return; // pagina cambiata nel frattempo
     $('#s-recent', el).innerHTML = (rows || []).slice(0, 12).map((s) => `<div class="flex justify-between items-center gap-2 py-2 border-b border-line last:border-0"><span class="min-w-0">${esc(s.code)} <span class="text-gray-400 text-xs block sm:inline">${fdt(s.created_at)} · ${esc(s.method)}${s.customer_name ? ' · ' + esc(s.customer_name) : ''}</span></span><span class="shrink-0"><b>${eur(s.total)}</b> <a class="text-secondary ml-1" target="_blank" href="/print/sale/${s.id}" aria-label="Stampa">🖨️</a></span></div>`).join('') || '<p class="empty">Ancora nessuna vendita.</p>';
   }
 
