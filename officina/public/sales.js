@@ -10,7 +10,7 @@ export async function salesView(el) {
       <section class="card p-4 lg:col-span-3">
         <h2 class="font-heading font-bold mb-3">Vendita veloce</h2>
         <div class="relative"><input id="s-q" type="search" placeholder="Cerca articolo (nome o codice)…" autocomplete="off" /><div id="s-sugg" class="hidden absolute z-10 left-0 right-0 mt-1 card shadow-lg max-h-64 overflow-y-auto"></div></div>
-        <div class="grid grid-cols-[1fr_6rem_auto] gap-2 mt-2"><input id="s-free" placeholder="Voce libera (es. Pulizia software)" /><input id="s-free-p" inputmode="decimal" placeholder="€" /><button class="btn btn-outline" id="s-free-add">Aggiungi</button></div>
+        <div class="free-row"><input id="s-free" placeholder="Voce libera (es. Pulizia software)" /><input id="s-free-p" inputmode="decimal" placeholder="€" /><button class="btn btn-outline" id="s-free-add">Aggiungi</button></div>
         <div class="relative mt-2"><input id="s-cust" placeholder="Cliente (facoltativo, per lo storico)" autocomplete="off" /><div id="s-cust-s" class="hidden absolute z-10 left-0 right-0 mt-1 card shadow-lg max-h-48 overflow-y-auto"></div></div>
         <div id="s-cust-pick" class="hidden"></div>
         <div id="s-cart" class="mt-4"></div>

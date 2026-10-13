@@ -137,6 +137,8 @@
   .chips-scroll{scrollbar-width:none} .chips-scroll::-webkit-scrollbar{display:none}
   @media (min-width:720px){ .chips-scroll{flex-wrap:wrap!important;overflow:visible;margin-right:0;padding-right:0;padding-bottom:0} }
   .btn-wrap{white-space:normal;text-align:center;line-height:1.25}
+  .free-row{display:grid;grid-template-columns:minmax(0,1fr) 6.5rem auto;gap:.5rem}
+  @media (max-width:479px){ .free-row{grid-template-columns:minmax(0,1fr) auto} .free-row > input:first-child{grid-column:1 / -1} }
   @media (max-width:559px){
     .modal-foot{display:grid!important;grid-template-columns:1fr 1fr;gap:.5rem}
     .modal-foot .btn{width:100%}
