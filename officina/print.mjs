@@ -8,6 +8,7 @@ const eur = (n) => (n == null ? '—' : Number(n).toLocaleString('it-IT', { styl
 const dt = (s) => (s ? new Date(s.replace(' ', 'T')).toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }) : '—');
 const d = (s) => (s ? new Date(s + 'T00:00:00').toLocaleDateString('it-IT') : '—');
 const qr = (text, size = 130) => `<img src="/api/qr?text=${encodeURIComponent(text)}" width="${size}" height="${size}" alt="QR" />`;
+const barcode = (text, w = 150, h = 34) => `<img src="/api/barcode?text=${encodeURIComponent(text)}" style="width:${w}px;height:${h}px;display:block" alt="codice a barre ${esc(text)}" />`;
 const TYPES = { smartphone: 'Smartphone', tablet: 'Tablet', portatile: 'Portatile', pc: 'PC fisso', console: 'Console', altro: 'Altro' };
 
 const BASE_CSS = `
@@ -42,7 +43,8 @@ const header = (s, kind, r) => `
   <div class="row">
     <div><h1>${esc(s.shop_name)}</h1><div class="muted">${esc(s.shop_address)}<br>Tel. ${esc(s.shop_phone)}</div></div>
     <div style="text-align:right"><div class="muted">${kind}</div><div class="big">${esc(r.code)}</div>
-      <div class="muted">Ricevuto il ${dt(r.created_at)}</div>${r.urgent ? '<div><span class="pill urg">URGENTE</span></div>' : ''}</div>
+      <div class="muted">Ricevuto il ${dt(r.created_at)}</div>${r.urgent ? '<div><span class="pill urg">URGENTE</span></div>' : ''}
+      <div style="margin-top:4px;display:inline-block">${barcode(r.code, 150, 30)}</div></div>
   </div>`;
 
 const customerBlock = (r, withEmail = true) => `
@@ -138,8 +140,9 @@ export const printBoth = (r, url, s, req) => page(`Schede ${r.code}`, customerCa
 
 export function printLabel(r, trackUrl, req) {
   const body = `<div class="row"><div><div class="big">${esc(r.code)}</div><div><b>${esc(r.brand_model)}</b></div><div>${esc(r.customer_name)}</div>
-    <div class="muted">${dt(r.created_at)}</div></div>${qr(trackUrl, 90)}</div>`;
-  return page(`Etichetta ${r.code}`, body, '@page{size:62mm 30mm;margin:2mm} body{font-size:10px;padding:0} .big{font-size:15px}', req);
+    <div class="muted">${dt(r.created_at)}</div></div>${qr(trackUrl, 78)}</div>
+    <div style="margin-top:2px">${barcode(r.code, 200, 22)}</div>`;
+  return page(`Etichetta ${r.code}`, body, '@page{size:62mm 30mm;margin:2mm} body{font-size:10px;padding:0} .big{font-size:14px}', req);
 }
 
 export function printSale(sale, s, req) {

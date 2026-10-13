@@ -215,3 +215,22 @@ test('schede di stampa: cliente (senza PIN) e laboratorio (con PIN, diagnosi e c
   assert.equal(list[0].id, r.id);
   assert.equal((await a('PATCH', `/api/repairs/${r.id}`, { urgent: false })).data.urgent, 0);
 });
+
+test('codice a barre Code 128 per le etichette', async () => {
+  const { code128bModules } = await import('../barcode.mjs');
+  const bits = code128bModules('R-2026-0001');
+  assert.ok(bits.startsWith('11010010000'), 'inizia con lo Start B');
+  assert.ok(bits.endsWith('1100011101011'), 'finisce con lo Stop');
+  assert.equal((bits.length - 13) % 11, 0, 'ogni simbolo è di 11 moduli');
+  const res = await fetch(`${A}/api/barcode?text=R-2026-0001`);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /svg/);
+  assert.equal((await fetch(`${A}/api/barcode`)).status, 400);
+  const r = (await a('GET', '/api/repairs?q=Rita')).data[0];
+  assert.ok((await a('GET', `/print/label/${r.id}?noprint=1`)).data.includes('/api/barcode?text='));
+  assert.ok((await a('GET', `/print/lab/${r.id}?noprint=1`)).data.includes('/api/barcode?text='));
+  // la ricerca per seriale o per codice (quello che fa la pistola) trova la riparazione
+  await a('PATCH', `/api/repairs/${r.id}`, { serial: '356938035643809' });
+  assert.equal((await a('GET', '/api/repairs?q=356938035643809')).data.length, 1);
+  assert.equal((await a('GET', `/api/repairs?q=${r.code}`)).data[0].id, r.id);
+});
