@@ -489,3 +489,94 @@ export async function lookup(code, phone4) {
   if (!r || !r.customer_phone || String(r.customer_phone).replace(/\D/g, '').slice(-4) !== last4) throw fail();
   return { token: r.token };
 }
+
+// ---------- Analisi (riparazioni, incassi, vendite) ----------
+const addDays = (ymd, n) => {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const daysBetween = (a, b) => Math.round((new Date(`${b}T00:00:00Z`) - new Date(`${a}T00:00:00Z`)) / 86400000) + 1;
+
+export async function analytics(from, to) {
+  const f = from || addDays(localDate(), -29);
+  const t = to || localDate();
+  if (f > t) throw new HttpError(400, 'Il periodo non è valido');
+  const len = daysBetween(f, t);
+  const pf = addDays(f, -len);
+  const pt = addDays(f, -1);
+  const cf = await cashFilter();
+  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf}`).get(a, b)).s);
+
+  // Riparazioni entrate nel periodo
+  const byStatus = await db.prepare('SELECT status, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY status ORDER BY n DESC').all(f, t);
+  const intake = await db.prepare('SELECT COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ?').get(f, t);
+  const avg = await db.prepare("SELECT AVG(julianday(delivered_at) - julianday(created_at)) AS d, COUNT(*) AS n FROM repairs WHERE delivered_at IS NOT NULL AND date(delivered_at) BETWEEN ? AND ?").get(f, t);
+  const models = await db.prepare('SELECT brand_model AS name, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY LOWER(brand_model) ORDER BY n DESC, name LIMIT 10').all(f, t);
+  const types = await db.prepare('SELECT device_type AS name, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY device_type ORDER BY n DESC').all(f, t);
+  const declined = await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE quote_decision = 'declined' AND date(created_at) BETWEEN ? AND ?").get(f, t);
+  const lateNow = (await listRepairs({ open: true })).filter((r) => r.late).length;
+
+  // Incassi
+  const total = await sum(f, t);
+  const prevTotal = await sum(pf, pt);
+  const byDay = await reportByDay(f, t);
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY method ORDER BY total DESC`).all(f, t);
+  const rep = await report(f, t);
+
+  // Vendite
+  const sales = await db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(total),0) AS s FROM sales WHERE date(created_at) BETWEEN ? AND ?').get(f, t);
+  const sold = await db.prepare(`SELECT si.name AS name, SUM(si.qty) AS qty, ROUND(SUM(si.qty*si.unit_price),2) AS revenue
+    FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE date(s.created_at) BETWEEN ? AND ? GROUP BY LOWER(si.name) ORDER BY qty DESC, revenue DESC`).all(f, t);
+  const used = await db.prepare(`SELECT rp.name AS name, SUM(rp.qty) AS qty FROM repair_parts rp JOIN repairs r ON r.id = rp.repair_id
+    WHERE date(r.created_at) BETWEEN ? AND ? GROUP BY LOWER(rp.name) ORDER BY qty DESC`).all(f, t);
+
+  return {
+    from: f, to: t, days: len, prev: { from: pf, to: pt, total: prevTotal },
+    repairs: { intake: intake.n, by_status: byStatus, avg_days: avg.n ? Math.round(avg.d * 10) / 10 : null, delivered: avg.n, models, types, declined: declined.n, late_now: lateNow },
+    income: { total, prev_total: prevTotal, change_pct: prevTotal > 0 ? Math.round(((total - prevTotal) / prevTotal) * 1000) / 10 : null, by_day: byDay, by_method: byMethod, parts_cost: rep.parts_cost, margin: money(total - rep.parts_cost), avg_per_day: money(total / len) },
+    sales: { count: sales.n, revenue: money(sales.s), avg_ticket: sales.n ? money(sales.s / sales.n) : 0, top: sold.slice(0, 10), bottom: sold.length > 10 ? sold.slice(-5).reverse() : [], parts_used: used.slice(0, 10) },
+  };
+}
+
+// ---------- Avvisi (campanella e home) ----------
+// Soglie da Impostazioni: low_stock_default (scorta minima generale per i prodotti senza soglia propria, 0 = spenta),
+// stale_days (giorni senza uscite prima di segnalare un prodotto fermo, 0 = spenta), ready_days (pronte non ritirate).
+export async function alerts() {
+  const s = await getSettings();
+  const globalMin = Math.max(0, Number(s.low_stock_default) || 0);
+  const staleDays = Math.max(0, Number(s.stale_days) || 0);
+  const readyDays = Math.max(0, Number(s.ready_days) || 0);
+  const today = localDate();
+  const ago = (ymd) => (ymd ? daysBetween(String(ymd).slice(0, 10), today) - 1 : null);
+  const out = [];
+
+  const prods = await db.prepare(`SELECT p.*, s.name AS supplier_name,
+    (SELECT MAX(d) FROM (
+       SELECT MAX(m.created_at) AS d FROM stock_moves m WHERE m.product_id = p.id AND m.delta < 0
+       UNION ALL SELECT MAX(sa.created_at) FROM sale_items si JOIN sales sa ON sa.id = si.sale_id WHERE si.product_id = p.id
+       UNION ALL SELECT MAX(r.created_at) FROM repair_parts rp JOIN repairs r ON r.id = rp.repair_id WHERE rp.product_id = p.id)) AS last_out
+    FROM products p LEFT JOIN suppliers s ON s.id = p.supplier_id WHERE p.active = 1`).all();
+  for (const p of prods) {
+    const min = p.min_qty > 0 ? p.min_qty : globalMin;
+    const where = p.supplier_name ? ` (fornitore: ${p.supplier_name})` : '';
+    if (p.qty <= 0) out.push({ type: 'out_of_stock', severity: 'high', title: `${p.name}: esaurito`, detail: `Da riordinare${where}.`, link: '#/magazzino?tab=reorder', ref: p.id });
+    else if (min > 0 && p.qty <= min) out.push({ type: 'low_stock', severity: 'medium', title: `${p.name}: sta per esaurirsi`, detail: `Restano ${p.qty} pezzi (soglia ${min}). Da riordinare${where}.`, link: '#/magazzino?tab=reorder', ref: p.id });
+    else if (staleDays && p.qty > 0) {
+      const since = ago(p.last_out || p.created_at);
+      if (since != null && since >= staleDays) out.push({ type: 'stale', severity: 'low', title: `${p.name}: fermo da ${since} giorni`, detail: `Giacenza ${p.qty} pezzi, nessuna vendita o uso da ${since} giorni. Valuta un’offerta o controlla il prezzo di vendita (${money(p.price).toFixed(2)} €).`, link: '#/magazzino', ref: p.id });
+    }
+  }
+  const open = await listRepairs({ open: true });
+  for (const r of open) {
+    if (r.late) out.push({ type: 'late', severity: 'high', title: `${r.brand_model}: in ritardo`, detail: `${r.customer_name} · ${r.code} · data stimata ${r.eta_date}.`, link: `#/riparazioni?status=${r.status}`, ref: r.id });
+    if (r.quote_decision === 'declined') out.push({ type: 'declined', severity: 'medium', title: `${r.brand_model}: preventivo rifiutato`, detail: `${r.customer_name} ha rifiutato il preventivo: contattalo.`, link: '#/riparazioni?status=quote_pending', ref: r.id });
+    if (readyDays && r.status === 'ready') {
+      const since = ago(r.updated_at);
+      if (since != null && since >= readyDays) out.push({ type: 'ready_waiting', severity: 'low', title: `${r.brand_model}: pronta da ${since} giorni`, detail: `${r.customer_name} non l’ha ancora ritirata: ricordaglielo.`, link: '#/riparazioni?status=ready', ref: r.id });
+    }
+  }
+  const rank = { high: 0, medium: 1, low: 2 };
+  out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+  return { count: out.length, high: out.filter((x) => x.severity === 'high').length, items: out };
+}
