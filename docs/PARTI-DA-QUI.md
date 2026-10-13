@@ -20,9 +20,8 @@ Questo file serve a riprendere il lavoro in una **sessione nuova e leggera**. Il
 4. Le **prove con l'hardware** (pistola, stampante, etichette, fotocamera) le fa Christian: dire cosa provare.
 5. Nessun merge in `main` finché non è tutto finito e testato; poi via libera già dato.
 
-## Stato (2026-10-13, notte) – ONLINE
-Fatto: Officina su Cloudflare Workers + D1, Access (One-time PIN, policy Everyone), pagina Utenti, `/api/lookup`, sito sul branch `sito-segui-riparazione` (non in main). Dettagli: `docs/CHATLOG.md`, sezione "Officina ONLINE su Cloudflare".
-Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` (da `informatix-repair`).
+## Stato (2026-10-14, fine giornata)
+Leggi PRIMA la sezione "STATO A FINE GIORNATA 2026-10-14" in `docs/CHATLOG.md`: elenca cosa e' online, il bot Termux installato sul Samsung, i test e i due branch degli agenti ancora da fondere (Vetrina Usati + Portale; import fatture). Deploy: `npx wrangler deploy --config officina/wrangler.jsonc` da `informatix-repair`. Sito pubblico gia' in `main`.
 
 ## Da fare (ordine)
 1. Attivare R2 (dashboard) e backup giornaliero (cron) sul Worker.
