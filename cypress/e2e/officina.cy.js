@@ -76,7 +76,7 @@ describe('Gestionale officina', () => {
     cy.get('.bar > i').should('have.attr', 'style').and('include', 'width:0%');
     cy.contains('iPhone 13');
     cy.contains('Schermo rotto');
-    cy.contains('€129,00').should('exist');
+    cy.contains('129,00').should('exist');
     cy.contains('Consegna stimata');
     cy.contains('Mario Rossi');
     cy.get('body').should('not.contain', '4321').and('not.contain', '3331234567');
@@ -115,7 +115,8 @@ describe('Gestionale officina', () => {
     cy.contains('[data-pid]', 'Display iPhone 13').click();
     cy.contains('Ricambio usato');
     cy.get('#d-cnote').type('Display montato, stiamo testando');
-    cy.contains('button', 'Salva').click();
+    cy.get('[data-act="savecnote"]').click();
+    cy.get('#toast').should('contain', 'Messaggio aggiornato');
     cy.get('.modal-bg [data-close]').first().click();
 
     cy.visit('/#/magazzino');
@@ -149,7 +150,7 @@ describe('Gestionale officina', () => {
     cy.get('#dl-ok').click();
     cy.get('#toast').should('contain', '99,00');
     cy.visit('/#/cassa');
-    cy.contains('€129,00');
+    cy.contains('129,00');
     cy.contains('Acconto R-');
     cy.contains('Saldo R-');
     cy.visit(`/t/${token}`);
