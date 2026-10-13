@@ -108,6 +108,22 @@
   .plist > div{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.55rem 0;border-bottom:1px solid var(--line);font-size:.9rem}
   .plist > div:last-child{border-bottom:0}
   .xbtn{color:var(--red);padding:.15rem .4rem;border-radius:.4rem;line-height:1} .xbtn:hover{background:#FEF2F2}
+  .only-narrow{display:none}
+  @media (max-width:719px){ .only-wide{display:none!important} .only-narrow{display:block} }
+  .pcard{display:flex;flex-direction:column;gap:.5rem;padding:.85rem 1rem;border-bottom:1px solid var(--line)}
+  .pcard:last-child{border-bottom:0}
+  .pcard .top{display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start}
+  .pcard .name{font-weight:700;font-size:.95rem;line-height:1.3;overflow-wrap:anywhere}
+  .pcard .sub{font-size:.78rem;color:var(--muted);line-height:1.4}
+  .chips-scroll{flex-wrap:nowrap!important;overflow-x:auto;padding-bottom:.4rem;margin-right:-1rem;padding-right:1rem;scrollbar-width:thin}
+  .chips-scroll .chip{flex:none}
+  @media (min-width:720px){ .chips-scroll{flex-wrap:wrap!important;overflow:visible;margin-right:0;padding-right:0;padding-bottom:0} }
+  .btn-wrap{white-space:normal;text-align:center;line-height:1.25}
+  @media (max-width:559px){
+    .modal-foot{flex-direction:column-reverse;align-items:stretch!important;justify-content:flex-start!important}
+    .modal-foot .btn{width:100%}
+    .modal-foot .mr-auto{margin-right:0}
+  }
   .badges{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
   .check{display:flex;align-items:center;gap:.55rem;min-height:2.5rem;font-size:.88rem;font-weight:600;color:#374151;cursor:pointer;user-select:none}
   .check input{flex:none}
