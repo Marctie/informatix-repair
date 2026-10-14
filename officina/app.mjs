@@ -11,6 +11,9 @@ import { listExpenses, createExpense, updateExpense, deleteExpense, CATEGORIES, 
 import { buildNotaSpese } from './notaspese.mjs';
 import { notifyMiddleware } from './notify.mjs';
 import { registerPurchaseRoutes, PURCHASE_TABLES } from './purchases.mjs';
+import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
+import { registerQuoteRoutes, quoteAlerts } from './preventivi.mjs';
+import { registerReminderRoutes, reminderAlertsNotify } from './promemoria.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
@@ -19,6 +22,7 @@ import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
+const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -246,6 +250,12 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   // Acquisti dai fornitori: import fatture, storico e analisi prezzi (officina/purchases.mjs)
   registerPurchaseRoutes(app, h);
+  // Ordini per clienti e fornitori (officina/ordini.mjs)
+  registerOrderRoutes(app, h);
+  // Preventivi con data di validita' (officina/preventivi.mjs)
+  registerQuoteRoutes(app, h);
+  // Promemoria con data/ora e avviso Telegram (officina/promemoria.mjs)
+  registerReminderRoutes(app, h);
 
   // Magazzino
   const checkProduct = (b) => {
@@ -353,7 +363,14 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const r = await L.report(str(req.query.from), str(req.query.to));
     return { ...r, by_day: await L.reportByDay(r.from, r.to) };
   }));
-  app.get('/api/alerts', h(() => L.alerts()));
+  // avvisi del gestionale + quelli dei moduli Ordini / Preventivi / Promemoria
+  app.get('/api/alerts', h(async (req) => {
+    const base = await L.alerts();
+    const extra = (await Promise.all(EXTRA_ALERTS.map((f) => f(req.c).catch(() => [])))).flat();
+    const rank = { high: 0, medium: 1, low: 2 };
+    const items = [...base.items, ...extra].sort((x, y) => rank[x.severity] - rank[y.severity]);
+    return { count: items.length, high: items.filter((x) => x.severity === 'high').length, items };
+  }));
   app.get('/api/analytics', h(async (req) => { adminOnly(req); return L.analytics(str(req.query.from), str(req.query.to)); }));
   app.get('/api/stock/summary', h(() => L.stockSummary()));
 
@@ -383,7 +400,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };

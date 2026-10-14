@@ -72,3 +72,13 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 35. (Marco) La pubblicazione degli usati deve scrivere direttamente su `main` o su un branch di prova prima?
 36. (Christian) Le foto dei telefoni: quante di solito per articolo? Il massimo e' 10.
 37. (Christian) Dopo il login vuoi vedere il Portale o direttamente "Oggi"?
+
+## Ordini, Preventivi, Promemoria (Agente C, 2026-10-14) - default scelti, da confermare
+38. (Christian) **Ordini** - gli ordini per i clienti e le scorte basse restano in due liste separate (Ordini / Magazzino "Da ordinare"). Va bene o li vuoi nella stessa lista con un'etichetta?
+39. (Christian) **Ordini** - all'arrivo c'e' l'avviso nella campanella e il pulsante "Avvisa" che apre WhatsApp con testo gia' pronto (non parte da solo). Il testo ti piace? Il pezzo arrivato resta "dell'ordine" (non viene caricato a magazzino): se vuoi il carico automatico va collegato al carico merce (punto 4).
+40. (Christian) **Ordini** - l'acconto e' un incasso normale in Cassa (metodo a scelta) e il saldo si incassa alla consegna. Se l'ordine ha incassi non si elimina, si annulla. Va bene?
+41. (Christian) **Preventivi** - validita' standard 15 giorni (impostabile con la chiave `quote_valid_days`, per ora senza schermata in Impostazioni) e condizioni di default sul foglio: "valido fino alla data indicata... importi IVA inclusa...". Quali condizioni vuoi stampare?
+42. (Christian) **Preventivi** - restano separati dal "preventivo" della riparazione (che resta com'e'); si convertono in riparazione/vendita con un click. Vuoi che diventino la stessa cosa (storico preventivi per riparazione)?
+43. (Christian) **Preventivi** - numerazione P-AAAA-NNNN e intestazione come le schede. Il cliente non ha ancora un link online per approvare i preventivi autonomi (solo stampa/WhatsApp, accettazione registrata al banco); dopo la scadenza non si puo' accettare senza prolungare la data. Serve il link online?
+44. (Christian) **Promemoria** - sono condivisi tra tutti gli utenti (non personali). Servono anche note libere stile Keep (colori, caselle da spuntare, foto)? Per ora solo promemoria con data/ora.
+45. (Marco) **Promemoria Telegram** - l'avviso parte quando una postazione ha il gestionale aperto (controllo ogni minuto). Per avvisare anche a gestionale chiuso serve un cron ogni minuto sul Worker (`scheduled` in `officina/worker.mjs`): lo aggiungo al prossimo deploy?
