@@ -121,6 +121,7 @@
   <a href="#analisi">16 · Analisi</a>
   <a href="#demo">17 · Dati demo</a>
   <a href="#telegram">18 · Avvisi su Telegram</a>
+  <a href="#registro">21 · Registro</a>
 </nav>
 
 <main>
@@ -309,7 +310,8 @@
     <li><b>Nuovo articolo</b>: nome, categoria, quantità iniziale, <b>scorta minima</b> (sotto questa soglia ti avvisa), costo d'acquisto, prezzo di vendita, fornitore, posizione (scaffale).</li>
     <li><b>Prima di tutto inserisci i ricambi che usi più spesso</b> (display, batterie, connettori…): così li assegni alle riparazioni con due tocchi.</li>
     <li><b>−1 / +1</b> sulla riga per correggere al volo la giacenza (es. hai trovato un pezzo in più o ne hai rotto uno).</li>
-    <li><b>Registra carico</b> (apri l'articolo) quando arriva merce dal fornitore: scrivi la quantità arrivata.</li>
+    <li><b>📥 Carico merce</b> (pulsante in alto in Magazzino, oppure apri l'articolo) quando arriva merce dal fornitore: cerca l'articolo (o creane uno nuovo), scrivi <b>quantità</b>, <b>fornitore</b>, <b>prezzo d'acquisto</b>, data, codice del fornitore e n. documento (DDT o fattura). Il gestionale aggiorna la giacenza, l'<b>ultimo costo</b> dell'articolo (il <b>costo medio</b> lo vedi in Acquisti) e scrive il prezzo nello <b>storico di Acquisti</b>: grafico a punti e avvisi di prezzo comprendono anche questi carichi. Con lo stesso n. documento più articoli finiscono nello stesso documento.</li>
+    <li><b>📦 Carica a magazzino</b> (nella scheda di una riparazione, accanto a un ricambio “a mano”): lo trasforma in articolo a catalogo, già collegato alla riparazione, con costo, prezzo e fornitore che avevi inserito. La giacenza resta 0 perché il pezzo è già stato usato.</li>
     <li>I pezzi usati nelle riparazioni e venduti al banco si <b>scalano da soli</b>.</li>
     <li><b>Archivia</b> un articolo che non tratti più: sparisce dall'elenco ma lo storico resta.</li>
   </ul>
@@ -476,7 +478,7 @@
   <ul>
     <li><b>Amministratore</b>: usa tutto, gestisce utenti, impostazioni e analisi.</li>
     <li><b>Postazione / collaboratore</b>: usa riparazioni, clienti, magazzino, vendite e cassa.</li>
-    <li><b>Cassa (permessi limitati)</b>: come la postazione, ma senza Impostazioni, Analisi e Utenti. Pensato per chi sta solo al banco.</li>
+    <li><b>Cassa (permessi limitati)</b>: come la postazione, ma senza Impostazioni, Analisi, Utenti e Registro. Pensato per chi sta solo al banco. <b>Non vede i costi d'acquisto, i margini e i guadagni</b> (né nelle schermate né nei dati che il programma le invia), non vede Acquisti e non può fare il carico merce.</li>
     <li>Il profilo del <b>proprietario</b> (🔒) è protetto: non si può modificare né eliminare.</li>
   </ul>
   <div class="call tip"><b>Chi non è in elenco</b>Può chiedere il codice, ma dopo vede “Questo indirizzo email non è abilitato” e non entra.</div>
@@ -526,6 +528,18 @@
     <li>⏰ <b>Riparazione in ritardo</b>, ❌ <b>preventivo rifiutato</b> (da richiamare) e 📞 <b>riparazione pronta e non ritirata</b>.</li>
   </ul>
   <p>Le soglie le decidi tu in <b>Impostazioni → Avvisi</b>: scorta minima generale (per i prodotti senza soglia propria), giorni dopo i quali un prodotto è “fermo” e giorni dopo i quali una riparazione pronta non ritirata va ricordata. Con <b>0</b> l'avviso si spegne.</p>
+</section>
+
+<section id="registro">
+  <h2><span class="n">21</span>Registro (solo amministratore)</h2>
+  <p class="lead">Chi ha eliminato o cambiato cosa, e quando. Non si può cancellare né modificare.</p>
+  <ul>
+    <li>Apri <b>Registro</b> dal menu (lo vedono solo gli amministratori). Ogni riga dice <b>chi</b> (l'email), <b>cosa</b> (creato, modificato o eliminato), <b>che tipo di cosa</b> (cliente, riparazione, articolo, fornitore, utente, spesa, servizio, ricambio, vendita, pagamento, impostazioni, carico merce, acquisto), il <b>nome</b> e <b>quando</b>.</li>
+    <li>Sono registrate tutte le eliminazioni e le modifiche importanti: clienti, riparazioni (cambi di stato, ricambi, consegne e incassi, acconti), articoli e movimenti di magazzino, carichi merce, fornitori, utenti, spese, servizi, vendite e impostazioni.</li>
+    <li><b>Filtri</b>: per tipo, per utente e per periodo (Dal / Al); la <b>ricerca</b> trova nome, descrizione o utente. Le voci sono a pagine da 50: usa <b>Precedenti</b> e <b>Successive</b>.</li>
+    <li>Non vengono mai salvati codici di sblocco o altri dati riservati: solo il nome dell'oggetto e il tipo di azione.</li>
+  </ul>
+  <div class="call tip"><b>A cosa serve</b>Se qualcosa sparisce o cambia e nessuno se lo ricorda, qui trovi chi è stato. Il registro entra anche nel backup.</div>
 </section>
 
 </main>

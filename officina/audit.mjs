@@ -86,6 +86,8 @@ export const auditMiddleware = async (c, next) => {
       if (cls.action === 'crea') { const nm = reqBody?.name || (json?.parts || []).slice(-1)[0]?.name; if (nm) detail = `${detail}: ${String(nm).slice(0, 80)}`; }
       else if (cls.subId) detail = `${detail} (n. ${cls.subId})`;
     }
+    if (cls.type === 'carico' && json?.loaded) detail = `${json.loaded.qty} pz a ${Number(json.loaded.unit_price).toFixed(2)} € da ${json.loaded.supplier_name} · doc ${json.loaded.doc_number}`.slice(0, 200);
+    if (cls.type === 'impostazioni') label = 'Impostazioni del negozio';
     if (cls.type === 'impostazioni') detail = `campi: ${Object.keys(reqBody || {}).join(', ')}`.slice(0, 200);
     if (cls.detail === 'cambio stato' && reqBody?.status) detail = `cambio stato → ${reqBody.status}`;
     if (cls.type === 'acquisto' && json?.purchase_id) id = json.purchase_id;
