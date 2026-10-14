@@ -15,6 +15,7 @@ import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
+import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -59,6 +60,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   const app = new Hono();
   app.use('*', notifyMiddleware); // prima dell'accesso: segnala anche i tentativi negati e gli errori
   if (auth) app.use('*', auth);
+  app.use('/api/*', auditMiddleware); // registro eliminazioni/modifiche (dopo l'accesso: sa chi è)
 
   const trackBase = async () => {
     const s = await getSettings();
@@ -70,6 +72,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     if (req.user && req.user.role !== 'admin') throw new L.HttpError(403, 'Solo l’amministratore può farlo.');
   };
 
+  registerAuditRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase() })));
   app.get('/api/dashboard', h(() => L.dashboard()));
@@ -365,7 +368,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
