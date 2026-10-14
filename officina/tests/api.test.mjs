@@ -40,6 +40,8 @@ const call = async (base, method, path, body) => {
   return { status: res.status, data };
 };
 const a = (m, p, b, qs = '') => call(A, m, p + qs, b);
+// PNG 1x1 valido: basta come "firma" nei test (il server controlla che sia un PNG vero)
+const SIG_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 test('magazzino: prodotto con carico iniziale, movimenti e sotto scorta', async () => {
   const sup = (await a('POST', '/api/suppliers', { name: 'Ricambi Napoli', phone: '0811234567' })).data;
@@ -106,11 +108,13 @@ test('flusso stati, approvazione online del preventivo, consegna e incasso', asy
   // il cliente vede la richiesta e approva dal link
   const before = (await call(P, 'GET', `/api/track/${r.token}`)).data;
   assert.equal(before.awaiting_decision, true);
-  const acc = (await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: true })).data;
+  // senza firma non si risponde; con la firma disegnata si
+  assert.equal((await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'accept' })).status, 400);
+  const acc = (await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'accept', image: SIG_PNG, signer_name: 'Mario Rossi' })).data;
   assert.equal(acc.status, 'approved');
   assert.equal(acc.quote_decision, 'accepted');
   // seconda risposta non più possibile
-  assert.equal((await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: false })).status, 409);
+  assert.equal((await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'decline', device_choice: 'pickup', image: SIG_PNG })).status, 409);
 
   await a('POST', `/api/repairs/${r.id}/status`, { status: 'repairing' });
   await a('POST', `/api/repairs/${r.id}/note`, { note: 'Controllo interno', public: false });
@@ -135,12 +139,17 @@ test('cambio preventivo durante i lavori richiede una nuova approvazione', async
   const upd = (await a('PATCH', `/api/repairs/${r.id}`, { quote: 140 })).data;
   assert.equal(upd.status, 'quote_pending');
   assert.equal(upd.quote_decision, null);
-  // il rifiuto del cliente viene registrato e segnalato in dashboard
-  await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: false });
-  const dash = (await a('GET', '/api/dashboard')).data;
-  assert.ok(dash.declined.some((x) => x.id === r.id));
+  // il rifiuto firmato del cliente: la riparazione diventa "non riparabile" e il dispositivo e' in giacenza
+  const dec = await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'decline', device_choice: 'pickup', image: SIG_PNG });
+  assert.equal(dec.status, 200);
+  const after = (await a('GET', `/api/repairs/${r.id}`)).data;
+  assert.equal(after.status, 'cancelled');
+  assert.equal(after.quote_decision, 'declined');
+  assert.equal(after.device_fate, 'giacenza');
+  // il conto dei giorni compare tra i dispositivi in giacenza (Oggi)
+  assert.ok((await a('GET', '/api/dashboard')).data.storage.some((x) => x.id === r.id));
   // già in questo stato: nessuna doppia registrazione
-  assert.equal((await a('POST', `/api/repairs/${r.id}/status`, { status: 'quote_pending' })).status, 400);
+  assert.equal((await a('POST', `/api/repairs/${r.id}/status`, { status: 'cancelled' })).status, 400);
 });
 
 test('vendite: scalano il magazzino, rispettano sconto e finiscono in cassa', async () => {
@@ -202,7 +211,7 @@ test('schede di stampa: cliente (senza PIN) e laboratorio (con PIN, diagnosi e c
   await a('PATCH', `/api/repairs/${r.id}`, { tech_notes: 'Connettore di carica ossidato, pulizia e sostituzione.' });
 
   const cust = (await a('GET', `/print/customer/${r.id}?noprint=1`)).data;
-  assert.ok(cust.includes('Scheda cliente') && cust.includes(r.code) && cust.includes('/api/qr?text=') && cust.includes('Rita Conti'));
+  assert.ok(cust.includes('Scheda di ingresso') && cust.includes('COPIA NEGOZIO') && cust.includes('COPIA CLIENTE') && cust.includes(r.code) && cust.includes('/api/qr?text=') && cust.includes('Rita Conti'));
   assert.ok(cust.includes('URGENTE'));
   assert.ok(!cust.includes('987654'), 'il PIN non deve comparire sulla copia del cliente');
   assert.ok(!cust.includes('Connettore di carica ossidato'), 'le note tecniche non vanno al cliente');
@@ -213,7 +222,7 @@ test('schede di stampa: cliente (senza PIN) e laboratorio (con PIN, diagnosi e c
   assert.ok(lab.includes('Collaudo finale') && lab.includes('Controllo all'));
 
   const both = (await a('GET', `/print/both/${r.id}`)).data;
-  assert.ok(both.includes('Scheda cliente') && both.includes('Scheda laboratorio'));
+  assert.ok(both.includes('Scheda di ingresso') && both.includes('Scheda laboratorio'));
   assert.ok(both.includes("addEventListener('load'"), 'senza noprint la stampa parte da sola');
   assert.equal((await a('GET', '/print/lab/99999')).status, 404);
 
@@ -322,7 +331,8 @@ test('avvisi: scorta bassa/esaurita, prodotto fermo, soglie da Impostazioni', as
   assert.ok(al.items.some((x) => x.type === 'out_of_stock' && /USB-C/.test(x.title)));
   assert.ok(al.items.some((x) => x.type === 'low_stock'));
   assert.ok(al.items.some((x) => x.type === 'stale' && /ASUS/.test(x.title)));
-  assert.ok(al.items.some((x) => x.type === 'declined'));
+  // dispositivo non riparato (rifiuto di 15 giorni fa) ancora in negozio: giacenza scaduta
+  assert.ok(al.items.some((x) => x.type === 'storage_due' && /Xiaomi/.test(x.title)));
   // spegnendo la soglia dei fermi, quegli avvisi spariscono
   await a('PUT', '/api/settings', { stale_days: '0' });
   al = (await a('GET', '/api/alerts')).data;

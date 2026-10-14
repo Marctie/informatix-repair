@@ -23,7 +23,9 @@ export const nowLocal = (d = new Date()) => fmt.format(d).replace(',', '');
 /** Sostituisce l'espressione "ora locale" con il valore reale in fuso di Roma. */
 export const fixSql = (sql) => sql.includes("datetime('now','localtime')") ? sql.replaceAll("datetime('now','localtime')", `'${nowLocal()}'`) : sql;
 
+import { LEGAL_DEFAULTS } from './legal.mjs';
 export const DEFAULT_SETTINGS = {
+  ...LEGAL_DEFAULTS,
   shop_name: 'Informatix Repair',
   shop_address: 'Via Pecorari 178, Nocera Superiore (SA)',
   shop_phone: '+39 376 234 4151',

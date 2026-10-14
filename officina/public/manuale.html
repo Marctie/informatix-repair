@@ -124,10 +124,11 @@
   <a href="#registro">21 · Registro</a>
 
   <a href="#ordini">19 · Ordini, preventivi, promemoria</a>
+  <a href="#schede-firme">20 · Schede, firme, non riparabili</a>
 
-  <a href="#dispositivi">21 · Dispositivi e seriali</a>
-  <a href="#buoni">22 · Buoni e conto diviso</a>
-  <a href="#riservati">23 · Documenti e credenziali</a>
+  <a href="#dispositivi">22 · Dispositivi e seriali</a>
+  <a href="#buoni">23 · Buoni e conto diviso</a>
+  <a href="#riservati">24 · Documenti e credenziali</a>
 </nav>
 
 <main>
@@ -578,8 +579,10 @@
   </ul>
   <div class="call tip"><b>A cosa serve</b>Se qualcosa sparisce o cambia e nessuno se lo ricorda, qui trovi chi è stato. Il registro entra anche nel backup.</div>
 
+</section>
+
 <section id="dispositivi">
-  <h2><span class="n">21</span>Dispositivi e seriali</h2>
+  <h2><span class="n">22</span>Dispositivi e seriali</h2>
   <p class="lead">Il registro dei telefoni, portatili e console con seriale/IMEI: serve per avere tutto segnato in caso di furto o denuncia.</p>
   <ol class="steps">
     <li>Apri <b>Dispositivi</b> dal menu e premi <b>＋ Nuovo dispositivo</b>. Scrivi marca e modello, spara o scrivi il <b>seriale/IMEI</b> (anche con la fotocamera 📷): sotto compare subito se l'IMEI è valido e se il seriale è già nel registro.</li>
@@ -598,7 +601,7 @@
 </section>
 
 <section id="buoni">
-  <h2><span class="n">22</span>Buoni e conto diviso</h2>
+  <h2><span class="n">23</span>Buoni e conto diviso</h2>
   <p class="lead">Buoni sconto e regalo, e il pagamento ripartito su più metodi o persone. Ogni quota entra in Cassa: niente è nascosto.</p>
   <h3>I buoni</h3>
   <ol class="steps">
@@ -616,7 +619,7 @@
 </section>
 
 <section id="riservati">
-  <h2><span class="n">23</span>Documenti d'identità e credenziali fornitori</h2>
+  <h2><span class="n">24</span>Documenti d'identità e credenziali fornitori</h2>
   <p class="lead">Dati molto sensibili: conservati <b>cifrati</b>, visibili solo all'amministratore e ogni accesso viene registrato.</p>
   <h3>Documenti dei clienti</h3>
   <ol class="steps">
@@ -631,6 +634,40 @@
     <li>Nell'elenco: <b>🌐 Apri il sito</b>, <b>Copia utente</b>, <b>Copia password</b> (un tocco) e <b>Mostra</b> (si nasconde da sola dopo 15 secondi). Ogni copia o visione è registrata.</li>
   </ol>
   <div class="call warn"><b>La chiave (VAULT_KEY)</b>Tutto è cifrato con una chiave segreta. Sul PC viene creata al primo avvio in <code>officina/data/vault.key</code>; online è il segreto del Worker <code>VAULT_KEY</code> (<code>wrangler secret put VAULT_KEY</code>). <b>Conservane una copia al sicuro, fuori dal gestionale: se si perde, documenti e password non si recuperano.</b> La chiave non va mai scritta nel codice né nel repository.</div>
+
+</section>
+
+<section id="schede-firme">
+  <h2><span class="n">20</span>Schede, checklist, firme e dispositivi non riparati</h2>
+  <p class="lead">Controlli diversi per ogni tipo di dispositivo, schede stampate su un solo foglio, firma del cliente sul tablet o da casa.</p>
+  <h3>Checklist per tipo di dispositivo</h3>
+  <ul>
+    <li>Scegliendo il tipo (Smartphone, Tablet, Portatile, PC fisso, Console, Altro) cambiano le voci dei controlli e le etichette (IMEI solo per telefoni e tablet, “password” per i PC).</li>
+    <li>Nel modulo <b>Nuova riparazione</b> e nella scheda riparazione trovi tre elenchi: ingresso, pratiche al ritiro, collaudo. Un tocco su una voce: ✔ funziona, ✖ non funziona, – non presente. Poi <b>Salva</b>: resta nella riparazione con nome e data, non serve stamparlo.</li>
+    <li>Le voci si cambiano in <b>Impostazioni → Checklist per tipo di dispositivo</b> (una voce per riga; “Ripristina” torna alle predefinite).</li>
+  </ul>
+  <h3>Stampe su un solo foglio</h3>
+  <ul>
+    <li><b>Scheda cliente</b>: un A4 diviso a metà, la stessa scheda due volte (copia negozio e copia cliente), ognuno firma la sua. Se il cliente ha firmato in digitale la firma compare su entrambe.</li>
+    <li><b>Scheda laboratorio</b>: sempre una pagina; i testi lunghi si troncano con “continua sul gestionale”. I controlli già compilati escono con ✔ ✖ –.</li>
+  </ul>
+  <h3>Firma del cliente</h3>
+  <ul>
+    <li>Nella scheda riparazione: <b>Firma qui (tablet)</b> apre il riquadro: il cliente legge il consenso e firma col dito.</li>
+    <li><b>Chiedi firma a distanza</b>: apre WhatsApp con il link; il cliente legge e firma dal telefono, senza scaricare PDF. Si registrano data, ora e IP.</li>
+    <li>I testi di consenso sono <b>bozze da far verificare</b> (Impostazioni → Testi di consenso): finché non scegli “Testi verificati” le stampe e le schermate lo segnalano.</li>
+  </ul>
+  <h3>Preventivo a distanza</h3>
+  <ul>
+    <li>Dal link il cliente preme <b>Sì</b>: conferma con testo chiaro, poi firma. Con <b>No</b>: sceglie se ritirare il dispositivo (giacenza di 15 giorni) o cederlo al negozio, poi firma.</li>
+    <li>Più soluzioni (es. display compatibile o originale): aggiungile in <b>Soluzioni fra cui il cliente sceglie</b>; il cliente ne sceglie una e firma.</li>
+    <li>Ti arriva un messaggio Telegram; data, ora e IP della firma restano nella riparazione.</li>
+  </ul>
+  <h3>Annullato / non riparabile</h3>
+  <ul>
+    <li>Cambiando lo stato in “Annullato / non riparabile” scegli: resta in negozio, ritirato, oppure lasciato da smaltire/pezzi di ricambio (cessione firmata).</li>
+    <li>Parte il conto dei <b>15 giorni</b> (cambiabili in Impostazioni). In <b>Oggi</b> e nella campanella compaiono “giacenza in scadenza” e “giacenza scaduta”: smaltisci oppure sposta in <b>deposito a pagamento</b>; c'è il pulsante per avvisare il cliente su WhatsApp. Non cambia nulla in automatico e nessun incasso viene registrato da solo.</li>
+  </ul>
 </section>
 
 </main>

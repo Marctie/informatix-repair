@@ -51,7 +51,7 @@ const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖' };
 const view = $('#view');
 
 // ---------- Avvisi: campanella e riquadro in home ----------
-const ALERT_ICO = { out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞' };
+const ALERT_ICO = { out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
 const alertRow = (a) => `<a href="${a.link}" class="flex gap-3 px-4 py-3 border-b border-line last:border-0 text-sm hover:bg-lightbg" data-alert>
   <span aria-hidden="true">${ALERT_ICO[a.type] || '🔔'}</span><span class="min-w-0"><b class="block">${esc(a.title)}</b><span class="text-gray-500">${esc(a.detail)}</span></span></a>`;
 export async function refreshBell() {
@@ -224,6 +224,24 @@ function bindRepairList(root, reload) {
   });
 }
 
+// Dispositivi non riparati ancora in negozio: giorni di giacenza e scadenza (avviso quando passano i giorni stabiliti)
+function storageSection(list) {
+  if (!list.length) return '';
+  const row = (x) => {
+    const link = waLink(x.customer_phone, waMessage('storage', { ...x, customer_name: x.customer_name, brand_model: x.brand_model, code: x.code, fate_since: x.fate_since }));
+    const state = x.unknown ? '<span class="badge bg-gray-100 text-gray-700">destino da registrare</span>'
+      : x.device_fate === 'deposito' ? '<span class="badge bg-sky-100 text-sky-700">in deposito a pagamento</span>'
+        : x.due ? `<span class="badge bg-red-100 text-red-700">giacenza scaduta da ${x.days_in_store - x.days_total} gg</span>`
+          : `<span class="badge bg-amber-100 text-amber-800">mancano ${x.days_left} gg</span>`;
+    return `<div class="row-h flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-open="${x.id}">
+      <div class="min-w-0 flex-1"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-bold text-sm">${esc(x.brand_model)}</span>${state}</div>
+        <p class="text-xs text-gray-500 truncate">${esc(x.customer_name)} · ${esc(x.code)}${x.days_in_store != null ? ` · in negozio da ${x.days_in_store} giorni` : ''}</p></div>
+      <div class="flex items-center gap-1.5 shrink-0" data-stop>${link && x.device_fate === 'giacenza' ? `<a href="${link}" target="_blank" rel="noopener" class="btn btn-outline btn-sm" title="Avvisa il cliente su WhatsApp" aria-label="WhatsApp">💬<span class="sm:hidden">WhatsApp</span></a>` : ''}</div>
+    </div>`;
+  };
+  return `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line">📦 Non riparati ancora in negozio <span class="text-gray-400 font-normal">(${list.length})</span></h3>${list.map(row).join('')}</section>`;
+}
+
 // ---------- Oggi ----------
 async function dashboardView(el) {
   const d = await api('GET', '/api/dashboard');
@@ -254,6 +272,7 @@ async function dashboardView(el) {
     ${section('✋ Preventivo da approvare', d.to_approve)}
     ${section('🔧 In lavorazione', d.in_progress)}
     ${section('📦 In attesa ricambi', d.waiting_parts)}
+    ${storageSection(d.storage || [])}
     ${d.low_stock.length ? `<section class="card overflow-hidden"><h3 class="px-4 py-3 font-heading font-bold text-sm border-b border-line flex justify-between gap-2">📉 Da riordinare (${d.low_stock.length}) <a href="#/magazzino?tab=reorder" class="text-secondary text-xs font-semibold">Lista ordini →</a></h3>
       ${d.low_stock.slice(0, 6).map((p) => `<div class="px-4 py-2.5 border-b border-line last:border-0 text-sm flex justify-between gap-3"><span class="min-w-0 truncate">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz (min. ${p.min_qty})</span></div>`).join('')}</section>` : ''}
     ${!d.open_total ? '<div class="card empty">Nessuna riparazione aperta. Tutto in ordine 🎉<br><span class="text-xs">Quando arriva un cliente premi “Nuova riparazione”.</span></div>' : ''}`;
