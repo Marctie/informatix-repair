@@ -8,7 +8,7 @@ const NOW = "datetime('now','localtime')";
 const str = (v) => (v == null ? null : String(v).trim() || null);
 
 export const DOC_TYPES = { carta_identita: 'Carta d’identità', patente: 'Patente', passaporto: 'Passaporto', altro: 'Altro documento' };
-export const PURPOSES = { acquisto_usato: 'Acquisto di un usato dal cliente', ritiro: 'Ritiro / consegna', denuncia: 'Tutela in caso di denuncia o querela', altro: 'Altro' };
+export const PURPOSES = { acquisto_usato: 'Acquisto usato dal cliente', ritiro: 'Ritiro / consegna', denuncia: 'Tutela in caso di denuncia o querela', altro: 'Altro' };
 const MAX_FILE = 1_000_000; // byte per immagine (le foto si ridimensionano nel browser): resta sotto il limite di riga di D1
 const MIMES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const ROLES_ALLOWED = ['cassa', 'staff'];

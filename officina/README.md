@@ -32,3 +32,7 @@ Oggi · Riparazioni · Clienti (storico) · Magazzino (scorta minima, carico/sca
 - Documenti **non fiscali**: scontrino e fattura elettronica restano al registratore telematico o al programma di fatturazione.
 - Test API: `npm run test:officina`. Test E2E (Cypress, solo sul branch `cypress-tests`): `npm run test:e2e`.
 - Quando il tracciamento andrà online: impostare "Indirizzo pubblico" in Impostazioni (i QR useranno quello) e proteggere il gestionale con l'autenticazione (Firebase, da fare).
+
+
+## Cassaforte (documenti d'identita' e credenziali fornitori)
+Dati cifrati con AES-GCM; la chiave e' il segreto `VAULT_KEY` (online: `wrangler secret put VAULT_KEY`; sul PC: variabile d'ambiente oppure file `officina/data/vault.key` creato al primo avvio, mai nel repository). Senza chiave le funzioni rispondono con un errore chiaro. Conservare una copia della chiave fuori dal gestionale: persa la chiave, i dati cifrati non si recuperano. Moduli: `vault.mjs`, `documenti.mjs`, `credenziali.mjs`; accessi registrati in `sensitive_access_log`.
