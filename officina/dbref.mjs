@@ -29,7 +29,6 @@ export const DEFAULT_SETTINGS = {
   shop_phone: '+39 376 234 4151',
   public_base_url: '',
   default_warranty_days: '90',
-  cash_show_untracked: '1',
   low_stock_default: '0',
   stale_days: '90',
   ready_days: '7',

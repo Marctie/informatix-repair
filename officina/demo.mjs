@@ -104,7 +104,7 @@ export async function loadDemo() {
     [28, -1, 'contanti', 0, [[-6, 2], [-9, 1]]], [26, null, 'carta', 0, [[-8, 1], [-7, 1]]], [24, -2, 'carta', 0, [[-6, 1]]],
     [21, null, 'contanti', 0, [[-9, 1], [-6, 1]]], [19, -3, 'carta', 5, [[-11, 1], [-12, 1], [null, 'Installazione RAM', 1, 15]]],
     [16, null, 'contanti', 0, [[-8, 2]]], [13, -5, 'carta', 0, [[-10, 1], [null, 'Clonazione disco', 1, 25]]], [11, null, 'contanti', 0, [[-7, 1], [-8, 1]]],
-    [9, -7, 'carta', 0, [[-9, 1]]], [6, null, 'non tracciato', 0, [[-6, 1]]], [4, -4, 'carta', 0, [[-13, 1]]], [2, null, 'contanti', 0, [[-8, 1], [-6, 1], [-7, 1]]],
+    [9, -7, 'carta', 0, [[-9, 1]]], [6, null, 'bonifico', 0, [[-6, 1]]], [4, -4, 'carta', 0, [[-13, 1]]], [2, null, 'contanti', 0, [[-8, 1], [-6, 1], [-7, 1]]],
     [1, -8, 'bonifico', 0, [[-11, 2], [-10, 2]]],
     [1, null, 'carta', 0, [[-9, 2], [-8, 1]]], [1, -1, 'contanti', 0, [[-6, 3], [-7, 2]]],
     [0, null, 'contanti', 0, [[-6, 2], [-8, 1]]], [0, -6, 'carta', 0, [[-9, 1], [-6, 1]]],

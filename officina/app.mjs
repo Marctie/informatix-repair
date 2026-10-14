@@ -60,6 +60,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     return String(s.public_base_url || (await trackBaseFallback?.()) || '').replace(/\/$/, '');
   };
   const trackUrl = async (token) => `${await trackBase()}/t/${token}`;
+  const roleOf = (r) => (['admin', 'cassa'].includes(r) ? r : 'staff');
   const adminOnly = (req) => {
     if (req.user && req.user.role !== 'admin') throw new L.HttpError(403, 'Solo l’amministratore può farlo.');
   };
@@ -70,7 +71,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'cash_show_untracked', 'low_stock_default', 'stale_days', 'ready_days'];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days'];
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }
@@ -87,7 +88,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     const email = str(req.body.email)?.toLowerCase();
     if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new L.HttpError(400, 'Email non valida');
     if (await db.prepare('SELECT id FROM users WHERE email = ?').get(email)) throw new L.HttpError(409, 'Utente già presente');
-    const role = req.body.role === 'admin' ? 'admin' : 'staff';
+    const role = roleOf(req.body.role);
     const r = await db.prepare(`INSERT INTO users (email, name, role, created_at) VALUES (?,?,?,${NOW})`).run(email, str(req.body.name), role);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(r.lastInsertRowid);
   }));
@@ -97,7 +98,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     if (!u) throw new L.HttpError(404, 'Utente non trovato');
     if (u.protected) throw new L.HttpError(409, 'Il proprietario è protetto: non si modifica.');
     const active = req.body.active === false || req.body.active === 0 ? 0 : 1;
-    await db.prepare('UPDATE users SET name=?, role=?, active=? WHERE id=?').run(str(req.body.name) ?? u.name, req.body.role === 'admin' ? 'admin' : 'staff', active, u.id);
+    await db.prepare('UPDATE users SET name=?, role=?, active=? WHERE id=?').run(str(req.body.name) ?? u.name, roleOf(req.body.role), active, u.id);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
   }));
   app.delete('/api/users/:id', h(async (req) => {

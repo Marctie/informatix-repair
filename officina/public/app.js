@@ -17,13 +17,13 @@ const VIEWS = [
   { id: 'vendite', label: 'Vendite', icon: '🛒', render: salesView },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
-  { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView },
+  { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true },
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true },
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
 let ME = null;
-const visible = () => VIEWS.filter((x) => !x.admin || ME?.role === 'admin');
+const visible = () => VIEWS.filter((x) => (!x.admin || ME?.role === 'admin') && !(x.notCassa && ME?.role === 'cassa'));
 const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
 const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖' };
 // Gestionale Vetrina Usati (per ora un'app separata sulla porta 4848: in futuro stessa sede, vedi piano "Portale unico")

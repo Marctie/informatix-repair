@@ -43,7 +43,7 @@ export async function salesView(el) {
           </div></div>`).join('')}</div>
         <div class="fgrid c3" style="align-items:end">
           <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="0" /></div>
-          <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option><option>non tracciato</option></select></div>
+          <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(subtotal)}</b></div>
         </div>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
@@ -157,7 +157,6 @@ export async function cashView(el, qs = new URLSearchParams()) {
         ${kpi(eur(ex.total), 'Spese nel periodo', 'text-amber-600')}
         ${kpi(eur(r.total - ex.total), 'Incassi meno spese', r.total - ex.total >= 0 ? 'text-emerald-600' : 'text-red-600')}
       </div>
-      ${r.untracked_excluded ? `<p class="hint">${r.untracked_excluded} ${r.untracked_excluded === 1 ? 'pagamento “non tracciato” non è conteggiato' : 'pagamenti “non tracciato” non sono conteggiati'} (impostazione in Impostazioni → Cassa).</p>` : ''}
       ${r.rows.length ? `<div class="an-cols">
         <section class="card panel sec"><h3 class="sec-t">Per metodo di pagamento</h3>${hbars([...r.by_method].sort((x, y) => y.total - x.total), { value: (m) => m.total, label: (m) => `${m.method} (${m.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
         <section class="card panel sec"><h3 class="sec-t">Riparazioni e vendite</h3>${hbars(byKind, { value: (g) => g.total, label: (g) => `${g.name} (${g.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
@@ -196,7 +195,7 @@ export async function cashView(el, qs = new URLSearchParams()) {
   await load();
 }
 
-const METHODS = ['contanti', 'carta', 'bonifico', 'non tracciato'];
+const METHODS = ['contanti', 'carta', 'bonifico'];
 const DOC_LABEL = { scontrino: 'Scontrino', fattura: 'Fattura', ricevuta: 'Ricevuta', nessuno: 'Senza giustificativo' };
 const opt = (list, sel, label = (v) => v) => list.map((v) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(label(v))}</option>`).join('');
 
@@ -278,10 +277,6 @@ export async function settingsView(el) {
         <h2 class="sec-t" style="margin-top:.6rem">Tracciamento per i clienti</h2>
         <div class="field"><label class="l" for="st-url">Indirizzo pubblico</label><input id="st-url" data-k="public_base_url" value="${esc(s.public_base_url)}" placeholder="vuoto = rete locale (${esc(META.track_base)})" />
           <span class="hint">Quando il tracciamento sarà online (es. https://riparazioni.informatixrepair.com) scrivilo qui: i QR e i link useranno questo indirizzo.</span></div>
-        <h2 class="sec-t" style="margin-top:.6rem">Cassa</h2>
-        <div class="field"><label class="l" for="st-untr">Pagamenti “non tracciato”</label>
-          <select id="st-untr" data-k="cash_show_untracked"><option value="1" ${s.cash_show_untracked !== '0' ? 'selected' : ''}>Conteggiali nella cassa</option><option value="0" ${s.cash_show_untracked === '0' ? 'selected' : ''}>Non mostrarli nella cassa</option></select>
-          <span class="hint">Il metodo “non tracciato” si sceglie su vendite e riparazioni. Con “non mostrarli” restano salvati nel gestionale ma non entrano nei totali, nel grafico e nell’incasso di oggi.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Avvisi</h2>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="st-lsd">Scorta minima generale (pezzi)</label><input id="st-lsd" data-k="low_stock_default" type="number" min="0" inputmode="numeric" value="${esc(s.low_stock_default ?? '0')}" />

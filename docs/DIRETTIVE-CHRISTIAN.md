@@ -159,3 +159,5 @@ Ordine consigliato, a lotti (ognuno con test, manuale aggiornato, commit e deplo
 - **Punto 12b ("sezione OK e sezione Blacks")**: IN SOSPESO per volonta' di Marco, da riprendere piu' avanti. Nessuna implementazione finche' non viene chiarito il significato (blacklist di IMEI sì; registro nascosto no).
 - **Punto 12, domanda 1 (risposta di Marco)**: la **Vetrina Usati** (sito pubblico) e la sezione **Usati del gestionale (Dispositivi)** sono **due cose separate che non comunicano tra loro**: niente anagrafica condivisa, nessuna sincronizzazione.
 - **Bozze legali**: scritte in `docs/TESTI-LEGALI-BOZZE.md`, ogni testo finisce con "(testo da formalizzare con Christian)".
+
+- **Punto 3 – FATTO (2026-10-14)**: metodo "non tracciato" e impostazione `cash_show_untracked` rimossi (migrazione 0006 converte i vecchi pagamenti in contanti). Ruolo **Cassa** creato (niente Impostazioni/Analisi/Utenti). Restano: nascondere i margini/costi d'acquisto al ruolo Cassa e il registro modifiche/eliminazioni.
