@@ -78,7 +78,7 @@ export async function usatiView(el, _params, ME) {
     $('#u-pub', el).innerHTML = `<div class="row"><h2 class="sec-t grow">Pubblicazione sul sito</h2>${publishBadge(p)}</div>
       ${!p.enabled ? '<p class="hint">Gli articoli sono salvati qui nel gestionale ma non vanno ancora sul sito: la pubblicazione sul sito non è ancora attiva.</p>' : ''}
       ${p.error ? `<p class="hint" style="color:#B91C1C">${esc(p.error)}</p>` : ''}
-      ${p.enabled && (p.dirty || p.error) ? '<div class="row"><button class="btn btn-dark btn-sm" id="u-publish">Pubblica ora</button></div>' : ''}`;
+      ${p.enabled ? `<div class="row"><button class="btn btn-dark btn-sm" id="u-publish">${p.dirty || p.error ? 'Pubblica ora' : 'Ripubblica sul sito'}</button></div>` : ''}`;
     const needle = q.toLowerCase();
     const list = data.items.filter((i) => (tab === 'all' || i.status === tab) && (!needle || `${title(i)} ${i.conditionLabel || ''}`.toLowerCase().includes(needle)));
     $('#u-list', el).innerHTML = list.length ? list.map((it) => {
