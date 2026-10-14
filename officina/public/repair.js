@@ -313,9 +313,11 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
             <div class="plist">
-              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}</span></span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}${p.product_id ? '' : ` · a mano, costo ${eur(p.unit_cost * p.qty)}`}</span></span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
-            ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>` : ''}
+            ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>
+            <div class="row tight"><button class="btn btn-outline btn-sm" data-act="manualpart">＋ Ricambio non a magazzino</button></div>` : ''}
+            <div class="total-box"><span>Costo ricambi <b>${eur(r.parts_cost)}</b></span><span>Guadagno stimato <b>${r.profit_estimate == null ? '—' : eur(r.profit_estimate)}</b></span></div>
           </section>
         </div>
       </div>
@@ -369,6 +371,7 @@ export async function openRepairDetail(id, onChange) {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     switch (b.dataset.act) {
+      case 'manualpart': return manualPartDialog(id, () => { reloadList(); render(); });
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
@@ -443,4 +446,27 @@ async function editDialog(id, done) {
     }));
     if (out) { m.close(); toast('Dati aggiornati'); done(); }
   };
+}
+
+/** Ricambio non caricato a magazzino: descrizione, quantità, costo d'acquisto e prezzo al cliente (non tocca le giacenze). */
+function manualPartDialog(repairId, done) {
+  const m = openModal(`<div class="fgrid c2">
+      <div class="field" style="grid-column:1/-1"><label class="l" for="mp-name">Descrizione</label><input id="mp-name" placeholder="es. Display iPhone 12" /></div>
+      <div class="field"><label class="l" for="mp-qty">Quantità</label><input id="mp-qty" inputmode="numeric" value="1" /></div>
+      <div class="field"><label class="l" for="mp-code">Codice fornitore</label><input id="mp-code" /></div>
+      <div class="field"><label class="l" for="mp-cost">Prezzo d’acquisto € (cad.)</label><input id="mp-cost" inputmode="decimal" /></div>
+      <div class="field"><label class="l" for="mp-price">Prezzo al cliente € (cad.)</label><input id="mp-price" inputmode="decimal" placeholder="0 = incluso nel preventivo" /></div>
+      <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" /></div>
+      <div class="field"><label class="l" for="mp-date">Data d’acquisto</label><input id="mp-date" type="date" value="${today()}" /></div>
+    </div><p class="hint">Non scala nessuna giacenza. Il costo entra nel guadagno della riparazione.</p>`,
+    { title: 'Ricambio non a magazzino', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="mp-ok">Aggiungi</button>' });
+  $('#mp-ok', m.el).onclick = async () => {
+    const v = (id) => $(`#${id}`, m.el).value;
+    const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, {
+      name: v('mp-name'), qty: v('mp-qty'), unit_cost: v('mp-cost').replace(',', '.'), unit_price: v('mp-price').replace(',', '.') || 0,
+      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'),
+    }));
+    if (out) { m.close(); toast('Ricambio aggiunto'); done(); }
+  };
+  $('#mp-name', m.el).focus();
 }

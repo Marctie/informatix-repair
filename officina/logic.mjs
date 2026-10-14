@@ -169,6 +169,8 @@ async function decorateRepair(r, full = false) {
   if (full) {
     out.events = await db.prepare('SELECT * FROM repair_events WHERE repair_id = ? ORDER BY id DESC').all(r.id);
     out.parts = await db.prepare('SELECT * FROM repair_parts WHERE repair_id = ? ORDER BY id').all(r.id);
+    out.parts_cost = money(out.parts.reduce((a, p) => a + p.qty * p.unit_cost, 0));
+    out.profit_estimate = (r.final_price ?? r.quote) == null ? null : money((r.final_price ?? r.quote) - out.parts_cost);
     out.paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);
     const warrantyUntil = r.delivered_at ? new Date(new Date(r.delivered_at.replace(' ', 'T')).getTime() + r.warranty_days * 86400000) : null;
     out.warranty_until = warrantyUntil ? localDate(warrantyUntil) : null;
@@ -262,7 +264,7 @@ export async function deliverRepair(id, { final_price, method, note } = {}) {
   });
 }
 
-export async function addPart(repairId, { product_id, name, qty, unit_price }) {
+export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at }) {
   return tx(async () => {
     const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -276,7 +278,12 @@ export async function addPart(repairId, { product_id, name, qty, unit_price }) {
       await moveStock(p.id, -q, 'riparazione', r.code);
     }
     if (!pName) throw new HttpError(400, 'Nome ricambio obbligatorio');
-    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost));
+    // Ricambio a mano (non a magazzino): il costo d'acquisto inserito entra nel guadagno della riparazione.
+    if (!pid) {
+      cost = num(unit_cost, 0);
+      if (cost < 0 || price < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
+    }
+    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at) VALUES (?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at));
     await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}.`, 0);
     return await getRepair(repairId);
   });
