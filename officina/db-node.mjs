@@ -22,6 +22,9 @@ addColumn('users', 'last_seen_at', 'TEXT');
 addColumn('repair_parts', 'supplier_code', 'TEXT');
 addColumn('repair_parts', 'supplier_name', 'TEXT');
 addColumn('repair_parts', 'bought_at', 'TEXT');
+addColumn('repairs', 'checklist_in', 'TEXT');
+addColumn('repairs', 'checklist_pre', 'TEXT');
+addColumn('repairs', 'checklist_out', 'TEXT');
 
 let depth = 0;
 setDb({

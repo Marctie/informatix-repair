@@ -9,7 +9,8 @@ const dt = (s) => (s ? new Date(s.replace(' ', 'T')).toLocaleString('it-IT', { d
 const d = (s) => (s ? new Date(s + 'T00:00:00').toLocaleDateString('it-IT') : '—');
 const qr = (text, size = 130) => `<img src="/api/qr?text=${encodeURIComponent(text)}" width="${size}" height="${size}" alt="QR" />`;
 const barcode = (text, w = 150, h = 34) => `<img src="/api/barcode?text=${encodeURIComponent(text)}" style="width:${w}px;height:${h}px;display:block" alt="codice a barre ${esc(text)}" />`;
-const TYPES = { smartphone: 'Smartphone', tablet: 'Tablet', portatile: 'Portatile', pc: 'PC fisso', console: 'Console', altro: 'Altro' };
+import { DEVICE_TYPES, typeInfo } from './checklists.mjs';
+const TYPES = Object.fromEntries(Object.entries(DEVICE_TYPES).map(([k, v]) => [k, v.label]));
 
 const BASE_CSS = `
   *{box-sizing:border-box}
@@ -53,7 +54,7 @@ const customerBlock = (r, withEmail = true) => `
 
 const deviceBlock = (r, withPass = false) => `
   <table>
-    <tr><th>Tipo</th><td>${esc(TYPES[r.device_type] || r.device_type)}</td><th>Seriale / IMEI</th><td>${esc(r.serial) || '—'}</td></tr>
+    <tr><th>Tipo</th><td>${esc(TYPES[r.device_type] || r.device_type)}</td><th>${esc(typeInfo(r.device_type).serial)}</th><td>${esc(r.serial) || '—'}</td></tr>
     <tr><th>Modello</th><td colspan="3"><b style="font-size:13px">${esc(r.brand_model)}</b></td></tr>
     <tr><th>Accessori lasciati</th><td colspan="3">${esc(r.accessories) || 'nessuno'}</td></tr>
     <tr><th>Stato estetico</th><td colspan="3">${esc(r.condition_notes) || '—'}</td></tr>
@@ -104,7 +105,7 @@ export function labCard(r, trackUrl, s) {
   ${header(s, 'Scheda laboratorio · uso interno', r)}
   <div class="row" style="margin-top:6px;align-items:stretch">
     <div style="flex:1.2"><h2>Cliente</h2>${customerBlock(r)}</div>
-    <div style="flex:1"><h2>PIN / schema di sblocco</h2><div class="pass">${esc(r.passcode) || ''}</div></div>
+    <div style="flex:1"><h2>${esc(typeInfo(r.device_type).passcode)}</h2><div class="pass">${esc(r.passcode) || ''}</div></div>
     <div style="width:92px;text-align:center;margin-top:8px">${qr(trackUrl, 82)}<div style="font-size:8px" class="muted">link cliente</div></div>
   </div>
   <h2>Dispositivo</h2>${deviceBlock(r)}
@@ -112,7 +113,7 @@ export function labCard(r, trackUrl, s) {
   <h2>Economico e tempi</h2>${moneyBlock(r)}
 
   <h2>Controllo all'ingresso (barra ciò che funziona, cerchia ciò che non funziona)</h2>
-  <div class="ck">${CHECK_ENTRY.map((c) => `<span>${c}</span>`).join('')}</div>
+  <div class="ck">${(r.ck_lists?.in || CHECK_ENTRY).map((c) => `<span>${c}</span>`).join('')}</div>
   <h2>Al ritiro in laboratorio</h2>
   <div class="ck" style="grid-template-columns:repeat(2,1fr)">
     <span>Backup dati eseguito / proposto al cliente</span><span>Cliente autorizza reset o formattazione</span>
@@ -129,7 +130,7 @@ export function labCard(r, trackUrl, s) {
   <div class="row" style="margin-top:6px"><div>Tempo impiegato: ______ h ______ min</div><div>Tecnico: ____________________</div><div>Data fine lavori: ___ / ___ / ______</div></div>
 
   <h2>Collaudo finale (tutto ok prima di avvisare il cliente)</h2>
-  <div class="ck">${CHECK_DONE.map((c) => `<span>${c}</span>`).join('')}</div>
+  <div class="ck">${(r.ck_lists?.out || CHECK_DONE).map((c) => `<span>${c}</span>`).join('')}</div>
   <div class="row" style="margin-top:8px;font-size:11px"><div>Cliente avvisato il ___ / ___ alle ____ con: ☐ WhatsApp ☐ telefonata</div><div>Consegnato il ___ / ___ / ______</div></div>
   </div>`;
 }

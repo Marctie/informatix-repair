@@ -2,9 +2,15 @@
 import { scanWithCamera } from './scan.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
 
-const DEVICE_TYPES = [['smartphone', 'Smartphone'], ['tablet', 'Tablet'], ['portatile', 'Portatile'], ['pc', 'PC fisso'], ['console', 'Console'], ['altro', 'Altro']];
+import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
+
+// Tipi di dispositivo, etichette e suggerimenti arrivano dal server (/api/meta): cambiano con il tipo scelto.
+const FALLBACK_TYPES = { smartphone: { label: 'Smartphone', serial: 'IMEI / seriale', passcode: 'PIN / schema di sblocco', accessories: ['Caricatore', 'Cover', 'SIM', 'Scheda SD', 'Cavo'] }, altro: { label: 'Altro', serial: 'Numero di serie', passcode: 'Codice di sblocco', accessories: ['Caricatore', 'Cavo'] } };
+const typesMeta = () => (META.device_types && Object.keys(META.device_types).length ? META.device_types : FALLBACK_TYPES);
+const typeInfo = (t) => typesMeta()[t] || typesMeta().altro || FALLBACK_TYPES.altro;
+let CHECKLISTS = {}; // elenchi di controllo per tipo (si ricaricano a ogni apertura)
+const loadChecklists = async () => { CHECKLISTS = (await safe(() => api('GET', '/api/checklists'))) || CHECKLISTS; return CHECKLISTS; };
 const PROBLEMS = ['Schermo rotto', 'Batteria', 'Non si accende', 'Non carica', 'Lento / software', 'Acqua / liquido', 'Audio / microfono', 'Fotocamera'];
-const ACCESSORIES = ['Caricatore', 'Cover', 'SIM', 'Scheda SD', 'Borsa', 'Cavo'];
 const CONDITIONS = ['Graffi', 'Display crepato', 'Ammaccature', 'Ottime condizioni'];
 
 const toggleChips = (root, sel) => root.addEventListener('click', (e) => { const c = e.target.closest(`${sel} .chip`); if (c) c.classList.toggle('on'); });
@@ -30,10 +36,10 @@ export function openRepairForm(onDone, preset = {}) {
 
       <section class="sec">
         <h3 class="sec-t">Dispositivo</h3>
-        <div class="field"><label class="l">Tipo di dispositivo</label><div class="row tight" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div></div>
+        <div class="field"><label class="l">Tipo di dispositivo</label><div class="row tight" id="rf-types">${Object.entries(typesMeta()).map(([k, v], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${esc(v.label)}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-model">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
-          <div class="field"><label class="l" for="rf-serial">Seriale / IMEI</label>
+          <div class="field"><label class="l" for="rf-serial">${esc(typeInfo(Object.keys(typesMeta())[0]).serial)}</label>
             <div class="row nowrap"><input id="rf-serial" autocomplete="off" placeholder="Spara col lettore o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline btn-icon" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
             <div id="rf-serial-hint" class="hint"></div></div>
         </div>
@@ -47,12 +53,19 @@ export function openRepairForm(onDone, preset = {}) {
 
       <section class="sec">
         <h3 class="sec-t">Cosa lascia e in che stato</h3>
-        <div class="field"><label class="l">Accessori lasciati</label><div class="row tight" id="rf-acc">${ACCESSORIES.map((p) => `<span class="chip">${p}</span>`).join('')}</div></div>
+        <div class="field"><label class="l">Accessori lasciati</label><div class="row tight" id="rf-acc">${typeInfo(Object.keys(typesMeta())[0]).accessories.map((p) => `<span class="chip">${esc(p)}</span>`).join('')}</div></div>
         <div class="field"><label class="l">Stato estetico</label><div class="row tight" id="rf-cond">${CONDITIONS.map((p) => `<span class="chip">${p}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-accnote">Altri accessori o note sullo stato</label><input id="rf-accnote" placeholder="Facoltativo" /></div>
-          <div class="field"><label class="l" for="rf-pass">PIN / schema di sblocco</label><input id="rf-pass" placeholder="Facoltativo" /><span class="hint">Solo uso interno: il cliente non lo vede mai.</span></div>
+          <div class="field"><label class="l" for="rf-pass">${esc(typeInfo(Object.keys(typesMeta())[0]).passcode)}</label><input id="rf-pass" placeholder="Facoltativo" /><span class="hint">Solo uso interno: il cliente non lo vede mai.</span></div>
         </div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Controllo all’ingresso</h3>
+        <p class="sec-sub">Facoltativo: cosa funziona e cosa no quando il dispositivo arriva. Le voci cambiano con il tipo di dispositivo; resta salvato nella riparazione.</p>
+        <div id="rf-ck"></div>
+        ${checklistLegend()}
       </section>
 
       <section class="sec">
@@ -79,7 +92,24 @@ export function openRepairForm(onDone, preset = {}) {
   let customerId = null;
 
   // scelte rapide
-  $('#rf-types', root).onclick = (e) => { const c = e.target.closest('.chip'); if (!c) return; $$('#rf-types .chip', root).forEach((x) => x.classList.remove('on')); c.classList.add('on'); };
+  // il tipo di dispositivo cambia etichette (seriale/IMEI, PIN/password), accessori suggeriti e controlli d'ingresso
+  const curType = () => $('#rf-types .chip.on', root)?.dataset.v || 'smartphone';
+  const drawChecklist = () => {
+    const t = curType();
+    $('#rf-ck', root).innerHTML = checklistGrid(toItems((CHECKLISTS[t] || CHECKLISTS.altro || {}).in));
+    const g = $('#rf-ck .ckgrid', root);
+    if (g) bindChecklist(g);
+  };
+  const applyType = () => {
+    const info = typeInfo(curType());
+    $('label[for="rf-serial"]', root).textContent = info.serial;
+    $('label[for="rf-pass"]', root).textContent = info.passcode;
+    const on = new Set(selected(root, '#rf-acc'));
+    $('#rf-acc', root).innerHTML = info.accessories.map((p) => `<span class="chip ${on.has(p) ? 'on' : ''}">${esc(p)}</span>`).join('');
+    drawChecklist();
+  };
+  $('#rf-types', root).onclick = (e) => { const c = e.target.closest('.chip'); if (!c) return; $$('#rf-types .chip', root).forEach((x) => x.classList.remove('on')); c.classList.add('on'); applyType(); };
+  loadChecklists().then(() => { if (root.isConnected) drawChecklist(); });
   toggleChips(root, '#rf-acc');
   toggleChips(root, '#rf-cond');
   $('#rf-problems', root).onclick = (e) => {
@@ -176,9 +206,12 @@ export function openRepairForm(onDone, preset = {}) {
       urgent: $('#rf-urgent', root).checked,
     };
     btn.disabled = true;
+    const entry = $('#rf-ck .ckgrid', root) ? readChecklist($('#rf-ck .ckgrid', root)) : [];
     const r = await safe(() => api('POST', '/api/repairs', body));
     btn.disabled = false;
     if (!r) { pw?.close(); return; }
+    // controllo d'ingresso compilato al banco: si salva subito nella riparazione appena creata
+    if (hasAny(entry)) await safe(() => api('PUT', `/api/repairs/${r.id}/checklist`, { phase: 'in', items: entry }));
     m.close();
     if (print) {
       if (pw) pw.location.href = `/print/both/${r.id}`;
@@ -227,7 +260,7 @@ export async function openRepairDetail(id, onChange) {
   m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === m.el) setTimeout(() => changed && onChange?.(), 0); });
 
   async function render() {
-    const r = await safe(() => api('GET', `/api/repairs/${id}`));
+    const [r] = await Promise.all([safe(() => api('GET', `/api/repairs/${id}`)), loadChecklists()]);
     if (!r) return m.close();
     $('h2', m.el).textContent = `${r.code} · ${r.brand_model}`;
     const done = ['delivered', 'cancelled'].includes(r.status);
@@ -268,8 +301,8 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Dispositivo</h3>
             <dl class="kv">
-              <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b> <span class="hint">(${esc(r.device_type)})</span></dd>
-              <dt>Seriale / IMEI</dt><dd>${esc(r.serial || '—')}</dd>
+              <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b> <span class="hint">(${esc(typeInfo(r.device_type).label)})</span></dd>
+              <dt>${esc(typeInfo(r.device_type).serial)}</dt><dd>${esc(r.serial || '—')}</dd>
               <dt>Problema</dt><dd>${esc(r.problem)}</dd>
               <dt>Accessori</dt><dd>${esc(r.accessories || '—')}</dd>
               <dt>Stato estetico</dt><dd>${esc(r.condition_notes || '—')}</dd>
@@ -328,6 +361,8 @@ export async function openRepairDetail(id, onChange) {
         <div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea id="d-tech" rows="2" placeholder="Diagnosi, prove fatte, cosa manca…">${esc(r.tech_notes || '')}</textarea><button class="btn btn-outline" data-act="savetech">Salva</button></div>
       </section>
 
+      ${checklistSections(r, CHECKLISTS, r.status === 'delivered' || r.status === 'cancelled')}
+
       <section class="sec">
         <h3 class="sec-t">Messaggio visibile al cliente</h3>
         <p class="sec-sub">Compare in evidenza sulla pagina che il cliente apre dal QR.</p>
@@ -348,6 +383,7 @@ export async function openRepairDetail(id, onChange) {
         <ul class="tl">${r.events.map((e) => `<li><time>${fdt(e.created_at)}</time><span>${esc(e.note || '')} ${e.is_public ? '' : '<span class="badge bg-gray-100 text-gray-500">interna</span>'}</span></li>`).join('')}</ul>
       </section>`;
 
+    bindChecklistGrids(body);
     // ricerca ricambi
     const ps = $('#d-part', body);
     if (ps) ps.oninput = debounce(async (e) => {
@@ -364,6 +400,7 @@ export async function openRepairDetail(id, onChange) {
 
   const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
+    if (await checklistClick(e, body, id, () => { reloadList(); render(); })) return;
     const rm = e.target.closest('[data-rmpart]');
     if (rm) { if (!(await confirmDelete('questo ricambio', { verb: 'Rimuovere', detail: 'Il magazzino viene ripristinato.' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)'); }
     const pid = e.target.closest('[data-pid]');
@@ -427,9 +464,10 @@ async function editDialog(id, done) {
     </section>
     <section class="sec">
       <h3 class="sec-t">Dispositivo</h3>
-      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', 'Seriale / IMEI', r.serial)}
+      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', typeInfo(r.device_type).serial, r.serial)}
         ${f('accessories', 'Accessori lasciati', r.accessories)}${f('condition_notes', 'Stato del dispositivo', r.condition_notes)}
-        ${f('passcode', 'PIN / schema (solo interno)', r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
+        <div class="field"><label class="l">Tipo di dispositivo</label><select data-k="device_type">${Object.entries(typesMeta()).map(([k, v]) => `<option value="${k}" ${k === r.device_type ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
+        ${f('passcode', `${typeInfo(r.device_type).passcode} (solo interno)`, r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
     </section>
     <section class="sec">
       <h3 class="sec-t">Problema segnalato</h3>
@@ -440,7 +478,7 @@ async function editDialog(id, done) {
   $('#ed-ok', m.el).onclick = async () => {
     const v = (k) => $(`[data-k="${k}"]`, m.el).value;
     const out = await safe(() => api('PATCH', `/api/repairs/${id}`, {
-      brand_model: v('brand_model'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
+      brand_model: v('brand_model'), device_type: v('device_type'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
       passcode: v('passcode'), warranty_days: v('warranty_days'), problem: v('problem'),
       customer: { name: v('c_name'), phone: v('c_phone'), email: v('c_email') },
     }));

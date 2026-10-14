@@ -15,6 +15,7 @@ import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
+import * as CK from './checklists.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -71,7 +72,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   };
 
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
-  app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase() })));
+  app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(() => L.dashboard()));
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
@@ -82,6 +83,11 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     }
     return getSettings();
   }));
+
+  // Checklist di controllo per tipo di dispositivo (modificabili dal proprietario)
+  app.get('/api/checklists', h(() => CK.getChecklists()));
+  app.put('/api/checklists/:type', h((req) => { adminOnly(req); return CK.saveTemplate(req.params.type, req.body); }));
+  app.delete('/api/checklists/:type', h((req) => { adminOnly(req); return CK.resetTemplate(req.params.type); }));
 
   // Vetrina Usati (articoli, foto, pubblicazione sul sito)
   mountUsati(app, { h, adminOnly, publisher: usati.publisher || (() => draftPublisher()), media: usati.media || (() => missingMedia()), siteUrl: usati.siteUrl });
@@ -314,6 +320,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.post('/api/repairs/:id/note', h((req) => L.addNote(req.params.id, req.body.note, req.body.public !== false)));
   app.post('/api/repairs/:id/parts', h((req) => L.addPart(req.params.id, req.body)));
   app.delete('/api/repairs/:id/parts/:partId', h((req) => L.removePart(req.params.id, req.params.partId)));
+  app.put('/api/repairs/:id/checklist', h(async (req) => ({ ok: true, check: await CK.saveRepairCheck(req.params.id, req.body.phase, req.body.items, req.user) })));
   app.post('/api/repairs/:id/deposit', h(async (req) => {
     const amount = num(req.body.amount);
     if (!(amount > 0)) throw new L.HttpError(400, 'Importo non valido');
@@ -353,6 +360,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   // Stampe (HTML pronto per la stampante). ?noprint=1 = niente stampa automatica (anteprima).
   const printRoute = (render) => page(async (c) => {
     const r = await L.getRepair(c.req.param('id'));
+    r.ck_lists = await CK.listFor(r.device_type); // voci dei controlli per il tipo di dispositivo
     return c.html(render(r, await trackUrl(r.token), await getSettings(), { noprint: c.req.query('noprint') === '1' }));
   });
   app.get('/print/customer/:id', printRoute(printCustomer));
@@ -365,7 +373,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'checklist_templates'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
