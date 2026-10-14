@@ -137,9 +137,19 @@ Raccolte da Marco il 2026-10-14, una per volta. NON implementare finche' Marco n
 ---
 # PIANO PROPOSTO (2026-10-14) – elenco completato da Marco
 Ordine consigliato, a lotti (ognuno con test, manuale aggiornato, commit e deploy; "veloce al banco" come principio guida):
-- **Lotto A – correzioni e velocita' al banco**: p.3 (togliere "non tracciato" + ruolo **Cassa** per info@) · p.5 ricambi a mano con costo + **stima del guadagno** per riparazione · p.8 flag stampa ricevuta · p.6 **aree** del magazzino (menu a tendina) · p.7 **servizi** in vendita.
+- **Lotto A – correzioni e velocita' al banco**: p.20 **doppia conferma su ogni eliminazione** (trasversale, per prima) · p.3 (togliere "non tracciato" + ruolo **Cassa** per info@) · p.5 ricambi a mano con costo + **stima del guadagno** per riparazione · p.8 flag stampa ricevuta · p.6 **aree** del magazzino (menu a tendina) · p.7 **servizi** in vendita.
 - **Lotto B – fondamenta acquisti**: fondere i due rami degli agenti (Vetrina Usati + Portale; import fatture XML) e poi p.4 **carico merce** con prezzo/fornitore e storico prezzi, grafico a punti e avvisi.
 - **Lotto C – schede e firme**: p.15 checklist per tipo di dispositivo · p.14 scheda laboratorio in una pagina + checklist digitale · p.13 scheda cliente doppia su un A4 + firma digitale · p.16 preventivo a distanza (conferme, scelta, firma) · p.2 non riparabile (15 giorni, giacenza/deposito).
 - **Lotto D – nuovi moduli**: p.19 **Ordini** · p.11 **Preventivi** con validita' · p.10 **Promemoria** · p.12 **Dispositivi** (seriali/IMEI, rubati, blacklist se confermata) · p.9 **conto diviso + buoni** · p.17 **documenti d'identita'** · p.18 **credenziali fornitori** (cifrate).
 - **Dopo**: DDT/PDF fornitori (servono campioni), carte fedelta' NFC, versione vendibile ai clienti.
 **Decisioni che servono da Marco prima di partire**: (1) conferma di togliere "non tracciato" (p.3); (2) cosa intende per "Blacks" (p.12b); (3) testi legali delle conferme/firme (p.13, 16, 17) da far verificare; (4) ordine dei lotti.
+
+## 20. Doppia conferma quando si elimina QUALUNQUE cosa
+**Testo (Marco)**: "Aggiungi anche alle cose da fare la doppia conferma quando elimini qualunque cosa".
+**Come l'ho capita**: ogni eliminazione (cliente, riparazione, articolo, fornitore, utente, spesa, nota, documento, dati demo, ecc.) passa da **due passaggi**: (1) "Eliminare X?" con il nome dell'elemento; (2) conferma finale esplicita ("Confermo l'eliminazione, non si puo' annullare"), eventualmente digitando una parola (ELIMINA) o il nome per le cose piu' gravi. Una **finestra unica riutilizzabile** per tutto il gestionale (oggi si usa `confirm()` semplice in molti punti), accessibile (tastiera, bersagli 44 px). Con **registro** di chi ha eliminato cosa e quando (utile anche per le notifiche Telegram: le eliminazioni mostrano oggi solo l'id). Valuto anche l'**annulla** per pochi secondi o un **cestino** per le cose recuperabili.
+**Domande**: 1) Doppia conferma identica per tutto o piu' severa (da digitare) per riparazioni, clienti e utenti? 2) Vuole un **cestino** da cui recuperare per qualche giorno? 3) La doppia conferma vale anche per annullare una riparazione o togliere un pagamento?
+**Stato**: da fare (lotto A: e' trasversale, conviene farla per prima).
+
+## Aggiornamento punto 3 (2026-10-14, risposta di Marco alla domanda 1)
+**Variante proposta**: tenere "non tracciato" "camuffato": la Cassa puo' inserirlo, ma appena registrato la transazione sparisce per l'utente Cassa in tutti i punti di analisi; solo Christian (ADMIN) puo' vederla, crearne altre, modificarla ed eliminarla.
+**Decisione**: NON implementata. E' la stessa funzione del punto 3 (incassi che non compaiono nei dati e nei totali): cambia solo chi la vede. Restano come proposte realizzabili: ruolo Cassa con permessi limitati (senza Analisi, margini, Utenti, Impostazioni), **registro delle modifiche e cancellazioni** (chi, cosa, quando) e la doppia conferma del punto 20. Il metodo "non tracciato" va tolto (da fare nel lotto A).
