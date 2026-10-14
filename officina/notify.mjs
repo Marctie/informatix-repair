@@ -67,8 +67,9 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (path === '/api/users' && m === 'POST') return isOk ? `🔐 <b>Nuovo utente</b>: ${esc(r.email)} (${esc(r.role)})${foot}` : fail('Nuovo utente');
   if (path.startsWith('/api/users/') && (m === 'PUT' || m === 'DELETE')) return isOk ? `🔐 <b>Utente ${m === 'DELETE' ? 'eliminato' : 'modificato'}</b>${r.email ? `: ${esc(r.email)} (${esc(r.role)}${r.active === 0 ? ', disattivato' : ''})` : ''}${foot}` : fail('Utente');
   if (path === '/api/settings' && m === 'PUT') return isOk ? `⚙️ <b>Impostazioni modificate</b>\nCampi: ${esc(fields(body, SETTING)) || '—'}${foot}` : fail('Impostazioni');
-  if (path === '/api/demo') return isOk ? `🧪 <b>Dati demo ${m === 'POST' ? 'caricati' : 'eliminati'}</b>${foot}` : fail('Dati demo');
-  if (path === '/api/backup/r2') return isOk ? `💾 <b>Backup salvato nel cloud</b>\n${esc(r.file || '')}${foot}` : fail('Backup nel cloud');
+  // Solo le azioni reali: aprire le Impostazioni fa una lettura (GET /api/demo) che NON deve avvisare.
+  if (path === '/api/demo' && (m === 'POST' || m === 'DELETE')) return isOk ? `🧪 <b>Dati demo ${m === 'POST' ? 'caricati' : 'eliminati'}</b>${foot}` : fail('Dati demo');
+  if (path === '/api/backup/r2' && m === 'POST') return isOk ? `💾 <b>Backup salvato nel cloud</b>\n${esc(r.file || '')}${foot}` : fail('Backup nel cloud');
   if (path === '/api/backup') return isOk ? `💾 <b>Backup scaricato</b>${foot}` : fail('Backup');
   if (/^\/print\//.test(path)) return isOk ? `🖨️ <b>Stampa</b> ${esc(path.replace('/print/', ''))}${foot}` : null;
 
