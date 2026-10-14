@@ -116,7 +116,9 @@ export const STATUS_STYLE = {
 export const statusBadge = (r) => `<span class="badge ${STATUS_STYLE[r.status]}">${esc(r.status_label)}</span>`;
 export const progressBar = (r) => `<div class="bar ${r.status === 'ready' || r.status === 'delivered' ? 'green' : ''}" title="${r.progress}%"><i style="width:${r.progress}%"></i></div>`;
 
-export const META = { statuses: {}, settings: {}, track_base: '' };
+export const META = { statuses: {}, settings: {}, track_base: '', role: 'admin' };
+/** Il ruolo Cassa non vede costi d'acquisto, margini e guadagni (il server non glieli manda nemmeno). */
+export const canSeeCosts = () => META.role !== 'cassa';
 export const trackUrl = (token) => `${META.track_base}/t/${token}`;
 export async function loadMeta() {
   const m = await api('GET', '/api/meta');

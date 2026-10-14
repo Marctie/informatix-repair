@@ -80,3 +80,34 @@ test('registro: solo gli admin lo leggono', async () => {
   assert.equal((await a('GET', '/api/audit', null, 'cassa')).status, 403);
   assert.equal((await a('GET', '/api/audit', null, 'admin')).status, 200);
 });
+
+const hasCost = (v) => /"(cost|unit_cost|parts_cost|profit_estimate|margin|value_cost)"/.test(JSON.stringify(v));
+
+test('ruolo cassa: le risposte API non contengono costi, margini o guadagni', async () => {
+  const p = (await a('POST', '/api/products', { name: 'Display Y', qty: 4, cost: 40, price: 99 })).data;
+  const sv = (await a('POST', '/api/services', { name: 'Pulizia', price: 20, cost: 3 })).data;
+  const rep = (await a('POST', '/api/repairs', { customer: { name: 'Cliente Cassa', phone: '3331234567' }, brand_model: 'Phone Z', problem: 'schermo', quote: 150 })).data;
+  await a('POST', `/api/repairs/${rep.id}/parts`, { name: 'Vite a mano', qty: 1, unit_cost: 7, unit_price: 10 });
+  await a('POST', `/api/repairs/${rep.id}/parts`, { product_id: p.id, qty: 1 });
+  await a('POST', '/api/sales', { items: [{ product_id: p.id, qty: 1 }, { name: 'Pulizia', qty: 1, unit_price: 20, unit_cost: 3 }], method: 'contanti' });
+  // l'admin li vede (prova che i dati esistono)
+  assert.ok(hasCost((await a('GET', `/api/repairs/${rep.id}`)).data));
+  for (const path of ['/api/products', '/api/services', `/api/repairs/${rep.id}`, '/api/repairs', '/api/report', '/api/stock/summary', '/api/reorder', '/api/dashboard', '/api/sales', '/api/alerts']) {
+    const r = await a('GET', path, null, 'cassa');
+    assert.ok(r.status < 400, `${path} -> ${r.status}`);
+    assert.ok(!hasCost(r.data), `${path} contiene costi per la cassa`);
+  }
+  assert.ok(hasCost((await a('GET', '/api/stock/summary')).data), 'admin vede value_cost');
+  assert.equal((await a('GET', `/api/repairs/${rep.id}`, null, 'cassa')).data.parts.length, 2);
+  // sezioni di costo bloccate
+  for (const path of ['/api/purchases', '/api/purchases/prices?product_id=1', '/api/backup']) assert.equal((await a('GET', path, null, 'cassa')).status, 403, path);
+  // la cassa non puo' azzerare o cambiare i costi modificando un articolo o un servizio
+  await a('PUT', `/api/products/${p.id}`, { name: 'Display Y', price: 120 }, 'cassa');
+  assert.equal((await a('GET', '/api/products?q=Display Y')).data[0].cost, 40);
+  await a('PUT', `/api/services/${sv.id}`, { name: 'Pulizia', price: 25 }, 'cassa');
+  assert.equal((await a('GET', '/api/services')).data.find((s) => s.id === sv.id).cost, 3);
+  // vendita di un servizio dalla cassa: il costo vero lo rimette il server
+  const sale = (await a('POST', '/api/sales', { items: [{ name: 'Pulizia', qty: 1, unit_price: 25 }], method: 'contanti' }, 'cassa')).data;
+  assert.equal((await a('GET', `/api/sales/${sale.id}`)).data.items[0].unit_cost, 3);
+  assert.ok(!(await a('GET', '/api/alerts', null, 'cassa')).data.items.some((x) => /^price_/.test(x.type)));
+});

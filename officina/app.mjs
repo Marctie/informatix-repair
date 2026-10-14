@@ -15,6 +15,7 @@ import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
+import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
@@ -60,6 +61,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   const app = new Hono();
   app.use('*', notifyMiddleware); // prima dell'accesso: segnala anche i tentativi negati e gli errori
   if (auth) app.use('*', auth);
+  app.use('*', cassaMiddleware); // ruolo cassa: niente costi/margini nelle risposte
   app.use('/api/*', auditMiddleware); // registro eliminazioni/modifiche (dopo l'accesso: sa chi è)
 
   const trackBase = async () => {
@@ -226,12 +228,14 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/services', h(() => db.prepare('SELECT * FROM services WHERE active = 1 ORDER BY name').all()));
   app.post('/api/services', h(async (req) => {
     checkService(req.body);
-    const r = await db.prepare('INSERT INTO services (name, price, cost) VALUES (?,?,?)').run(str(req.body.name), num(req.body.price, 0), num(req.body.cost, 0));
+    const cost = isCassa(req.user) ? 0 : num(req.body.cost, 0); // la cassa non conosce né imposta i costi
+    const r = await db.prepare('INSERT INTO services (name, price, cost) VALUES (?,?,?)').run(str(req.body.name), num(req.body.price, 0), cost);
     return db.prepare('SELECT * FROM services WHERE id = ?').get(r.lastInsertRowid);
   }));
   app.put('/api/services/:id', h(async (req) => {
     checkService(req.body);
-    const r = await db.prepare('UPDATE services SET name=?, price=?, cost=? WHERE id=?').run(str(req.body.name), num(req.body.price, 0), num(req.body.cost, 0), req.params.id);
+    const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM services WHERE id = ?').get(req.params.id) : null;
+    const r = await db.prepare('UPDATE services SET name=?, price=?, cost=? WHERE id=?').run(str(req.body.name), num(req.body.price, 0), old ? old.cost : num(req.body.cost, 0), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Servizio non trovato');
     return db.prepare('SELECT * FROM services WHERE id = ?').get(req.params.id);
   }));
@@ -267,7 +271,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const qty = Math.round(num(b.qty));
     const id = await tx(async () => {
       const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,${NOW})`)
-        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes));
+        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes));
       const pid = Number(r.lastInsertRowid);
       if (qty) await L.moveStock(pid, qty, 'carico iniziale', null);
       return pid;
@@ -278,8 +282,9 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
     checkProduct(b);
+    const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
     const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=? WHERE id=?')
-      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), req.params.id);
+      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Prodotto non trovato');
     return db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   }));
@@ -332,7 +337,17 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   // Vendite e cassa
   app.get('/api/sales', h(() => db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id=s.customer_id ORDER BY s.id DESC LIMIT 200').all()));
-  app.post('/api/sales', h((req) => L.createSale(req.body)));
+  app.post('/api/sales', h(async (req) => {
+    if (isCassa(req.user) && Array.isArray(req.body.items)) {
+      // la cassa non vede i costi dei servizi: il costo vero lo rimette il server (per i guadagni corretti)
+      for (const it of req.body.items) {
+        if (it.product_id) continue;
+        const sv = await db.prepare('SELECT cost FROM services WHERE name = ? AND active = 1').get(str(it.name));
+        it.unit_cost = sv ? sv.cost : 0;
+      }
+    }
+    return L.createSale(req.body);
+  }));
   app.get('/api/sales/:id', h((req) => L.getSale(req.params.id)));
   app.get('/api/report', h(async (req) => {
     const r = await L.report(str(req.query.from), str(req.query.to));
