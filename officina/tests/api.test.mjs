@@ -383,3 +383,27 @@ test('notifiche Telegram: testo chiaro, escape HTML, niente segreti', async () =
   assert.ok(!n.includes('9876') && !n.includes('3331234567'));
   assert.equal(describeEvent({ method: 'GET', path: '/print/customer/9', status: 404, user: u }), null);
 });
+
+test('dati demo: l’eliminazione riesce anche se dati veri usano clienti o prodotti demo (i dati veri restano)', async () => {
+  await a('POST', '/api/demo');
+  // riparazione VERA su un cliente demo (si ritrova col telefono), vendita VERA con un prodotto demo e un cliente demo
+  const rep = (await a('POST', '/api/repairs', { customer: { name: 'Giulia Esposito', phone: '3330000101' }, brand_model: 'Pixel 8', problem: 'Schermo' })).data;
+  assert.ok(rep.customer_id < 0, 'la riparazione e\' stata agganciata al cliente demo');
+  const sale = (await a('POST', '/api/sales', { customer_id: -2, items: [{ product_id: -6, qty: 1 }], method: 'contanti' })).data;
+  assert.ok(sale.id > 0);
+  // prodotto vero con fornitore demo
+  const prod = (await a('POST', '/api/products', { name: 'Prodotto vero', qty: 2, price: 10, cost: 5, supplier_id: -1 })).data;
+  const del = await a('DELETE', '/api/demo');
+  assert.equal(del.status, 200, JSON.stringify(del.data));
+  assert.equal((await a('GET', '/api/demo')).data.loaded, false);
+  // la riparazione vera esiste ancora e ha un cliente vero con lo stesso nome
+  const after = (await a('GET', `/api/repairs/${rep.id}`)).data;
+  assert.ok(after.customer_id > 0); assert.equal(after.customer_name, 'Giulia Esposito');
+  const s2 = (await a('GET', `/api/sales/${sale.id}`)).data;
+  assert.equal(s2.customer_name, 'Antonio Ferrara'); assert.equal(s2.items.length, 1);
+  const p2 = (await a('GET', '/api/products?q=Prodotto vero')).data[0];
+  assert.ok(p2.supplier_id > 0 && /Ricambi Napoli/.test(p2.supplier_name));
+  // ripetibile: ricaricando e rieliminando non si blocca
+  await a('POST', '/api/demo');
+  assert.equal((await a('DELETE', '/api/demo')).status, 200);
+});
