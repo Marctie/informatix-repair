@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS repairs (
   eta_date TEXT, warranty_days INTEGER NOT NULL DEFAULT 90,
   quote_decision TEXT, quote_decided_at TEXT,
   tech_notes TEXT, customer_note TEXT,
-  checklist_in TEXT, checklist_pre TEXT, checklist_out TEXT,
+  checklist_in TEXT, checklist_pre TEXT, checklist_out TEXT, sign_requested INTEGER NOT NULL DEFAULT 0,
+  quote_option_id INTEGER, device_fate TEXT, fate_since TEXT, fate_note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   delivered_at TEXT
@@ -45,6 +46,24 @@ CREATE TABLE IF NOT EXISTS checklist_templates (
   device_type TEXT NOT NULL, phase TEXT NOT NULL, items TEXT NOT NULL,
   PRIMARY KEY (device_type, phase)
 );
+CREATE TABLE IF NOT EXISTS repair_signatures (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repair_id INTEGER NOT NULL REFERENCES repairs(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  image TEXT NOT NULL,
+  signer_name TEXT, choice TEXT, option_id INTEGER,
+  text_shown TEXT,
+  via TEXT NOT NULL DEFAULT 'banco',
+  ip TEXT, user_agent TEXT, by_user TEXT,
+  signed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_signatures_repair ON repair_signatures(repair_id);
+CREATE TABLE IF NOT EXISTS quote_options (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  repair_id INTEGER NOT NULL REFERENCES repairs(id) ON DELETE CASCADE,
+  label TEXT NOT NULL, amount REAL NOT NULL, description TEXT, sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_quote_options_repair ON quote_options(repair_id);
 CREATE TABLE IF NOT EXISTS repair_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   repair_id INTEGER NOT NULL REFERENCES repairs(id) ON DELETE CASCADE,

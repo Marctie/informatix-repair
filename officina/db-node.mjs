@@ -25,6 +25,11 @@ addColumn('repair_parts', 'bought_at', 'TEXT');
 addColumn('repairs', 'checklist_in', 'TEXT');
 addColumn('repairs', 'checklist_pre', 'TEXT');
 addColumn('repairs', 'checklist_out', 'TEXT');
+addColumn('repairs', 'sign_requested', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('repairs', 'quote_option_id', 'INTEGER');
+addColumn('repairs', 'device_fate', 'TEXT');
+addColumn('repairs', 'fate_since', 'TEXT');
+addColumn('repairs', 'fate_note', 'TEXT');
 
 let depth = 0;
 setDb({

@@ -133,6 +133,8 @@ export function waMessage(kind, r) {
   switch (kind) {
     case 'ready': return `Ciao ${first}, il tuo ${r.brand_model} è pronto per il ritiro! ${r.quote != null ? `Importo da saldare: ${eur((r.final_price ?? r.quote) - (r.paid ?? r.deposit ?? 0))}. ` : ''}Ti aspettiamo da ${shop}.${link}`;
     case 'quote': return `Ciao ${first}, per il tuo ${r.brand_model} il preventivo è di ${eur(r.quote)}${r.eta_date ? `, consegna stimata ${fdate(r.eta_date)}` : ''}. Puoi approvarlo direttamente dal link, oppure rispondi a questo messaggio.${link}`;
+    case 'sign': return `Ciao ${first}, per completare l’ingresso del tuo ${r.brand_model} da ${shop} puoi leggere le condizioni e firmare la scheda direttamente dal telefono, senza scaricare nulla.${link}`;
+    case 'storage': return `Ciao ${first}, il tuo ${r.brand_model} (rif. ${r.code}) non è stato riparato e ti aspetta in negozio${r.fate_since ? ` dal ${fdate(r.fate_since.slice(0, 10))}` : ''}. Dopo ${META.settings.storage_days || 15} giorni sarà custodito in deposito a pagamento (${META.settings.storage_fee || 'tariffa da definire'}) oppure potrà essere smaltito/ceduto secondo le condizioni che hai firmato. Passa a ritirarlo o scrivici per accordarci: ${META.settings.shop_phone || ''}.`;
     case 'late': return `Ciao ${first}, ti scriviamo da ${shop}: la riparazione del tuo ${r.brand_model} richiede qualche giorno in più del previsto. Ti aggiorniamo appena possibile, grazie per la pazienza.${link}`;
     default: return `Ciao ${first}, ti scriviamo da ${shop} riguardo al tuo ${r.brand_model}.${link}`;
   }
