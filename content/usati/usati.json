@@ -2,6 +2,18 @@
   "updated": "2026-10-14",
   "items": [
     {
+      "slug": "arrticolo-di-test",
+      "name": "arrticolo di test",
+      "condition": "usato",
+      "conditionLabel": "Usato",
+      "price": null,
+      "featured": false,
+      "photos": 0,
+      "specs": [],
+      "category": "smartphone",
+      "contact": false
+    },
+    {
       "slug": "iphone-17-pro-max-512-argento-sigillato",
       "name": "iPhone 17 Pro Max",
       "memory": "512 GB",
