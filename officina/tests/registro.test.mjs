@@ -120,7 +120,28 @@ test('carico merce: giacenza, costo, storico prezzi, avvisi e grafico includono 
   assert.ok((await audit('?type=carico')).rows.length >= 4);
 });
 
-const hasCost =(v) => /"(cost|unit_cost|parts_cost|profit_estimate|margin|value_cost)"/.test(JSON.stringify(v));
+test('ricambio a mano: "Carica a magazzino" lo trasforma in articolo a catalogo', async () => {
+  await a('POST', '/api/suppliers', { name: 'Ricambi Sud' });
+  const rep = (await a('POST', '/api/repairs', { customer: { name: 'Anna', phone: '3339998877' }, brand_model: 'Galaxy S9', problem: 'batteria' })).data;
+  const r1 = (await a('POST', `/api/repairs/${rep.id}/parts`, { name: 'Batteria S9', qty: 1, unit_cost: 12, unit_price: 35, supplier_code: 'BAT-S9', supplier_name: 'Ricambi Sud', bought_at: '2026-10-01' })).data;
+  const part = r1.parts[0];
+  assert.equal((await a('POST', `/api/repairs/${rep.id}/parts/${part.id}/stock`, null, 'cassa')).status, 403);
+  const out = (await a('POST', `/api/repairs/${rep.id}/parts/${part.id}/stock`)).data;
+  assert.equal(out.created, true);
+  const prod = (await a('GET', '/api/products?q=Batteria S9')).data[0];
+  assert.equal(prod.cost, 12);
+  assert.equal(prod.qty, 0);
+  assert.equal(prod.sku, 'BAT-S9');
+  const after = (await a('GET', `/api/repairs/${rep.id}`)).data.parts[0];
+  assert.equal(after.product_id, prod.id);
+  assert.equal((await a('GET', `/api/purchases/prices?product_id=${prod.id}`)).data.series.length, 1);
+  assert.equal((await a('POST', `/api/repairs/${rep.id}/parts/${part.id}/stock`)).status, 409);
+  // togliendo il ricambio la giacenza torna coerente (+1)
+  await a('DELETE', `/api/repairs/${rep.id}/parts/${part.id}`);
+  assert.equal((await a('GET', '/api/products?q=Batteria S9')).data[0].qty, 1);
+});
+
+const hasCost = (v) => /"(cost|unit_cost|parts_cost|profit_estimate|margin|value_cost)"/.test(JSON.stringify(v));
 
 test('ruolo cassa: le risposte API non contengono costi, margini o guadagni', async () => {
   const p = (await a('POST', '/api/products', { name: 'Display Y', qty: 4, cost: 40, price: 99 })).data;
