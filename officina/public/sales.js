@@ -1,6 +1,6 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
-import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete } from './util.js';
+import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
@@ -169,7 +169,7 @@ export async function cashView(el, qs = new URLSearchParams()) {
         ${kpi(eur(r.total), 'Incassato nel periodo', 'text-secondary')}
         ${kpi(r.rows.length, r.rows.length === 1 ? 'Operazione' : 'Operazioni')}
         ${kpi(eur(r.total / days), 'Media al giorno')}
-        ${kpi(eur(r.parts_cost), 'Costo ricambi e merce venduta', 'text-gray-600')}
+        ${canSeeCosts() ? kpi(eur(r.parts_cost), 'Costo ricambi e merce venduta', 'text-gray-600') : ''}
         ${kpi(eur(ex.total), 'Spese nel periodo', 'text-amber-600')}
         ${kpi(eur(r.total - ex.total), 'Incassi meno spese', r.total - ex.total >= 0 ? 'text-emerald-600' : 'text-red-600')}
       </div>
@@ -219,20 +219,20 @@ async function servicesDialog(done) {
   const body = $('.modal-body', m.el);
   const draw = async () => {
     const rows = (await safe(() => api('GET', '/api/services'))) || [];
-    body.innerHTML = `<div class="plist">${rows.map((x) => `<div data-id="${x.id}"><span>${esc(x.name)}<span class="hint" style="display:block">costo ${eur(x.cost)}</span></span><span><b>${eur(x.price)}</b> <button class="xbtn" data-edit="${x.id}" aria-label="Modifica ${esc(x.name)}">✎</button><button class="xbtn" data-del="${x.id}" aria-label="Elimina ${esc(x.name)}">✕</button></span></div>`).join('') || '<p class="hint">Nessun servizio.</p>'}</div>
+    body.innerHTML = `<div class="plist">${rows.map((x) => `<div data-id="${x.id}"><span>${esc(x.name)}${canSeeCosts() ? `<span class="hint" style="display:block">costo ${eur(x.cost)}</span>` : ''}</span><span><b>${eur(x.price)}</b> <button class="xbtn" data-edit="${x.id}" aria-label="Modifica ${esc(x.name)}">✎</button><button class="xbtn" data-del="${x.id}" aria-label="Elimina ${esc(x.name)}">✕</button></span></div>`).join('') || '<p class="hint">Nessun servizio.</p>'}</div>
       <h3 class="sec-t" style="margin-top:1rem" id="sv-t">Nuovo servizio</h3>
       <div class="fgrid c3"><div class="field"><label class="l" for="sv-n">Nome</label><input id="sv-n" placeholder="es. Ripristino Windows 11" /></div>
         <div class="field"><label class="l" for="sv-p">Prezzo €</label><input id="sv-p" inputmode="decimal" /></div>
-        <div class="field"><label class="l" for="sv-c">Costo € (facoltativo)</label><input id="sv-c" inputmode="decimal" /></div></div>
+        ${canSeeCosts() ? '<div class="field"><label class="l" for="sv-c">Costo € (facoltativo)</label><input id="sv-c" inputmode="decimal" /></div>' : ''}</div>
       <button class="btn btn-primary" id="sv-ok">Salva servizio</button>`;
     let editing = null;
     const n = (id) => $(id, body);
     body.onclick = async (e) => {
       const ed = e.target.closest('[data-edit]'); const dl = e.target.closest('[data-del]');
-      if (ed) { editing = rows.find((x) => x.id === Number(ed.dataset.edit)); n('#sv-n').value = editing.name; n('#sv-p').value = editing.price; n('#sv-c').value = editing.cost; n('#sv-t').textContent = 'Modifica servizio'; n('#sv-n').focus(); }
+      if (ed) { editing = rows.find((x) => x.id === Number(ed.dataset.edit)); n('#sv-n').value = editing.name; n('#sv-p').value = editing.price; if (n('#sv-c')) n('#sv-c').value = editing.cost; n('#sv-t').textContent = 'Modifica servizio'; n('#sv-n').focus(); }
       if (dl) { const x = rows.find((y) => y.id === Number(dl.dataset.del)); if (await confirmDelete(x.name)) { await safe(() => api('DELETE', `/api/services/${x.id}`)); await draw(); done(); } }
       if (e.target.id === 'sv-ok') {
-        const b = { name: n('#sv-n').value, price: n('#sv-p').value.replace(',', '.') || 0, cost: n('#sv-c').value.replace(',', '.') || 0 };
+        const b = { name: n('#sv-n').value, price: n('#sv-p').value.replace(',', '.') || 0, cost: (n('#sv-c')?.value || '').replace(',', '.') || 0 };
         const out = await safe(() => (editing ? api('PUT', `/api/services/${editing.id}`, b) : api('POST', '/api/services', b)));
         if (out) { toast('Servizio salvato'); await draw(); done(); }
       }

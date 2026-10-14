@@ -1,5 +1,5 @@
 // Magazzino (con "Da ordinare") e Fornitori.
-import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink } from './util.js';
+import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts } from './util.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
 
@@ -22,7 +22,7 @@ export async function stockView(el, params) {
     $('#p-q', el).classList.toggle('hidden', tab === 'reorder');
     $('#p-area', el).classList.toggle('hidden', tab === 'reorder');
     const sum = await safe(() => api('GET', '/api/stock/summary'));
-    if (sum && $('#p-kpi', el)) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], [eur(sum.value_cost), 'Valore a costo', ''], [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
+    if (sum && $('#p-kpi', el)) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], ...(canSeeCosts() ? [[eur(sum.value_cost), 'Valore a costo', '']] : []), [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
     if (tab === 'reorder') return loadReorder();
     const everything = (await safe(() => api('GET', '/api/products?q='))) || [];
     drawAreas(everything);
@@ -36,14 +36,14 @@ export async function stockView(el, params) {
     const list2 = rows || [];
     if (!list2.length) { list.innerHTML = '<p class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</p>'; return; }
     list.innerHTML =
-      `<div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th><th>Costo</th><th>Prezzo</th><th></th></tr></thead><tbody>` +
+      `<div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th>${canSeeCosts() ? '<th>Costo</th>' : ''}<th>Prezzo</th><th></th></tr></thead><tbody>` +
       list2.map((p) => `<tr class="row-h" style="cursor:pointer" data-id="${p.id}"><td><b>${esc(p.name)}</b><div class="hint">${meta(p)}</div></td>
-          <td class="hint" style="font-size:.85rem">${esc(p.category || '—')}</td><td>${badge(p)}</td><td>${eur(p.cost)}</td><td><b>${eur(p.price)}</b></td><td data-stop style="white-space:nowrap">${stepper(p)}</td></tr>`).join('') +
+          <td class="hint" style="font-size:.85rem">${esc(p.category || '—')}</td><td>${badge(p)}</td>${canSeeCosts() ? `<td>${eur(p.cost)}</td>` : ''}<td><b>${eur(p.price)}</b></td><td data-stop style="white-space:nowrap">${stepper(p)}</td></tr>`).join('') +
       '</tbody></table></div>' +
       `<div class="only-narrow">${list2.map((p) => `<div class="pcard" style="cursor:pointer" data-id="${p.id}">
           <div class="top"><span class="name">${esc(p.name)}</span>${badge(p)}</div>
           <div class="sub">${[p.category, meta(p)].filter(Boolean).join(' · ')}</div>
-          <div class="top" style="align-items:center"><span><span class="sub">Costo</span> ${eur(p.cost)} &nbsp;·&nbsp; <span class="sub">Prezzo</span> <b>${eur(p.price)}</b></span>${stepper(p)}</div></div>`).join('')}</div>`;
+          <div class="top" style="align-items:center"><span>${canSeeCosts() ? `<span class="sub">Costo</span> ${eur(p.cost)} &nbsp;·&nbsp; ` : ''}<span class="sub">Prezzo</span> <b>${eur(p.price)}</b></span>${stepper(p)}</div></div>`).join('')}</div>`;
   }
 
   /** Menu a tendina delle aree: elenco standard + eventuali categorie già usate, con il numero di articoli. */
@@ -102,7 +102,7 @@ async function productForm(id, done) {
         <div class="field"><label class="l" for="pf-sku">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
         ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
         <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>
-        <div class="field"><label class="l" for="pf-cost">Costo d’acquisto €</label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>
+        ${canSeeCosts() ? `<div class="field"><label class="l" for="pf-cost">Costo d’acquisto €</label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>` : ""}
         <div class="field"><label class="l" for="pf-price">Prezzo di vendita €</label><input id="pf-price" inputmode="decimal" value="${p?.price ?? ''}" /></div>
         <div class="field"><label class="l" for="pf-sup">Fornitore</label><select id="pf-sup"><option value="">—</option>${suppliers.map((s) => `<option value="${s.id}" ${p?.supplier_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
         <div class="field"><label class="l" for="pf-loc">Posizione</label><input id="pf-loc" placeholder="es. cassetto A2" value="${esc(p?.location || '')}" /></div>
@@ -118,7 +118,7 @@ async function productForm(id, done) {
   );
   const r = m.el;
   $('#pf-ok', r).onclick = async () => {
-    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, min_qty: $('#pf-min', r).value, cost: $('#pf-cost', r).value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
+    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, min_qty: $('#pf-min', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
     if (!id) body.qty = $('#pf-qty', r).value;
     const out = await safe(() => (id ? api('PUT', `/api/products/${id}`, body) : api('POST', '/api/products', body)));
     if (out) { m.close(); toast('Articolo salvato'); done(); }

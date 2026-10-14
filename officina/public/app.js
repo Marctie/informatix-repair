@@ -298,5 +298,6 @@ window.addEventListener('hashchange', route);
 (async () => {
   await safe(loadMeta);
   ME = (await safe(() => api('GET', '/api/me')))?.user || null;
+  META.role = ME?.role || 'admin';
   route();
 })();
