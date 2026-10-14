@@ -260,6 +260,7 @@ test('utenti: solo email valide, il proprietario è protetto', async () => {
   const u = (await a('POST', '/api/users', { email: 'Cassa@Example.com', name: 'Cassa', role: 'staff' })).data;
   assert.equal(u.email, 'cassa@example.com');
   assert.equal((await a('POST', '/api/users', { email: 'cassa@example.com' })).status, 409);
+  assert.equal((await a('PUT', `/api/users/${u.id}`, { name: 'Cassa', role: 'cassa' })).data.role, 'cassa');
   assert.equal((await a('DELETE', `/api/users/${u.id}`)).data.ok, true);
 });
 
@@ -268,20 +269,6 @@ test('ricerca cliente: il sito pubblico può chiamarla da un altro dominio (CORS
   assert.equal(res.headers.get('access-control-allow-origin'), 'https://informatixrepair.com');
   const bad = await fetch(`${P}/api/lookup`, { method: 'OPTIONS', headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' } });
   assert.notEqual(bad.headers.get('access-control-allow-origin'), 'https://evil.example');
-});
-
-test('metodo "non tracciato": salvato sempre, fuori dai totali di cassa se l’impostazione lo esclude', async () => {
-  const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
-  const before = (await a('GET', `/api/report?from=${day}&to=${day}`)).data.total;
-  await a('POST', '/api/sales', { items: [{ name: 'Cavo', unit_price: 10 }], method: 'non tracciato' });
-  assert.equal((await a('GET', `/api/report?from=${day}&to=${day}`)).data.total, before + 10); // di default conta
-  await a('PUT', '/api/settings', { cash_show_untracked: '0' });
-  const r = (await a('GET', `/api/report?from=${day}&to=${day}`)).data;
-  assert.equal(r.total, before);
-  assert.ok(!r.by_method.some((m) => m.method === 'non tracciato'));
-  assert.ok(r.untracked_excluded >= 1);
-  assert.equal((await a('GET', '/api/sales')).data.filter((s) => s.method === 'non tracciato').length >= 1, true); // la vendita resta salvata
-  await a('PUT', '/api/settings', { cash_show_untracked: '1' });
 });
 
 test('analisi: riparazioni, incassi e vendite del periodo', async () => {

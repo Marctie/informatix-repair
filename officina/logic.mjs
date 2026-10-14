@@ -412,12 +412,6 @@ export async function customerDecision(token, accept) {
 }
 
 // ---------- Dashboard / report / magazzino ----------
-export const UNTRACKED = 'non tracciato';
-/** Condizione SQL per la cassa: se l'impostazione "cash_show_untracked" e' spenta, i pagamenti "non tracciato" restano salvati ma non entrano nei totali di cassa. */
-async function cashFilter() {
-  const s = await getSettings();
-  return s.cash_show_untracked === '0' ? ` AND method <> '${UNTRACKED}'` : '';
-}
 export async function dashboard() {
   const counts = Object.fromEntries((await db.prepare('SELECT status, COUNT(*) AS n FROM repairs GROUP BY status').all()).map((r) => [r.status, r.n]));
   const today = localDate();
@@ -432,7 +426,7 @@ export async function dashboard() {
     waiting_parts: open.filter((r) => r.status === 'waiting_parts'),
     in_progress: open.filter((r) => ['received', 'diagnosing', 'approved', 'repairing'].includes(r.status)),
     low_stock: await lowStock(),
-    cash_today: money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at)=?${await cashFilter()}`).get(today)).s),
+    cash_today: money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at)=?`).get(today)).s),
     today,
   };
 }
@@ -446,19 +440,17 @@ export async function lowStock() {
 export async function report(from, to) {
   const f = from || localDate();
   const t = to || f;
-  const cf = await cashFilter();
-  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY method`).all(f, t);
-  const byKind = await db.prepare(`SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY kind`).all(f, t);
-  const rows = await db.prepare(`SELECT * FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} ORDER BY id DESC`).all(f, t);
-  const hidden = cf ? await db.prepare(`SELECT COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? AND method = '${UNTRACKED}'`).get(f, t) : { n: 0 };
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method`).all(f, t);
+  const byKind = await db.prepare(`SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY kind`).all(f, t);
+  const rows = await db.prepare(`SELECT * FROM payments WHERE date(created_at) BETWEEN ? AND ? ORDER BY id DESC`).all(f, t);
   const cost = (await db.prepare(`SELECT COALESCE(SUM(si.qty*si.unit_cost),0) AS c FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE date(s.created_at) BETWEEN ? AND ?`).get(f, t)).c
     + (await db.prepare(`SELECT COALESCE(SUM(rp.qty*rp.unit_cost),0) AS c FROM repair_parts rp JOIN repairs r ON r.id=rp.repair_id WHERE r.delivered_at IS NOT NULL AND date(r.delivered_at) BETWEEN ? AND ?`).get(f, t)).c;
   const total = money(rows.reduce((a, r) => a + r.amount, 0));
-  return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows, untracked_excluded: hidden.n };
+  return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows };
 }
 
 export async function reportByDay(from, to) {
-  return await db.prepare(`SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE date(created_at) BETWEEN ? AND ?${await cashFilter()} GROUP BY day ORDER BY day`).all(from, to);
+  return await db.prepare(`SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY day ORDER BY day`).all(from, to);
 }
 
 export async function stockSummary() {
@@ -505,8 +497,7 @@ export async function analytics(from, to) {
   const len = daysBetween(f, t);
   const pf = addDays(f, -len);
   const pt = addDays(f, -1);
-  const cf = await cashFilter();
-  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf}`).get(a, b)).s);
+  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?`).get(a, b)).s);
 
   // Riparazioni entrate nel periodo
   const byStatus = await db.prepare('SELECT status, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY status ORDER BY n DESC').all(f, t);
@@ -521,7 +512,7 @@ export async function analytics(from, to) {
   const total = await sum(f, t);
   const prevTotal = await sum(pf, pt);
   const byDay = await reportByDay(f, t);
-  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY method ORDER BY total DESC`).all(f, t);
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method ORDER BY total DESC`).all(f, t);
   const rep = await report(f, t);
 
   // Vendite

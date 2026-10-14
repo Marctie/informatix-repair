@@ -12,7 +12,7 @@ const maskPhone = (p) => (p ? String(p).replace(/\s/g, '').replace(/.(?=.{3})/g,
 const STATUS = { received: 'Ricevuto', diagnosing: 'In diagnosi', quote_pending: 'Preventivo da approvare', approved: 'Preventivo approvato', waiting_parts: 'In attesa ricambi', repairing: 'In riparazione', ready: 'Pronto per il ritiro', delivered: 'Consegnato', cancelled: 'Annullato' };
 const FIELD = { brand_model: 'dispositivo', problem: 'problema', quote: 'preventivo', eta_date: 'data stimata', final_price: 'prezzo finale', tech_notes: 'note tecniche', customer_note: 'nota al cliente', serial: 'seriale', accessories: 'accessori', condition_notes: 'condizioni', urgent: 'urgenza', warranty_days: 'garanzia', device_type: 'tipo' };
 
-const SETTING = { shop_name: 'nome negozio', shop_address: 'indirizzo', shop_phone: 'telefono negozio', public_base_url: 'indirizzo pubblico', default_warranty_days: 'garanzia', terms: 'condizioni', cash_show_untracked: 'cassa: mostra non tracciati', low_stock_default: 'soglia scorta', stale_days: 'giorni riparazione ferma', ready_days: 'giorni pronto al ritiro' };
+const SETTING = { shop_name: 'nome negozio', shop_address: 'indirizzo', shop_phone: 'telefono negozio', public_base_url: 'indirizzo pubblico', default_warranty_days: 'garanzia', terms: 'condizioni', low_stock_default: 'soglia scorta', stale_days: 'giorni riparazione ferma', ready_days: 'giorni pronto al ritiro' };
 /** Toglie dai testi d'errore qualunque cosa somigli a un token di bot. */
 const scrub = (t) => String(t ?? '').replace(/\d{6,}:[A-Za-z0-9_-]{30,}/g, '[token]');
 
@@ -47,7 +47,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((x = path.match(/^\/api\/track\/([^/]+)\/decision$/)) && m === 'POST') return isOk ? `${body.accept ? '✅' : '❌'} <b>Il cliente ha ${body.accept ? 'APPROVATO' : 'RIFIUTATO'} il preventivo</b>\n${esc(r.code)} · ${esc(r.device?.model)} · ${esc(r.customer?.name)}${foot}` : fail('Risposta del cliente al preventivo');
 
   // ---- Vendite, cassa, spese
-  if (m === 'POST' && path === '/api/sales') return isOk ? `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)} (${esc(r.method)})\n${(r.items || []).map((i) => `• ${esc(short(i.name, 50))} ×${esc(i.qty)}`).join('\n')}${r.discount ? `\nSconto ${eur(r.discount)}` : ''}${r.method === 'non tracciato' ? '\n⚠️ pagamento NON TRACCIATO' : ''}${foot}` : fail('Vendita');
+  if (m === 'POST' && path === '/api/sales') return isOk ? `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)} (${esc(r.method)})\n${(r.items || []).map((i) => `• ${esc(short(i.name, 50))} ×${esc(i.qty)}`).join('\n')}${r.discount ? `\nSconto ${eur(r.discount)}` : ''}${foot}` : fail('Vendita');
   if (path === '/api/expenses' && m === 'POST') return isOk ? `🧾 <b>Nuova spesa</b> ${eur(r.amount)}\n${esc(short(r.description, 100))} · ${esc(r.category)}${r.vendor ? ` · ${esc(r.vendor)}` : ''}${r.reimbursable ? ' · da rimborsare' : ''}${foot}` : fail('Nuova spesa');
   if (path.startsWith('/api/expenses/') && (m === 'PUT' || m === 'DELETE')) return isOk ? `🧾 <b>Spesa ${m === 'DELETE' ? 'eliminata' : 'modificata'}</b>${r.description ? `\n${esc(short(r.description, 100))} · ${eur(r.amount)}` : ''}${foot}` : fail('Spesa');
   if (path === '/api/expenses-pdf') return isOk ? `📄 <b>Nota spese PDF generata</b>${foot}` : fail('Nota spese PDF');
