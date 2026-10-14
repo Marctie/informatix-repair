@@ -34,6 +34,8 @@ const P = {
   note: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   barcode: '<path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14"/>',
   alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   party: '<path d="m4 20 4-12 8 8z"/><path d="M14 4v2M19 7h-2M20 14h-2"/>',
 };
 
@@ -44,7 +46,7 @@ const MAP = {
   '👁️': 'eye', '👁': 'eye', '📋': 'copy', '✏️': 'pencil', '✏': 'pencil', '📞': 'phone', '💬': 'message', '🔥': 'flame', '⏰': 'clock',
   '✋': 'hand', '📉': 'trend', '💾': 'download', '🔒': 'lock', '✉️': 'mail', '✉': 'mail', '📝': 'note', '🔫': 'barcode',
   '✔': 'check', '✓': 'check', '＋': 'plus', '☰': 'menu', '✕': 'x', '⚠': 'alert', '⚠️': 'alert', '🎉': 'party',
-  '👥': 'users',
+  '👥': 'users', '📊': 'chart', '🧭': 'compass',
 };
 const RE = new RegExp(Object.keys(MAP).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 

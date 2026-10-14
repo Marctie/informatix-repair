@@ -52,6 +52,23 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (path.startsWith('/api/expenses/') && (m === 'PUT' || m === 'DELETE')) return isOk ? `🧾 <b>Spesa ${m === 'DELETE' ? 'eliminata' : 'modificata'}</b>${r.description ? `\n${esc(short(r.description, 100))} · ${eur(r.amount)}` : ''}${foot}` : fail('Spesa');
   if (path === '/api/expenses-pdf') return isOk ? `📄 <b>Nota spese PDF generata</b>${foot}` : fail('Nota spese PDF');
 
+  // ---- Vetrina usati
+  if (/^\/api\/usati/.test(path) && m !== 'GET') {
+    const pub = r.publish || {};
+    const pubLine = pub.state === 'error' ? `\n🔴 <b>Pubblicazione sul sito NON riuscita</b>: ${esc(short(pub.message, 250))}`
+      : pub.state === 'published' ? '\n🌐 Pubblicato sul sito'
+      : pub.state === 'draft' ? '\n📝 Solo bozza (pubblicazione sul sito non attiva)' : '';
+    const title = `${esc(short([r.name || body.name, r.memory, r.color].filter(Boolean).join(' '), 80))}`;
+    const price = r.price != null ? ` · ${eur(r.price)}` : '';
+    if (path === '/api/usati/publish') return pub.state === 'error' || r.state === 'error' ? `🔴 <b>Pubblicazione Vetrina usati NON riuscita</b>\n${esc(short(r.message, 300))}${foot}` : isOk ? `🌐 <b>Vetrina usati pubblicata</b>\n${esc(short(r.message, 200))}${foot}` : fail('Pubblicazione Vetrina usati');
+    if (/\/photos/.test(path)) return isOk ? `📷 <b>Foto ${m === 'POST' ? 'aggiunta' : m === 'DELETE' ? 'tolta' : 'riordinata'}</b>: ${title}${foot}` : fail('Foto della Vetrina usati');
+    if (/\/sold$/.test(path)) return isOk ? `💰 <b>Usato VENDUTO</b>: ${title}${price}${pubLine}${foot}` : fail('Segna venduto');
+    if (/\/unsold$/.test(path)) return isOk ? `↩️ <b>Usato rimesso in vetrina</b>: ${title}${price}${pubLine}${foot}` : fail('Rimetti in vetrina');
+    if (m === 'POST') return isOk ? `🏷️ <b>Nuovo articolo usato</b>: ${title}${price}${r.conditionLabel ? ` · ${esc(r.conditionLabel)}` : ''}${pubLine}${foot}` : fail('Nuovo articolo usato');
+    if (m === 'DELETE') return isOk ? `🗑️ <b>Articolo usato eliminato</b>: ${esc(short(r.name, 80))}${pubLine}${foot}` : fail('Eliminazione articolo usato');
+    return isOk ? `✏️ <b>Articolo usato modificato</b>: ${title}${price}${pubLine}${foot}` : fail('Modifica articolo usato');
+  }
+
   // ---- Anagrafiche e magazzino
   const CRUD = [[/^\/api\/customers/, '👤', 'Cliente'], [/^\/api\/suppliers/, '🚚', 'Fornitore'], [/^\/api\/products\/(\d+)\/move/, '📦', 'Movimento di magazzino'], [/^\/api\/products/, '📦', 'Prodotto']];
   for (const [re, ico, label] of CRUD) {

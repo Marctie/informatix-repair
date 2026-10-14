@@ -8,14 +8,18 @@ import { stockView, suppliersView } from './stock.js';
 import { salesView, cashView, settingsView } from './sales.js';
 import { usersView } from './users.js';
 import { analyticsView } from './analytics.js';
+import { usatiView } from './usati.js';
+import { portaleView } from './portale.js';
 
 const VIEWS = [
+  { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView },
   { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true },
   { id: 'riparazioni', label: 'Riparazioni', icon: '🛠️', render: repairsView, bottom: true },
   { id: 'clienti', label: 'Clienti', icon: '👤', render: customersView, bottom: true },
   { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true },
   { id: 'vendite', label: 'Vendite', icon: '🛒', render: salesView },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
+  { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true },
@@ -26,8 +30,6 @@ let ME = null;
 const visible = () => VIEWS.filter((x) => (!x.admin || ME?.role === 'admin') && !(x.notCassa && ME?.role === 'cassa'));
 const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
 const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖' };
-// Gestionale Vetrina Usati (per ora un'app separata sulla porta 4848: in futuro stessa sede, vedi piano "Portale unico")
-const USATI = { href: `${location.protocol}//${location.hostname}:4848/`, label: 'Vetrina usati', icon: '🛒' };
 
 const view = $('#view');
 
@@ -54,11 +56,10 @@ document.addEventListener('click', async (e) => {
 export const refresh = () => route();
 
 async function route() {
-  const [, id = 'oggi', qs = ''] = location.hash.match(/^#\/([a-z]+)(?:\?(.*))?$/) || [];
+  const [, id = 'portale', qs = ''] = location.hash.match(/^#\/([a-z]+)(?:\?(.*))?$/) || [];
   const v = visible().find((x) => x.id === id) || VIEWS[0];
   $('#nav').innerHTML =
     visible().map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`).join('') +
-    (ONLINE ? '' : `<a href="${USATI.href}" target="_blank" rel="noopener"><span class="ico">📦</span>${USATI.label}</a>`) +
     `<a href="${MANUAL.href}" target="_blank" rel="noopener"><span class="ico">${MANUAL.icon}</span>${MANUAL.label}</a>`;
   const inMore = !v.bottom;
   const bottomItems = VIEWS.filter((x) => x.bottom).map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`);
@@ -69,7 +70,7 @@ async function route() {
   $('#more-menu').classList.add('hidden');
   view.innerHTML = '<p class="text-gray-400 text-sm">Caricamento…</p>';
   window.scrollTo(0, 0);
-  await safe(() => v.render(view, new URLSearchParams(qs)));
+  await safe(() => v.render(view, new URLSearchParams(qs), ME));
   refreshBell();
 }
 
@@ -78,7 +79,7 @@ document.addEventListener('click', (e) => {
   const menu = $('#more-menu');
   if (e.target.closest('#more-btn')) {
     const item = (href, icon, label, extra = '') => `<a href="${href}" ${extra} class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-lightbg font-semibold text-sm">${icon} ${label}</a>`;
-    menu.innerHTML = visible().filter((x) => !x.bottom).map((x) => item(`#/${x.id}`, x.icon, x.label)).join('') + (ONLINE ? '' : item(USATI.href, '📦', USATI.label, 'target="_blank" rel="noopener"')) + item(MANUAL.href, MANUAL.icon, MANUAL.label, 'target="_blank" rel="noopener"');
+    menu.innerHTML = visible().filter((x) => !x.bottom).map((x) => item(`#/${x.id}`, x.icon, x.label)).join('') + item(MANUAL.href, MANUAL.icon, MANUAL.label, 'target="_blank" rel="noopener"');
     menu.classList.toggle('hidden');
   } else if (!e.target.closest('#more-menu')) menu.classList.add('hidden');
   if (!e.target.closest('#gsearch') && !e.target.closest('#gsearch-res')) $('#gsearch-res').classList.add('hidden');
