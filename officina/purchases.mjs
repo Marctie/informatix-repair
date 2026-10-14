@@ -1,7 +1,7 @@
 // Acquisti dai fornitori: import delle fatture elettroniche, carico di magazzino, storico prezzi e avvisi di variazione.
 // Flusso in 2 passi: preview (non scrive nulla) -> confirm (scrive in un unico blocco atomico, senza doppioni).
 import { db, tx } from './dbref.mjs';
-import { HttpError, money, localDate } from './logic.mjs';
+import { HttpError, money, localDate, moveStock } from './logic.mjs';
 import { parseFattura, looksLikeP7m, P7M_MESSAGE } from './fatturapa.mjs';
 
 const NOW = "datetime('now','localtime')";
@@ -150,8 +150,10 @@ export async function productPrices(productId) {
       min_price: min.unit_price, min_date: min.doc_date };
   }).sort((a, b) => a.last_price - b.last_price);
   const low = series.reduce((a, r) => (!a || r.price < a.price ? r : a), null);
+  const units = series.reduce((a, r) => a + (r.qty > 0 ? r.qty : 0), 0);
+  const avg_cost = units > 0 ? Math.round((series.reduce((a, r) => a + r.price * (r.qty > 0 ? r.qty : 0), 0) / units) * 100) / 100 : null; // costo medio ponderato sulle quantità acquistate
   return {
-    product: p, series, suppliers,
+    product: p, series, suppliers, avg_cost,
     lowest: low && { price: low.price, date: low.date, supplier_id: low.supplier_id, supplier_name: low.supplier_name },
     cheapest_now: suppliers[0] ? { price: suppliers[0].last_price, supplier_id: suppliers[0].supplier_id, supplier_name: suppliers[0].supplier_name } : null,
   };
@@ -353,6 +355,58 @@ export async function confirmPurchase(body) {
   };
 }
 
+// ---------- Carico merce a mano (da Magazzino) ----------
+/** Carico manuale di un articolo (o nuovo): giacenza, ultimo costo e storico prezzi. Riusa le stesse tabelle dell'import fatture
+ *  (purchases / purchase_lines / price_history), cosi' grafico a punti e avvisi di Acquisti includono anche questi carichi.
+ *  Piu' carichi con lo stesso n. documento (stesso fornitore e data) finiscono nello stesso documento. */
+export async function manualLoad(body) {
+  const b = body || {};
+  const qty = Math.round(Number(String(b.qty ?? '').replace(',', '.')));
+  if (!Number.isFinite(qty) || qty <= 0) throw new HttpError(400, 'Quantità non valida');
+  const price = Number(String(b.unit_price ?? '').replace(',', '.'));
+  if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'Prezzo d’acquisto non valido');
+  const date = str(b.date) || localDate();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Data non valida');
+  const unit = r4(price);
+  return tx(async () => {
+    let productId = Number(b.product_id) || null;
+    let prod = productId ? await db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(productId) : null;
+    if (productId && !prod) throw new HttpError(404, 'Articolo non trovato');
+    const supplierId = Number(b.supplier_id) || prod?.supplier_id || null;
+    const supplier = supplierId ? await db.prepare('SELECT id, name FROM suppliers WHERE id = ?').get(supplierId) : null;
+    if (!supplier) throw new HttpError(400, 'Scegli il fornitore.');
+    if (!prod) { // articolo nuovo
+      const name = str(b.name);
+      if (!name) throw new HttpError(400, 'Scegli un articolo oppure scrivi il nome del nuovo.');
+      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, created_at) VALUES (?,?,?,0,?,?,?,?,${NOW})`)
+        .run(str(b.sku), name.slice(0, 200), str(b.category), Math.max(0, Math.round(Number(b.min_qty) || 0)), unit, money(Number(String(b.price ?? 0).replace(',', '.')) || 0), supplier.id);
+      productId = Number(r.lastInsertRowid);
+      prod = await db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
+    }
+    const code = str(b.supplier_code);
+    // documento: stesso numero + fornitore + data = stesso documento (se e' manuale); senza numero ne nasce uno automatico
+    const docNo = str(b.doc_number) || `CARICO-${date.replaceAll('-', '')}-${Date.now().toString(36).toUpperCase()}`;
+    let doc = await db.prepare('SELECT id, source, total FROM purchases WHERE supplier_id = ? AND doc_number = ? AND doc_date = ?').get(supplier.id, docNo, date);
+    if (doc && doc.source !== 'manuale') throw new HttpError(409, 'Esiste già un documento importato con questo numero: usa un altro numero o lascia vuoto.');
+    const lineTotal = money(qty * unit);
+    if (!doc) {
+      const r = await db.prepare(`INSERT INTO purchases (supplier_id, doc_type, doc_number, doc_date, total, source, notes, imported_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
+        .run(supplier.id, 'CARICO', docNo, date, lineTotal, 'manuale', str(b.notes));
+      doc = { id: Number(r.lastInsertRowid) };
+    } else await db.prepare('UPDATE purchases SET total = total + ? WHERE id = ?').run(lineTotal, doc.id);
+    await db.prepare('INSERT INTO purchase_lines (purchase_id, product_id, supplier_code, description, qty, unit, list_price, unit_price, discount, vat_rate, line_total, loaded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(doc.id, productId, code, prod.name.slice(0, 300), qty, 'pz', unit, unit, 0, 0, lineTotal, 1);
+    await db.prepare('INSERT INTO price_history (product_id, supplier_id, unit_price, qty, doc_date, purchase_id) VALUES (?,?,?,?,?,?)').run(productId, supplier.id, unit, qty, date, doc.id);
+    if (code) await db.prepare('INSERT OR REPLACE INTO supplier_codes (supplier_id, supplier_code, product_id) VALUES (?,?,?)').run(supplier.id, code, productId);
+    await moveStock(productId, qty, `carico merce ${docNo}`, `acquisto:${doc.id}`);
+    // ultimo costo (e fornitore abituale se mancava)
+    await db.prepare('UPDATE products SET cost = ?, supplier_id = COALESCE(supplier_id, ?) WHERE id = ?').run(unit, supplier.id, productId);
+    const out = await db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
+    const prices = await productPrices(productId);
+    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier.name, doc_number: docNo, purchase_id: doc.id, avg_cost: prices.avg_cost, new_product: !b.product_id } };
+  });
+}
+
 // ---------- Elenco ----------
 export async function listPurchases() {
   return db.prepare(`SELECT p.*, s.name AS supplier_name, (SELECT COUNT(*) FROM purchase_lines l WHERE l.purchase_id = p.id) AS lines_count
@@ -369,6 +423,13 @@ export async function getPurchase(id) {
 export function registerPurchaseRoutes(app, h) {
   app.get('/api/purchases', h(() => listPurchases()));
   app.get('/api/purchases/parsers', h(() => Object.values(parsers).map(({ id, label, supported }) => ({ id, label, supported }))));
+  // Carico merce a mano da Magazzino (non per il ruolo Cassa: tocca i costi)
+  const loadRoute = h((req) => {
+    if (req.user?.role === 'cassa') throw new HttpError(403, 'Il carico merce non è disponibile per il ruolo Cassa.');
+    return manualLoad({ ...req.body, product_id: req.params.id ?? req.body.product_id });
+  });
+  app.post('/api/products/load', loadRoute);
+  app.post('/api/products/:id/load', loadRoute);
   app.post('/api/purchases/preview', h((req) => previewPurchase(req.body)));
   app.post('/api/purchases/confirm', h((req) => confirmPurchase(req.body)));
   app.get('/api/purchases/prices', h((req) => productPrices(Number(req.query.product_id))));

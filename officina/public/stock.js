@@ -1,5 +1,6 @@
 // Magazzino (con "Da ordinare") e Fornitori.
 import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts } from './util.js';
+import { loadStockDialog } from './carico.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
 
@@ -9,7 +10,7 @@ export async function stockView(el, params) {
   let area = ''; // area (categoria) selezionata: '' = tutte
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
-      <button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></div>
+      <span class="row tight">${canSeeCosts() ? '<button class="btn btn-outline" id="p-load">📥 Carico merce</button>' : ''}<button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></span></div>
     <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
     <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><select id="p-area" class="chip" aria-label="Area del magazzino" style="min-height:44px"></select><span class="chip" data-t="reorder">📉 Da ordinare</span>
       <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
@@ -88,6 +89,7 @@ export async function stockView(el, params) {
   $('#p-area', el).onchange = (e) => { area = e.target.value; tab = 'all'; load(); };
   $('#p-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load(); });
   $('#p-new', el).onclick = () => productForm(null, load);
+  if ($('#p-load', el)) $('#p-load', el).onclick = () => loadStockDialog({ done: load });
   await load();
 }
 
@@ -110,7 +112,9 @@ async function productForm(id, done) {
       <div class="field"><label class="l" for="pf-notes">Note</label><input id="pf-notes" value="${esc(p?.notes || '')}" /></div>
     </section>
     ${id ? `<section class="sec"><h3 class="sec-t">Carico merce</h3>
-      <div class="row" style="flex-wrap:nowrap"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" style="max-width:12rem" /><button class="btn btn-outline" id="pf-load">Registra carico</button></div></section>
+      ${canSeeCosts()
+        ? '<div class="row"><button class="btn btn-outline" id="pf-loadfull">📥 Carico merce con fornitore e prezzo…</button></div><p class="hint">Quantità, fornitore, prezzo d’acquisto, data e documento: aggiorna giacenza, ultimo costo e storico prezzi.</p>'
+        : '<div class="row" style="flex-wrap:nowrap"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" style="max-width:12rem" /><button class="btn btn-outline" id="pf-load">Registra carico</button></div>'}</section>
     <section class="sec"><h3 class="sec-t">Ultimi movimenti</h3>
       <ul class="tl">${moves.slice(0, 8).map((x) => `<li><time>${fdt(x.created_at)}</time><span><b class="${x.delta > 0 ? 'text-emerald-600' : 'text-secondary'}">${x.delta > 0 ? '+' : ''}${x.delta}</b> · ${esc(x.reason)} ${esc(x.ref || '')}</span></li>`).join('') || '<li><span class="hint">Nessun movimento.</span></li>'}</ul></section>` : ''}`,
     { title: id ? 'Modifica articolo' : 'Nuovo articolo', wide: true,
@@ -124,10 +128,11 @@ async function productForm(id, done) {
     if (out) { m.close(); toast('Articolo salvato'); done(); }
   };
   if (id) {
-    $('#pf-load', r).onclick = async () => {
+    if ($('#pf-load', r)) $('#pf-load', r).onclick = async () => {
       const out = await safe(() => api('POST', `/api/products/${id}/move`, { delta: Number($('#pf-add', r).value), reason: 'carico merce' }));
       if (out) { m.close(); toast(`Giacenza: ${out.qty} pz`); done(); }
     };
+    if ($('#pf-loadfull', r)) $('#pf-loadfull', r).onclick = () => { m.close(); loadStockDialog({ product: p, done }); };
     $('#pf-del', r).onclick = async () => {
       if (!(await confirmDelete('questo articolo', { verb: 'Archiviare', detail: 'Lo storico resta.' }))) return;
       await safe(() => api('DELETE', `/api/products/${id}`)); m.close(); done();
