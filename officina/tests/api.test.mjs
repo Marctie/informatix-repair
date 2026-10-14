@@ -413,3 +413,13 @@ test('ricambio a mano: il costo entra nel guadagno e non tocca il magazzino', as
   assert.equal(out.profit_estimate, 40);
   assert.equal(out.parts[0].supplier_code, 'D-1');
 });
+
+test('listino servizi: creazione, vendita con costo, eliminazione', async () => {
+  const s = (await a('POST', '/api/services', { name: 'Ripristino Windows 11', price: 50, cost: 10 })).data;
+  assert.equal((await a('POST', '/api/services', { name: '' })).status, 400);
+  assert.ok((await a('GET', '/api/services')).data.some((x) => x.id === s.id));
+  const sale = (await a('POST', '/api/sales', { items: [{ name: s.name, unit_price: s.price, unit_cost: s.cost }], method: 'contanti' })).data;
+  assert.equal(sale.total, 50);
+  await a('DELETE', `/api/services/${s.id}`);
+  assert.ok(!(await a('GET', '/api/services')).data.some((x) => x.id === s.id));
+});

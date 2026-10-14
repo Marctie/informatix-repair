@@ -167,3 +167,5 @@ Ordine consigliato, a lotti (ognuno con test, manuale aggiornato, commit e deplo
 - **Punto 8 – FATTO (2026-10-14)**: casella "Stampa la ricevuta" in Vendite (ricordata per postazione, localStorage); la vendita si registra sempre e si ristampa dall'elenco. Interpretazione della seconda parte da confermare con Christian (vedi domande del punto).
 
 - **Punto 6 – FATTO (2026-10-14)**: menu a tendina "Aree ▾" tra Tutti e Da ordinare (aree = categorie, elenco standard + quelle già usate, con conteggio). Non ancora: aree personalizzabili/sotto-aree, Analisi per area.
+
+- **Punto 7 – FATTO (2026-10-14)**: listino servizi (tabella services, migrazione 0008) con pulsanti in Vendite e gestione; costo del servizio nel guadagno. Non ancora: servizi come manodopera nelle riparazioni, ricavi servizi separati in Analisi. **LOTTO A COMPLETATO** (resta: registro modifiche/eliminazioni, margini nascosti al ruolo Cassa).

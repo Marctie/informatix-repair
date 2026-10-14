@@ -323,7 +323,7 @@ export async function createSale(b) {
     let total = 0;
     for (const it of items) {
       const q = Math.max(1, Math.round(num(it.qty, 1)));
-      let name = str(it.name), price = num(it.unit_price), cost = 0, pid = null;
+      let name = str(it.name), price = num(it.unit_price), cost = Math.max(0, num(it.unit_cost, 0)), pid = null;
       if (it.product_id) {
         const p = await db.prepare('SELECT * FROM products WHERE id = ?').get(it.product_id);
         if (!p) throw new HttpError(404, 'Prodotto non trovato');
