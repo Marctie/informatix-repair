@@ -85,15 +85,21 @@ export async function usatiView(el, _params, ME) {
       const [cls, lab] = STATUS[it.status];
       const badge = it.status === 'sold' ? `Venduto · scompare in ${it.daysLeft} g` : lab;
       const thumb = it.photo_urls[0]?.thumb;
-      return `<article class="card ucard" data-slug="${esc(it.slug)}">
-        ${thumb ? `<img class="thumb" src="${esc(thumb)}" alt="" loading="lazy" />` : '<div class="thumb thumb-ph">Nessuna foto</div>'}
-        <div class="badges"><span class="badge ${cls}">${esc(badge)}</span>${it.featured ? '<span class="badge bg-gray-100 text-gray-700">In evidenza</span>' : ''}${it.photos ? '' : '<span class="badge bg-gray-100 text-gray-700">Senza foto</span>'}</div>
-        <div class="sec" style="gap:.25rem"><b class="font-heading" style="line-height:1.3">${esc(title(it))}</b>
-          <span class="hint">${esc(it.conditionLabel || '')} · ${esc(catLabel(meta, it.category))}</span>
-          <b class="font-heading" style="font-size:1.25rem">${price(it.price)}</b></div>
-        <div class="row tight">
+      return `<article class="card ucard ${it.status === 'sold' ? 'is-sold' : ''} ${it.status === 'expired' ? 'is-expired' : ''}" data-slug="${esc(it.slug)}">
+        <div class="uc-media">
+          ${thumb ? `<img class="thumb" src="${esc(thumb)}" alt="" loading="lazy" />` : '<div class="thumb thumb-ph">📷<span>Nessuna foto</span></div>'}
+          <span class="uc-status badge ${cls}">${esc(badge)}</span>
+          ${it.featured ? '<span class="uc-star" title="In evidenza" aria-label="In evidenza">★</span>' : ''}
+          ${it.photos > 1 ? `<span class="uc-count" aria-label="${it.photos} foto">📷 ${it.photos}</span>` : ''}
+        </div>
+        <div class="uc-body">
+          <div class="uc-meta"><span>${esc(catLabel(meta, it.category))}</span>${it.conditionLabel ? `<i aria-hidden="true"></i><span>${esc(it.conditionLabel)}</span>` : ''}</div>
+          <b class="uc-title font-heading">${esc(title(it))}</b>
+          <div class="uc-price font-heading">${price(it.price)}${it.photos ? '' : '<span class="uc-nophoto">senza foto</span>'}</div>
+        </div>
+        <div class="uc-actions">
           <button class="btn btn-outline btn-sm" data-act="edit">Modifica</button>
-          <button class="btn btn-outline btn-sm" data-act="${it.sold ? 'unsold' : 'sold'}">${it.sold ? 'Rimetti in vetrina' : 'Segna venduto'}</button>
+          <button class="btn ${it.sold ? 'btn-outline' : 'btn-dark'} btn-sm" data-act="${it.sold ? 'unsold' : 'sold'}">${it.sold ? 'Rimetti in vetrina' : 'Segna venduto'}</button>
           ${isAdmin ? '<button class="btn btn-ghost btn-icon btn-sm" data-act="del" aria-label="Elimina articolo" title="Elimina">✕</button>' : ''}
         </div></article>`;
     }).join('') : `<p class="empty card span2" style="grid-column:1/-1">${data.items.length ? 'Nessun articolo in questo elenco.' : 'Nessun articolo: premi “Nuovo articolo”.'}</p>`;
