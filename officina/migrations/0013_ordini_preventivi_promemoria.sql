@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT NOT NULL UNIQUE,
   customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+  customer_name TEXT, customer_phone TEXT,          -- per chi non e' ancora in anagrafica (es. assemblaggio PC)
   status TEXT NOT NULL DEFAULT 'bozza',            -- bozza | inviato | accettato | rifiutato | convertito  (scaduto = calcolato dalla data)
   valid_until TEXT NOT NULL, discount REAL NOT NULL DEFAULT 0, notes TEXT, terms TEXT,
   repair_id INTEGER REFERENCES repairs(id) ON DELETE SET NULL,
