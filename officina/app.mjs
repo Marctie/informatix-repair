@@ -16,6 +16,7 @@ import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import * as CK from './checklists.mjs';
+import { LEGAL_DEFAULTS } from './legal.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -77,7 +78,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days'];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', ...Object.keys(LEGAL_DEFAULTS)];
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }
