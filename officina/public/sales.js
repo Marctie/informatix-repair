@@ -15,6 +15,10 @@ export async function salesView(el) {
           <div class="relative"><input id="s-q" type="search" placeholder="Nome o codice dell'articolo" autocomplete="off" /><div id="s-sugg" class="suggest card hidden"></div></div>
         </div>
         <div class="field">
+          <label class="l">Servizi <button class="btn btn-ghost btn-sm" id="s-svc-edit" type="button">Gestisci listino</button></label>
+          <div id="s-svc" class="row tight" style="flex-wrap:wrap"></div>
+        </div>
+        <div class="field">
           <label class="l" for="s-free">Oppure aggiungi una voce libera</label>
           <div class="free-row"><input id="s-free" placeholder="es. Pulizia software" /><input id="s-free-p" inputmode="decimal" placeholder="Importo €" aria-label="Importo" /><button class="btn btn-outline" id="s-free-add">Aggiungi</button></div>
         </div>
@@ -30,6 +34,12 @@ export async function salesView(el) {
       </section>
     </div>`;
   const sugg = $('#s-sugg', el);
+  let services = [];
+  async function loadServices() {
+    services = (await safe(() => api('GET', '/api/services'))) || [];
+    if (!$('#s-svc', el)) return;
+    $('#s-svc', el).innerHTML = services.map((x) => `<button class="chip" type="button" data-svc="${x.id}">${esc(x.name)} · ${eur(x.price)}</button>`).join('') || '<span class="hint">Nessun servizio nel listino: aggiungili da “Gestisci listino”.</span>';
+  }
 
   function renderCart() {
     const subtotal = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
@@ -99,6 +109,9 @@ export async function salesView(el) {
     if (q) { const i = cart[Number(q.dataset.q)]; i.qty = Math.max(1, i.qty + Number(q.dataset.d)); return renderCart(); }
     const rm = e.target.closest('[data-rm]');
     if (rm) { cart.splice(Number(rm.dataset.rm), 1); return renderCart(); }
+    const sv = e.target.closest('[data-svc]');
+    if (sv) { const x = services.find((y) => y.id === Number(sv.dataset.svc)); cart.push({ name: x.name, qty: 1, unit_price: x.price, unit_cost: x.cost }); return renderCart(); }
+    if (e.target.id === 's-svc-edit') return servicesDialog(loadServices);
     if (e.target.id === 's-free-add') {
       const name = $('#s-free', el).value.trim(); const price = Number(String($('#s-free-p', el).value).replace(',', '.'));
       if (!name || !(price >= 0) || $('#s-free-p', el).value === '') return toast('Inserisci descrizione e importo', false);
@@ -121,7 +134,7 @@ export async function salesView(el) {
     if (p) { cart[Number(p.dataset.p)].unit_price = Number(String(p.value).replace(',', '.')) || 0; renderCart(); }
   });
   renderCart();
-  await recent();
+  await Promise.all([recent(), loadServices()]);
 }
 
 export async function cashView(el, qs = new URLSearchParams()) {
@@ -200,6 +213,33 @@ export async function cashView(el, qs = new URLSearchParams()) {
 
 /** Ultima scelta di stampa (per postazione): di default la ricevuta si stampa. */
 const wantPrint = () => { try { return localStorage.getItem('sale_print') !== '0'; } catch { return true; } };
+/** Gestione del listino servizi: elenco, modifica rapida, nuovo, elimina (con doppia conferma). */
+async function servicesDialog(done) {
+  const m = openModal('', { title: 'Listino servizi', footer: '<button class="btn btn-outline" data-close>Chiudi</button>' });
+  const body = $('.modal-body', m.el);
+  const draw = async () => {
+    const rows = (await safe(() => api('GET', '/api/services'))) || [];
+    body.innerHTML = `<div class="plist">${rows.map((x) => `<div data-id="${x.id}"><span>${esc(x.name)}<span class="hint" style="display:block">costo ${eur(x.cost)}</span></span><span><b>${eur(x.price)}</b> <button class="xbtn" data-edit="${x.id}" aria-label="Modifica ${esc(x.name)}">✎</button><button class="xbtn" data-del="${x.id}" aria-label="Elimina ${esc(x.name)}">✕</button></span></div>`).join('') || '<p class="hint">Nessun servizio.</p>'}</div>
+      <h3 class="sec-t" style="margin-top:1rem" id="sv-t">Nuovo servizio</h3>
+      <div class="fgrid c3"><div class="field"><label class="l" for="sv-n">Nome</label><input id="sv-n" placeholder="es. Ripristino Windows 11" /></div>
+        <div class="field"><label class="l" for="sv-p">Prezzo €</label><input id="sv-p" inputmode="decimal" /></div>
+        <div class="field"><label class="l" for="sv-c">Costo € (facoltativo)</label><input id="sv-c" inputmode="decimal" /></div></div>
+      <button class="btn btn-primary" id="sv-ok">Salva servizio</button>`;
+    let editing = null;
+    const n = (id) => $(id, body);
+    body.onclick = async (e) => {
+      const ed = e.target.closest('[data-edit]'); const dl = e.target.closest('[data-del]');
+      if (ed) { editing = rows.find((x) => x.id === Number(ed.dataset.edit)); n('#sv-n').value = editing.name; n('#sv-p').value = editing.price; n('#sv-c').value = editing.cost; n('#sv-t').textContent = 'Modifica servizio'; n('#sv-n').focus(); }
+      if (dl) { const x = rows.find((y) => y.id === Number(dl.dataset.del)); if (await confirmDelete(x.name)) { await safe(() => api('DELETE', `/api/services/${x.id}`)); await draw(); done(); } }
+      if (e.target.id === 'sv-ok') {
+        const b = { name: n('#sv-n').value, price: n('#sv-p').value.replace(',', '.') || 0, cost: n('#sv-c').value.replace(',', '.') || 0 };
+        const out = await safe(() => (editing ? api('PUT', `/api/services/${editing.id}`, b) : api('POST', '/api/services', b)));
+        if (out) { toast('Servizio salvato'); await draw(); done(); }
+      }
+    };
+  };
+  await draw();
+}
 const METHODS = ['contanti', 'carta', 'bonifico'];
 const DOC_LABEL = { scontrino: 'Scontrino', fattura: 'Fattura', ricevuta: 'Ricevuta', nessuno: 'Senza giustificativo' };
 const opt = (list, sel, label = (v) => v) => list.map((v) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(label(v))}</option>`).join('');

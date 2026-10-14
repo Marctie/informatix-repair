@@ -206,6 +206,28 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
     return { ok: true };
   }));
 
+  // Listino servizi (senza giacenza)
+  const checkService = (b) => {
+    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+    for (const k of ['price', 'cost']) { const n = num(b[k], 0); if (!Number.isFinite(n) || n < 0) throw new L.HttpError(400, 'Importo non valido'); }
+  };
+  app.get('/api/services', h(() => db.prepare('SELECT * FROM services WHERE active = 1 ORDER BY name').all()));
+  app.post('/api/services', h(async (req) => {
+    checkService(req.body);
+    const r = await db.prepare('INSERT INTO services (name, price, cost) VALUES (?,?,?)').run(str(req.body.name), num(req.body.price, 0), num(req.body.cost, 0));
+    return db.prepare('SELECT * FROM services WHERE id = ?').get(r.lastInsertRowid);
+  }));
+  app.put('/api/services/:id', h(async (req) => {
+    checkService(req.body);
+    const r = await db.prepare('UPDATE services SET name=?, price=?, cost=? WHERE id=?').run(str(req.body.name), num(req.body.price, 0), num(req.body.cost, 0), req.params.id);
+    if (!r.changes) throw new L.HttpError(404, 'Servizio non trovato');
+    return db.prepare('SELECT * FROM services WHERE id = ?').get(req.params.id);
+  }));
+  app.delete('/api/services/:id', h(async (req) => {
+    await db.prepare('UPDATE services SET active = 0 WHERE id = ?').run(req.params.id);
+    return { ok: true };
+  }));
+
   // Magazzino
   const checkProduct = (b) => {
     for (const k of ['cost', 'price', 'min_qty']) {
@@ -331,7 +353,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth } = {}) {
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'payments', 'expenses'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
