@@ -34,3 +34,9 @@ Raccolte da Marco il 2026-10-14, una per volta. NON implementare finche' Marco n
 
 ## Principio guida per TUTTE le direttive (Marco, 2026-10-14)
 "Deve restare **intuitivo e soprattutto veloce al banco**": ogni novita' va pensata a pochi click, con valori preimpostati sensati (ultimo fornitore, ultimo prezzo, data di oggi), campi facoltativi nascosti dietro "piu' opzioni", niente schermate in piu' per chi non ne ha bisogno, e prove su telefono/tablet oltre che su PC.
+
+## 6. Magazzino ad aree
+**Testo (Marco)**: "Un'altra idea e' anche il magazzino ad aree, quindi sezioni diverse sopra con accessori, ricambi, componenti ecc."
+**Come l'ho capita**: la pagina Magazzino ha in alto delle **schede (aree)**: Tutti · Accessori · Ricambi · Componenti · ... (con il numero di articoli e, se ci sono, un puntino per gli avvisi di scorta). Cliccando un'area si vedono solo i suoi articoli; un nuovo articolo creato dentro un'area nasce gia' in quell'area. Oggi esiste solo il campo libero "categoria" sull'articolo: le aree ne sarebbero la versione ordinata e gestibile (elenco di aree modificabile, con sposta articoli).
+**Domande aperte**: 1) Elenco fisso (accessori, ricambi, componenti, altro) o **personalizzabile** da Christian (aggiungere/rinominare/togliere aree)? 2) Servono **sotto-aree** (es. Ricambi → display, batterie, connettori)? 3) La ricerca globale e la "Lista da ordinare" restano su tutto il magazzino o si filtrano per area? 4) L'Analisi magazzino va divisa per area (valore, rotazione)? 5) Gli articoli esistenti si assegnano alla prima area in base alla categoria attuale?
+**Stato**: da fare (in attesa del resto dell'elenco). Va progettato insieme alla direttiva 4 (carico merce) e all'import fatture, che lavorano sulla stessa schermata.
