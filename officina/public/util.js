@@ -56,6 +56,39 @@ export function openModal(html, { title = '', wide = false, footer = '' } = {}) 
   modalStack.push(api2);
   return api2;
 }
+/**
+ * Doppia conferma per ogni eliminazione: 1) "Eliminare X?"  2) conferma finale "non si può annullare".
+ * Con `typed` (es. 'ELIMINA') il secondo passaggio richiede di scrivere la parola: per clienti, riparazioni, utenti.
+ * Ritorna una Promise<boolean>.
+ */
+export function confirmDelete(what, { verb = 'Eliminare', detail = '', typed = '' } = {}) {
+  return new Promise((resolve) => {
+    let step = 1;
+    let result = false;
+    const m = openModal('', { title: `${verb}?`, footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cd-go"></button>' });
+    const body = $('.modal-body', m.el);
+    const go = $('#cd-go', m.el);
+    const closeOrig = m.close;
+    m.close = () => { closeOrig(); resolve(result); };
+    const draw = () => {
+      if (step === 1) {
+        body.innerHTML = `<p class="text-base">${esc(verb)} <b>${esc(what)}</b>?</p>${detail ? `<p class="text-sm text-muted mt-2">${esc(detail)}</p>` : ''}`;
+        go.textContent = 'Continua';
+        go.disabled = false;
+      } else {
+        body.innerHTML = `<p class="text-base"><b>Conferma finale:</b> ${esc(what)} verrà eliminato e <b>non si può annullare</b>.</p>${typed ? `<label class="field mt-3"><span>Scrivi <b>${esc(typed)}</b> per confermare</span><input id="cd-typed" autocomplete="off" autocapitalize="characters"></label>` : ''}`;
+        go.textContent = 'Confermo l’eliminazione';
+        go.disabled = !!typed;
+        if (typed) { const i = $('#cd-typed', m.el); i.focus(); i.oninput = () => { go.disabled = i.value.trim().toUpperCase() !== typed.toUpperCase(); }; }
+      }
+    };
+    go.onclick = () => { if (step === 1) { step = 2; draw(); } else { result = true; m.close(); } };
+    // il pulsante Annulla e la X chiudono il modale originale: li colleghiamo alla nostra close
+    m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) m.close(); }, true);
+    draw();
+  });
+}
+
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalStack.length) modalStack[modalStack.length - 1].close(); });
 
 // ---------- WhatsApp / contatti ----------

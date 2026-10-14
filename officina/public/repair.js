@@ -1,6 +1,6 @@
 // Accettazione veloce di una riparazione e scheda di dettaglio.
 import { scanWithCamera } from './scan.js';
-import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
+import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
 
 const DEVICE_TYPES = [['smartphone', 'Smartphone'], ['tablet', 'Tablet'], ['portatile', 'Portatile'], ['pc', 'PC fisso'], ['console', 'Console'], ['altro', 'Altro']];
 const PROBLEMS = ['Schermo rotto', 'Batteria', 'Non si accende', 'Non carica', 'Lento / software', 'Acqua / liquido', 'Audio / microfono', 'Fotocamera'];
@@ -363,7 +363,7 @@ export async function openRepairDetail(id, onChange) {
   const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
     const rm = e.target.closest('[data-rmpart]');
-    if (rm) return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)');
+    if (rm) { if (!(await confirmDelete('questo ricambio', { verb: 'Rimuovere', detail: 'Il magazzino viene ripristinato.' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)'); }
     const pid = e.target.closest('[data-pid]');
     if (pid) return act(() => api('POST', `/api/repairs/${id}/parts`, { product_id: Number(pid.dataset.pid), qty: 1 }), 'Ricambio aggiunto (scalato dal magazzino)');
     const b = e.target.closest('[data-act]');

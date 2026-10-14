@@ -1,5 +1,5 @@
 // Magazzino (con "Da ordinare") e Fornitori.
-import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, waLink } from './util.js';
+import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink } from './util.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
 
@@ -112,7 +112,7 @@ async function productForm(id, done) {
       if (out) { m.close(); toast(`Giacenza: ${out.qty} pz`); done(); }
     };
     $('#pf-del', r).onclick = async () => {
-      if (!confirm('Archiviare questo articolo? Lo storico resta.')) return;
+      if (!(await confirmDelete('questo articolo', { verb: 'Archiviare', detail: 'Lo storico resta.' }))) return;
       await safe(() => api('DELETE', `/api/products/${id}`)); m.close(); done();
     };
   }
@@ -158,5 +158,5 @@ function supplierForm(s, done) {
     const out = await safe(() => (s ? api('PUT', `/api/suppliers/${s.id}`, body) : api('POST', '/api/suppliers', body)));
     if (out) { m.close(); toast('Fornitore salvato'); done(); }
   };
-  if (s) $('#sf-del', m.el).onclick = async () => { if (confirm('Eliminare il fornitore?')) { await safe(() => api('DELETE', `/api/suppliers/${s.id}`)); m.close(); done(); } };
+  if (s) $('#sf-del', m.el).onclick = async () => { if (await confirmDelete('il fornitore')) { await safe(() => api('DELETE', `/api/suppliers/${s.id}`)); m.close(); done(); } };
 }
