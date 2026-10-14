@@ -44,3 +44,10 @@ Leggi PRIMA la sezione "STATO A FINE GIORNATA 2026-10-14" in `docs/CHATLOG.md`: 
 
 ## Frase per iniziare la nuova sessione
 > Leggi `docs/PARTI-DA-QUI.md`, poi `docs/MEMORY.md` (sezione ONLINE) e riprendi dal punto 1 del piano della serata. Rispetta le regole dell'utente: test, commit e push a ogni funzionalità.
+
+## RIPARTENZA NELLA NUOVA CHAT (2026-10-14, fine sessione)
+Leggi in quest'ordine: 1) `docs/CHATLOG.md` sezione "STATO A FINE GIORNATA 2026-10-14" e il suo aggiornamento di mattina; 2) `docs/DIRETTIVE-CHRISTIAN.md` (20 direttive + piano a lotti A-D in fondo + aggiornamenti); 3) `docs/TESTI-LEGALI-BOZZE.md`; 4) `docs/DOMANDE-APERTE.md`.
+**Prossimo passo**: lotto A (partire dalla doppia conferma sulle eliminazioni, p.20), poi p.3 (togliere "non tracciato" + ruolo Cassa per info@informatixrepair.it), p.5, p.8, p.6, p.7. Poi lotto B: fondere i rami `worktree-agent-acc7fa5f69abbcf69` (Vetrina Usati online + Portale, migrazione 0004) e `worktree-agent-abb82441c706f929f` (import fatture XML, migrazione 0005) in `gestionale-officina`.
+**Regole**: test+commit+push a ogni funzione; aggiorna SEMPRE manuale (`officina/public/manuale.html`) e CHATLOG; grafica pulita e responsive; veloce al banco; Cypress solo su `cypress-tests` (worktree `../cy-wt`), `main` solo con via libera. NON costruire incassi o dati nascosti ai controlli (decisione ferma, vedi punto 3). Non aggirare i blocchi di sicurezza: spiegare e far decidere.
+**Comandi**: test `npm run test:officina`; deploy `npx wrangler deploy --config officina/wrangler.jsonc`; migrazioni `npx wrangler d1 migrations apply officina --remote --config officina/wrangler.jsonc`; adb in `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe` (in Git Bash con MSYS_NO_PATHCONV=1; per Termux: script via `adb push` in /data/local/tmp e `adb shell run-as com.termux sh script`). Bot Termux sul Samsung gestito dal Control Center (`~/bots/Termux-Launcher/bot_ctl.sh informatix_repair start|stop|restart`).
+**Frase per iniziare**: "Leggi docs/PARTI-DA-QUI.md (sezione RIPARTENZA NELLA NUOVA CHAT) e riparti dal lotto A."
