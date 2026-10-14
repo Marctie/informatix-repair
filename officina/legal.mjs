@@ -26,6 +26,32 @@ export const LEGAL_DEFAULTS = {
 /** Sostituisce i segnaposto {nome}; quelli sconosciuti restano com'erano. */
 export const fillText = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null && vars[k] !== '' ? String(vars[k]) : m));
 
+const eurIt = (n) => Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+const dateIt = (ymd) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('it-IT') : '');
+
+/** Variabili dei testi per una riparazione (importo e' un numero: si passa a parte quando cambia con l'opzione scelta). */
+export function quoteVars(s, r, amount = r.quote) {
+  return {
+    negozio: s.shop_name, garanzia: r.warranty_days, codice: r.code, dispositivo: r.brand_model,
+    importo: amount != null ? eurIt(amount) : '',
+    consegna: r.eta_date ? `, con consegna stimata il ${dateIt(r.eta_date)}` : '',
+    giorni: storageDays(s), tariffa: storageFee(s),
+  };
+}
+
+/** Testi della conferma/rifiuto del preventivo mostrati al cliente (l'importo resta {importo}: dipende dall'opzione scelta). */
+export function buildQuoteFlow(s, r, options = []) {
+  const v = { ...quoteVars(s, r), importo: '{importo}' };
+  return {
+    options: options.map((o) => ({ id: o.id, label: o.label, amount: o.amount, description: o.description || '' })),
+    accept: { title: s.quote_accept_title, text: fillText(s.quote_accept_text, v) },
+    decline: { title: s.quote_decline_title, text: fillText(s.quote_decline_text, v), pickup: fillText(s.quote_decline_pickup, v), cede: fillText(s.quote_decline_cede, v) },
+    sign_text: s.quote_sign_text,
+    storage_days: storageDays(s),
+    draft: !isVerified(s),
+  };
+}
+
 export const LEGAL_NOTE = 'Bozza da far verificare (non consulenza legale)';
 export const isVerified = (s) => String(s?.legal_verified) === '1';
 export const storageDays = (s) => Math.max(1, Number(s?.storage_days) || 15);

@@ -195,9 +195,12 @@
   .ckb[data-s="ko"]{background:#FEF2F2;border-color:#FCA5A5;color:var(--red-d)} .ckb[data-s="ko"] .ckm{background:var(--red);border-color:var(--red)}
   .ckb[data-s="na"]{background:var(--bg);color:var(--muted)} .ckb[data-s="na"] .ckm{background:#9CA3AF;border-color:#9CA3AF}
   .ckb:disabled{cursor:default;opacity:.85}
+  .stack{display:flex;flex-direction:column;gap:.5rem}
   .sigpad{display:flex;flex-direction:column;gap:.5rem}
   .sigpad canvas{display:block;width:100%;height:11rem;border:1.5px dashed var(--bd);border-radius:.85rem;background:#fff;touch-action:none;cursor:crosshair}
   .sigpad canvas.signed{border-style:solid;border-color:#6EE7B7}
+  .legalbox{background:var(--bg);border-radius:.85rem;padding:.9rem 1rem;font-size:.88rem;line-height:1.5;display:flex;flex-direction:column;gap:.6rem}
+  .legalbox .hint.draft{color:var(--red-d);font-weight:600}
   .sigimg{display:block;max-width:100%;height:6rem;object-fit:contain;border:1px solid var(--line);border-radius:.7rem;background:#fff}
 
   /* ---------- Portale e Vetrina usati ---------- */
@@ -303,6 +306,7 @@
 <div id="more-menu" class="hidden card shadow-2xl p-1.5"></div>
 <div id="modal-root"></div>
 <div id="toast" class="hidden fixed bottom-28 lg:bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2.5 rounded-xl text-white text-sm font-semibold"></div>
+<script src="/sigpad.js"></script>
 <script src="/app.js" type="module"></script>
 </body>
 </html>

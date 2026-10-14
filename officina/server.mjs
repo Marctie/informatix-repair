@@ -71,6 +71,7 @@ export function createApps({ usati } = {}) {
   const pub = new Hono();
   pub.get('/t/:token', trackPage);
   pub.get('/track.js', (c) => c.body(readFileSync(join(HERE, 'public', 'track.js')), 200, { 'content-type': 'text/javascript; charset=utf-8' }));
+  pub.get('/sigpad.js', (c) => c.body(readFileSync(join(HERE, 'public', 'sigpad.js')), 200, { 'content-type': 'text/javascript; charset=utf-8' }));
   pub.route('/', pubApi);
   pub.notFound((c) => c.text('Non trovato', 404));
   return { admin, pub };

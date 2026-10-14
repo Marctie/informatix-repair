@@ -10,6 +10,7 @@ const d = (s) => (s ? new Date(s + 'T00:00:00').toLocaleDateString('it-IT') : '�
 const qr = (text, size = 130) => `<img src="/api/qr?text=${encodeURIComponent(text)}" width="${size}" height="${size}" alt="QR" />`;
 const barcode = (text, w = 150, h = 34) => `<img src="/api/barcode?text=${encodeURIComponent(text)}" style="width:${w}px;height:${h}px;display:block" alt="codice a barre ${esc(text)}" />`;
 import { DEVICE_TYPES, typeInfo } from './checklists.mjs';
+import { isVerified, LEGAL_NOTE } from './legal.mjs';
 const TYPES = Object.fromEntries(Object.entries(DEVICE_TYPES).map(([k, v]) => [k, v.label]));
 
 const BASE_CSS = `
@@ -39,8 +40,25 @@ const BASE_CSS = `
   .page{page-break-after:always} .page:last-child{page-break-after:auto}
   .noprint{margin-bottom:12px} .noprint button{padding:8px 14px;font-weight:700;cursor:pointer}
   table.dev{table-layout:fixed} table.dev th{white-space:normal} table.dev td{overflow-wrap:anywhere}
+  /* scheda cliente: un A4 diviso a meta', due copie identiche (negozio e cliente) */
+  .sheet{max-width:186mm}
+  .half{height:131mm;overflow:hidden;font-size:11px;line-height:1.3;display:flex;flex-direction:column}
+  .half h2{margin:8px 0 3px;font-size:10px}
+  .half .hh{align-items:flex-end} .half .shop{font-size:15px} .half .big{font-size:16px}
+  .copy{display:inline-block;border:1px solid #111;border-radius:4px;padding:0 6px;font-size:9px;font-weight:700;letter-spacing:.06em}
+  .cgrid{display:grid;grid-template-columns:1fr 1fr 112px;gap:0 12px}
+  .cname{font-size:13px;font-weight:700}
+  .kvp{display:grid;grid-template-columns:84px 1fr;gap:0 6px;padding:1.5px 0} .kvp>span{color:#555;font-size:9.5px} .kvp b{font-weight:600;overflow-wrap:anywhere}
+  .qrbox{text-align:center;padding-top:10px} .qrt{font-size:8.5px;line-height:1.25;margin-top:2px}
+  .half .terms{font-size:9.2px;line-height:1.35;margin-top:5px}
+  .draftmark{font-style:italic;color:#B91C1C}
+  .signrow{display:flex;gap:30px;margin-top:auto}
+  .signrow>div{flex:1} .sigarea{height:56px;display:flex;align-items:flex-end;justify-content:flex-start;border-bottom:1px solid #333}
+  .sigcap{font-size:8.5px;color:#555;padding-top:2px}
+  .sigprint{max-height:54px;max-width:100%;object-fit:contain}
+  .cut{position:relative;border-top:1.5px dashed #888;margin:2mm 0} .cut span{position:absolute;right:0;top:-7px;background:#fff;font-size:8px;color:#888;padding-left:4px}
   .lab{max-width:186mm}
-  @media print{ .lab{height:268mm;overflow:hidden} .noprint{display:none} body{padding:0;font-size:11px} h2{margin:9px 0 3px} .lines{height:14px} @page{size:A4;margin:12mm} }
+  @media print{ .sheet{height:268mm;overflow:hidden} .lab{height:268mm;overflow:hidden} .noprint{display:none} body{padding:0;font-size:11px} h2{margin:9px 0 3px} .lines{height:14px} @page{size:A4;margin:12mm} }
 `;
 
 function page(title, body, extraCss = '', req = {}) {
@@ -77,30 +95,66 @@ const moneyBlock = (r) => `
     <tr><th>Consegna stimata</th><td>${d(r.eta_date)}</td><th>Garanzia riparazione</th><td colspan="3">${r.warranty_days} giorni dalla consegna</td></tr>
   </table>`;
 
-// ---------- Scheda CLIENTE ----------
-export function customerCard(r, trackUrl, s) {
-  return `<div class="page">
-  ${header(s, 'Scheda cliente · ricevuta di ingresso', r)}
-  <div class="row" style="margin-top:8px">
-    <div style="flex:1">
-      <h2>Cliente</h2>${customerBlock(r)}
-      <h2>Dispositivo consegnato</h2>${deviceBlock(r)}
-      <h2>Problema segnalato</h2><div class="box">${esc(r.problem)}</div>
+// ---------- Scheda CLIENTE (ricevuta di ingresso): UN foglio A4 diviso a meta', stessa scheda due volte ----------
+// Meta' alta = copia del negozio, meta' bassa = copia del cliente: ognuno firma la sua. Se il cliente ha firmato sul tablet o dal
+// link, la firma (immagine) compare su entrambe le copie con data e ora. Tutto resta in una pagina: i testi lunghi si troncano.
+const kv = (k, v) => `<div class="kvp"><span>${k}</span><b>${v}</b></div>`;
+
+function customerHalf(r, trackUrl, s, copy) {
+  const info = typeInfo(r.device_type);
+  const t = r.intake_texts || { consent: '', terms: s.terms };
+  const sig = r.sign_intake;
+  const draft = isVerified(s) ? '' : `<span class="draftmark">${LEGAL_NOTE}</span>`;
+  const signBox = sig
+    ? `<img src="${sig.image}" alt="Firma del cliente" class="sigprint" />`
+    : '';
+  const signCap = sig ? `Firma del cliente · firmato digitalmente da ${esc(sig.signer_name || r.customer_name)} il ${dt(sig.signed_at)}${sig.via === 'link' ? ' da link' : ' al banco'}` : 'Firma del cliente (accetta le condizioni)';
+  return `<div class="half">
+  <div class="row hh">
+    <div><b class="shop">${esc(s.shop_name)}</b><div class="muted">${esc(s.shop_address)} · Tel. ${esc(s.shop_phone)}</div></div>
+    <div style="text-align:right"><span class="copy">${copy}</span><div><b class="big">${esc(r.code)}</b> ${r.urgent ? '<span class="pill urg">URGENTE</span>' : ''}</div>
+      <div class="muted">Scheda di ingresso · ${dt(r.created_at)}</div></div>
+  </div>
+  <div class="cgrid">
+    <div>
+      <h2>Cliente</h2>
+      <div class="cname">${esc(r.customer_name)}</div>
+      <div>Tel. ${esc(r.customer_phone) || '—'}${r.customer_email ? ` · ${esc(r.customer_email)}` : ''}</div>
+      <h2>Dispositivo consegnato</h2>
+      ${kv('Modello', `<span style="font-size:11px">${esc(cut(r.brand_model, 60))}</span>`)}
+      ${kv('Tipo', esc(TYPES[r.device_type] || r.device_type))}
+      ${kv(esc(info.serial), esc(cut(r.serial, 40)) || '—')}
+      ${kv('Accessori', esc(cut(r.accessories, 70)) || 'nessuno')}
+      ${kv('Stato', esc(cut(r.condition_notes, 80)) || '—')}
     </div>
-    <div class="box center" style="width:178px;margin-top:8px">
-      ${qr(trackUrl, 150)}
-      <div style="font-size:11px;margin-top:4px"><b>Segui la tua riparazione</b><br>inquadra il QR con il telefono</div>
-      <div style="font-size:9px;word-break:break-all;margin-top:4px" class="muted">${esc(trackUrl)}</div>
-      <div style="font-size:9.5px;margin-top:5px" class="muted">Vedrai lo stato in tempo reale, il preventivo e potrai approvarlo con un tap.</div>
+    <div>
+      <h2>Problema segnalato</h2>
+      <div class="box"><div class="clamp" style="-webkit-line-clamp:4">${esc(cut(r.problem, 220))}</div></div>
+      <h2>Preventivo e tempi</h2>
+      ${kv('Preventivo', `<b>${r.quote != null ? eur(r.quote) : 'da definire'}</b>`)}
+      ${kv('Acconto', eur(r.deposit))}
+      ${kv('Saldo previsto', r.quote != null ? eur(Math.max(0, r.quote - (r.deposit || 0))) : '—')}
+      ${kv('Consegna stimata', d(r.eta_date))}
+      ${kv('Garanzia', `${r.warranty_days} giorni dalla consegna`)}
+    </div>
+    <div class="qrbox">
+      ${qr(trackUrl, 104)}
+      <div class="qrt"><b>Segui la riparazione</b><br>inquadra il QR: stato in tempo reale e conferma del preventivo</div>
     </div>
   </div>
-  <h2>Preventivo e tempi</h2>${moneyBlock(r)}
-  <h2>Come funziona</h2>
-  <div style="font-size:10.5px">1) Ti avvisiamo quando il preventivo è pronto, quando serve la tua conferma e quando il dispositivo è pronto. 2) Per il ritiro porta questo foglio (o dì il codice <b>${esc(r.code)}</b>) e un documento. 3) Per informazioni: ${esc(s.shop_phone)}.</div>
-  <div class="terms"><b>Condizioni:</b> ${esc(s.terms)}</div>
-  <div class="sign"><div>Firma del cliente (accetta le condizioni)</div><div>Firma del negozio</div></div>
+  <div class="terms"><b>Consenso:</b> ${esc(cut(t.consent, 900))} ${draft}</div>
+  <div class="terms clamp" style="-webkit-line-clamp:6"><b>Condizioni:</b> ${esc(cut(t.terms, 900))} Ti avvisiamo quando il preventivo è pronto e quando il dispositivo è pronto. Per il ritiro porta questo foglio (o dì il codice <b>${esc(r.code)}</b>) e un documento.</div>
+  <div class="signrow">
+    <div><div class="sigarea">${signBox}</div><div class="sigcap">${signCap}</div></div>
+    <div><div class="sigarea"></div><div class="sigcap">Firma del negozio</div></div>
+  </div>
   </div>`;
 }
+
+export function customerCard(r, trackUrl, s) {
+  return `<div class="page sheet">${customerHalf(r, trackUrl, s, 'COPIA NEGOZIO')}<div class="cut"><span>✂ taglia qui</span></div>${customerHalf(r, trackUrl, s, 'COPIA CLIENTE')}</div>`;
+}
+
 // ---------- Scheda LABORATORIO (sempre UNA pagina A4) ----------
 // Le voci dei controlli dipendono dal tipo di dispositivo (r.ck_lists, vedi checklists.mjs). Se il tecnico li ha gia'
 // compilati sul gestionale (r.checklist_in/pre/out) si stampano con ✔ / ✖ / –, altrimenti restano caselle da barrare.
@@ -134,14 +188,14 @@ export function labCard(r, trackUrl, s) {
     <div style="width:74px;text-align:center;margin-top:6px">${qr(trackUrl, 66)}<div style="font-size:7.5px" class="muted">link cliente</div></div>
   </div>
   <h2>Dispositivo</h2>${deviceBlock(r)}
-  <h2>Problema segnalato dal cliente</h2><div class="box clamp" style="-webkit-line-clamp:3">${esc(cut(r.problem, 260))}</div>
+  <h2>Problema segnalato dal cliente</h2><div class="box"><div class="clamp" style="-webkit-line-clamp:3">${esc(cut(r.problem, 260))}</div></div>
   <h2>Economico e tempi</h2>${moneyBlock(r)}
 
   <h2>${esc(PHASE_TITLE.in)}</h2>${ckBlock(r.checklist_in, ck.in || CHECK_ENTRY, 4)}
   <h2>${esc(PHASE_TITLE.pre)}</h2>${ckBlock(r.checklist_pre, ck.pre || CHECK_PRE, 2)}
 
   <h2>Diagnosi</h2>
-  ${r.tech_notes ? `<div class="box clamp" style="-webkit-line-clamp:6;white-space:pre-wrap">${esc(cut(r.tech_notes, 520))}</div>` : '<div class="lines"></div><div class="lines"></div>'}
+  ${r.tech_notes ? `<div class="box"><div class="clamp" style="-webkit-line-clamp:6;white-space:pre-wrap">${esc(cut(r.tech_notes, 520))}</div></div>` : '<div class="lines"></div><div class="lines"></div>'}
   <h2>Lavori eseguiti</h2>
   <div class="lines"></div><div class="lines"></div>
   <h2>Ricambi e materiali</h2>

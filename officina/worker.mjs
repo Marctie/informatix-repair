@@ -9,6 +9,7 @@ import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
 import { createPublisher } from './publisher.mjs';
 import { r2Media } from './media.mjs';
+import { storageDigest } from './remote.mjs';
 
 // Vetrina Usati: pubblicazione su GitHub se c'e' GITHUB_TOKEN (altrimenti bozza); foto nel bucket R2 con binding MEDIA (se manca: errore chiaro)
 const adminApp = createAdminApp({
@@ -51,7 +52,7 @@ app.use('*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (path.startsWith('/api/')) return publicApp.fetch(c.req.raw, c.env, c.executionCtx);
   if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track');
-  if (path === '/track.js') return serveAsset(c.env, c.req.raw, '/track.js');
+  if (path === '/track.js' || path === '/sigpad.js') return serveAsset(c.env, c.req.raw, path);
   return c.text('Non trovato', 404);
 });
 
@@ -92,6 +93,8 @@ export default {
     await init(env);
     try {
       const key = await saveBackup(env);
+      // dispositivi non riparati con la giacenza scaduta: un promemoria al giorno finche' non si decide (smaltire o deposito)
+      await sendTelegram(env, await storageDigest().catch(() => null));
       await sendTelegram(env, key ? `💾 <b>Backup notturno completato</b>\n${key}` : '⚠️ <b>Backup notturno non eseguito</b>\nArchivio R2 non collegato.');
     } catch (e) {
       await sendTelegram(env, `🔴 <b>ERRORE nel backup notturno</b>

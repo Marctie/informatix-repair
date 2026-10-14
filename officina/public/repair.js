@@ -2,6 +2,7 @@
 import { scanWithCamera } from './scan.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
 
+import { signIntakeAtDesk, signDialog } from './sign.js';
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
 
 // Tipi di dispositivo, etichette e suggerimenti arrivano dal server (/api/meta): cambiano con il tipo scelto.
@@ -240,6 +241,8 @@ function showCreated(r, onDone) {
         <a class="btn btn-outline btn-wrap" target="_blank" href="/print/customer/${r.id}">👤 Solo scheda cliente</a>
         <a class="btn btn-outline btn-wrap" target="_blank" href="/print/lab/${r.id}">🔧 Solo scheda laboratorio</a>
         <a class="btn btn-outline btn-wrap" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta dispositivo</a>
+        <button class="btn btn-outline btn-wrap" id="cp-sign">✍️ Firma sul tablet</button>
+        <button class="btn btn-outline btn-wrap" id="cp-signr">📲 Firma a distanza</button>
         <button class="btn btn-outline" id="cp-link">📋 Copia link</button>
         ${wa ? `<a class="btn btn-green col-span-2" target="_blank" rel="noopener" href="${wa}">💬 Invia link su WhatsApp</a>` : ''}
       </div>
@@ -247,6 +250,8 @@ function showCreated(r, onDone) {
     </div>`,
     { title: 'Scheda creata', footer: `<button class="btn btn-dark" data-close>Fatto</button>` }
   );
+  $('#cp-sign', m.el).onclick = async () => { if (await signIntakeAtDesk(r.id)) { $('#cp-sign', m.el).textContent = '✔ Firmata'; $('#cp-sign', m.el).disabled = true; $('#cp-signr', m.el).disabled = true; } };
+  $('#cp-signr', m.el).onclick = () => requestRemoteSignature(r.id, () => { $('#cp-signr', m.el).textContent = '✔ Richiesta inviata'; $('#cp-signr', m.el).disabled = true; });
   $('#cp-link', m.el).onclick = async () => { await navigator.clipboard?.writeText(r.track_url); toast('Link copiato'); };
   m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) onDone?.(); });
 }
@@ -311,6 +316,19 @@ export async function openRepairDetail(id, onChange) {
           </section>
 
           <section class="sec">
+            <h3 class="sec-t">Firma della scheda di ingresso</h3>
+            ${(() => {
+              const sg = (r.signatures || []).filter((x) => x.kind === 'intake').at(-1);
+              if (sg) return `<p>✔ Firmata da <b>${esc(sg.signer_name || r.customer_name)}</b> il ${fdt(sg.signed_at)} ${sg.via === 'link' ? `da link <span class="hint">(IP ${esc(sg.ip || 'non rilevato')})</span>` : 'al banco'}.</p><img class="sigimg" alt="Firma del cliente" src="/api/repairs/${r.id}/signatures/${sg.id}/image" />`;
+              return r.sign_requested ? '<p class="hint">Firma a distanza richiesta: il cliente la trova aprendo il suo link.</p>' : '<p class="hint">Non ancora firmata. Compare sulla scheda stampata.</p>';
+            })()}
+            <div class="row tight">
+              <button class="btn btn-outline btn-sm" data-act="signdesk">✍️ Firma qui (tablet)</button>
+              ${(r.signatures || []).some((x) => x.kind === 'intake') ? '' : '<button class="btn btn-outline btn-sm" data-act="signremote">📲 Chiedi firma a distanza</button>'}
+            </div>
+          </section>
+
+          <section class="sec">
             <h3 class="sec-t">Stampe e link</h3>
             <div class="row tight">
               <a class="btn btn-dark btn-sm" target="_blank" href="/print/both/${r.id}">🖨️ Stampa tutto</a>
@@ -339,9 +357,20 @@ export async function openRepairDetail(id, onChange) {
             </div>
             ${!done ? `
               <div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><button class="btn btn-outline" data-act="deposit">Registra acconto</button></div>
-              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${r.quote != null && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
+
+          ${!done || r.quote_options.length ? `<section class="sec">
+            <h3 class="sec-t">Soluzioni fra cui il cliente sceglie</h3>
+            <p class="sec-sub">Facoltativo: se ci sono più strade (es. display compatibile o originale) il cliente le vede dal suo link, ne sceglie una e firma.</p>
+            <div class="plist">${r.quote_options.map((o) => `<div><span>${esc(o.label)}${o.description ? ` <span class="hint">· ${esc(o.description)}</span>` : ''}${r.quote_option_id === o.id ? ' <span class="badge bg-emerald-100 text-emerald-700">scelta</span>' : ''}</span><span>${eur(o.amount)} ${!done ? `<button class="xbtn" data-rmopt="${o.id}" title="Togli" aria-label="Togli ${esc(o.label)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessuna soluzione: il cliente vede solo il preventivo.</p>'}</div>
+            ${!done ? `<div class="fgrid c2"><div class="field"><label class="l" for="qo-label">Soluzione</label><input id="qo-label" placeholder="es. Display originale, garanzia 12 mesi" /></div>
+              <div class="field"><label class="l" for="qo-amount">Importo €</label><input id="qo-amount" inputmode="decimal" /></div></div>
+              <div class="row tight"><button class="btn btn-outline btn-sm" data-act="addopt">＋ Aggiungi soluzione</button></div>` : ''}
+          </section>` : ''}
+
+          ${r.status === 'cancelled' ? fateSection(r) : ''}
 
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
@@ -403,6 +432,10 @@ export async function openRepairDetail(id, onChange) {
     if (await checklistClick(e, body, id, () => { reloadList(); render(); })) return;
     const rm = e.target.closest('[data-rmpart]');
     if (rm) { if (!(await confirmDelete('questo ricambio', { verb: 'Rimuovere', detail: 'Il magazzino viene ripristinato.' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)'); }
+    const ro = e.target.closest('[data-rmopt]');
+    if (ro) { if (!(await confirmDelete('questa soluzione', { verb: 'Togliere' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/quote-options/${ro.dataset.rmopt}`), 'Soluzione tolta'); }
+    const fb = e.target.closest('[data-fate]');
+    if (fb) return act(() => api('POST', `/api/repairs/${id}/fate`, { fate: fb.dataset.fate, restart: fb.dataset.fate === 'giacenza' }), 'Destino aggiornato');
     const pid = e.target.closest('[data-pid]');
     if (pid) return act(() => api('POST', `/api/repairs/${id}/parts`, { product_id: Number(pid.dataset.pid), qty: 1 }), 'Ricambio aggiunto (scalato dal magazzino)');
     const b = e.target.closest('[data-act]');
@@ -418,14 +451,97 @@ export async function openRepairDetail(id, onChange) {
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
       case 'savecnote': return act(() => api('PATCH', `/api/repairs/${id}`, { customer_note: $('#d-cnote', body).value }), 'Messaggio aggiornato');
       case 'note': { const t = $('#d-note', body).value; if (!t.trim()) return; return act(() => api('POST', `/api/repairs/${id}/note`, { note: t, public: $('#d-notepub', body).checked }), 'Nota aggiunta'); }
+      case 'addopt': return act(() => api('POST', `/api/repairs/${id}/quote-options`, { label: $('#qo-label', body).value, amount: $('#qo-amount', body).value }), 'Soluzione aggiunta');
+      case 'signdisposal': return signDisposal(id, () => { reloadList(); render(); });
+      case 'restartfate': return act(() => api('POST', `/api/repairs/${id}/fate`, { fate: 'giacenza', restart: true }), 'Conteggio ripartito da oggi');
+      case 'waStorage': { const rep = await api('GET', `/api/repairs/${id}`); const l = waLink(rep.customer_phone, waMessage('storage', rep)); if (l) window.open(l, '_blank', 'noopener'); return; }
+      case 'signdesk': return signIntakeAtDesk(id, () => { reloadList(); render(); });
+      case 'signremote': return requestRemoteSignature(id, () => { reloadList(); render(); });
       case 'edit': return editDialog(id, () => { reloadList(); render(); });
       case 'copylink': { await navigator.clipboard?.writeText(trackUrl((await api('GET', `/api/repairs/${id}`)).token)); return toast('Link copiato'); }
     }
   });
   body.addEventListener('change', (e) => {
+    if (e.target.id === 'd-status' && e.target.value === 'cancelled') { e.target.value = ''; return cancelDialog(id, () => { reloadList(); render(); }); }
     if (e.target.id === 'd-status' && e.target.value) act(() => api('POST', `/api/repairs/${id}/status`, { status: e.target.value }), 'Stato aggiornato');
   });
   await render();
+}
+
+// ---------- Non riparabile: dove sta il dispositivo e i giorni di giacenza ----------
+const FATES = { giacenza: 'In giacenza (attende il ritiro)', ritirato: 'Ritirato dal cliente', ceduto: 'Lasciato da smaltire / per pezzi di ricambio', deposito: 'In deposito a pagamento', smaltito: 'Smaltito / recuperato' };
+const dayDiff = (ts) => Math.round((new Date(`${today()}T00:00:00`) - new Date(`${String(ts).slice(0, 10)}T00:00:00`)) / 86400000);
+const storageTotal = () => Number(META.settings.storage_days) || 15;
+
+function fateSection(r) {
+  const fate = r.device_fate;
+  const el = r.fate_since ? dayDiff(r.fate_since) : null;
+  const total = storageTotal();
+  const left = fate === 'giacenza' && el != null ? total - el : null;
+  const state = !fate ? '<p class="hint">Non ancora registrato: scegli sotto cosa è successo al dispositivo.</p>'
+    : `<p><b>${esc(FATES[fate] || fate)}</b>${r.fate_note ? ` <span class="hint">· ${esc(r.fate_note)}</span>` : ''}</p>
+       ${fate === 'giacenza' && el != null ? `<div class="total-box"><span>In negozio da <b>${el}</b> ${el === 1 ? 'giorno' : 'giorni'} (dal ${fdate(r.fate_since)})</span><span>${left > 0 ? `Mancano <b>${left}</b> ${left === 1 ? 'giorno' : 'giorni'} ai ${total}` : `<b style="color:var(--red-d)">Scaduta da ${-left} ${-left === 1 ? 'giorno' : 'giorni'}</b>`}</span></div>
+       ${left <= 0 ? `<p class="hint">Passati i ${total} giorni: smaltisci il dispositivo oppure spostalo in deposito a pagamento (${esc(META.settings.storage_fee || 'tariffa da definire')}). Avvisa il cliente.</p>` : ''}` : ''}`;
+  const signed = (r.signatures || []).some((x) => x.kind === 'disposal' || (x.kind === 'quote_decline' && x.choice === 'cede'));
+  const btn = (k, l) => (fate === k ? '' : `<button class="btn btn-outline btn-sm" data-fate="${k}">${l}</button>`);
+  return `<section class="sec">
+    <h3 class="sec-t">Dispositivo non riparato</h3>
+    ${state}
+    <div class="row tight">
+      ${btn('giacenza', '📦 In giacenza')}${btn('ritirato', '✔ Ritirato dal cliente')}${btn('deposito', '🏷️ In deposito a pagamento')}${btn('smaltito', '♻️ Smaltito / recuperato')}
+      ${fate === 'ceduto' || signed ? '' : '<button class="btn btn-outline btn-sm" data-act="signdisposal">✍️ Cessione: firma qui</button>'}
+      ${fate === 'giacenza' && r.customer_phone ? '<button class="btn btn-outline btn-sm" data-act="waStorage">💬 Avvisa del termine</button>' : ''}
+      ${fate === 'giacenza' ? '<button class="btn btn-ghost btn-sm" data-act="restartfate">Riavvia il conteggio</button>' : ''}
+    </div>
+    ${signed ? '<p class="hint">✔ Cessione del dispositivo firmata dal cliente.</p>' : ''}
+  </section>`;
+}
+
+/** "Annullato / non riparabile": prima si registra dove si trova il dispositivo (parte il conteggio dei giorni). */
+function cancelDialog(id, done) {
+  const total = storageTotal();
+  const m = openModal(`<section class="sec">
+      <p>Cosa è successo al dispositivo?</p>
+      <div class="stack">
+        <label class="check box"><input type="radio" name="cx" value="giacenza" checked /> Resta in negozio: il cliente lo ritira entro ${total} giorni</label>
+        <label class="check box"><input type="radio" name="cx" value="ritirato" /> Il cliente l’ha già ripreso</label>
+        <label class="check box"><input type="radio" name="cx" value="ceduto" /> Lasciato da smaltire / per pezzi di ricambio (cessione firmata)</label>
+      </div>
+      <div class="field"><label class="l" for="cx-note">Nota (facoltativa)</label><input id="cx-note" placeholder="es. scheda madre bruciata" /></div>
+      <p class="hint">Passati i ${total} giorni compare un avviso: smaltire il dispositivo o spostarlo in deposito a pagamento.</p>
+    </section>`,
+    { title: 'Annullato / non riparabile', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cx-ok">Conferma</button>' });
+  $('#cx-ok', m.el).onclick = async () => {
+    const fate = $('input[name="cx"]:checked', m.el).value;
+    const out = await safe(() => api('POST', `/api/repairs/${id}/status`, { status: 'cancelled', device_fate: fate, fate_note: $('#cx-note', m.el).value }));
+    if (!out) return;
+    m.close();
+    toast('Registrato');
+    if (fate === 'ceduto') await signDisposal(id);
+    done();
+  };
+}
+
+/** Cessione del dispositivo firmata al banco (liberatoria allo smaltimento / pezzi di ricambio). */
+async function signDisposal(id, done) {
+  const s = await safe(() => api('GET', '/api/settings'));
+  const r = await safe(() => api('GET', `/api/repairs/${id}`));
+  if (!s || !r) return;
+  const text = String(s.quote_decline_cede || '').replace(/\{(\w+)\}/g, (x, k) => ({ negozio: s.shop_name, codice: r.code, dispositivo: r.brand_model, giorni: s.storage_days }[k] ?? x));
+  const ok = await signDialog({ title: `Cessione ${r.code}`, intro: `<b>${esc(r.customer_name)}</b> · ${esc(r.brand_model)}`, text, draft: String(s.legal_verified) !== '1', name: r.customer_name, onSign: (b) => api('POST', `/api/repairs/${id}/signature`, { ...b, kind: 'disposal' }) });
+  if (ok) { toast('Cessione firmata e registrata'); done?.(); }
+}
+
+/** Chiede al cliente di firmare da casa: la pagina del suo link mostra condizioni e riquadro firma; qui si apre WhatsApp col messaggio. */
+async function requestRemoteSignature(id, done) {
+  const r = await safe(() => api('POST', `/api/repairs/${id}/request-signature`));
+  if (!r) return;
+  const rep = await safe(() => api('GET', `/api/repairs/${id}`));
+  const link = rep && waLink(rep.customer_phone, waMessage('sign', rep));
+  if (link) window.open(link, '_blank', 'noopener');
+  else { await navigator.clipboard?.writeText(rep?.track_url || ''); toast('Nessun telefono: link copiato, mandalo al cliente'); }
+  toast('Firma a distanza richiesta');
+  done?.();
 }
 
 export function deliverDialog(id, done) {

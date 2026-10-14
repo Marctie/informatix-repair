@@ -82,7 +82,7 @@ export async function loadDemo() {
     { id: -11, c: -3, type: 'smartphone', model: 'iPhone 12', serial: '354567890123456', problem: 'Sostituzione display', acc: 'Cover', cond: 'Buone', pass: '', status: 'delivered', quote: 139, dep: 40, d: 25, deliv: 21, final: 139, path: ['received', 'diagnosing', 'quote_pending', 'approved', 'repairing', 'ready', 'delivered'], decision: 'accepted', parts: [[-1, 1]] },
     { id: -12, c: -5, type: 'smartphone', model: 'Samsung Galaxy A52', serial: '352345678901234', problem: 'Sostituzione batteria', acc: 'Nessuno', cond: 'Ottime', pass: '', status: 'delivered', quote: 55, dep: 0, d: 18, deliv: 16, final: 55, path: ['received', 'diagnosing', 'quote_pending', 'approved', 'repairing', 'ready', 'delivered'], decision: 'accepted', parts: [[-4, 1]] },
     { id: -13, c: -6, type: 'portatile', model: 'HP Pavilion 15', serial: 'HP-5544', problem: 'Reinstallazione sistema e pulizia', acc: 'Alimentatore', cond: 'Buone', pass: '', status: 'delivered', quote: 60, dep: 20, d: 40, deliv: 36, final: 60, path: ['received', 'diagnosing', 'quote_pending', 'approved', 'repairing', 'ready', 'delivered'], decision: 'accepted', parts: [[-12, 1]] },
-    { id: -14, c: -4, type: 'smartphone', model: 'Xiaomi Redmi Note 10', serial: '865432109876543', problem: 'Danni da liquido', acc: 'Nessuno', cond: 'Ossidazione', pass: '', status: 'cancelled', quote: 110, dep: 0, d: 15, path: ['received', 'diagnosing', 'quote_pending', 'cancelled'], decision: 'declined' },
+    { id: -14, c: -4, type: 'smartphone', model: 'Xiaomi Redmi Note 10', serial: '865432109876543', problem: 'Danni da liquido', acc: 'Nessuno', cond: 'Ossidazione', pass: '', status: 'cancelled', quote: 110, dep: 0, d: 15, path: ['received', 'diagnosing', 'quote_pending', 'cancelled'], decision: 'declined', fate: 'giacenza' },
   ];
   let rc = 0;
   for (const r of R) {
@@ -90,10 +90,10 @@ export async function loadDemo() {
     const last = r.path.length - 1;
     const evDay = (i) => Math.max(0, r.d - Math.round((i * (r.d - (r.deliv ?? Math.max(0, r.d - 5)))) / Math.max(1, last)));
     const updated = ts(r.deliv ?? evDay(last), '17:40');
-    add(`INSERT INTO repairs (id,code,token,customer_id,device_type,brand_model,serial,problem,accessories,condition_notes,passcode,status,urgent,quote,deposit,final_price,eta_date,warranty_days,quote_decision,quote_decided_at,created_at,updated_at,delivered_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    add(`INSERT INTO repairs (id,code,token,customer_id,device_type,brand_model,serial,problem,accessories,condition_notes,passcode,status,urgent,quote,deposit,final_price,eta_date,warranty_days,quote_decision,quote_decided_at,created_at,updated_at,delivered_at,device_fate,fate_since)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     r.id, `DEMO-${String(++rc).padStart(3, '0')}`, `demo-token-${rc}`, r.c, r.type, r.model, r.serial, r.problem, r.acc, r.cond, r.pass || null, r.status, r.urgent || 0,
-    r.quote, r.dep, r.final ?? null, r.eta == null ? null : ymd(r.eta), 90, r.decision || null, r.decision ? ts(Math.max(0, r.d - 2)) : null, created, updated, r.deliv != null ? ts(r.deliv, '16:20') : null);
+    r.quote, r.dep, r.final ?? null, r.eta == null ? null : ymd(r.eta), 90, r.decision || null, r.decision ? ts(Math.max(0, r.d - 2)) : null, created, updated, r.deliv != null ? ts(r.deliv, '16:20') : null, r.fate || null, r.fate ? ts(r.d) : null);
     r.path.forEach((s, i) => add('INSERT INTO repair_events (id,repair_id,status,note,is_public,created_at) VALUES (?,?,?,?,?,?)', --ev, r.id, s, E(s), 1, ts(s === 'delivered' ? r.deliv : evDay(i), `${9 + i}:20`.padStart(5, '0'))));
     for (const [pid, q] of r.parts || []) add('INSERT INTO repair_parts (id,repair_id,product_id,name,qty,unit_price,unit_cost) VALUES (?,?,?,?,?,?,?)', --pt, r.id, pid, prod[pid].name, q, prod[pid].price, prod[pid].cost);
     if (r.dep) add("INSERT INTO payments (id,kind,ref_id,label,amount,method,created_at) VALUES (?,?,?,?,?,?,?)", --pay, 'repair', r.id, `Acconto DEMO-${String(rc).padStart(3, '0')}`, r.dep, rc % 2 ? 'contanti' : 'carta', created);
