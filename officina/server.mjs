@@ -9,7 +9,8 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { networkInterfaces, tmpdir } from 'node:os';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { raw } from './db-node.mjs';
 import { createAdminApp, createPublicApp } from './app.mjs';
 import { localDate } from './logic.mjs';
@@ -77,6 +78,13 @@ export function createApps({ usati } = {}) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // Chiave della cassaforte (documenti d'identita' e password fornitori) sul PC: variabile VAULT_KEY oppure file locale
+  // officina/data/vault.key (cartella data/ esclusa da git, mai nel repository). Va conservata a parte: senza non si decifra nulla.
+  if (!process.env.VAULT_KEY) {
+    const keyFile = join(HERE, 'data', 'vault.key');
+    if (!existsSync(keyFile)) { mkdirSync(dirname(keyFile), { recursive: true }); writeFileSync(keyFile, randomBytes(32).toString('hex'), { mode: 0o600 }); console.log('Creata la chiave della cassaforte in officina/data/vault.key: conservane una copia al sicuro.'); }
+    process.env.VAULT_KEY = readFileSync(keyFile, 'utf8').trim();
+  }
   const { admin, pub } = createApps();
   serve({ fetch: admin.fetch, port: ADMIN_PORT, hostname: '127.0.0.1' }, () => {
     console.log('\nGestionale Officina Informatix Repair');
