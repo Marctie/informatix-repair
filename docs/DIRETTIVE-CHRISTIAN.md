@@ -48,3 +48,16 @@ Raccolte da Marco il 2026-10-14, una per volta. NON implementare finche' Marco n
 **Domande aperte**: 1) Il listino servizi si gestisce in una sezione dedicata (es. in Magazzino come area "Servizi", senza giacenza) o dentro la schermata Vendite? 2) Il prezzo del servizio e' sempre modificabile al banco? 3) Ha un **costo** (tempo/licenza) per calcolare il guadagno, o e' tutto ricavo? 4) Nell'**Analisi** i servizi devono comparire come categoria separata (ricavi da servizi vs prodotti)? 5) Si possono aggiungere gli stessi servizi anche alle riparazioni come "manodopera"?
 **Collegamenti**: stessa logica d'inserimento rapido del punto 5 (ricambio a mano) e delle aree del punto 6 (area "Servizi" senza giacenza).
 **Stato**: da fare (in attesa del resto dell'elenco).
+
+## 8. Vendita: scelta se stampare la ricevuta
+**Testo (Marco)**: "E soprattutto un flag se stampare o meno la ricevuta, e quindi aggiungere solo alle vendite effettuate".
+**Come l'ho capita**: al momento di concludere una vendita c'e' un'opzione **"Stampa ricevuta"** (spuntata o no, ricordando l'ultima scelta) invece di stampare sempre. La seconda parte ("aggiungere solo alle vendite effettuate") la leggo cosi': la vendita viene registrata solo quando viene **conclusa** (non resta in elenco una vendita lasciata a meta' o annullata); la ricevuta e' indipendente dalla registrazione.
+**Domande aperte**: 1) Ho capito bene la seconda parte, o intendeva che le vendite *senza* ricevuta restano comunque in elenco ma contrassegnate? 2) Una vendita registrata senza stampa si puo' ristampare dopo (dall'elenco vendite)? 3) L'opzione deve essere memorizzata per utente (Cassa/Christian)?
+**Stato**: da fare.
+
+## 9. Vendita: conto diviso su piu' metodi e codice buono
+**Testo (Marco)**: "Ah e anche se anormale come cosa, fare in modo tale che possano dividere il conto (10 euro con carta, 20 contanti (black)) o usare un fatidico codice buono per scontare qualcosa o togliere un importo".
+**Parte realizzabile**: **pagamento diviso**: una vendita puo' essere pagata con piu' metodi (es. 10 € carta + 20 € contanti), ogni importo registrato col suo metodo, la somma deve coincidere col totale; stessa cosa per saldo/acconto delle riparazioni. **Codice buono** (sconto in importo o %, buono regalo con credito residuo): campo "Codice buono" in cassa, letto anche con la pistola, che toglie l'importo dal totale e scala il credito del buono (progetto "Buoni sconto/regalo" gia' in coda: tabelle `vouchers` e `voucher_uses`, uso atomico).
+**Parte NON realizzata**: la quota "(black)", cioe' un importo registrato in modo che non compaia ai controlli: vale la decisione del punto 3. Nel pagamento diviso ogni quota e' registrata e visibile come tutte le altre.
+**Domande aperte**: 1) Quanti metodi per vendita (due bastano o fino a tre-quattro)? 2) Il resto in contanti (cliente da' 50, il totale e' 37) va calcolato e mostrato? 3) Il buono puo' essere usato insieme a un pagamento diviso? 4) Un buono usato solo in parte lascia credito residuo, e si stampa il saldo sulla ricevuta?
+**Stato**: da fare (insieme al progetto buoni).
