@@ -37,6 +37,7 @@ export function classify(method, path) {
   if (path === '/api/settings' && method === 'PUT') return { type: 'impostazioni', action: 'modifica', detail: 'impostazioni del negozio' };
   if (path === '/api/purchases/confirm') return { type: 'acquisto', action: 'crea', detail: 'documento di acquisto importato' };
   if (path === '/api/demo') return { type: 'dati demo', action: method === 'POST' ? 'crea' : 'elimina', detail: method === 'POST' ? 'caricati i dati demo' : 'cancellati i dati demo' };
+  if (/^\/api\/repairs\/\d+\/parts\/\d+\/stock$/.test(path) && method === 'POST') return { kind: KINDS.repairs, id: path.split('/')[3], type: 'articolo', action: 'crea', detail: 'ricambio a mano caricato a magazzino' };
   const m = path.match(/^\/api\/([a-z]+)(?:\/(\d+))?(?:\/([a-z]+))?(?:\/(\d+))?$/);
   if (!m) return null;
   const [, seg, id, sub, subId] = m;

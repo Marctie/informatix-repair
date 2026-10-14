@@ -407,6 +407,36 @@ export async function manualLoad(body) {
   });
 }
 
+/** Trasforma un ricambio "a mano" di una riparazione in articolo a catalogo (la giacenza resta 0: il pezzo e' gia' stato usato).
+ *  Il ricambio della riparazione viene collegato all'articolo; se il fornitore e' noto il prezzo entra anche nello storico. */
+export async function partToStock(repairId, partId) {
+  return tx(async () => {
+    const part = await db.prepare('SELECT * FROM repair_parts WHERE id = ? AND repair_id = ?').get(partId, repairId);
+    if (!part) throw new HttpError(404, 'Ricambio non trovato');
+    if (part.product_id) throw new HttpError(409, 'Questo ricambio è già un articolo a magazzino.');
+    const rep = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
+    const sup = part.supplier_name ? await db.prepare('SELECT id FROM suppliers WHERE LOWER(name) = LOWER(?)').get(part.supplier_name) : null;
+    let prod = part.supplier_code ? await db.prepare('SELECT * FROM products WHERE active = 1 AND sku = ?').get(part.supplier_code) : null;
+    prod = prod || (await db.prepare('SELECT * FROM products WHERE active = 1 AND LOWER(name) = LOWER(?)').get(part.name));
+    let created = false;
+    if (!prod) {
+      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, created_at) VALUES (?,?,?,0,0,?,?,?,${NOW})`)
+        .run(part.supplier_code, part.name.slice(0, 200), 'Ricambi', part.unit_cost, part.unit_price, sup?.id ?? null);
+      prod = await db.prepare('SELECT * FROM products WHERE id = ?').get(Number(r.lastInsertRowid));
+      created = true;
+    }
+    // la giacenza non cambia: +qty e -qty lasciano traccia del pezzo passato dal catalogo alla riparazione
+    await moveStock(prod.id, part.qty, 'carico da ricambio a mano', rep.code);
+    await moveStock(prod.id, -part.qty, 'riparazione', rep.code);
+    await db.prepare('UPDATE repair_parts SET product_id = ?, supplier_code = NULL, supplier_name = NULL, bought_at = NULL WHERE id = ?').run(prod.id, part.id);
+    if (sup && part.unit_cost > 0) {
+      await db.prepare('INSERT INTO price_history (product_id, supplier_id, unit_price, qty, doc_date, purchase_id) VALUES (?,?,?,?,?,?)').run(prod.id, sup.id, part.unit_cost, part.qty, part.bought_at || localDate(), null);
+      if (part.supplier_code) await db.prepare('INSERT OR REPLACE INTO supplier_codes (supplier_id, supplier_code, product_id) VALUES (?,?,?)').run(sup.id, part.supplier_code, prod.id);
+    }
+    return { ok: true, product_id: prod.id, name: prod.name, created };
+  });
+}
+
 // ---------- Elenco ----------
 export async function listPurchases() {
   return db.prepare(`SELECT p.*, s.name AS supplier_name, (SELECT COUNT(*) FROM purchase_lines l WHERE l.purchase_id = p.id) AS lines_count
@@ -428,6 +458,10 @@ export function registerPurchaseRoutes(app, h) {
     if (req.user?.role === 'cassa') throw new HttpError(403, 'Il carico merce non è disponibile per il ruolo Cassa.');
     return manualLoad({ ...req.body, product_id: req.params.id ?? req.body.product_id });
   });
+  app.post('/api/repairs/:id/parts/:partId/stock', h((req) => {
+    if (req.user?.role === 'cassa') throw new HttpError(403, 'Non disponibile per il ruolo Cassa.');
+    return partToStock(Number(req.params.id), Number(req.params.partId));
+  }));
   app.post('/api/products/load', loadRoute);
   app.post('/api/products/:id/load', loadRoute);
   app.post('/api/purchases/preview', h((req) => previewPurchase(req.body)));

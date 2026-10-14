@@ -313,7 +313,7 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
             <div class="plist">
-              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
             ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>
             <div class="row tight"><button class="btn btn-outline btn-sm" data-act="manualpart">＋ Ricambio non a magazzino</button></div>` : ''}
@@ -364,6 +364,8 @@ export async function openRepairDetail(id, onChange) {
 
   const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
+    const ts = e.target.closest('[data-tostock]');
+    if (ts) return act(() => api('POST', `/api/repairs/${id}/parts/${ts.dataset.tostock}/stock`), 'Ricambio caricato a magazzino: ora è un articolo a catalogo');
     const rm = e.target.closest('[data-rmpart]');
     if (rm) { if (!(await confirmDelete('questo ricambio', { verb: 'Rimuovere', detail: 'Il magazzino viene ripristinato.' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)'); }
     const pid = e.target.closest('[data-pid]');
