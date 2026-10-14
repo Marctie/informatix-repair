@@ -764,3 +764,19 @@ Test notifiche reali: 41 messaggi inviati, tutti ok=true. Corretti in notify.mjs
 - **Vetrina Usati + Portale**: branch `worktree-agent-acc7fa5f69abbcf69` (worktree `.claude/worktrees/agent-acc7fa5f69abbcf69`). Fatto e committato: API nel Worker, D1 (migrazione `0004_usati.sql`), publisher GitHub/bozza, archivio foto, notifiche Telegram; test `npm run test:officina` 26 verdi. Interfaccia (`usati.js`, `portale.js`, voci di menu) salvata come WIP ma NON finita/verificata. Mancano: rifinitura UI e screenshot a 4 formati, manuale (sezione Vetrina e Portale), CHATLOG/DOMANDE proprie, segreto `GITHUB_TOKEN`, bucket media R2.
 - **Import fatture XML + prezzi**: branch `worktree-agent-abb82441c706f929f` (worktree `.claude/worktrees/agent-abb82441c706f929f`). Fatto e committato: parser FatturaPA, import in 2 passi, storico prezzi, avvisi, API, migrazione `0005`; test 32 verdi. Interfaccia `purchases.js` salvata come WIP, NON finita/verificata. Mancano: UI con revisione e grafico a punti, voce di menu, dati demo con acquisti, manuale, CHATLOG.
 - Per ripartire: resumere i due agenti oppure rifare la fusione a mano in `gestionale-officina`, poi `wrangler d1 migrations apply officina --remote`, deploy, Cypress.
+
+## Stato Vetrina usati online + Portale (2026-10-14, giornata interrotta)
+
+**Fatto (branch del worktree, test:officina 26/26 verdi):**
+- Vetrina usati dentro il Worker: API `/api/usati` (elenco, crea, modifica, venduto/non venduto, elimina solo admin, foto, riordino, pubblica), codice in `officina/usati.mjs`.
+- Database: migrazione `officina/migrations/0004_usati.sql` (tabelle usati_items, usati_trash) e `officina/schema.sql`. Dati esistenti: `node officina/tools/seed-usati.mjs` genera `officina/seed/usati.sql` (13 articoli, ripetibile).
+- Publisher (`officina/publisher.mjs`): GitHub (Contents API: prima foto, poi JSON, poi cancellazioni; nessun commit se il JSON e' uguale) oppure bozza se manca GITHUB_TOKEN. I test usano un publisher finto.
+- Foto: ridimensionate nel browser (canvas), archivio R2 con binding MEDIA (`officina/media.mjs`), errore chiaro se manca; su PC cartella officina/data/media. `scripts/build-usati.mjs` accetta il campo facoltativo `files` (nomi foto).
+- Notifiche Telegram per creato/modificato/venduto/eliminato/foto/pubblicazione e errori.
+- UI: voce "Vetrina usati" (officina/public/usati.js) con schede, badge, modulo a sezioni a schermo intero su mobile; Portale (portale.js) come home, con collegamento in menu. Controllati screenshot a 1280/500/390.
+
+**Manca / da fare:** manuale (sezioni 19 Vetrina usati e 20 Portale) e screenshot a 320/768 non verificati (u320.png/u768.png generati ma non guardati); prova reale con GitHub e R2; test Cypress da riallineare (la home ora e' #/portale); il vecchio admin/ resta ma non e' piu' linkato.
+
+**Migrazioni/configurazione:** applicare 0004 su D1, poi eseguire officina/seed/usati.sql. Creare bucket `officina-media` e decommentare il binding MEDIA in wrangler.jsonc. Segreto GITHUB_TOKEN (permesso Contents sul repo); variabili GITHUB_REPO, GITHUB_BRANCH, SITE_URL gia' in wrangler.jsonc (BRANCH=main: senza token resta bozza). Opzionale su PC: OFFICINA_USATI_PUBLISH=github.
+
+**Come ripartire:** leggere questa sezione, completare manuale, guardare gli screenshot a 320/768, provare con un branch GitHub di prova (GITHUB_BRANCH) prima di main.

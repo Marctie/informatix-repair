@@ -139,3 +139,19 @@ CREATE TABLE IF NOT EXISTS supplier_info (
   supplier_id INTEGER PRIMARY KEY REFERENCES suppliers(id) ON DELETE CASCADE,
   vat TEXT, fiscal_code TEXT, address TEXT
 );
+
+CREATE TABLE IF NOT EXISTS usati_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  price REAL,
+  sold INTEGER NOT NULL DEFAULT 0,
+  sold_at TEXT,
+  data TEXT NOT NULL,
+  photo_list TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS usati_trash (
+  path TEXT PRIMARY KEY
+);

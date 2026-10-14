@@ -36,10 +36,11 @@ export const debounce = (fn, ms = 250) => { let h; return (...a) => { clearTimeo
 
 let modalStack = [];
 /** Apre un modale; ritorna { el, close }. html = contenuto del corpo. */
-export function openModal(html, { title = '', wide = false, footer = '' } = {}) {
+// full = a schermo intero sui telefoni (moduli lunghi)
+export function openModal(html, { title = '', wide = false, footer = '', full = false } = {}) {
   const root = $('#modal-root');
   const wrap = document.createElement('div');
-  wrap.className = 'modal-bg fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4';
+  wrap.className = `modal-bg fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4${full ? ' modal-full' : ''}`;
   wrap.setAttribute('role', 'dialog');
   wrap.setAttribute('aria-modal', 'true');
   wrap.setAttribute('role', 'dialog');
