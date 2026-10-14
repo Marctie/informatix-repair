@@ -64,3 +64,9 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 - (2026-10-13) Email di Christian: `djchri.cp@gmail.com`, amministratore.
 - (2026-10-13) Policy Cloudflare Access: "Everyone"; chi entra lo decide la pagina Utenti.
 - (2026-10-13) R2 attivato per il backup automatico.
+
+## Vetrina usati online (aggiunte 2026-10-14)
+34. (Marco) Creare il bucket R2 `officina-media` e il GITHUB_TOKEN (solo permesso Contents sul repo)?
+35. (Marco) La pubblicazione degli usati deve scrivere direttamente su `main` o su un branch di prova prima?
+36. (Christian) Le foto dei telefoni: quante di solito per articolo? Il massimo e' 10.
+37. (Christian) Dopo il login vuoi vedere il Portale o direttamente "Oggi"?
