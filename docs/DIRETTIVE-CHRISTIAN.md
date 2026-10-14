@@ -153,3 +153,9 @@ Ordine consigliato, a lotti (ognuno con test, manuale aggiornato, commit e deplo
 ## Aggiornamento punto 3 (2026-10-14, risposta di Marco alla domanda 1)
 **Variante proposta**: tenere "non tracciato" "camuffato": la Cassa puo' inserirlo, ma appena registrato la transazione sparisce per l'utente Cassa in tutti i punti di analisi; solo Christian (ADMIN) puo' vederla, crearne altre, modificarla ed eliminarla.
 **Decisione**: NON implementata. E' la stessa funzione del punto 3 (incassi che non compaiono nei dati e nei totali): cambia solo chi la vede. Restano come proposte realizzabili: ruolo Cassa con permessi limitati (senza Analisi, margini, Utenti, Impostazioni), **registro delle modifiche e cancellazioni** (chi, cosa, quando) e la doppia conferma del punto 20. Il metodo "non tracciato" va tolto (da fare nel lotto A).
+
+## Aggiornamenti del 2026-10-14 (ultima parte della sessione)
+- **Punto 3 (ribadito)**: Marco ha richiesto di nuovo la variante "non tracciato" nascosta (con un pulsante camuffato) visibile e modificabile solo da Christian. NON viene realizzata (stessa decisione di sopra). Resta in piano: rimozione del metodo "non tracciato" e dell'impostazione `cash_show_untracked` nel lotto A, ruolo Cassa con permessi limitati, registro modifiche/cancellazioni e doppia conferma. Non riproporre la funzione nascosta.
+- **Punto 12b ("sezione OK e sezione Blacks")**: IN SOSPESO per volonta' di Marco, da riprendere piu' avanti. Nessuna implementazione finche' non viene chiarito il significato (blacklist di IMEI sì; registro nascosto no).
+- **Punto 12, domanda 1 (risposta di Marco)**: la **Vetrina Usati** (sito pubblico) e la sezione **Usati del gestionale (Dispositivi)** sono **due cose separate che non comunicano tra loro**: niente anagrafica condivisa, nessuna sincronizzazione.
+- **Bozze legali**: scritte in `docs/TESTI-LEGALI-BOZZE.md`, ogni testo finisce con "(testo da formalizzare con Christian)".
