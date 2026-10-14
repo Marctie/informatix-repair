@@ -37,6 +37,8 @@ const P = {
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   party: '<path d="m4 20 4-12 8 8z"/><path d="M14 4v2M19 7h-2M20 14h-2"/>',
+  inbox: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
+  bell: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/>',
 };
 
 // carattere/emoji -> icona
@@ -46,7 +48,7 @@ const MAP = {
   '👁️': 'eye', '👁': 'eye', '📋': 'copy', '✏️': 'pencil', '✏': 'pencil', '📞': 'phone', '💬': 'message', '🔥': 'flame', '⏰': 'clock',
   '✋': 'hand', '📉': 'trend', '💾': 'download', '🔒': 'lock', '✉️': 'mail', '✉': 'mail', '📝': 'note', '🔫': 'barcode',
   '✔': 'check', '✓': 'check', '＋': 'plus', '☰': 'menu', '✕': 'x', '⚠': 'alert', '⚠️': 'alert', '🎉': 'party',
-  '👥': 'users', '📊': 'chart', '🧭': 'compass',
+  '👥': 'users', '📊': 'chart', '🧭': 'compass', '📮': 'inbox', '🔔': 'bell',
 };
 const RE = new RegExp(Object.keys(MAP).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 
