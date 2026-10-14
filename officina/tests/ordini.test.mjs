@@ -142,3 +142,56 @@ test('preventivi: scaduto non si accetta né si converte; conversione in riparaz
   assert.equal(sale.quote.sale_code, sale.sale.code);
   assert.equal((await a('DELETE', `/api/quotes/${q2.id}`)).data.ok, true);
 });
+
+// ---------- Promemoria ----------
+const at = (days, hm) => `${ymd(days)} ${hm}`;
+
+test('promemoria: creazione con collegamenti, avvisi in Oggi/campanella, fatto, rimanda, eliminazione', async () => {
+  const c = await cust('Marta Verdi', '3331212121');
+  assert.equal((await a('POST', '/api/reminders', { due_at: at(0, '10:00') })).status, 400, 'serve il testo');
+  assert.equal((await a('POST', '/api/reminders', { title: 'x', due_at: 'domani' })).status, 400, 'data non valida');
+  assert.equal((await a('POST', '/api/reminders', { title: 'x', due_at: at(0, '10:00'), customer_id: 99999 })).status, 404);
+  const past = (await a('POST', '/api/reminders', { title: 'Richiama Marta per il preventivo', due_at: `${ymd(-1)}T09:30`, customer_id: c.id })).data;
+  assert.equal(past.due_at, at(-1, '09:30'));
+  assert.equal(past.overdue, true);
+  assert.equal(past.customer_name, 'Marta Verdi');
+  const later = (await a('POST', '/api/reminders', { title: 'Ordina pellicole', due_at: at(0, '23:58') })).data;
+  const future = (await a('POST', '/api/reminders', { title: 'Tra una settimana', due_at: at(7, '09:00') })).data;
+  assert.equal(future.overdue, false);
+
+  const al = (await a('GET', '/api/alerts')).data.items;
+  assert.ok(al.some((x) => x.type === 'reminder_due' && x.ref === past.id && x.severity === 'high'));
+  assert.ok(al.some((x) => x.type === 'reminder_today' && x.ref === later.id));
+  assert.ok(!al.some((x) => x.ref === future.id && String(x.type).startsWith('reminder')));
+  assert.equal((await a('GET', '/api/reminders?stato=oggi')).data.length, 2);
+  assert.equal((await a('GET', '/api/reminders?stato=aperti&q=pellicole')).data.length, 1);
+  assert.equal((await a('GET', `/api/reminders?customer_id=${c.id}`)).data.length, 1);
+
+  const snz = (await a('POST', `/api/reminders/${past.id}/snooze`, { tomorrow: true })).data;
+  assert.equal(snz.due_at.slice(0, 10), ymd(1));
+  assert.equal(snz.due_at.slice(11), '09:30');
+  const edit = (await a('PUT', `/api/reminders/${later.id}`, { title: 'Ordina pellicole e cover', body: 'chiedere sconto' })).data;
+  assert.equal(edit.title, 'Ordina pellicole e cover');
+  assert.equal((await a('POST', `/api/reminders/${later.id}/done`, {})).data.done, true);
+  assert.equal((await a('GET', '/api/reminders?stato=fatti')).data.length, 1);
+  assert.equal((await a('POST', `/api/reminders/${later.id}/done`, { done: false })).data.done, false);
+  assert.equal((await a('DELETE', `/api/reminders/${future.id}`)).data.ok, true);
+  assert.equal((await a('GET', `/api/reminders/${future.id}`)).status, 404);
+});
+
+test('promemoria: Telegram una sola volta quando scade; senza configurazione non invia nulla', async () => {
+  const { notifyDueReminders } = await import('../promemoria.mjs');
+  const r = (await a('POST', '/api/reminders', { title: 'Chiamare il corriere', body: 'ritiro pacco', due_at: `${ymd(0)} 00:01` })).data;
+  const calls = [];
+  const fetcher = async (url, init) => { calls.push({ url, body: JSON.parse(init.body) }); return { ok: true }; };
+  assert.equal(await notifyDueReminders({}, fetcher), 0, 'senza token non invia');
+  assert.equal(calls.length, 0);
+  const env = { TELEGRAM_BOT_TOKEN: 'tok', TELEGRAM_OWNER_ID: '42' };
+  assert.ok(await notifyDueReminders(env, fetcher) >= 1);
+  const mine = calls.find((x) => x.body.text.includes('Chiamare il corriere'));
+  assert.ok(mine && mine.body.chat_id === '42' && mine.body.text.includes('ritiro pacco'));
+  const before = calls.length;
+  assert.equal(await notifyDueReminders(env, fetcher), 0, 'una sola volta');
+  assert.equal(calls.length, before);
+  await a('POST', `/api/reminders/${r.id}/done`, {});
+});

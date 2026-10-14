@@ -780,3 +780,17 @@ Test notifiche reali: 41 messaggi inviati, tutti ok=true. Corretti in notify.mjs
 **Migrazioni/configurazione:** applicare 0004 su D1, poi eseguire officina/seed/usati.sql. Creare bucket `officina-media` e decommentare il binding MEDIA in wrangler.jsonc. Segreto GITHUB_TOKEN (permesso Contents sul repo); variabili GITHUB_REPO, GITHUB_BRANCH, SITE_URL gia' in wrangler.jsonc (BRANCH=main: senza token resta bozza). Opzionale su PC: OFFICINA_USATI_PUBLISH=github.
 
 **Come ripartire:** leggere questa sezione, completare manuale, guardare gli screenshot a 320/768, provare con un branch GitHub di prova (GITHUB_BRANCH) prima di main.
+
+
+## Agente C: Ordini, Preventivi, Promemoria (2026-10-14)
+Ramo `agente-c-ordini-preventivi` (partito da `gestionale-officina`). Migrazione **0013** (`officina/migrations/0013_ordini_preventivi_promemoria.sql`, stesse tabelle in `schema.sql`): `orders`, `order_items`, `quotes`, `quote_items`, `reminders`. Tabelle aggiunte al backup (TABLES in `app.mjs`).
+
+**Fatto (test:officina 49/49 verdi, nuovo `officina/tests/ordini.test.mjs`):**
+- **Punto 19 Ordini** (`officina/ordini.mjs`, `public/ordini.js`): ordini per cliente o per il negozio, articoli, fornitore, data prevista, collegamento a riparazione; stati Da ordinare -> Ordinato -> Arrivato -> Consegnato (o Annullato); acconto e saldo registrati come incassi in Cassa (payments kind `order`); lista "Da ordinare" raggruppata per fornitore con testo WhatsApp/email e "segna ordinati"; avviso in campanella quando arriva (con pulsante WhatsApp al cliente) e quando e' in ritardo.
+- **Punto 11 Preventivi** (`officina/preventivi.mjs`, `public/preventivi.js`): sezione autonoma (cliente in anagrafica o solo nome), voci e sconto, validita' (default 15 giorni), "scaduto" calcolato, stampa/PDF (`/print/quote/:id`), WhatsApp, stati bozza/inviato/accettato/rifiutato/convertito, conversione in riparazione (approvata se accettato) o in vendita (incassa in cassa), avvisi di scadenza.
+- **Punto 10 Promemoria** (`officina/promemoria.mjs`, `public/promemoria.js`): promemoria con data/ora legati a cliente/riparazione/ordine, inserimento veloce con scorciatoie, fatto/rimanda/modifica/elimina, riquadro in **Oggi**, avvisi in campanella, messaggio **Telegram** una sola volta alla scadenza (controllo ogni minuto dalla pagina aperta + a ogni lettura degli avvisi).
+- Avvisi: `/api/alerts` ora unisce gli avvisi dei tre moduli (`EXTRA_ALERTS` in `app.mjs`). Selettori condivisi in `public/pickers.js`; icone `inbox`/`bell` aggiunte a `icons.js`. Manuale: sezione 19 "Ordini, preventivi, promemoria".
+- Modifiche ai file condivisi (minime): `app.mjs` (import, 3 registrazioni, EXTRA_ALERTS, TABLES), `public/app.js` (import, 3 voci di menu, una riga in `dashboardView` per il riquadro Promemoria di oggi), `public/icons.js`.
+
+**Manca / da fare:** prova reale su D1 (migrazione 0013 da applicare), cron ogni minuto sul Worker per i promemoria a gestionale chiuso (vedi DOMANDE-APERTE 45), schermata Impostazioni per `quote_valid_days`, link online per approvare i preventivi autonomi, carico a magazzino all'arrivo dell'ordine (punto 4), note libere stile Keep (punto 10 esteso). Test Cypress da aggiungere sul ramo `cypress-tests`.
+**Come ripartire:** leggere questa sezione e `docs/DOMANDE-APERTE.md` (domande 38-45).

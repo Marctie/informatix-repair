@@ -13,13 +13,14 @@ import { notifyMiddleware } from './notify.mjs';
 import { registerPurchaseRoutes, PURCHASE_TABLES } from './purchases.mjs';
 import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
 import { registerQuoteRoutes, quoteAlerts } from './preventivi.mjs';
+import { registerReminderRoutes, reminderAlertsNotify } from './promemoria.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
-const EXTRA_ALERTS = [orderAlerts, quoteAlerts];
+const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -246,6 +247,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerOrderRoutes(app, h);
   // Preventivi con data di validita' (officina/preventivi.mjs)
   registerQuoteRoutes(app, h);
+  // Promemoria con data/ora e avviso Telegram (officina/promemoria.mjs)
+  registerReminderRoutes(app, h);
 
   // Magazzino
   const checkProduct = (b) => {
@@ -379,7 +382,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'orders', 'order_items', 'quotes', 'quote_items'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
