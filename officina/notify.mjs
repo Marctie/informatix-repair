@@ -44,7 +44,19 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/note$/)) && m === 'POST') return isOk ? `📝 <b>Nota su ${esc(r.code)}</b> (${body.public === false ? 'interna' : 'visibile al cliente'})\n${esc(short(body.note, 250))}${foot}` : fail('Nota');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/parts(\/\d+)?$/))) return isOk ? `🔩 <b>Ricambi ${m === 'DELETE' ? 'rimossi' : 'aggiunti'}</b> su ${esc(r.code)}${m === 'DELETE' ? '' : `\n${esc(short(body.name || (r.parts || []).at(-1)?.name || (body.product_id ? `prodotto #${body.product_id}` : ''), 100))} ×${esc(body.qty || 1)}`}${foot}` : fail('Ricambi');
   if ((x = path.match(/^\/api\/repairs\/(\d+)$/)) && m === 'PATCH') return isOk ? `✏️ <b>Riparazione ${esc(r.code)} modificata</b>\nCampi: ${esc(fields(body)) || '—'}${body.quote != null ? `\nPreventivo: ${eur(body.quote)}` : ''}${foot}` : fail('Modifica riparazione');
-  if ((x = path.match(/^\/api\/track\/([^/]+)\/decision$/)) && m === 'POST') return isOk ? `${body.accept ? '✅' : '❌'} <b>Il cliente ha ${body.accept ? 'APPROVATO' : 'RIFIUTATO'} il preventivo</b>\n${esc(r.code)} · ${esc(r.device?.model)} · ${esc(r.customer?.name)}${foot}` : fail('Risposta del cliente al preventivo');
+  if ((x = path.match(/^\/api\/track\/([^/]+)\/decision$/)) && m === 'POST') {
+    if (!isOk) return fail('Risposta del cliente al preventivo');
+    const yes = body.action !== 'decline';
+    const what = body.action === 'decline' ? (body.device_choice === 'cede' ? '\n📦 Ha CEDUTO il dispositivo al negozio (da smaltire / recuperare pezzi)' : '\n📦 Ritirerà il dispositivo non riparato: giacenza di 15 giorni') : body.action === 'option' ? `\nSoluzione scelta: ${esc(short(r.my_decision?.option_label, 80))} · ${eur(r.quote)}` : `\nImporto: ${eur(r.quote)}`;
+    return `${yes ? '✅' : '❌'} <b>Il cliente ha ${yes ? 'APPROVATO' : 'RIFIUTATO'} il preventivo</b> (firmato)\n${esc(r.code)} · ${esc(r.device?.model)} · ${esc(r.customer?.name)}${what}${foot}`;
+  }
+  if ((x = path.match(/^\/api\/track\/([^/]+)\/sign$/)) && m === 'POST') return isOk ? `✍️ <b>Scheda di ingresso FIRMATA dal cliente</b> (da link)\n${esc(r.code || '')}${foot}` : fail('Firma della scheda di ingresso');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/signature$/)) && m === 'POST') return isOk ? `✍️ <b>${body.kind === 'disposal' ? 'Cessione del dispositivo firmata' : 'Scheda di ingresso firmata al banco'}</b> (rif. n. ${x[1]})${foot}` : fail('Firma');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/request-signature$/)) && m === 'POST') return isOk ? `📲 <b>Firma a distanza richiesta</b> (rif. n. ${x[1]})${foot}` : fail('Richiesta di firma');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/fate$/)) && m === 'POST') return isOk ? `📦 <b>Destino del dispositivo</b> ${esc(r.code)}: ${esc(body.fate)}${body.note ? ` — ${esc(short(body.note, 120))}` : ''}${foot}` : fail('Destino del dispositivo');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/quote-options/)) && m !== 'GET') return isOk ? `🧾 <b>Opzioni di preventivo ${m === 'DELETE' ? 'modificate' : 'aggiunte'}</b> (rif. n. ${x[1]})${m === 'POST' ? `\n${esc(short(body.label, 80))} · ${eur(body.amount)}` : ''}${foot}` : fail('Opzioni di preventivo');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/checklist$/)) && m === 'PUT') return isOk ? `☑️ <b>Controllo compilato</b> (rif. n. ${x[1]}, ${esc(body.phase)})${foot}` : fail('Controllo');
+  if ((x = path.match(/^\/api\/checklists\/(\w+)$/)) && (m === 'PUT' || m === 'DELETE')) return isOk ? `☑️ <b>Checklist ${m === 'DELETE' ? 'ripristinata' : 'modificata'}</b>: ${esc(x[1])}${foot}` : fail('Checklist');
 
   // ---- Vendite, cassa, spese
   if (m === 'POST' && path === '/api/sales') return isOk ? `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)} (${esc(r.method)})\n${(r.items || []).map((i) => `• ${esc(short(i.name, 50))} ×${esc(i.qty)}`).join('\n')}${r.discount ? `\nSconto ${eur(r.discount)}` : ''}${foot}` : fail('Vendita');

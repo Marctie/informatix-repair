@@ -2,7 +2,7 @@
 import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
 import { showDeviceAlerts } from './dispositivi.js';
-import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
+import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
@@ -351,7 +351,22 @@ export async function settingsView(el) {
           <span class="hint">Ti ricorda di avvisare il cliente. 0 = spento.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Scheda di ingresso</h2>
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
+        <h2 class="sec-t" style="margin-top:.6rem">Dispositivi non riparati</h2>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="st-sdays">Giorni di giacenza prima dell’avviso</label><input id="st-sdays" data-k="storage_days" type="number" min="1" inputmode="numeric" value="${esc(s.storage_days ?? '15')}" />
+            <span class="hint">Passati questi giorni dal rifiuto (o dall’annullamento) compare l’avviso: smaltire o spostare in deposito a pagamento.</span></div>
+          <div class="field"><label class="l" for="st-sfee">Tariffa del deposito a pagamento</label><input id="st-sfee" data-k="storage_fee" value="${esc(s.storage_fee || '')}" placeholder="es. 3 € a settimana" />
+            <span class="hint">Compare nei messaggi e nei testi al cliente. Il pagamento non viene registrato in automatico.</span></div>
+        </div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>
+      </section>
+      <section class="card panel sec lg:col-span-2 lg:col-start-1 lg:row-start-2" id="st-legal">
+        <h2 class="sec-t">Testi di consenso e di conferma (bozze)</h2>
+        <p class="hint">Sono bozze scritte per far funzionare il gestionale: <b>non sono consulenza legale</b> e vanno riviste da Christian e da un professionista. Finché non spunti “testi verificati”, ogni scheda e schermata li segna come “bozza da far verificare”. Segnaposto: {negozio} {garanzia} {codice} {importo} {dispositivo} {consegna} {giorni} {tariffa}.</p>
+        <div class="field"><label class="l" for="st-lv">Stato dei testi</label><select id="st-lv" data-k="legal_verified"><option value="0" ${String(s.legal_verified) !== '1' ? 'selected' : ''}>Bozza da far verificare</option><option value="1" ${String(s.legal_verified) === '1' ? 'selected' : ''}>Testi verificati</option></select></div>
+        ${[['consent_intake', 'Consenso sulla scheda di ingresso'], ['quote_accept_text', 'Conferma del preventivo (pulsante SÌ)'], ['quote_decline_text', 'Rifiuto del preventivo (introduzione)'], ['quote_decline_pickup', 'Rifiuto: “passerò a ritirarlo”'], ['quote_decline_cede', 'Rifiuto: “cedo il dispositivo al negozio”'], ['quote_sign_text', 'Frase sopra la firma']]
+          .map(([k, l]) => `<div class="field"><label class="l" for="st-${k}">${l}</label><textarea id="st-${k}" data-k="${k}" rows="4">${esc(s[k] || '')}</textarea></div>`).join('')}
+        <div><button class="btn btn-primary" id="st-save2">Salva impostazioni</button></div>
       </section>
       <div class="grid gap-5">
       <section class="card panel sec">
@@ -359,6 +374,12 @@ export async function settingsView(el) {
         <p style="font-size:.92rem">${ONLINE ? 'Ogni notte il sistema salva da solo una copia di tutti i dati (si conservano le ultime 30). Puoi anche scaricarne una tu o salvarne una subito.' : 'Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.'}</p>
         <div class="row tight"><a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>${ONLINE ? '<button class="btn btn-outline" id="st-r2">Salva ora nel cloud</button>' : ''}</div>
         <p class="hint">${ONLINE ? 'Per ripristinare una copia serve l’assistenza: scrivici prima di cancellare qualcosa di importante.' : 'Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.'}</p>
+      </section>
+      <section class="card panel sec" id="st-ck">
+        <h2 class="sec-t">Checklist per tipo di dispositivo</h2>
+        <p class="hint">Le voci dei controlli (ingresso, ritiro, collaudo) cambiano con il tipo di dispositivo. Una voce per riga; le modifiche valgono per le riparazioni nuove e per quelle ancora da compilare.</p>
+        <div class="field"><label class="l" for="ck-type">Tipo di dispositivo</label><select id="ck-type">${Object.entries(META.device_types || {}).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select></div>
+        <div id="ck-body" class="sec"></div>
       </section>
       <section class="card panel sec" id="st-demo">
         <h2 class="sec-t">Dati demo</h2>
@@ -383,13 +404,40 @@ export async function settingsView(el) {
     };
   };
   drawDemo();
+  // checklist per tipo: tre elenchi modificabili (una voce per riga)
+  const ckBox = $('#ck-body', el);
+  let ckAll = {};
+  const drawCk = () => {
+    const t = $('#ck-type', el).value;
+    const c = ckAll[t];
+    if (!c) return;
+    const ta = (p, title) => `<div class="field"><label class="l" for="ck-${p}">${title}</label><textarea id="ck-${p}" rows="7" data-ph="${p}">${esc((c[p] || []).join('\n'))}</textarea></div>`;
+    ckBox.innerHTML = `${ta('in', 'Controllo all’ingresso')}${ta('pre', 'Al ritiro in laboratorio')}${ta('out', 'Collaudo finale')}
+      <div class="row tight"><button class="btn btn-outline" id="ck-save">Salva checklist</button>${c.custom ? '<button class="btn btn-ghost" id="ck-reset">Ripristina le voci predefinite</button>' : '<span class="hint">Voci predefinite in uso.</span>'}</div>`;
+    $('#ck-save', ckBox).onclick = async () => {
+      const body = {};
+      $$('[data-ph]', ckBox).forEach((x) => { body[x.dataset.ph] = x.value.split('\n').map((l) => l.trim()).filter(Boolean); });
+      const out = await safe(() => api('PUT', `/api/checklists/${t}`, body));
+      if (out) { ckAll[t] = out; toast('Checklist salvata'); drawCk(); }
+    };
+    const rs = $('#ck-reset', ckBox);
+    if (rs) rs.onclick = async () => {
+      if (!(await confirmDelete(`le voci personalizzate di ${META.device_types[t].label}`, { verb: 'Ripristinare', detail: 'Tornano le voci predefinite. Le riparazioni già compilate non cambiano.' }))) return;
+      const out = await safe(() => api('DELETE', `/api/checklists/${t}`));
+      if (out) { ckAll[t] = out; toast('Voci predefinite ripristinate'); drawCk(); }
+    };
+  };
+  $('#ck-type', el).onchange = drawCk;
+  safe(() => api('GET', '/api/checklists')).then((r) => { ckAll = r || {}; drawCk(); });
   if ($('#st-r2', el)) $('#st-r2', el).onclick = async () => {
     const out = await safe(() => api('POST', '/api/backup/r2', {}));
     if (out?.ok) toast('Copia salvata nel cloud');
   };
-  $('#st-save', el).onclick = async () => {
+  const saveSettings = async () => {
     const body = {};
     el.querySelectorAll('[data-k]').forEach((i) => { body[i.dataset.k] = i.value; });
     if (await safe(() => api('PUT', '/api/settings', body))) { await loadMeta(); toast('Impostazioni salvate'); }
   };
+  $('#st-save', el).onclick = saveSettings;
+  $('#st-save2', el).onclick = saveSettings;
 }

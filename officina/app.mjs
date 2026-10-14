@@ -25,6 +25,11 @@ import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
+
+import * as CK from './checklists.mjs';
+import { LEGAL_DEFAULTS } from './legal.mjs';
+import * as SG from './signatures.mjs';
+import * as R from './remote.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
@@ -58,7 +63,8 @@ export function createPublicApp() {
   // Il sito pubblico (altro dominio) chiama la ricerca per numero ricevuta
   app.use('/api/lookup', cors({ origin: ['https://informatixrepair.com', 'https://www.informatixrepair.com'], allowMethods: ['POST', 'OPTIONS'], allowHeaders: ['content-type'] }));
   app.get('/api/track/:token', h((req) => L.publicView(req.params.token)));
-  app.post('/api/track/:token/decision', h((req) => L.customerDecision(req.params.token, !!req.body?.accept)));
+  app.post('/api/track/:token/sign', h((req) => SG.signIntakeRemote(req.params.token, req.body, req.c)));
+  app.post('/api/track/:token/decision', h((req) => R.customerDecision(req.params.token, req.body, req.c)));
   // Ricerca "per anziani": numero ricevuta + ultime 4 cifre del telefono -> codice di tracciamento
   app.post('/api/lookup', h((req) => L.lookup(req.body?.code, req.body?.phone4)));
   return app;
@@ -85,17 +91,22 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   registerAuditRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
-  app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase() })));
-  app.get('/api/dashboard', h(() => L.dashboard()));
+  app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
+  app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days'];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', ...Object.keys(LEGAL_DEFAULTS)];
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }
     return getSettings();
   }));
+
+  // Checklist di controllo per tipo di dispositivo (modificabili dal proprietario)
+  app.get('/api/checklists', h(() => CK.getChecklists()));
+  app.put('/api/checklists/:type', h((req) => { adminOnly(req); return CK.saveTemplate(req.params.type, req.body); }));
+  app.delete('/api/checklists/:type', h((req) => { adminOnly(req); return CK.resetTemplate(req.params.type); }));
 
   // Vetrina Usati (articoli, foto, pubblicazione sul sito)
   mountUsati(app, { h, adminOnly, publisher: usati.publisher || (() => draftPublisher()), media: usati.media || (() => missingMedia()), siteUrl: usati.siteUrl });
@@ -333,7 +344,19 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return { ...r, track_url: await trackUrl(r.token) };
   }));
   app.patch('/api/repairs/:id', h((req) => L.updateRepair(req.params.id, req.body)));
-  app.post('/api/repairs/:id/status', h((req) => L.setStatus(req.params.id, req.body.status, str(req.body.note), req.body.public !== false)));
+  app.post('/api/repairs/:id/status', h(async (req) => {
+    const out = await L.setStatus(req.params.id, req.body.status, str(req.body.note), req.body.public !== false);
+    // "Annullato / non riparabile": si registra dove sta il dispositivo (predefinito: in giacenza, partono i giorni di attesa)
+    if (req.body.status === 'cancelled') { await R.markUnrepairable(out.id, { fate: req.body.device_fate, note: req.body.fate_note }); return L.getRepair(out.id); }
+    return out;
+  }));
+  // Preventivo con piu' opzioni fra cui il cliente sceglie dal suo link
+  app.get('/api/repairs/:id/quote-options', h((req) => R.listOptions(req.params.id)));
+  app.post('/api/repairs/:id/quote-options', h((req) => R.addOption(req.params.id, req.body)));
+  app.delete('/api/repairs/:id/quote-options/:oid', h((req) => R.removeOption(req.params.id, req.params.oid)));
+  // Destino del dispositivo non riparato (giacenza, ritirato, ceduto, deposito, smaltito)
+  app.post('/api/repairs/:id/fate', h(async (req) => { await R.setFate(req.params.id, { fate: req.body.fate, note: req.body.note }, { resetCount: !!req.body.restart }); return L.getRepair(req.params.id); }));
+  app.get('/api/storage', h(() => R.storageList()));
   app.post('/api/repairs/:id/advance', h(async (req) => {
     const r = await L.getRepair(req.params.id);
     if (!r.next_status) throw new L.HttpError(400, 'Nessun passaggio successivo.');
@@ -343,6 +366,23 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.post('/api/repairs/:id/note', h((req) => L.addNote(req.params.id, req.body.note, req.body.public !== false)));
   app.post('/api/repairs/:id/parts', h((req) => L.addPart(req.params.id, req.body)));
   app.delete('/api/repairs/:id/parts/:partId', h((req) => L.removePart(req.params.id, req.params.partId)));
+  app.put('/api/repairs/:id/checklist', h(async (req) => ({ ok: true, check: await CK.saveRepairCheck(req.params.id, req.body.phase, req.body.items, req.user) })));
+  // Firme: scheda di ingresso firmata al banco (tablet/mouse) o richiesta a distanza dal link del cliente
+  app.post('/api/repairs/:id/signature', h(async (req) => {
+    const sig = await SG.signIntake(req.params.id, req.body, req.c, req.user);
+    // la cessione firmata chiude la questione: il dispositivo e' del negozio, niente conto alla rovescia
+    if (req.body.kind === 'disposal') await R.setFate(req.params.id, { fate: 'ceduto', note: 'cessione firmata al banco' });
+    return sig;
+  }));
+  app.post('/api/repairs/:id/request-signature', h((req) => SG.requestSignature(req.params.id)));
+  app.get('/api/repairs/:id/signatures', h((req) => SG.listSignatures(req.params.id)));
+  app.get('/api/repairs/:id/signatures/:sid/image', async (c) => {
+    const row = await db.prepare('SELECT image FROM repair_signatures WHERE id = ? AND repair_id = ?').get(c.req.param('sid'), c.req.param('id'));
+    if (!row) return c.text('Firma non trovata', 404);
+    const bin = atob(row.image.slice(22));
+    const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+    return c.body(bytes, 200, { 'content-type': 'image/png', 'cache-control': 'private, no-store' });
+  });
   app.post('/api/repairs/:id/deposit', h(async (req) => {
     const amount = num(req.body.amount);
     if (!(amount > 0)) throw new L.HttpError(400, 'Importo non valido');
@@ -377,7 +417,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   // avvisi del gestionale + quelli dei moduli Ordini / Preventivi / Promemoria
   app.get('/api/alerts', h(async (req) => {
     const base = await L.alerts();
-    const extra = (await Promise.all(EXTRA_ALERTS.map((f) => f(req.c).catch(() => [])))).flat();
+    const extra = (await Promise.all(EXTRA_ALERTS.map((f) => f(req.c).catch(() => [])))).flat().concat(await R.storageAlerts().catch(() => []));
     const rank = { high: 0, medium: 1, low: 2 };
     const items = [...base.items, ...extra].sort((x, y) => rank[x.severity] - rank[y.severity]);
     return { count: items.length, high: items.filter((x) => x.severity === 'high').length, items };
@@ -399,6 +439,9 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   // Stampe (HTML pronto per la stampante). ?noprint=1 = niente stampa automatica (anteprima).
   const printRoute = (render) => page(async (c) => {
     const r = await L.getRepair(c.req.param('id'));
+    r.ck_lists = await CK.listFor(r.device_type); // voci dei controlli per il tipo di dispositivo
+    r.sign_intake = await SG.lastSignature(r.id, 'intake'); // firma della scheda di ingresso (con immagine)
+    r.intake_texts = await SG.intakeTexts(r);
     return c.html(render(r, await trackUrl(r.token), await getSettings(), { noprint: c.req.query('noprint') === '1' }));
   });
   app.get('/print/customer/:id', printRoute(printCustomer));
@@ -411,7 +454,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders', 'checklist_templates', 'repair_signatures', 'quote_options'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };

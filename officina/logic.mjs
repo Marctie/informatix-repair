@@ -4,6 +4,8 @@ import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
 import { deviceHook, alertText } from './dispositivi.mjs';
 
+import { fillText, isVerified, buildQuoteFlow } from './legal.mjs';
+
 export class HttpError extends Error {
   constructor(status, message) {
     super(message);
@@ -166,6 +168,8 @@ async function decorateRepair(r, full = false) {
   const st = STATUSES[r.status];
   const out = {
     ...r,
+    // nell'elenco i controlli compilati (JSON) non servono: si leggono nel dettaglio
+    ...(full ? {} : { checklist_in: undefined, checklist_pre: undefined, checklist_out: undefined }),
     status_label: st.label,
     progress: progressPct(r.status),
     next_status: NEXT_STATUS[r.status] || null,
@@ -175,6 +179,14 @@ async function decorateRepair(r, full = false) {
   if (full) {
     out.events = await db.prepare('SELECT * FROM repair_events WHERE repair_id = ? ORDER BY id DESC').all(r.id);
     out.parts = await db.prepare('SELECT * FROM repair_parts WHERE repair_id = ? ORDER BY id').all(r.id);
+    for (const p of ['in', 'pre', 'out']) {
+      let c = null;
+      try { c = r[`checklist_${p}`] ? JSON.parse(r[`checklist_${p}`]) : null; } catch { /* JSON rovinato: come se non fosse compilata */ }
+      out[`checklist_${p}`] = Array.isArray(c?.items) ? c : null;
+    }
+    // firme raccolte (senza l'immagine, che si legge a parte): tipo, quando, come
+    out.signatures = await db.prepare('SELECT id, kind, signer_name, choice, option_id, via, ip, by_user, signed_at FROM repair_signatures WHERE repair_id = ? ORDER BY id').all(r.id);
+    out.quote_options = await db.prepare('SELECT id, label, amount, description FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id);
     out.parts_cost = money(out.parts.reduce((a, p) => a + p.qty * p.unit_cost, 0));
     out.profit_estimate = (r.final_price ?? r.quote) == null ? null : money((r.final_price ?? r.quote) - out.parts_cost);
     out.paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);
@@ -245,7 +257,7 @@ export async function setStatus(id, status, note, isPublic = true) {
     if (r.status === 'delivered') throw new HttpError(409, 'La riparazione è già stata consegnata.');
     if (r.status === status) throw new HttpError(400, 'La riparazione è già in questo stato.');
     if (status === 'delivered') throw new HttpError(400, 'Per consegnare usa "Consegna e incassa".');
-    if (status === 'quote_pending' && r.quote == null) throw new HttpError(400, 'Inserisci prima il preventivo.');
+    if (status === 'quote_pending' && r.quote == null && !(await db.prepare('SELECT 1 AS x FROM quote_options WHERE repair_id = ? LIMIT 1').get(id))) throw new HttpError(400, 'Inserisci prima il preventivo (o le opzioni).');
     await db.prepare("UPDATE repairs SET status = ?, quote_decision = CASE WHEN ?='quote_pending' THEN NULL ELSE quote_decision END WHERE id = ?").run(status, status, id);
     if (status === 'approved' && !r.quote_decision) {
       await db.prepare("UPDATE repairs SET quote_decision='accepted', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
@@ -391,6 +403,12 @@ export async function publicView(token) {
   const paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);
   const total = r.final_price ?? r.quote;
   const st = STATUSES[r.status];
+  const intakeSig = await db.prepare("SELECT signed_at FROM repair_signatures WHERE repair_id = ? AND kind = 'intake' ORDER BY id DESC LIMIT 1").get(r.id);
+  // preventivo a distanza: opzioni fra cui scegliere, testi da mostrare e, a risposta data, l'esito firmato
+  const options = await db.prepare('SELECT id, label, amount, description FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id);
+  const awaiting = r.status === 'quote_pending' && (r.quote != null || options.length > 0) && r.quote_decision !== 'declined';
+  const qsig = await db.prepare("SELECT kind, choice, option_id, signed_at FROM repair_signatures WHERE repair_id = ? AND kind IN ('quote_accept','quote_decline') ORDER BY id DESC LIMIT 1").get(r.id);
+  const myOpt = qsig?.option_id ? await db.prepare('SELECT label FROM quote_options WHERE id = ?').get(qsig.option_id) : null;
   return {
     code: r.code,
     status: r.status,
@@ -416,31 +434,21 @@ export async function publicView(token) {
     balance: total == null ? null : Math.max(0, money(total - paid)),
     eta_date: r.eta_date,
     quote_decision: r.quote_decision,
-    awaiting_decision: r.status === 'quote_pending' && r.quote != null,
+    awaiting_decision: awaiting,
+    quote_flow: awaiting ? buildQuoteFlow(s, r, options) : null,
+    my_decision: qsig && r.quote_decision ? { action: qsig.kind === 'quote_decline' ? 'decline' : qsig.choice === 'option' ? 'option' : 'accept', choice: qsig.kind === 'quote_decline' ? qsig.choice : null, option_label: myOpt?.label || null, signed_at: qsig.signed_at } : null,
     customer_note: r.customer_note,
     received_at: r.created_at,
     delivered_at: r.delivered_at,
     warranty_days: r.warranty_days,
     events,
+    // firma della scheda di ingresso a distanza (solo se il negozio l'ha richiesta e non e' ancora firmata)
+    intake_sign: r.sign_requested && !intakeSig && !['delivered', 'cancelled'].includes(r.status)
+      ? { text: fillText(s.consent_intake, { negozio: s.shop_name, garanzia: r.warranty_days, codice: r.code, dispositivo: r.brand_model }), terms: s.terms, draft: !isVerified(s) } : null,
+    intake_signed_at: intakeSig?.signed_at || null,
     shop: { name: s.shop_name, address: s.shop_address, phone: s.shop_phone },
     updated_at: r.updated_at,
   };
-}
-
-export async function customerDecision(token, accept) {
-  return tx(async () => {
-    const r = await db.prepare('SELECT * FROM repairs WHERE token = ?').get(token);
-    if (!r) throw new HttpError(404, 'Riparazione non trovata');
-    if (r.status !== 'quote_pending') throw new HttpError(409, 'Nessun preventivo in attesa di risposta.');
-    if (accept) {
-      await db.prepare("UPDATE repairs SET status='approved', quote_decision='accepted', quote_decided_at=datetime('now','localtime') WHERE id=?").run(r.id);
-      await logEvent(r.id, 'approved', 'Preventivo approvato dal cliente online.');
-    } else {
-      await db.prepare("UPDATE repairs SET quote_decision='declined', quote_decided_at=datetime('now','localtime') WHERE id=?").run(r.id);
-      await logEvent(r.id, 'quote_pending', 'Il cliente ha rifiutato il preventivo: contattalo.');
-    }
-    return await publicView(token);
-  });
 }
 
 // ---------- Dashboard / report / magazzino ----------
