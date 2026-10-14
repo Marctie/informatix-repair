@@ -61,3 +61,21 @@ Raccolte da Marco il 2026-10-14, una per volta. NON implementare finche' Marco n
 **Parte NON realizzata**: la quota "(black)", cioe' un importo registrato in modo che non compaia ai controlli: vale la decisione del punto 3. Nel pagamento diviso ogni quota e' registrata e visibile come tutte le altre.
 **Domande aperte**: 1) Quanti metodi per vendita (due bastano o fino a tre-quattro)? 2) Il resto in contanti (cliente da' 50, il totale e' 37) va calcolato e mostrato? 3) Il buono puo' essere usato insieme a un pagamento diviso? 4) Un buono usato solo in parte lascia credito residuo, e si stampa il saldo sulla ricevuta?
 **Stato**: da fare (insieme al progetto buoni).
+
+## 10. Sezione Promemoria (stile Google Keep)
+**Testo**: "Una sezione Promemoria stile Google Keep per annotazioni".
+**Come l'ho capita**: pagina con **note a schede** (titolo + testo, anche a elenco con caselle da spuntare), colori, **fissa in alto**, archivia, ricerca; creazione veloce da un campo sempre in vista ("Scrivi una nota..."). Opzionale: scadenza/promemoria con avviso in campanella e Telegram, collegamento a un cliente o a una riparazione.
+**Domande**: 1) Le note sono **condivise** tra tutti gli utenti o personali? (o entrambe: "mie" / "del negozio") 2) Servono avvisi con **data e ora** (es. "richiama il cliente domani alle 10")? 3) Allegare foto? 4) Collegare una nota a un cliente/riparazione/prodotto?
+**Stato**: da fare.
+
+## 11. Sezione Preventivi con data di validita'
+**Testo**: "Una sezione Preventivi compresa una data di validita' per ogni preventivo".
+**Come l'ho capita**: oggi il preventivo e' un campo della riparazione. Serve una **sezione Preventivi** autonoma: elenco con stato (bozza, inviato, accettato, rifiutato, **scaduto**), **data di validita'** per ciascuno (scadenza proposta, es. +15 giorni, modificabile), voci (servizi/ricambi con prezzo), totale, cliente, **stampa/PDF e invio WhatsApp**, link dove il cliente approva online (gia' esistente per le riparazioni), avviso quando sta per scadere/e' scaduto, e **conversione in riparazione o vendita** con un click. Un preventivo puo' esistere anche senza dispositivo in laboratorio (es. assemblaggio PC).
+**Domande**: 1) Validita' standard (giorni) e testo delle condizioni sul PDF? 2) Il preventivo di una riparazione esistente e questa sezione diventano la stessa cosa (storico dei preventivi per riparazione) o restano separati? 3) Numerazione (es. P-2026-0001) e logo/intestazione come le schede? 4) Dopo la scadenza il cliente puo' ancora approvare dal link?
+**Stato**: da fare.
+
+## 12. Sezione Dispositivi con sottoclassi
+**Testo**: "Una sezione dispositivi con sottoclassi: Nuovi, Usati, Ricondizionati (qui poi studiamo bene), Da smaltire (poi ti spiego), In arrivo".
+**Come l'ho capita**: un **registro dei dispositivi** (non ricambi: telefoni, portatili, console...) con **stato/sottoclasse**: **Nuovi**, **Usati**, **Ricondizionati**, **Da smaltire**, **In arrivo**; ogni dispositivo ha modello, seriale/IMEI, condizioni, costo d'acquisto, prezzo di vendita, fornitore/provenienza, foto, storico. Sottoclassi come schede/menu a tendina come per le aree del magazzino (punto 6). **Sovrapposizioni da chiarire**: **Usati** = la Vetrina Usati del sito (articoli pubblicati online)? **Da smaltire** = i dispositivi "non riparabili / lasciati da smaltire" del punto 2? **In arrivo** = ordini al fornitore non ancora arrivati (carico merce, punti 4 e import)? **Ricondizionati**: ciclo (acquisto → controllo/riparazione → vendita con garanzia) da studiare con Christian.
+**Domande**: 1) Dispositivi e Vetrina Usati devono essere **la stessa anagrafica** (un usato in vendita compare anche qui e viceversa)? 2) Da dove entra un dispositivo "da smaltire" (dal punto 2) e come esce (smaltito, venduto per ricambi)? 3) "In arrivo": ordine al fornitore con data prevista e carico automatico all'arrivo? 4) Per i ricondizionati: checklist di controllo, garanzia, costo ricondizionamento sommato al prezzo? 5) Seriale/IMEI univoco e ricerca con la pistola?
+**Stato**: da fare; Christian spieghera' "Da smaltire" e "Ricondizionati".
