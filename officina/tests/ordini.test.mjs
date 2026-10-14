@@ -83,3 +83,62 @@ test('ordini: ordine al fornitore per il negozio, filtri, modifica ed eliminazio
   assert.equal((await a('DELETE', `/api/orders/${o.id}`)).data.ok, true);
   assert.equal((await a('GET', `/api/orders/${o.id}`)).status, 404);
 });
+
+// ---------- Preventivi ----------
+const ymd = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+test('preventivi: creazione autonoma, validità di default, stati e scadenza', async () => {
+  assert.equal((await a('POST', '/api/quotes', { items: [{ description: 'PC', unit_price: 500 }] })).status, 400, 'serve il cliente');
+  assert.equal((await a('POST', '/api/quotes', { customer_name: 'Luigi', items: [] })).status, 400, 'serve una voce');
+  assert.equal((await a('POST', '/api/quotes', { customer_name: 'Luigi', valid_until: ymd(-1), items: [{ description: 'PC', unit_price: 500 }] })).status, 400, 'scadenza nel passato');
+  assert.equal((await a('POST', '/api/quotes', { customer_name: 'Luigi', discount: 900, items: [{ description: 'PC', unit_price: 500 }] })).status, 400, 'sconto oltre il totale');
+  const q = (await a('POST', '/api/quotes', { customer_name: 'Luigi Bianchi', customer_phone: '3339998877', discount: 20, items: [{ description: 'Assemblaggio PC gaming', qty: 1, unit_price: 700 }, { description: 'Installazione Windows', qty: 1, unit_price: 40 }] })).data;
+  assert.match(q.code, /^P-\d{4}-0001$/);
+  assert.equal(q.status, 'bozza');
+  assert.equal(q.total, 720);
+  assert.equal(q.valid_until, ymd(15), 'validità di default 15 giorni');
+  assert.equal(q.expired, false);
+  assert.equal(q.who, 'Luigi Bianchi');
+  assert.equal((await a('POST', `/api/quotes/${q.id}/status`, { status: 'inviato' })).data.status, 'inviato');
+  const up = (await a('PUT', `/api/quotes/${q.id}`, { valid_until: ymd(2), notes: 'Garanzia 24 mesi' })).data;
+  assert.equal(up.days_left, 2);
+  assert.equal(up.items.length, 2);
+  const al = (await a('GET', '/api/alerts')).data;
+  assert.ok(al.items.some((x) => x.type === 'quote_expiring' && x.ref === q.id));
+  const html = (await a('GET', `/print/quote/${q.id}?noprint=1`)).data;
+  assert.match(html, /valido fino al/);
+  assert.match(html, /Assemblaggio PC gaming/);
+  assert.equal((await a('GET', '/api/quotes?stato=inviato')).data.length, 1);
+  assert.equal((await a('GET', '/api/quotes?stato=scaduto')).data.length, 0);
+  assert.equal((await a('POST', `/api/quotes/${q.id}/status`, { status: 'convertito' })).status, 409);
+});
+
+test('preventivi: scaduto non si accetta né si converte; conversione in riparazione e in vendita', async () => {
+  const { raw } = await import('../db-node.mjs');
+  const c = await cust('Anna Gialli', '3335554433');
+  const q1 = (await a('POST', '/api/quotes', { customer_id: c.id, items: [{ description: 'Sostituzione batteria', unit_price: 60 }] })).data;
+  raw.prepare('UPDATE quotes SET valid_until = ? WHERE id = ?').run(ymd(-3), q1.id);
+  const old = (await a('GET', `/api/quotes/${q1.id}`)).data;
+  assert.equal(old.expired, true);
+  assert.equal(old.status_label, 'Scaduto');
+  assert.equal((await a('GET', '/api/quotes?stato=scaduto')).data.length, 1);
+  assert.equal((await a('POST', `/api/quotes/${q1.id}/status`, { status: 'accettato' })).status, 409);
+  assert.equal((await a('POST', `/api/quotes/${q1.id}/convert`, { to: 'repair', brand_model: 'iPhone' })).status, 409);
+  await a('PUT', `/api/quotes/${q1.id}`, { valid_until: ymd(10) }); // prolungando la validità torna utilizzabile
+  await a('POST', `/api/quotes/${q1.id}/status`, { status: 'accettato' });
+  assert.equal((await a('POST', `/api/quotes/${q1.id}/convert`, { to: 'repair' })).status, 400, 'serve il dispositivo');
+  const conv = (await a('POST', `/api/quotes/${q1.id}/convert`, { to: 'repair', brand_model: 'iPhone 12', problem: 'Batteria' })).data;
+  assert.equal(conv.quote.status, 'convertito');
+  assert.equal(conv.repair.quote, 60);
+  assert.equal(conv.repair.status, 'approved', 'preventivo accettato = riparazione approvata');
+  assert.equal(conv.repair.customer_name, 'Anna Gialli');
+  assert.equal((await a('POST', `/api/quotes/${q1.id}/convert`, { to: 'sale', method: 'contanti' })).status, 409, 'già convertito');
+  assert.equal((await a('PUT', `/api/quotes/${q1.id}`, { notes: 'x' })).status, 409);
+
+  const q2 = (await a('POST', '/api/quotes', { customer_name: 'Paolo Neri', discount: 5, items: [{ description: 'Cavo HDMI', qty: 2, unit_price: 10 }] })).data;
+  const sale = (await a('POST', `/api/quotes/${q2.id}/convert`, { to: 'sale', method: 'carta' })).data;
+  assert.equal(sale.sale.total, 15);
+  assert.equal(sale.sale.method, 'carta');
+  assert.equal(sale.quote.sale_code, sale.sale.code);
+  assert.equal((await a('DELETE', `/api/quotes/${q2.id}`)).data.ok, true);
+});
