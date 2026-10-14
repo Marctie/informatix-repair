@@ -747,3 +747,19 @@ Domanda per Christian: la nota spese e' quella che immaginava (uscite del negozi
 
 ## Notifiche Telegram (2026-10-14)
 Bot **@informatix_repair_bot** (token = segreto del Worker `TELEGRAM_BOT_TOKEN`, impostato con `wrangler secret put`, MAI nel codice/repo/memoria). Il messaggio parte solo verso `TELEGRAM_OWNER_ID` (segreto, da impostare: l'ID Telegram di Marco). Solo invio: nessun comando in ingresso, quindi nessun altro puo' usarlo. `officina/notify.mjs`: `describeEvent` (testi dettagliati in italiano per riparazioni, stati, consegne/incassi, acconti, note, ricambi, vendite, spese, clienti, fornitori, magazzino, utenti, impostazioni, demo, backup, stampe, risposta del cliente al preventivo), accessi (primo uso dopo 6 ore, `users.last_seen_at`, migrazione 0003), accessi NEGATI (email non abilitata), errori 5xx (anti-raffica 5 minuti), errori non gestiti del Worker, esito del backup notturno. PIN dei dispositivi, password e token non vengono mai inviati; telefono mascherato. Test API: 19 verdi. Da fare: ID proprietario; notifiche della Vetrina Usati (quando sara' sul Worker); eventuale riepilogo giornaliero.
+
+## Stato Vetrina usati online + Portale (2026-10-14, giornata interrotta)
+
+**Fatto (branch del worktree, test:officina 26/26 verdi):**
+- Vetrina usati dentro il Worker: API `/api/usati` (elenco, crea, modifica, venduto/non venduto, elimina solo admin, foto, riordino, pubblica), codice in `officina/usati.mjs`.
+- Database: migrazione `officina/migrations/0004_usati.sql` (tabelle usati_items, usati_trash) e `officina/schema.sql`. Dati esistenti: `node officina/tools/seed-usati.mjs` genera `officina/seed/usati.sql` (13 articoli, ripetibile).
+- Publisher (`officina/publisher.mjs`): GitHub (Contents API: prima foto, poi JSON, poi cancellazioni; nessun commit se il JSON e' uguale) oppure bozza se manca GITHUB_TOKEN. I test usano un publisher finto.
+- Foto: ridimensionate nel browser (canvas), archivio R2 con binding MEDIA (`officina/media.mjs`), errore chiaro se manca; su PC cartella officina/data/media. `scripts/build-usati.mjs` accetta il campo facoltativo `files` (nomi foto).
+- Notifiche Telegram per creato/modificato/venduto/eliminato/foto/pubblicazione e errori.
+- UI: voce "Vetrina usati" (officina/public/usati.js) con schede, badge, modulo a sezioni a schermo intero su mobile; Portale (portale.js) come home, con collegamento in menu. Controllati screenshot a 1280/500/390.
+
+**Manca / da fare:** manuale (sezioni 19 Vetrina usati e 20 Portale) e screenshot a 320/768 non verificati (u320.png/u768.png generati ma non guardati); prova reale con GitHub e R2; test Cypress da riallineare (la home ora e' #/portale); il vecchio admin/ resta ma non e' piu' linkato.
+
+**Migrazioni/configurazione:** applicare 0004 su D1, poi eseguire officina/seed/usati.sql. Creare bucket `officina-media` e decommentare il binding MEDIA in wrangler.jsonc. Segreto GITHUB_TOKEN (permesso Contents sul repo); variabili GITHUB_REPO, GITHUB_BRANCH, SITE_URL gia' in wrangler.jsonc (BRANCH=main: senza token resta bozza). Opzionale su PC: OFFICINA_USATI_PUBLISH=github.
+
+**Come ripartire:** leggere questa sezione, completare manuale, guardare gli screenshot a 320/768, provare con un branch GitHub di prova (GITHUB_BRANCH) prima di main.
