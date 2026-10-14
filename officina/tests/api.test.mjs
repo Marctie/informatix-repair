@@ -637,5 +637,7 @@ test('eliminazione: solo riparazioni concluse; il cliente va via con le sue conc
   assert.equal((await a('GET', `/api/repairs/${r.id}`)).status, 404);
   const r2 = (await a('POST', '/api/repairs', { customer: { name: 'Da Eliminare 2', phone: '3517770002' }, brand_model: 'Tab', problem: 'x' })).data;
   await conclude(r2.id);
+  const cash0 = (await a('GET', '/api/dashboard')).data.cash_today;
   assert.equal((await a('DELETE', `/api/repairs/${r2.id}`)).status, 200);
+  assert.equal(Math.round(((await a('GET', '/api/dashboard')).data.cash_today - cash0) * 100), -1000, 'gli incassi della riparazione escono dalla cassa');
 });

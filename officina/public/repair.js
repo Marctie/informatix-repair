@@ -450,7 +450,7 @@ export async function openRepairDetail(id, onChange) {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     switch (b.dataset.act) {
-      case 'delrepair': { if (!(await confirmDelete(`la riparazione ${$('h2', m.el).textContent}`, { typed: 'ELIMINA', detail: 'Storico e firme vengono cancellati. Gli incassi restano in contabilità.' }))) return; const out = await safe(() => api('DELETE', `/api/repairs/${id}`)); if (out) { toast('Riparazione eliminata'); m.close(); onChange?.(); } return; }
+      case 'delrepair': { if (!(await confirmDelete(`la riparazione ${$('h2', m.el).textContent}`, { typed: 'ELIMINA', detail: 'Storico e firme vengono cancellati. Anche gli incassi in cassa vengono tolti.' }))) return; const out = await safe(() => api('DELETE', `/api/repairs/${id}`)); if (out) { toast('Riparazione eliminata'); m.close(); onChange?.(); } return; }
       case 'manualpart': return manualPartDialog(id, () => { reloadList(); render(); });
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
