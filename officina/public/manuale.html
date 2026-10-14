@@ -124,6 +124,10 @@
   <a href="#registro">21 · Registro</a>
 
   <a href="#ordini">19 · Ordini, preventivi, promemoria</a>
+
+  <a href="#dispositivi">21 · Dispositivi e seriali</a>
+  <a href="#buoni">22 · Buoni e conto diviso</a>
+  <a href="#riservati">23 · Documenti e credenziali</a>
 </nav>
 
 <main>
@@ -573,6 +577,60 @@
     <li>Non vengono mai salvati codici di sblocco o altri dati riservati: solo il nome dell'oggetto e il tipo di azione.</li>
   </ul>
   <div class="call tip"><b>A cosa serve</b>Se qualcosa sparisce o cambia e nessuno se lo ricorda, qui trovi chi è stato. Il registro entra anche nel backup.</div>
+
+<section id="dispositivi">
+  <h2><span class="n">21</span>Dispositivi e seriali</h2>
+  <p class="lead">Il registro dei telefoni, portatili e console con seriale/IMEI: serve per avere tutto segnato in caso di furto o denuncia.</p>
+  <ol class="steps">
+    <li>Apri <b>Dispositivi</b> dal menu e premi <b>＋ Nuovo dispositivo</b>. Scrivi marca e modello, spara o scrivi il <b>seriale/IMEI</b> (anche con la fotocamera 📷): sotto compare subito se l'IMEI è valido e se il seriale è già nel registro.</li>
+    <li>Scegli la <b>sottoclasse</b>: Nuovi, Usati, Ricondizionati, Da smaltire, In arrivo. Costo, prezzo, provenienza e note stanno sotto “Più opzioni”.</li>
+    <li>Le schede in alto filtrano per sottoclasse; la ricerca trova anche per seriale (con la pistola basta sparare nella casella).</li>
+    <li>Aprendo un dispositivo vedi lo <b>storico</b>: quando è stato registrato, le riparazioni che hanno lo stesso seriale e le vendite in cui è comparso.</li>
+  </ol>
+  <h3>Rubato o da verificare</h3>
+  <ul>
+    <li>Dalla scheda premi <b>⚠ Segnala rubato / da verificare</b>, scrivi il motivo e (se c'è) il numero di denuncia.</li>
+    <li>Da quel momento, se quel seriale entra in <b>riparazione</b> o in <b>vendita</b> (campo seriale nel carrello), compare un <b>avviso rosso</b> e una nota interna nella scheda. Anche scrivendolo nella nuova riparazione l'avviso compare sotto il campo, prima di salvare.</li>
+    <li>Togliere la segnalazione è riservato all'<b>amministratore</b>.</li>
+    <li><b>⬇ Elenco seriali (CSV)</b> esporta l'elenco (tutti, per sottoclasse o solo i segnalati) da allegare a una denuncia; si apre con Excel.</li>
+  </ul>
+  <div class="call tip"><b>Cosa non c'è (ancora)</b>La “blacklist/Blacks” è in sospeso: serve capire cosa intende Christian. Vetrina usati e Dispositivi sono due cose separate che non si parlano.</div>
+</section>
+
+<section id="buoni">
+  <h2><span class="n">22</span>Buoni e conto diviso</h2>
+  <p class="lead">Buoni sconto e regalo, e il pagamento ripartito su più metodi o persone. Ogni quota entra in Cassa: niente è nascosto.</p>
+  <h3>I buoni</h3>
+  <ol class="steps">
+    <li>Apri <b>Buoni</b> → <b>＋ Nuovo buono</b>. Scegli il tipo: <b>buono regalo</b> (credito che si usa anche a più riprese), <b>sconto in euro</b> o <b>sconto in percentuale</b> (si usa una volta sola). Scadenza facoltativa; il codice si genera da solo (o lo scrivi tu). Si può <b>stampare</b>.</li>
+    <li>In <b>Vendite</b> e nella <b>consegna di una riparazione</b> scrivi o spara il <b>codice buono</b> e premi <b>Applica</b>: vedi quanto toglie e quanto resta da pagare.</li>
+    <li>Il buono regalo usato solo in parte <b>resta con il saldo</b> (ricevuta e scheda del buono lo mostrano). Un buono esaurito, scaduto o annullato non si può usare.</li>
+  </ol>
+  <h3>Dividere il conto</h3>
+  <ol class="steps">
+    <li>Nel riquadro di pagamento premi <b>➗ Dividi il conto</b>: compaiono due quote (metodo, importo, chi paga). <b>＋ Aggiungi quota</b> ne aggiunge fino a 6; <b>Completa l'ultima</b> calcola il resto.</li>
+    <li>Compare <b>✔ Quadra</b> quando la somma coincide con il totale: solo allora si può incassare. Si può usare insieme a un buono.</li>
+    <li>Con un solo metodo in contanti puoi scrivere i <b>contanti ricevuti</b> e vedi il <b>resto da dare</b>.</li>
+  </ol>
+  <div class="call tip"><b>In Cassa</b>Ogni quota è una riga dell'elenco incassi (“quota 1/2 (Anna)”) e conta nei totali per metodo. I buoni usati hanno un riquadro a parte; il buono regalo compare come metodo “buono”.</div>
+</section>
+
+<section id="riservati">
+  <h2><span class="n">23</span>Documenti d'identità e credenziali fornitori</h2>
+  <p class="lead">Dati molto sensibili: conservati <b>cifrati</b>, visibili solo all'amministratore e ogni accesso viene registrato.</p>
+  <h3>Documenti dei clienti</h3>
+  <ol class="steps">
+    <li>Apri il cliente e premi <b>🪪 Documenti</b> → <b>＋ Aggiungi documento</b>. Scegli tipo e motivo (di norma l'acquisto di un usato: per una semplice riparazione non serve), scrivi i dati e carica <b>foto o PDF</b> di fronte e retro (le foto si ridimensionano da sole).</li>
+    <li>Prima di salvare spunta la <b>presa visione dell'informativa</b> da parte del cliente. Il testo è una <b>bozza da far verificare</b>.</li>
+    <li>Solo l'<b>amministratore</b> li vede; può abilitare anche Cassa o postazioni da <b>Permessi e registro accessi</b>. Lo stesso pulsante mostra chi ha aperto cosa e quando.</li>
+    <li><b>Elimina definitivamente</b> chiede la doppia conferma (e di scrivere ELIMINA).</li>
+  </ol>
+  <h3>Credenziali dei fornitori (solo amministratore)</h3>
+  <ol class="steps">
+    <li>Apri <b>Credenziali</b> → <b>＋ Nuovo accesso</b>: fornitore, sito, nome utente, password, agente e telefono.</li>
+    <li>Nell'elenco: <b>🌐 Apri il sito</b>, <b>Copia utente</b>, <b>Copia password</b> (un tocco) e <b>Mostra</b> (si nasconde da sola dopo 15 secondi). Ogni copia o visione è registrata.</li>
+  </ol>
+  <div class="call warn"><b>La chiave (VAULT_KEY)</b>Tutto è cifrato con una chiave segreta. Sul PC viene creata al primo avvio in <code>officina/data/vault.key</code>; online è il segreto del Worker <code>VAULT_KEY</code> (<code>wrangler secret put VAULT_KEY</code>). <b>Conservane una copia al sicuro, fuori dal gestionale: se si perde, documenti e password non si recuperano.</b> La chiave non va mai scritta nel codice né nel repository.</div>
 </section>
 
 </main>

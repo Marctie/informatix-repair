@@ -1,10 +1,16 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
+import { createSettlement } from './buoni.js';
+import { showDeviceAlerts } from './dispositivi.js';
 import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
   let customer = null;
+  const discNow = () => Number(String($('#s-disc', el)?.value ?? '0').replace(',', '.')) || 0;
+  const dueNow = () => Math.max(0, cart.reduce((a, i) => a + i.qty * i.unit_price, 0) - discNow());
+  // Pagamento: metodo singolo, conto diviso e codice buono (buoni.js)
+  const settle = createSettlement({ methodId: 's-method', getDue: dueNow });
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Vendite</h1></div>
     <div class="grid lg:grid-cols-5 gap-5 items-start">
@@ -43,6 +49,7 @@ export async function salesView(el) {
 
   function renderCart() {
     const subtotal = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
+    const keepDisc = discNow(); // lo sconto digitato non si perde quando cambia il carrello
     $('#s-cart', el).innerHTML = cart.length
       ? `<div class="sec" style="gap:0"><h3 class="sec-t" style="margin-bottom:.9rem">Carrello</h3>${cart.map((i, idx) => `<div class="cart-item">
           <span class="name">${esc(i.name)}</span><button class="xbtn" data-rm="${idx}" aria-label="Rimuovi ${esc(i.name)}">✕</button>
@@ -50,17 +57,20 @@ export async function salesView(el) {
             <span class="qty"><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="-1" aria-label="Meno">−</button><b>${i.qty}</b><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="1" aria-label="Più">+</button></span>
             <span class="hint">×</span><input style="width:6.5rem" inputmode="decimal" data-p="${idx}" value="${i.unit_price}" aria-label="Prezzo unitario" />
             <span class="sub-total">${eur(i.qty * i.unit_price)}</span>
-          </div></div>`).join('')}</div>
-        <div class="fgrid c3" style="align-items:end">
-          <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="0" /></div>
-          <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
-          <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(subtotal)}</b></div>
+          </div><input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
+        <div class="fgrid c2" style="align-items:end">
+          <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="${esc(String(keepDisc))}" /></div>
+          <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc))}</b></div>
         </div>
+        <div class="sec" id="s-settle"></div>
         <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${wantPrint() ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
     const disc = $('#s-disc', el);
-    if (disc) disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - (Number(String(disc.value).replace(',', '.')) || 0))); };
+    if (disc) {
+      settle.mount($('#s-settle', el));
+      disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - discNow())); settle.update(); };
+    }
   }
 
   async function recent() {
@@ -120,16 +130,21 @@ export async function salesView(el) {
     if (e.target.id === 's-pay') {
       const printNow = $('#s-print', el).checked;
       try { localStorage.setItem('sale_print', printNow ? '1' : '0'); } catch { /* memoria non disponibile */ }
+      const bad = settle.validate();
+      if (bad) return toast(bad, false);
       e.target.disabled = true;
-      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, method: $('#s-method', el).value, customer_id: customer?.id || null }));
+      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload() }));
       e.target.disabled = false;
       if (!out) return;
-      cart.length = 0; renderCart(); recent();
+      cart.length = 0; settle.reset(); renderCart(); recent();
+      showDeviceAlerts(out.device_alerts);
       toast(`Venduto: ${eur(out.total)}`);
       if (printNow) window.open(`/print/sale/${out.id}`, '_blank');
     }
   });
   el.addEventListener('change', (e) => {
+    const sn = e.target.closest('[data-sn]');
+    if (sn) { cart[Number(sn.dataset.sn)].serial = sn.value.trim(); return; }
     const p = e.target.closest('[data-p]');
     if (p) { cart[Number(p.dataset.p)].unit_price = Number(String(p.value).replace(',', '.')) || 0; renderCart(); }
   });
@@ -173,6 +188,9 @@ export async function cashView(el, qs = new URLSearchParams()) {
         ${kpi(eur(ex.total), 'Spese nel periodo', 'text-amber-600')}
         ${kpi(eur(r.total - ex.total), 'Incassi meno spese', r.total - ex.total >= 0 ? 'text-emerald-600' : 'text-red-600')}
       </div>
+      ${r.vouchers?.n ? `<section class="card panel sec"><h3 class="sec-t">Buoni usati nel periodo (${r.vouchers.n})</h3>
+        <div class="plist"><div><span>Buoni regalo incassati come credito <span class="hint" style="display:block">compaiono sopra come metodo “buono”</span></span><b>${eur(r.vouchers.credit)}</b></div>
+        <div><span>Sconti dei buoni <span class="hint" style="display:block">già tolti dai totali delle vendite</span></span><b>${eur(r.vouchers.discount)}</b></div></div></section>` : ''}
       ${r.rows.length ? `<div class="an-cols">
         <section class="card panel sec"><h3 class="sec-t">Per metodo di pagamento</h3>${hbars([...r.by_method].sort((x, y) => y.total - x.total), { value: (m) => m.total, label: (m) => `${m.method} (${m.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
         <section class="card panel sec"><h3 class="sec-t">Riparazioni e vendite</h3>${hbars(byKind, { value: (g) => g.total, label: (g) => `${g.name} (${g.n})`, fmt: (v) => eur(v) + pct(v) })}</section>

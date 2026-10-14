@@ -39,6 +39,12 @@ const P = {
   party: '<path d="m4 20 4-12 8 8z"/><path d="M14 4v2M19 7h-2M20 14h-2"/>',
   inbox: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
   bell: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+  smartphone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+  ticket: '<path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v1a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-1a2 2 0 0 1 0-4v0a2 2 0 0 0 0-4V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 6v12" stroke-dasharray="2 2.5"/>',
+  idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.7 1.8-2.5 3-2.5s2.5.8 3 2.5M14.5 10h4M14.5 13.5h3"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1-3-5-3.5-5-1.2C7 8.5 9 8 12 8zm0 0c1-3 5-3.5 5-1.2 0 1.7-2 1.2-5 1.2z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  split: '<path d="M12 4v16M5 12h14"/><circle cx="12" cy="12" r="9"/>',
 };
 
 // carattere/emoji -> icona
@@ -49,6 +55,7 @@ const MAP = {
   '✋': 'hand', '📉': 'trend', '💾': 'download', '🔒': 'lock', '✉️': 'mail', '✉': 'mail', '📝': 'note', '🔫': 'barcode',
   '✔': 'check', '✓': 'check', '＋': 'plus', '☰': 'menu', '✕': 'x', '⚠': 'alert', '⚠️': 'alert', '🎉': 'party',
   '👥': 'users', '📊': 'chart', '🧭': 'compass', '📮': 'inbox', '🔔': 'bell',
+  '📱': 'smartphone', '🎟️': 'ticket', '🎟': 'ticket', '🪪': 'idcard', '🔐': 'lock', '🎁': 'gift', '🌐': 'globe', '➗': 'split',
 };
 const RE = new RegExp(Object.keys(MAP).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 

@@ -145,6 +145,13 @@ export function printLabel(r, trackUrl, req) {
   return page(`Etichetta ${r.code}`, body, '@page{size:62mm 30mm;margin:2mm} body{font-size:10px;padding:0} .big{font-size:14px}', req);
 }
 
+// Quote del pagamento (anche diviso) e saldo residuo dei buoni regalo usati
+const payLines = (sale) => {
+  const pays = sale.payments || [];
+  const v = (sale.vouchers || []).map((x) => `<br>Buono ${esc(x.code)}: -${eur(x.amount)}${x.kind === 'regalo' ? ` · saldo residuo ${eur(x.balance)}` : ''}`).join('');
+  if (pays.length <= 1 && !v) return `<p class="muted">Pagamento: ${esc(sale.method)}</p>`;
+  return `<p class="muted">Pagamento:${pays.map((p) => `<br>${esc(p.method)}: ${eur(p.amount)}`).join('')}${v}</p>`;
+};
 export function printSale(sale, s, req) {
   const rows = sale.items.map((i) => `<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td style="text-align:right">${eur(i.unit_price)}</td><td style="text-align:right">${eur(i.qty * i.unit_price)}</td></tr>`).join('');
   const body = `
@@ -152,7 +159,7 @@ export function printSale(sale, s, req) {
   <div style="text-align:right"><div class="muted">Ricevuta di vendita</div><div class="big">${esc(sale.code)}</div><div class="muted">${dt(sale.created_at)}</div></div></div>
   <table style="margin-top:14px"><tr><th>Articolo</th><th>Q.tà</th><th style="text-align:right">Prezzo</th><th style="text-align:right">Totale</th></tr>${rows}</table>
   ${sale.discount ? `<p style="text-align:right">Sconto: -${eur(sale.discount)}</p>` : ''}
-  <p style="text-align:right" class="big">Totale ${eur(sale.total)}</p><p class="muted">Pagamento: ${esc(sale.method)}</p>
+  <p style="text-align:right" class="big">Totale ${eur(sale.total)}</p>${payLines(sale)}
   <p class="terms">Documento non fiscale. Per la garanzia legale conservare questa ricevuta.</p>`;
   return page(`Vendita ${sale.code}`, body, '', req);
 }

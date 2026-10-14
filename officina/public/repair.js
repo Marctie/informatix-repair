@@ -1,5 +1,7 @@
 // Accettazione veloce di una riparazione e scheda di dettaglio.
 import { scanWithCamera } from './scan.js';
+import { showDeviceAlerts } from './dispositivi.js';
+import { createSettlement } from './buoni.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 
 const DEVICE_TYPES = [['smartphone', 'Smartphone'], ['tablet', 'Tablet'], ['portatile', 'Portatile'], ['pc', 'PC fisso'], ['console', 'Console'], ['altro', 'Altro']];
@@ -108,6 +110,9 @@ export function openRepairForm(onDone, preset = {}) {
     if (!root.isConnected) return;
     const same = (list || []).filter((r) => r.serial && r.serial.toLowerCase() === v.toLowerCase());
     if (same.length) parts.push(`<button type="button" class="underline text-secondary text-left" data-prev="${same[0].id}">⚠ Già in archivio: ${esc(same[0].code)} · ${esc(same[0].customer_name)} (${esc(same[0].status_label)}): apri</button>`);
+    const dv = await safe(() => api('GET', `/api/dispositivi/check?serial=${encodeURIComponent(v)}`));
+    if (dv?.alert) parts.unshift(`<b class="text-red-600">⚠ DISPOSITIVO SEGNALATO: ${esc(dv.known.find((x) => x.flag !== 'ok')?.flag_label || '')} — verifica prima di procedere</b>`);
+    if (!root.isConnected) return;
     hint.innerHTML = parts.join(' · ');
   }, 250);
   serial.addEventListener('input', checkSerial);
@@ -185,6 +190,7 @@ export function openRepairForm(onDone, preset = {}) {
       else toast('Il browser ha bloccato la stampa: usa il pulsante nella schermata successiva', false);
     }
     showCreated(r, onDone);
+    showDeviceAlerts(r.device_alerts);
   };
   $('#rf-save', root).onclick = (ev) => doSave(ev.currentTarget, false);
   $('#rf-save-print', root).onclick = (ev) => doSave(ev.currentTarget, true);
@@ -401,14 +407,21 @@ export function deliverDialog(id, done) {
         <p>Già versato: <b>${eur(r.paid)}</b>. Controlla il totale finale e scegli come ha pagato il saldo.</p>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="dl-final">Totale finale €</label><input id="dl-final" inputmode="decimal" value="${total}" /></div>
-          <div class="field"><label class="l" for="dl-method">Incassato con</label><select id="dl-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
+          <div class="field"><span class="l">Saldo da incassare</span><b class="font-heading" style="font-size:1.4rem" id="dl-due">${eur(Math.max(0, total - r.paid))}</b></div>
         </div>
+        <div class="sec" id="dl-settle"></div>
         <p class="hint">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>
       </section>`,
       { title: 'Consegna e incasso', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-green btn-lg" id="dl-ok">Conferma consegna</button>` }
     );
+    const dueNow = () => Math.max(0, (Number(String($('#dl-final', m.el).value).replace(',', '.')) || 0) - r.paid);
+    const settle = createSettlement({ methodId: 'dl-method', getDue: dueNow });
+    settle.mount($('#dl-settle', m.el));
+    $('#dl-final', m.el).oninput = () => { $('#dl-due', m.el).textContent = eur(dueNow()); settle.update(); };
     $('#dl-ok', m.el).onclick = async () => {
-      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, method: $('#dl-method', m.el).value }));
+      const bad = settle.validate();
+      if (bad) return toast(bad, false);
+      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload() }));
       if (!out) return;
       m.close();
       toast(`Consegnata. Incassati ${eur(out.collected)}`);

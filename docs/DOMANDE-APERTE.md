@@ -82,3 +82,33 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 43. (Christian) **Preventivi** - numerazione P-AAAA-NNNN e intestazione come le schede. Il cliente non ha ancora un link online per approvare i preventivi autonomi (solo stampa/WhatsApp, accettazione registrata al banco); dopo la scadenza non si puo' accettare senza prolungare la data. Serve il link online?
 44. (Christian) **Promemoria** - sono condivisi tra tutti gli utenti (non personali). Servono anche note libere stile Keep (colori, caselle da spuntare, foto)? Per ora solo promemoria con data/ora.
 45. (Marco) **Promemoria Telegram** - l'avviso parte quando una postazione ha il gestionale aperto (controllo ogni minuto). Per avvisare anche a gestionale chiuso serve un cron ogni minuto sul Worker (`scheduled` in `officina/worker.mjs`): lo aggiungo al prossimo deploy?
+
+## Agente D: Dispositivi, Buoni/conto diviso, Documenti d'identita', Credenziali (aggiunte 2026-10-14)
+Per ognuna e' indicato il **default prudente** gia' scelto nel codice.
+**Dispositivi (p.12)**
+- **12b "Blacks" (IN SOSPESO, non implementato)**: blacklist di IMEI (si fa) o registro nascosto (non si fa)? Finche' non risponde non c'e' nessuna blacklist; esiste solo la segnalazione "rubato / da verificare".
+- 38. (Christian) Da smaltire e Ricondizionati: ciclo di vita (checklist, garanzia, costo di ricondizionamento)? Per ora sono solo sottoclassi del registro.
+- 39. (Christian) "In arrivo": collegarlo agli ordini al fornitore con carico automatico? Per ora e' solo una sottoclasse.
+- 40. (Marco) Se un seriale segnalato entra in riparazione/vendita l'operazione NON viene bloccata: compare un avviso e una nota interna (default prudente = avvisare, non bloccare). Vuole il blocco?
+- 41. (Christian) Mandare anche un messaggio Telegram quando un seriale segnalato compare? (non fatto)
+**Conto diviso e buoni (p.9)**
+- 42. Quote del conto diviso: impostato il massimo a **6** (default). Bastano 2-3?
+- 43. Resto in contanti: calcolato e mostrato a video (contanti ricevuti -> resto), ma NON registrato (in cassa entra solo l'importo dovuto).
+- 44. Il buono si puo' usare insieme al conto diviso: **si** (default).
+- 45. Buono regalo usato in parte: resta il saldo, stampato sulla ricevuta: **si**.
+- 46. Tipi di buono fatti: regalo (credito), sconto in euro, sconto in percentuale (uso unico). Mancano grafica/template personalizzabile (logo, colori, condizioni): il buono stampabile e' una versione semplice. Mandare un esempio che piace.
+- 47. (Christian) Vendere un buono regalo e' un incasso? Default: la **creazione del buono non registra incassi**; il credito entra in cassa quando viene usato (metodo "buono"). Se si vuole contare l'incasso alla vendita del buono, va registrato un pagamento a parte.
+- 48. Acconto riparazione diviso su piu' metodi: non fatto (si registrano piu' acconti); il **saldo** alla consegna invece si puo' dividere e usare il buono.
+- Punti/carte fedelta' NFC: NON fatti (manca il regolamento).
+**Documenti d'identita' (p.17)**
+- 49. Chi puo' vedere i documenti: default **solo amministratore**; l'admin puo' abilitare Cassa e/o postazioni (Permessi e registro accessi).
+- 50. Conservazione: nessuna scadenza automatica (cancellazione manuale con doppia conferma). Per quanto tempo vanno tenuti?
+- 51. Le immagini sono salvate cifrate nel database (max 1 MB l'una, ridimensionate nel browser), non in R2. Il backup JSON include i dati ma sempre cifrati. Preferisce escluderli dal backup?
+- 52. Il testo dell'informativa e' la BOZZA E di `docs/TESTI-LEGALI-BOZZE.md`, con le parti tra [parentesi] da compilare: da far verificare a un professionista prima dell'uso reale.
+- 53. Estrazione automatica dei dati dalla foto (OCR): non fatta, si scrivono a mano.
+- 54. Eliminando un **cliente** si eliminano anche i suoi documenti (cascata). Preferisce bloccare la cancellazione del cliente se ha documenti?
+**Credenziali fornitori (p.18)**
+- 55. Piu' accessi per lo stesso fornitore: **si** (un fornitore puo' avere piu' portali). Apertura automatica/compilazione del sito: non fatta.
+- 56. Visibili solo all'admin (default). Promemoria di cambio password: non fatto (c'e' solo "password cambiata il ...").
+**Chiave VAULT_KEY (per Marco)**
+- 57. Online: `npx wrangler secret put VAULT_KEY --config officina/wrangler.jsonc` (almeno 16 caratteri casuali, es. 32 byte esadecimali). Sul PC la chiave si crea da sola in `officina/data/vault.key`. **Conservare una copia fuori dal gestionale**: senza chiave documenti e password non si recuperano. La chiave locale e quella online sono diverse: i dati cifrati di un ambiente non si leggono nell'altro.

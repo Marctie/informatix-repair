@@ -16,6 +16,10 @@ import { ordiniView } from './ordini.js';
 import { preventiviView } from './preventivi.js';
 import { promemoriaView, mountTodayReminders } from './promemoria.js';
 
+import { dispositiviView } from './dispositivi.js';
+import { buoniView } from './buoni.js';
+import { credenzialiView } from './credenziali.js';
+
 const VIEWS = [
   { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView },
   { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true },
@@ -28,10 +32,13 @@ const VIEWS = [
   { id: 'preventivi', label: 'Preventivi', icon: '📝', render: preventiviView },
   { id: 'promemoria', label: 'Promemoria', icon: '🔔', render: promemoriaView },
   { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView },
+  { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView },
+  { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true },
+  { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true },
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true },
   { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true },
 ];
