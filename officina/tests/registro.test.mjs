@@ -81,7 +81,46 @@ test('registro: solo gli admin lo leggono', async () => {
   assert.equal((await a('GET', '/api/audit', null, 'admin')).status, 200);
 });
 
-const hasCost = (v) => /"(cost|unit_cost|parts_cost|profit_estimate|margin|value_cost)"/.test(JSON.stringify(v));
+test('carico merce: giacenza, costo, storico prezzi, avvisi e grafico includono i carichi manuali', async () => {
+  const sup = (await a('POST', '/api/suppliers', { name: 'Forn Carico' })).data;
+  const p = (await a('POST', '/api/products', { name: 'Cavo USB-C', qty: 2, cost: 1, price: 6 })).data;
+  const r1 = await a('POST', `/api/products/${p.id}/load`, { qty: 10, supplier_id: sup.id, unit_price: '2,00', date: '2026-09-01', supplier_code: 'USB-C-1', doc_number: 'DDT-1' });
+  assert.equal(r1.status, 200);
+  assert.equal(r1.data.qty, 12);
+  assert.equal(r1.data.cost, 2);
+  const r2 = await a('POST', `/api/products/${p.id}/load`, { qty: 10, supplier_id: sup.id, unit_price: 3, date: new Date().toISOString().slice(0, 10) });
+  assert.equal(r2.data.qty, 22);
+  assert.equal(r2.data.cost, 3);
+  assert.equal(r2.data.loaded.avg_cost, 2.5);
+  // movimento di magazzino
+  assert.ok((await a('GET', `/api/products/${p.id}/moves`)).data.some((m) => m.delta === 10 && /carico merce/.test(m.reason)));
+  // storico prezzi, grafico e avvisi di Acquisti
+  const pr = (await a('GET', `/api/purchases/prices?product_id=${p.id}`)).data;
+  assert.equal(pr.series.length, 2);
+  assert.equal(pr.avg_cost, 2.5);
+  assert.ok((await a('GET', '/api/purchases/products')).data.some((x) => x.id === p.id));
+  const al = (await a('GET', '/api/purchases/alerts')).data;
+  assert.ok(al.items.some((x) => x.type === 'price_up' && x.ref === p.id));
+  // lo stesso n. documento raggruppa piu' articoli nello stesso documento
+  const q = (await a('POST', '/api/products', { name: 'Cavo HDMI', cost: 0, price: 9 })).data;
+  const r3 = await a('POST', `/api/products/${q.id}/load`, { qty: 3, supplier_id: sup.id, unit_price: 4, date: '2026-09-01', doc_number: 'DDT-1' });
+  assert.equal(r3.data.loaded.purchase_id, r1.data.loaded.purchase_id);
+  assert.equal((await a('GET', `/api/purchases/${r1.data.loaded.purchase_id}`)).data.lines.length, 2);
+  // articolo nuovo dal carico
+  const n = await a('POST', '/api/products/load', { name: 'Presa Schuko', qty: 5, supplier_id: sup.id, unit_price: 1.5, price: 4, sku: 'PS1' });
+  assert.equal(n.data.qty, 5);
+  assert.equal(n.data.loaded.new_product, true);
+  // errori
+  assert.equal((await a('POST', `/api/products/${p.id}/load`, { qty: 0, supplier_id: sup.id, unit_price: 1 })).status, 400);
+  assert.equal((await a('POST', `/api/products/${p.id}/load`, { qty: 1, supplier_id: sup.id, unit_price: -1 })).status, 400);
+  assert.equal((await a('POST', '/api/products/load', { qty: 1, supplier_id: sup.id, unit_price: 1 })).status, 400);
+  assert.equal((await a('POST', '/api/products/load', { name: 'X', qty: 1, unit_price: 1 })).status, 400);
+  assert.equal((await a('POST', `/api/products/${p.id}/load`, { qty: 1, supplier_id: sup.id, unit_price: 1 }, 'cassa')).status, 403);
+  // nel registro
+  assert.ok((await audit('?type=carico')).rows.length >= 4);
+});
+
+const hasCost =(v) => /"(cost|unit_cost|parts_cost|profit_estimate|margin|value_cost)"/.test(JSON.stringify(v));
 
 test('ruolo cassa: le risposte API non contengono costi, margini o guadagni', async () => {
   const p = (await a('POST', '/api/products', { name: 'Display Y', qty: 4, cost: 40, price: 99 })).data;
