@@ -2,18 +2,6 @@
   "updated": "2026-10-14",
   "items": [
     {
-      "slug": "cacvo",
-      "name": "cacvo",
-      "condition": "usato",
-      "conditionLabel": "Usato",
-      "price": null,
-      "featured": false,
-      "photos": 0,
-      "specs": [],
-      "category": "smartphone",
-      "contact": false
-    },
-    {
       "slug": "cavo",
       "name": "cavo",
       "condition": "usato",
