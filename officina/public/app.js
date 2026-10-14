@@ -10,6 +10,7 @@ import { usersView } from './users.js';
 import { analyticsView } from './analytics.js';
 import { usatiView } from './usati.js';
 import { portaleView } from './portale.js';
+import { purchasesView } from './purchases.js';
 
 const VIEWS = [
   { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView },
@@ -19,6 +20,7 @@ const VIEWS = [
   { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true },
   { id: 'vendite', label: 'Vendite', icon: '🛒', render: salesView },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
+  { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true },
