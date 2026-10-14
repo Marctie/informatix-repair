@@ -122,6 +122,8 @@
   <a href="#demo">17 · Dati demo</a>
   <a href="#telegram">18 · Avvisi su Telegram</a>
   <a href="#registro">21 · Registro</a>
+
+  <a href="#ordini">19 · Ordini, preventivi, promemoria</a>
 </nav>
 
 <main>
@@ -494,6 +496,37 @@
     <li>Il bot è solo per il proprietario: non risponde a nessun altro e non si possono dargli comandi.</li>
     <li><b>Bot di controllo (Termux)</b>: un piccolo programma sul telefono controlla ogni 5 minuti gestionale, tracciamento clienti, sito e Vetrina Usati. Ti avvisa solo se uno va giù o torna su, e ogni sera alle 21:00 manda un riepilogo.</li>
   </ul>
+</section>
+
+<section id="ordini">
+  <h2><span class="n">19</span>Ordini, preventivi e promemoria</h2>
+  <p class="lead">Tre voci del menu per non dimenticare niente: cosa ordinare per i clienti, i preventivi con scadenza e gli appuntamenti con data e ora.</p>
+  <h3>Ordini (menu “Ordini”)</h3>
+  <ol class="steps">
+    <li>Premi <b>＋ Nuovo ordine</b>, scegli il <b>cliente</b> (cerca per nome o telefono), aggiungi gli <b>articoli</b> (es. “Pellicola iPhone 13”), il fornitore se lo sai, la data prevista e, se il cliente lascia un <b>acconto</b>, l'importo: finisce in <b>Cassa</b> come ogni incasso.</li>
+    <li>Lo stato avanza con un tocco: <b>Da ordinare → Ordinato → Arrivato → Consegnato</b> (il pulsante nero a destra di ogni riga).</li>
+    <li><b>Da ordinare</b> (pulsante in alto): tutte le righe ancora da ordinare, <b>raggruppate per fornitore</b>, con messaggio pronto da inviare su WhatsApp o email e il pulsante “Fatto: segna ordinati”.</li>
+    <li>Quando l'ordine è <b>Arrivato</b> compare un avviso nella campanella 🔔 e il pulsante verde <b>Avvisa</b> apre WhatsApp con il messaggio già scritto per il cliente.</li>
+    <li>Alla <b>consegna</b> puoi incassare subito il saldo. Un ordine con incassi non si elimina: si <b>annulla</b>. Ogni eliminazione chiede la doppia conferma.</li>
+    <li>“Per il negozio (scorte)” registra un ordine al fornitore senza cliente (es. HDD per il magazzino). Un ordine <b>Ordinato</b> oltre la data prevista finisce tra gli avvisi come “in ritardo”.</li>
+  </ol>
+  <h3>Preventivi (menu “Preventivi”)</h3>
+  <p>Un preventivo vive da solo: non serve un dispositivo in laboratorio (utile per assemblaggio PC, forniture, lavori a domicilio).</p>
+  <ol class="steps">
+    <li><b>＋ Nuovo preventivo</b>: scegli il cliente dall'anagrafica oppure scrivi solo nome e telefono, aggiungi le <b>voci</b> (descrizione, quantità, prezzo) ed eventuale sconto.</li>
+    <li>La <b>data di validità</b> viene proposta a 15 giorni da oggi: puoi cambiarla. Sul foglio stampato compare in evidenza “Preventivo valido fino al …”.</li>
+    <li>Dalla scheda del preventivo: <b>🖨️ Stampa / PDF</b> (scegli “Salva come PDF” nella finestra di stampa), <b>💬 WhatsApp</b> con il testo già pronto, poi <b>Segna inviato</b>, <b>Accettato dal cliente</b> o <b>Rifiutato</b>.</li>
+    <li>Un preventivo oltre la data diventa <b>Scaduto</b> (filtro dedicato) e non si può più accettare né convertire: con <b>Modifica / prolunga</b> si sposta la scadenza. Quelli inviati in scadenza (3 giorni) o scaduti compaiono nella campanella 🔔.</li>
+    <li><b>→ Riparazione</b>: crea la riparazione con il preventivo già indicato (e <b>approvata</b> se il cliente aveva accettato). <b>→ Vendita</b>: registra la vendita e l'incasso in cassa con il metodo scelto. Dopo la conversione il preventivo resta consultabile ma non si modifica.</li>
+  </ol>
+  <h3>Promemoria (menu “Promemoria”)</h3>
+  <ol class="steps">
+    <li>In cima scrivi <b>cosa devi ricordare</b>, scegli <b>quando</b> (data e ora, oppure le scorciatoie “Tra 1 ora”, “Oggi 18:00”, “Domani 9:00”) e premi <b>Aggiungi promemoria</b> (o Invio).</li>
+    <li>Con <b>＋ Con cliente / riparazione…</b> puoi aggiungere dettagli e <b>collegarlo</b> a un cliente, a una riparazione o a un ordine: il nome comparirà accanto al promemoria.</li>
+    <li>I promemoria di oggi (e quelli scaduti non ancora fatti) stanno in <b>Oggi</b>, nel riquadro “Promemoria di oggi”, e nella <b>campanella</b> 🔔. Il segno ✓ lo segna come <b>fatto</b>; <b>Rimanda</b> lo sposta di 1 ora, 3 ore o a domani alla stessa ora.</li>
+    <li>Quando arriva l'ora, il proprietario riceve anche un <b>messaggio su Telegram</b> (una volta sola). Serve che il gestionale sia aperto in almeno una postazione: il controllo avviene ogni minuto.</li>
+    <li>Filtri: <b>Aperti</b>, <b>Da fare oggi</b>, <b>Fatti</b>, più la ricerca. Cliccando un promemoria lo modifichi o lo elimini (con doppia conferma).</li>
+  </ol>
 </section>
 
 <section id="demo">

@@ -12,6 +12,9 @@ import { analyticsView } from './analytics.js';
 import { usatiView } from './usati.js';
 import { portaleView } from './portale.js';
 import { purchasesView } from './purchases.js';
+import { ordiniView } from './ordini.js';
+import { preventiviView } from './preventivi.js';
+import { promemoriaView, mountTodayReminders } from './promemoria.js';
 
 const VIEWS = [
   { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView },
@@ -21,6 +24,9 @@ const VIEWS = [
   { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true },
   { id: 'vendite', label: 'Vendite', icon: '🛒', render: salesView },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
+  { id: 'ordini', label: 'Ordini', icon: '📮', render: ordiniView },
+  { id: 'preventivi', label: 'Preventivi', icon: '📝', render: preventiviView },
+  { id: 'promemoria', label: 'Promemoria', icon: '🔔', render: promemoriaView },
   { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView },
   { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
@@ -247,6 +253,7 @@ async function dashboardView(el) {
   $('#open-bell', el)?.addEventListener('click', () => $('#bell').click());
   $('#new-repair', el).onclick = () => newRepair();
   bindRepairList(el, refresh);
+  mountTodayReminders(el); // riquadro "Promemoria di oggi" (officina/public/promemoria.js)
 }
 
 // ---------- Riparazioni ----------
