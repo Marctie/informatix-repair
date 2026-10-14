@@ -1,5 +1,7 @@
 # Domande aperte (aggiornato 2026-10-14)
 
+> **Direttive di Christian (19 punti)**: ogni punto ha le sue domande in `docs/DIRETTIVE-CHRISTIAN.md`, con il piano proposto in fondo. Da mandare a Christian insieme a questo elenco.
+
 Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Quando arriva una risposta, si sposta in fondo nella sezione "Risolte" con la data.
 
 ## Per Christian
