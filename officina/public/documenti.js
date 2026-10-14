@@ -89,7 +89,7 @@ function documentForm(customer, cfg, done) {
       <details><summary class="hint" style="cursor:pointer">Più opzioni (ente di rilascio, note)</summary><div class="fgrid c2" style="margin-top:.85rem">
         <div class="field"><label class="l" for="dn-issuer">Rilasciato da</label><input id="dn-issuer" /></div><div class="field"><label class="l" for="dn-notes">Note</label><input id="dn-notes" /></div></div></details>
       <details><summary class="hint" style="cursor:pointer">Informativa privacy (bozza da far verificare)</summary><p class="hint" style="margin-top:.6rem">${esc(PRIVACY_DRAFT)}<br><i>(testo da formalizzare con Christian)</i></p></details>
-      <label class="row tight" style="cursor:pointer;align-items:flex-start"><input type="checkbox" id="dn-consent" style="margin-top:.25rem" /> <span>Il cliente ha preso visione dell’informativa e acconsente alla conservazione della copia del documento.</span></label>
+      <label style="cursor:pointer;display:flex;gap:.6rem;align-items:flex-start"><input type="checkbox" id="dn-consent" style="flex:none;margin-top:.2rem" /> <span>Il cliente ha preso visione dell’informativa e acconsente alla conservazione della copia del documento.</span></label>
     </div>`,
     { title: 'Nuovo documento', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="dn-ok">Salva cifrato</button>' }
   );

@@ -57,7 +57,7 @@ export async function salesView(el) {
             <span class="qty"><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="-1" aria-label="Meno">−</button><b>${i.qty}</b><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="1" aria-label="Più">+</button></span>
             <span class="hint">×</span><input style="width:6.5rem" inputmode="decimal" data-p="${idx}" value="${i.unit_price}" aria-label="Prezzo unitario" />
             <span class="sub-total">${eur(i.qty * i.unit_price)}</span>
-          </div><input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo, per i dispositivi)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
+          </div><input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
         <div class="fgrid c2" style="align-items:end">
           <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="${esc(String(keepDisc))}" /></div>
           <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc))}</b></div>

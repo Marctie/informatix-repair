@@ -37,12 +37,12 @@ export function createSettlement({ methodId, getDue }) {
       <div class="field"><label class="l" for="${methodId}-code">Codice buono <span style="font-weight:500;color:var(--muted)">(facoltativo)</span></label>
         <div class="row nowrap"><input id="${methodId}-code" autocomplete="off" placeholder="Scrivi o spara il codice" value="${esc(st.voucher ? st.voucher.code : st.code)}" ${st.voucher ? 'disabled' : ''} />
           ${st.voucher ? `<button type="button" class="btn btn-outline" data-act="unvoucher">Togli</button>` : `<button type="button" class="btn btn-outline" data-act="voucher">Applica</button>`}</div>
-        ${st.voucher ? `<div class="hint" style="color:#047857">🎟️ ${esc(st.voucher.kind_label)} · <b>−${eur(st.voucher.applies)}</b>${st.voucher.kind === 'regalo' && st.voucher.balance > st.voucher.applies ? ` · resta ${eur(r2(st.voucher.balance - st.voucher.applies))} sul buono` : ''}</div>` : ''}</div>
+        ${st.voucher ? `<div class="hint" style="color:#047857">🎟️ ${esc(st.voucher.kind_label)} · <b>−${eur(st.voucher.applies)}</b>· da pagare <b>${eur(left)}</b>${st.voucher.kind === 'regalo' && st.voucher.balance > st.voucher.applies ? ` · resta ${eur(r2(st.voucher.balance - st.voucher.applies))} sul buono` : ''}</div>` : ''}</div>
       ${left > 0 ? (st.split ? `
         <div class="field"><label class="l">Conto diviso · da pagare <b>${eur(left)}</b></label>
           <div class="sec" style="gap:.5rem">${st.rows.map((r, i) => `<div class="row nowrap" data-row="${i}">
             ${methodSel('', r.method, `data-f="method" data-i="${i}"`)}<input inputmode="decimal" style="width:6.5rem" placeholder="€" data-f="amount" data-i="${i}" value="${esc(r.amount)}" aria-label="Importo quota ${i + 1}" />
-            <input placeholder="Chi paga (facoltativo)" data-f="payer" data-i="${i}" value="${esc(r.payer)}" aria-label="Chi paga" />
+            <input placeholder="Chi paga" data-f="payer" data-i="${i}" value="${esc(r.payer)}" aria-label="Chi paga" />
             ${st.rows.length > 2 ? `<button type="button" class="btn btn-ghost btn-icon" data-act="rmrow" data-i="${i}" aria-label="Togli quota">✕</button>` : ''}</div>`).join('')}</div>
           <div class="row tight">${st.rows.length < 6 ? '<button type="button" class="btn btn-outline btn-sm" data-act="addrow">＋ Aggiungi quota</button>' : ''}<button type="button" class="btn btn-ghost btn-sm" data-act="fill">Completa l’ultima</button><button type="button" class="btn btn-ghost btn-sm" data-act="single">Un solo metodo</button>
             <b style="margin-left:auto;color:${Math.abs(diff) < 0.005 ? '#047857' : '#B45309'}">${Math.abs(diff) < 0.005 ? '✔ Quadra' : diff > 0 ? `Mancano ${eur(diff)}` : `Eccedono ${eur(-diff)}`}</b></div></div>`
