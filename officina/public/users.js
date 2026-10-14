@@ -1,5 +1,5 @@
 // Utenti: elenco di chi può entrare nel gestionale. Lo vede e lo modifica solo l'amministratore.
-import { $, esc, api, toast, safe, openModal } from './util.js';
+import { $, esc, api, toast, safe, openModal, confirmDelete } from './util.js';
 
 const ROLE = { admin: 'Amministratore', staff: 'Postazione / collaboratore' };
 
@@ -48,7 +48,7 @@ function editUser(u, done) {
     if (out) { m.close(); toast('Utente salvato'); done?.(); }
   };
   if (u) $('#ue-del', m.el).onclick = async () => {
-    if (!confirm(`Togliere l’accesso a ${u.email}?`)) return;
+    if (!(await confirmDelete(u.email, { verb: 'Togliere l’accesso a', typed: 'ELIMINA' }))) return;
     const out = await safe(() => api('DELETE', `/api/users/${u.id}`));
     if (out) { m.close(); toast('Utente eliminato'); done?.(); }
   };

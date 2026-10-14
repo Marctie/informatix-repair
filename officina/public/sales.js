@@ -1,6 +1,6 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
-import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal } from './util.js';
+import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
@@ -235,7 +235,7 @@ async function expenseForm(x, done) {
     if (out) { try { localStorage.setItem('ex-by', body.paid_by || ''); } catch { /* facoltativo */ } m.close(); toast('Spesa salvata'); done?.(); }
   };
   if (x) $('#ex-del', m.el).onclick = async () => {
-    if (!confirm('Eliminare questa spesa?')) return;
+    if (!(await confirmDelete('questa spesa'))) return;
     if (await safe(() => api('DELETE', `/api/expenses/${x.id}`))) { m.close(); toast('Spesa eliminata'); done?.(); }
   };
 }
@@ -320,7 +320,7 @@ export async function settingsView(el) {
       if (await safe(() => api('POST', '/api/demo', {}))) { toast('Dati demo caricati: esplora il gestionale'); drawDemo(); }
     };
     if ($('#st-demo-del', box)) $('#st-demo-del', box).onclick = async () => {
-      if (!confirm('Eliminare tutti i dati demo? I dati veri non vengono toccati.')) return;
+      if (!(await confirmDelete('tutti i dati demo', { detail: 'I dati veri non vengono toccati.' }))) return;
       if (await safe(() => api('DELETE', '/api/demo'))) { toast('Dati demo eliminati'); drawDemo(); }
     };
   };

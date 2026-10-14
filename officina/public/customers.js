@@ -1,5 +1,5 @@
 // Clienti: elenco con ricerca, scheda con storico riparazioni e acquisti.
-import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, statusBadge, waLink, plural } from './util.js';
+import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, statusBadge, waLink, plural } from './util.js';
 import { openRepairForm, openRepairDetail } from './repair.js';
 
 export async function customersView(el) {
@@ -69,7 +69,7 @@ export async function openCustomer(id, done) {
   $('#cu-new', m.el).onclick = () => { m.close(); openRepairForm(done, { name: c.name, phone: c.phone }); };
   $('#cu-edit', m.el).onclick = () => { m.close(); editCustomer(c, done); };
   $('#cu-del', m.el).onclick = async () => {
-    if (!confirm(`Eliminare ${c.name}?`)) return;
+    if (!(await confirmDelete(c.name, { typed: 'ELIMINA', detail: 'Cliente e dati collegati.' }))) return;
     const out = await safe(() => api('DELETE', `/api/customers/${c.id}`));
     if (out) { m.close(); toast('Cliente eliminato'); done?.(); }
   };
