@@ -93,3 +93,24 @@ test('stampa scheda laboratorio: voci del tipo, etichette corrette', async () =>
   assert.doesNotMatch(html, /IMEI/);
   assert.match(html, /Numero di serie/);
 });
+
+// ---------- Punto 14: scheda laboratorio in una pagina ----------
+test('scheda laboratorio: una sola pagina anche con testi lunghi, controlli compilati stampati con i segni', async () => {
+  const long = 'Non si accende dopo una caduta con schermo incrinato. '.repeat(60);
+  const r = await newRepair({ device_type: 'smartphone', brand_model: 'iPhone 13', problem: long, passcode: '4821' });
+  await a('PATCH', `/api/repairs/${r.id}`, { tech_notes: long });
+  for (let i = 1; i <= 12; i++) await a('POST', `/api/repairs/${r.id}/parts`, { name: `Ricambio ${i}`, qty: 1, unit_cost: 5, unit_price: 9 });
+  await a('PUT', `/api/repairs/${r.id}/checklist`, { phase: 'in', items: [{ l: 'Si accende', s: 'ok' }, { l: 'Display / touch', s: 'ko' }, { l: 'Fotocamere', s: 'na' }] });
+  const html = (await a('GET', `/print/lab/${r.id}?noprint=1`)).data;
+  assert.equal((html.match(/class="page lab"/g) || []).length, 1, 'un solo foglio');
+  assert.match(html, /\.lab\{height:268mm;overflow:hidden\}/, 'altezza bloccata: non puo\' uscire una seconda pagina');
+  assert.match(html, /continua sul gestionale/, 'testo lungo troncato con rimando');
+  assert.match(html, /altri 7 ricambi/, 'ricambi oltre il limite riassunti');
+  assert.match(html, /<span class="s-ok">Si accende<\/span>/);
+  assert.match(html, /<span class="s-ko">Display \/ touch<\/span>/);
+  assert.match(html, /<span class="s-na">Fotocamere<\/span>/);
+  assert.match(html, /Compilato da/);
+  // stampa unica "tutto": una pagina per scheda
+  const both = (await a('GET', `/print/both/${r.id}?noprint=1`)).data;
+  assert.equal((both.match(/class="page lab"/g) || []).length, 1);
+});
