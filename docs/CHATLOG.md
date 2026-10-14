@@ -827,3 +827,7 @@ Ramo `agente-b-schede-firme` (da `gestionale-officina`). Migrazioni **0011** (ch
 - **Punto 2**: "Annullato / non riparabile" chiede dove sta il dispositivo; 15 giorni di giacenza (Impostazioni), avvisi in Oggi/campanella, deposito a pagamento, cessione firmata, promemoria Telegram nel cron notturno. Rifiuto dal link -> stato annullato + giacenza/ceduto.
 - Manuale: sezione 19.
 **Da provare (Christian)**: stampa su A4 vero delle due schede (una pagina ciascuna, due copie tagliabili); firma col dito su tablet/telefono, anche da link a distanza; prova su telefono del flusso Si/No del preventivo; la pistola/etichette non toccate. **Non fatto**: collaudo che blocca la consegna, caricamento a magazzino dei pezzi recuperati, firma con codice SMS, solleciti automatici al cliente.
+
+
+## STATO A FINE SESSIONE 2026-10-14 (sera, dopo i 4 agenti)
+Vedi `docs/PARTI-DA-QUI.md` sezione "RIPARTENZA NELLA NUOVA CHAT (aggiornata 2026-10-14, sera)". Fatto in questa sessione: lotto A (doppia conferma, tolto "non tracciato", ruolo Cassa, ricambi a mano con guadagno, flag stampa ricevuta, aree magazzino, listino servizi), fusione dei due rami vecchi, Acquisti nel menu, card Vetrina usati ridisegnate, Vetrina Usati online con GitHub+R2 e recupero dei 13 articoli, 4 agenti (registro/carico merce; schede/firme/non riparabile; ordini/preventivi/promemoria; dispositivi/buoni/documenti/credenziali) fusi, migrazioni 0009-0014 applicate, deploy b0570dc9.
