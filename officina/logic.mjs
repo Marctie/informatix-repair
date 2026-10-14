@@ -1,6 +1,8 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
 import { priceAlerts } from './purchases.mjs';
+import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
+import { deviceHook, alertText } from './dispositivi.mjs';
 
 export class HttpError extends Error {
   constructor(status, message) {
@@ -82,7 +84,7 @@ export async function moveStock(productId, delta, reason, ref) {
   await db.prepare("INSERT INTO stock_moves (product_id, delta, reason, ref, created_at) VALUES (?,?,?,?,datetime('now','localtime'))").run(productId, delta, reason, ref || null);
 }
 
-async function addPayment(kind, refId, label, amount, method) {
+export async function addPayment(kind, refId, label, amount, method) {
   if (!amount || amount <= 0) return;
   await db.prepare("INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,datetime('now','localtime'))").run(
     kind, refId, label, money(amount), method || 'contanti'
@@ -139,12 +141,15 @@ export async function createRepair(b) {
     );
     const id = Number(r.lastInsertRowid);
     await logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
+    // Registro dispositivi: se il seriale e' segnalato (rubato / da verificare) lo scriviamo nella scheda e lo ritorniamo come avviso
+    const deviceAlerts = await deviceHook(b.serial, 'riparazione', `Entrato in riparazione ${code}`);
+    for (const a of deviceAlerts) await logEvent(id, null, alertText(a), 0);
     if (deposit > 0) await addPayment('repair', id, `Acconto ${code}`, deposit, b.deposit_method);
     if (b.quote_agreed && quote != null) {
       await db.prepare("UPDATE repairs SET status='approved', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
       await logEvent(id, 'approved', 'Preventivo concordato al banco.');
     }
-    return await getRepair(id);
+    return { ...(await getRepair(id)), device_alerts: deviceAlerts };
   });
 }
 
@@ -250,7 +255,7 @@ export async function setStatus(id, status, note, isPublic = true) {
   });
 }
 
-export async function deliverRepair(id, { final_price, method, note } = {}) {
+export async function deliverRepair(id, { final_price, method, note, ...pay } = {}) {
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -258,10 +263,13 @@ export async function deliverRepair(id, { final_price, method, note } = {}) {
     const final = money(num(final_price, r.final_price ?? r.quote ?? 0));
     const paid = (await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(id)).s;
     const due = Math.max(0, money(final - paid));
-    await addPayment('repair', id, `Saldo ${r.code}`, due, method);
-    await db.prepare("UPDATE repairs SET status='delivered', final_price=?, delivered_at=datetime('now','localtime') WHERE id=?").run(final, id);
+    // Buono e/o pagamento diviso (buoni.mjs): il piano controlla tutto prima di scrivere; lo sconto del buono riduce il prezzo finale
+    const plan = await planSettlement({ ...pay, method }, due);
+    await commitSettlement(plan, { kind: 'repair', refId: id, label: `Saldo ${r.code}` }, addPayment);
+    await db.prepare("UPDATE repairs SET status='delivered', final_price=?, delivered_at=datetime('now','localtime') WHERE id=?").run(money(final - plan.discount), id);
+    if (plan.voucher) await logEvent(id, null, `Buono ${plan.voucher.code}: ${money(plan.discount + plan.gift).toFixed(2)} €.`, 0);
     await logEvent(id, 'delivered', note || STATUSES.delivered.hint);
-    return { ...(await getRepair(id)), collected: due };
+    return { ...(await getRepair(id)), collected: money(due - plan.discount - plan.gift) };
   });
 }
 
@@ -316,11 +324,8 @@ export async function createSale(b) {
   return tx(async () => {
     const items = Array.isArray(b.items) ? b.items : [];
     if (!items.length) throw new HttpError(400, 'Aggiungi almeno un articolo');
-    const code = await nextCode('sales', 'V');
-    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, created_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))").run(
-      code, b.customer_id || null, 0, money(num(b.discount, 0)), str(b.method) || 'contanti', str(b.notes)
-    );
-    const saleId = Number(sale.lastInsertRowid);
+    // 1) si legge tutto e si controlla (nessuna scrittura): totale, buono e quote del pagamento diviso
+    const lines = [];
     let total = 0;
     for (const it of items) {
       const q = Math.max(1, Math.round(num(it.qty, 1)));
@@ -330,25 +335,44 @@ export async function createSale(b) {
         if (!p) throw new HttpError(404, 'Prodotto non trovato');
         pid = p.id; name = name || p.name; cost = p.cost;
         if (price == null) price = p.price;
-        await moveStock(p.id, -q, 'vendita', code);
       }
       if (!name) throw new HttpError(400, 'Nome articolo obbligatorio');
       if (price == null || price < 0) throw new HttpError(400, `Prezzo mancante per ${name}`);
-      await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(saleId, pid, name, q, money(price), money(cost));
+      lines.push({ pid, name, q, price, cost, serial: str(it.serial) });
       total += q * price;
     }
-    total = money(total - num(b.discount, 0));
+    const baseDiscount = money(num(b.discount, 0));
+    total = money(total - baseDiscount);
     if (total < 0) throw new HttpError(400, 'Lo sconto supera il totale');
-    await db.prepare('UPDATE sales SET total = ? WHERE id = ?').run(total, saleId);
-    await addPayment('sale', saleId, `Vendita ${code}`, total, b.method);
-    return await getSale(saleId);
+    const plan = await planSettlement(b, total);
+    total = money(total - plan.discount);
+    // 2) si scrive
+    const code = await nextCode('sales', 'V');
+    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, created_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))").run(
+      code, b.customer_id || null, total, money(baseDiscount + plan.discount), plan.split || plan.gift ? plan.methodLabel : (str(b.method) || plan.methodLabel), str(b.notes)
+    );
+    const saleId = Number(sale.lastInsertRowid);
+    const deviceAlerts = [];
+    for (const l of lines) {
+      if (l.pid) await moveStock(l.pid, -l.q, 'vendita', code);
+      await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(saleId, l.pid, l.name, l.q, money(l.price), money(l.cost));
+      if (l.serial) deviceAlerts.push(...await deviceHook(l.serial, 'vendita', `Venduto con ${code}`));
+    }
+    await commitSettlement(plan, { kind: 'sale', refId: saleId, label: `Vendita ${code}` }, addPayment);
+    return { ...(await getSale(saleId)), device_alerts: deviceAlerts };
   });
 }
 
 export async function getSale(id) {
   const s = await db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id = s.customer_id WHERE s.id = ?').get(id);
   if (!s) throw new HttpError(404, 'Vendita non trovata');
-  return { ...s, items: await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id) };
+  return {
+    ...s,
+    items: await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id),
+    // quote di pagamento (anche diviso) e buono usato: servono alla ricevuta
+    payments: await db.prepare("SELECT label, amount, method FROM payments WHERE kind='sale' AND ref_id = ? ORDER BY id").all(id),
+    vouchers: await db.prepare("SELECT v.code, v.kind, v.balance, u.amount FROM voucher_uses u JOIN vouchers v ON v.id=u.voucher_id WHERE u.kind = 'sale' AND u.ref_id = ?").all(id),
+  };
 }
 
 // ---------- Vista pubblica per il cliente ----------
@@ -454,7 +478,7 @@ export async function report(from, to) {
   const cost = (await db.prepare(`SELECT COALESCE(SUM(si.qty*si.unit_cost),0) AS c FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE date(s.created_at) BETWEEN ? AND ?`).get(f, t)).c
     + (await db.prepare(`SELECT COALESCE(SUM(rp.qty*rp.unit_cost),0) AS c FROM repair_parts rp JOIN repairs r ON r.id=rp.repair_id WHERE r.delivered_at IS NOT NULL AND date(r.delivered_at) BETWEEN ? AND ?`).get(f, t)).c;
   const total = money(rows.reduce((a, r) => a + r.amount, 0));
-  return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows };
+  return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows, vouchers: await voucherUsage(f, t) };
 }
 
 export async function reportByDay(from, to) {
