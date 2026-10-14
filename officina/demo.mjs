@@ -147,6 +147,24 @@ export async function loadDemo() {
 }
 
 export async function deleteDemo() {
+  // Clienti e fornitori demo usati da dati VERI (una riparazione o una vendita vera, un prodotto vero):
+  // invece di bloccare l'eliminazione li "adotta", cioe' li copia come anagrafica vera (id positivo)
+  // e sposta i riferimenti veri sulla copia. Cosi' i dati veri non si perdono e la cancellazione riesce sempre.
+  const adopt = async (table, cols, refs) => {
+    const ids = new Set();
+    for (const [rt, rc] of refs) {
+      for (const r of await db.prepare(`SELECT DISTINCT ${rc} AS id FROM ${rt} WHERE id > 0 AND ${rc} < 0`).all()) ids.add(r.id);
+    }
+    for (const id of ids) {
+      const row = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+      if (!row) continue;
+      const res = await db.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map((c) => row[c]));
+      for (const [rt, rc] of refs) await db.prepare(`UPDATE ${rt} SET ${rc} = ? WHERE ${rc} = ? AND id > 0`).run(res.lastInsertRowid, id);
+    }
+    return ids.size;
+  };
+  await adopt('customers', ['name', 'phone', 'email', 'notes', 'created_at'], [['repairs', 'customer_id'], ['sales', 'customer_id']]);
+  await adopt('suppliers', ['name', 'phone', 'email', 'website', 'notes', 'created_at'], [['products', 'supplier_id']]);
   const D = [
     'DELETE FROM payments WHERE id < 0',
     'DELETE FROM expenses WHERE id < 0',
