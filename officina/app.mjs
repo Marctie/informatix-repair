@@ -14,6 +14,11 @@ import { registerPurchaseRoutes, PURCHASE_TABLES } from './purchases.mjs';
 import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
 import { registerQuoteRoutes, quoteAlerts } from './preventivi.mjs';
 import { registerReminderRoutes, reminderAlertsNotify } from './promemoria.mjs';
+
+import { registerDeviceRoutes, DEVICE_TABLES } from './dispositivi.mjs';
+import { registerVoucherRoutes, VOUCHER_TABLES } from './buoni.mjs';
+import { registerDocumentRoutes, DOCUMENT_TABLES } from './documenti.mjs';
+import { registerCredentialRoutes, CREDENTIAL_TABLES } from './credenziali.mjs';
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
@@ -257,6 +262,12 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   // Promemoria con data/ora e avviso Telegram (officina/promemoria.mjs)
   registerReminderRoutes(app, h);
 
+  // Dispositivi, buoni/pagamento diviso, documenti d'identita' e credenziali fornitori (dati sensibili cifrati)
+  registerDeviceRoutes(app, h);
+  registerVoucherRoutes(app, h, { page, getSettings });
+  registerDocumentRoutes(app, h);
+  registerCredentialRoutes(app, h);
+
   // Magazzino
   const checkProduct = (b) => {
     for (const k of ['cost', 'price', 'min_qty']) {
@@ -404,6 +415,6 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   return dump;
 }
