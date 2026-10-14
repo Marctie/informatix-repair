@@ -6,23 +6,27 @@ const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricond
 export async function stockView(el, params) {
   let tab = params.get('tab') === 'reorder' ? 'reorder' : 'all';
   let q = '';
+  let area = ''; // area (categoria) selezionata: '' = tutte
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
       <button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></div>
     <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
-    <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><span class="chip" data-t="reorder">📉 Da ordinare</span>
+    <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><select id="p-area" class="chip" aria-label="Area del magazzino" style="min-height:44px"></select><span class="chip" data-t="reorder">📉 Da ordinare</span>
       <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
     <div class="card overflow-hidden" id="p-list"></div>`;
   const list = $('#p-list', el);
 
   async function load() {
     if (!$('#p-q', el)) return; // pagina cambiata nel frattempo
-    $$('[data-t]', el).forEach((c) => c.classList.toggle('on', c.dataset.t === tab));
+    $$('[data-t]', el).forEach((c) => c.classList.toggle('on', c.dataset.t === tab && !(c.dataset.t === 'all' && area)));
     $('#p-q', el).classList.toggle('hidden', tab === 'reorder');
+    $('#p-area', el).classList.toggle('hidden', tab === 'reorder');
     const sum = await safe(() => api('GET', '/api/stock/summary'));
     if (sum && $('#p-kpi', el)) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], [eur(sum.value_cost), 'Valore a costo', ''], [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
     if (tab === 'reorder') return loadReorder();
-    const rows = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
+    const everything = (await safe(() => api('GET', '/api/products?q='))) || [];
+    drawAreas(everything);
+    const rows = ((await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`))) || []).filter((p) => !area || (p.category || 'Altro') === area);
     const badge = (p) => {
       const low = p.min_qty > 0 && p.qty <= p.min_qty;
       return `<span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span>`;
@@ -40,6 +44,18 @@ export async function stockView(el, params) {
           <div class="top"><span class="name">${esc(p.name)}</span>${badge(p)}</div>
           <div class="sub">${[p.category, meta(p)].filter(Boolean).join(' · ')}</div>
           <div class="top" style="align-items:center"><span><span class="sub">Costo</span> ${eur(p.cost)} &nbsp;·&nbsp; <span class="sub">Prezzo</span> <b>${eur(p.price)}</b></span>${stepper(p)}</div></div>`).join('')}</div>`;
+  }
+
+  /** Menu a tendina delle aree: elenco standard + eventuali categorie già usate, con il numero di articoli. */
+  function drawAreas(all) {
+    const counts = {};
+    all.forEach((p) => { const k = p.category || 'Altro'; counts[k] = (counts[k] || 0) + 1; });
+    const names = [...new Set([...CATEGORIES, ...Object.keys(counts)])];
+    const sel = $('#p-area', el);
+    sel.innerHTML = `<option value="">Aree ▾</option>` + names.map((n) => `<option value="${esc(n)}" ${n === area ? 'selected' : ''}>${esc(n)} (${counts[n] || 0})</option>`).join('');
+    sel.classList.toggle('on', !!area);
+    if (area && !names.includes(area)) area = '';
+    sel.value = area;
   }
 
   async function loadReorder() {
@@ -60,7 +76,7 @@ export async function stockView(el, params) {
 
   el.addEventListener('click', async (e) => {
     const t = e.target.closest('[data-t]');
-    if (t) { tab = t.dataset.t; return load(); }
+    if (t) { tab = t.dataset.t; if (tab !== 'all') area = ''; if (tab === 'all') area = ''; return load(); }
     const cp = e.target.closest('[data-copy]');
     if (cp) { await navigator.clipboard?.writeText(cp.dataset.copy); return toast('Ordine copiato'); }
     const mv = e.target.closest('[data-mv]');
@@ -69,6 +85,7 @@ export async function stockView(el, params) {
     const row = e.target.closest('tr[data-id], .pcard[data-id]');
     if (row) productForm(Number(row.dataset.id), load);
   });
+  $('#p-area', el).onchange = (e) => { area = e.target.value; tab = 'all'; load(); };
   $('#p-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load(); });
   $('#p-new', el).onclick = () => productForm(null, load);
   await load();

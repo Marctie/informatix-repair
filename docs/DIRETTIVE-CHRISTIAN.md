@@ -165,3 +165,5 @@ Ordine consigliato, a lotti (ognuno con test, manuale aggiornato, commit e deplo
 - **Punto 5 – FATTO (2026-10-14)**: pulsante "Ricambio non a magazzino" (descrizione, qta, costo, prezzo, fornitore, codice, data; migrazione 0007), costo e guadagno stimato in scheda riparazione. Non ancora: storico prezzi fornitore, "Carica a magazzino", scheda laboratorio stampata.
 
 - **Punto 8 – FATTO (2026-10-14)**: casella "Stampa la ricevuta" in Vendite (ricordata per postazione, localStorage); la vendita si registra sempre e si ristampa dall'elenco. Interpretazione della seconda parte da confermare con Christian (vedi domande del punto).
+
+- **Punto 6 – FATTO (2026-10-14)**: menu a tendina "Aree ▾" tra Tutti e Da ordinare (aree = categorie, elenco standard + quelle già usate, con conteggio). Non ancora: aree personalizzabili/sotto-aree, Analisi per area.
