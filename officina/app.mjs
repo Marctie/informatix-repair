@@ -216,6 +216,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     // si eliminano solo clienti senza lavori in corso; le riparazioni concluse (consegnate/annullate) se ne vanno con lui
     const open = (await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE customer_id = ? AND status NOT IN ('delivered','cancelled')").get(req.params.id)).n;
     if (open) throw new L.HttpError(409, 'Il cliente ha riparazioni ancora aperte: concludile prima di eliminarlo.');
+    await db.prepare("DELETE FROM payments WHERE kind = 'repair' AND ref_id IN (SELECT id FROM repairs WHERE customer_id = ?)").run(req.params.id);
     await db.prepare('DELETE FROM repairs WHERE customer_id = ?').run(req.params.id);
     await db.prepare('DELETE FROM customers WHERE id = ?').run(req.params.id);
     return { ok: true };
@@ -349,7 +350,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const r = await db.prepare('SELECT status FROM repairs WHERE id = ?').get(req.params.id);
     if (!r) throw new L.HttpError(404, 'Riparazione non trovata');
     if (!['delivered', 'cancelled'].includes(r.status)) throw new L.HttpError(409, 'Si possono eliminare solo riparazioni concluse (consegnate o annullate).');
-    await db.prepare('DELETE FROM repairs WHERE id = ?').run(req.params.id); // storico, ricambi e firme vanno via; incassi e vendite restano in contabilita'
+    await db.prepare("DELETE FROM payments WHERE kind = 'repair' AND ref_id = ?").run(req.params.id); // via anche gli incassi della riparazione (cassa)
+    await db.prepare('DELETE FROM repairs WHERE id = ?').run(req.params.id); // storico, ricambi e firme vanno via
     return { ok: true };
   }));
   app.patch('/api/repairs/:id', h((req) => L.updateRepair(req.params.id, req.body)));
