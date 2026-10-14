@@ -9,10 +9,9 @@
     { "binding": "DB", "database_name": "officina", "database_id": "77a96da4-ca9b-4262-b16c-2f9233186ffd", "migrations_dir": "migrations" }
   ],
   "r2_buckets": [
-    { "binding": "BACKUPS", "bucket_name": "officina-backups" }
-    // PROPOSTA (bucket NON ancora creato): foto della Vetrina Usati, separate dai backup.
-    //   1) npx wrangler r2 bucket create officina-media   2) decommentare la riga qui sotto e mettere la virgola dopo BACKUPS
-    //   { "binding": "MEDIA", "bucket_name": "officina-media" }
+    { "binding": "BACKUPS", "bucket_name": "officina-backups" },
+    // Foto della Vetrina Usati, separate dai backup.
+    { "binding": "MEDIA", "bucket_name": "officina-media" }
   ],
   "triggers": { "crons": ["30 2 * * *"] },
   "routes": [
