@@ -62,6 +62,14 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 32. L'hosting lo gestisci tu (account tuo) o ogni cliente ha il suo account Cloudflare?
 33. Quanti clienti ipotizzi nel primo anno? (serve per scegliere il login e i piani Cloudflare)
 
+## Default scelti dall'agente B (da confermare con Christian)
+- Giacenza: 15 giorni dal rifiuto del cliente (o dall'annullamento); alla scadenza solo avviso, nessun cambio di stato automatico; deposito a pagamento = solo tariffa testuale, nessun incasso registrato.
+- Pezzi di ricambio da dispositivo ceduto: non caricati a magazzino in automatico.
+- Firma semplice (disegno + data/ora + IP + testo firmato), senza codice SMS/email; il cliente vede testo e condizioni prima di firmare.
+- Dopo il NO firmato il cliente non puo' cambiare idea dal link (il negozio puo' riaprire lo stato).
+- Collaudo di uscita non blocca la consegna; voci checklist predefinite proposte, modificabili.
+- Testi legali: bozze marcate "da far verificare"; validita' del preventivo e condizioni di recesso ancora "da definire".
+
 ## Risolte
 - (2026-10-13) Email di Christian: `djchri.cp@gmail.com`, amministratore.
 - (2026-10-13) Policy Cloudflare Access: "Everyone"; chi entra lo decide la pagina Utenti.
