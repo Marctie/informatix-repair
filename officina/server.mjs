@@ -41,8 +41,9 @@ const trackPage = (c) => c.html(readFileSync(join(HERE, 'public', 'track.html'),
 
 // `usati` permette ai test di iniettare un publisher finto e un archivio foto in memoria.
 // Sul PC la Vetrina Usati resta in bozza: pubblica sul sito solo con OFFICINA_USATI_PUBLISH=github (e GITHUB_TOKEN/GITHUB_REPO).
-export function createApps({ usati } = {}) {
+export function createApps({ usati, auth } = {}) {
   const adminApi = createAdminApp({
+    auth,
     usati: usati || {
       publisher: () => (process.env.OFFICINA_USATI_PUBLISH === 'github' ? createPublisher(process.env) : draftPublisher()),
       media: () => fsMedia(process.env.OFFICINA_MEDIA || join(HERE, 'data', 'media')),
