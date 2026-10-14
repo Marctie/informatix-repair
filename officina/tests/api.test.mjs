@@ -405,3 +405,11 @@ test('notifiche: le semplici letture (aprire Impostazioni, controlli di stato) n
   assert.match(describeEvent({ method: 'DELETE', path: '/api/demo', status: 200, user: u, result: {} }), /Dati demo eliminati/);
   assert.match(describeEvent({ method: 'POST', path: '/api/demo', status: 200, user: u, result: {} }), /Dati demo caricati/);
 });
+
+test('ricambio a mano: il costo entra nel guadagno e non tocca il magazzino', async () => {
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Prova ricambio' }, brand_model: 'Telefono X', problem: 'display', quote: 100 })).data;
+  const out = (await a('POST', `/api/repairs/${r.id}/parts`, { name: 'Display', qty: 2, unit_cost: 30, unit_price: 0, supplier_name: 'Forn', supplier_code: 'D-1', bought_at: '2026-10-14' })).data;
+  assert.equal(out.parts_cost, 60);
+  assert.equal(out.profit_estimate, 40);
+  assert.equal(out.parts[0].supplier_code, 'D-1');
+});

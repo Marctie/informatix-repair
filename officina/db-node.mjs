@@ -19,6 +19,9 @@ const addColumn = (table, column, ddl) => {
 };
 addColumn('repairs', 'urgent', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'last_seen_at', 'TEXT');
+addColumn('repair_parts', 'supplier_code', 'TEXT');
+addColumn('repair_parts', 'supplier_name', 'TEXT');
+addColumn('repair_parts', 'bought_at', 'TEXT');
 
 let depth = 0;
 setDb({
