@@ -780,3 +780,13 @@ Test notifiche reali: 41 messaggi inviati, tutti ok=true. Corretti in notify.mjs
 **Migrazioni/configurazione:** applicare 0004 su D1, poi eseguire officina/seed/usati.sql. Creare bucket `officina-media` e decommentare il binding MEDIA in wrangler.jsonc. Segreto GITHUB_TOKEN (permesso Contents sul repo); variabili GITHUB_REPO, GITHUB_BRANCH, SITE_URL gia' in wrangler.jsonc (BRANCH=main: senza token resta bozza). Opzionale su PC: OFFICINA_USATI_PUBLISH=github.
 
 **Come ripartire:** leggere questa sezione, completare manuale, guardare gli screenshot a 320/768, provare con un branch GitHub di prova (GITHUB_BRANCH) prima di main.
+
+## Agente B: schede, checklist, firme, preventivo a distanza, non riparabile (2026-10-14)
+Ramo `agente-b-schede-firme` (da `gestionale-officina`). Migrazioni **0011** (checklist, firme) e **0012** (opzioni preventivo, destino dispositivo); schema.sql e db-node allineati. `npm run test:officina`: 59 verdi (nuovo file `tests/schede.test.mjs`; aggiornati 4 test di api.test che usavano la vecchia risposta senza firma).
+- **Punto 15**: `checklists.mjs` (6 tipi, 3 elenchi: ingresso, ritiro, collaudo), modificabili in Impostazioni; controlli compilati salvati nella riparazione (`checklist.js`, tocco a 3 stati). Etichette IMEI/seriale/PIN per tipo, tipo modificabile nella scheda.
+- **Punto 14**: scheda laboratorio sempre 1 pagina (altezza bloccata, testi troncati); controlli compilati stampati con ✔✖–.
+- **Punto 13**: scheda cliente = un A4 con due copie; firma disegnata (`sigpad.js`, `sign.js`) salvata come PNG in `repair_signatures` (DB), mostrata su entrambe le copie; firma al banco o a distanza dal link (richiesta + WhatsApp). Testi in `legal.mjs` da docs/TESTI-LEGALI-BOZZE.md, marcati "bozza da far verificare" finche' non si spunta "Testi verificati".
+- **Punto 16**: dal link conferma / scelta fra soluzioni / rifiuto con scelta (ritiro o cessione), sempre con firma; registra data, ora, IP, testo firmato; Telegram. Il vecchio `accept:true` senza firma non vale piu'.
+- **Punto 2**: "Annullato / non riparabile" chiede dove sta il dispositivo; 15 giorni di giacenza (Impostazioni), avvisi in Oggi/campanella, deposito a pagamento, cessione firmata, promemoria Telegram nel cron notturno. Rifiuto dal link -> stato annullato + giacenza/ceduto.
+- Manuale: sezione 19.
+**Da provare (Christian)**: stampa su A4 vero delle due schede (una pagina ciascuna, due copie tagliabili); firma col dito su tablet/telefono, anche da link a distanza; prova su telefono del flusso Si/No del preventivo; la pistola/etichette non toccate. **Non fatto**: collaudo che blocca la consegna, caricamento a magazzino dei pezzi recuperati, firma con codice SMS, solleciti automatici al cliente.

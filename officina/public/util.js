@@ -123,6 +123,8 @@ export async function loadMeta() {
   META.statuses = m.statuses;
   META.settings = m.settings;
   META.track_base = m.track_base;
+  META.device_types = m.device_types || {};
+  META.phases = m.phases || {};
 }
 
 /** Messaggi WhatsApp precompilati. */

@@ -361,7 +361,7 @@ export async function settingsView(el) {
         <h2 class="sec-t">Checklist per tipo di dispositivo</h2>
         <p class="hint">Le voci dei controlli (ingresso, ritiro, collaudo) cambiano con il tipo di dispositivo. Una voce per riga; le modifiche valgono per le riparazioni nuove e per quelle ancora da compilare.</p>
         <div class="field"><label class="l" for="ck-type">Tipo di dispositivo</label><select id="ck-type">${Object.entries(META.device_types || {}).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select></div>
-        <div id="ck-body"></div>
+        <div id="ck-body" class="sec"></div>
       </section>
       <section class="card panel sec" id="st-demo">
         <h2 class="sec-t">Dati demo</h2>
