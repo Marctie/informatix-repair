@@ -407,3 +407,14 @@ test('dati demo: l’eliminazione riesce anche se dati veri usano clienti o prod
   await a('POST', '/api/demo');
   assert.equal((await a('DELETE', '/api/demo')).status, 200);
 });
+
+test('notifiche: le semplici letture (aprire Impostazioni, controlli di stato) non avvisano mai', async () => {
+  const { describeEvent } = await import('../notify.mjs');
+  const u = { name: 'Christian', email: 'djchri.cp@gmail.com' };
+  for (const path of ['/api/demo', '/api/settings', '/api/me', '/api/meta', '/api/alerts', '/api/users', '/api/backup/r2', '/api/expenses', '/api/analytics', '/api/dashboard', '/api/report']) {
+    assert.equal(describeEvent({ method: 'GET', path, status: 200, user: u, result: { loaded: false } }), null, `GET ${path} non deve notificare`);
+  }
+  // le azioni vere continuano ad avvisare
+  assert.match(describeEvent({ method: 'DELETE', path: '/api/demo', status: 200, user: u, result: {} }), /Dati demo eliminati/);
+  assert.match(describeEvent({ method: 'POST', path: '/api/demo', status: 200, user: u, result: {} }), /Dati demo caricati/);
+});
