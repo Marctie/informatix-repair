@@ -73,6 +73,18 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (path === '/api/backup') return isOk ? `💾 <b>Backup scaricato</b>${foot}` : fail('Backup');
   if (/^\/print\//.test(path)) return isOk ? `🖨️ <b>Stampa</b> ${esc(path.replace('/print/', ''))}${foot}` : null;
 
+  // ---- Acquisti dai fornitori (import fatture)
+  if (m === 'POST' && path === '/api/purchases/confirm') {
+    if (!isOk) return fail('Import acquisto');
+    const big = (r.changes || []).filter((c) => Math.abs(c.pct) > 5);
+    const ch = big.slice(0, 8).map((c) => `${c.direction === 'up' ? '▲' : '▼'} ${esc(short(c.product_name, 40))} · ${esc(short(c.supplier_name, 24))}: ${eur(c.prev_price)} → ${eur(c.price)} (${c.pct > 0 ? '+' : ''}${String(c.pct).replace('.', ',')}%)`).join('\n');
+    return `📥 <b>Acquisto importato</b> da ${esc(r.supplier_name)}${r.supplier_created ? ' (nuovo fornitore)' : ''}
+Fattura ${esc(r.doc_number)} · ${eur(r.total)} · ${esc(r.lines_count)} righe caricate${r.new_products ? ` (${esc(r.new_products)} prodotti nuovi)` : ''}${ch ? `
+⚠️ Variazioni di prezzo oltre il 5%:
+${ch}` : ''}${foot}`;
+  }
+  if (path.startsWith('/api/purchases/preview')) return isOk ? null : fail('Lettura fattura');
+
   if (m === 'GET') return null; // le letture normali non si segnalano
   if (status >= 400) return `⚠️ <b>Richiesta rifiutata ${status}</b>\n${esc(m)} ${esc(path)}\n${esc(short(r.error || '', 200))}${foot}`;
   return `ℹ️ ${esc(m)} ${esc(path)} (${status})${foot}`;

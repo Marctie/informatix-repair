@@ -1,5 +1,6 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
+import { priceAlerts } from './purchases.mjs';
 
 export class HttpError extends Error {
   constructor(status, message) {
@@ -574,6 +575,7 @@ export async function alerts() {
       if (since != null && since >= readyDays) out.push({ type: 'ready_waiting', severity: 'low', title: `${r.brand_model}: pronta da ${since} giorni`, detail: `${r.customer_name} non l’ha ancora ritirata: ricordaglielo.`, link: '#/riparazioni?status=ready', ref: r.id });
     }
   }
+  try { out.push(...(await priceAlerts())); } catch { /* acquisti non ancora migrati: nessun avviso di prezzo */ }
   const rank = { high: 0, medium: 1, low: 2 };
   out.sort((a, b) => rank[a.severity] - rank[b.severity]);
   return { count: out.length, high: out.filter((x) => x.severity === 'high').length, items: out };

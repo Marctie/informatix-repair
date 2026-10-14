@@ -1,6 +1,7 @@
 // Dati dimostrativi completi (clienti, magazzino, riparazioni in ogni stato, vendite, incassi).
 // Regola di sicurezza: ogni riga demo ha un id NEGATIVO (i dati veri hanno id positivi), quindi "elimina demo" non può toccare i dati reali.
 import { db, nowLocal } from './dbref.mjs';
+import { demoPurchaseStatements, DEMO_PURCHASE_DELETES } from './purchases.mjs';
 
 const DAY = 86400000;
 /** Data/ora "da negozio" di N giorni fa, con orario scelto. */
@@ -142,6 +143,7 @@ export async function loadDemo() {
     add("INSERT INTO expenses (id,spent_on,description,category,vendor,amount,vat,method,doc_type,doc_number,paid_by,reimbursable,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
       --xc, ts(d, '12:00').slice(0, 10), `${desc} (DEMO)`, cat, vendor, amount, vat, method, doc === 'senza' ? 'nessuno' : doc, num, by, reimb, ts(d, '12:00'));
   }
+  S.push(...demoPurchaseStatements(ts)); // acquisti demo con prezzi che variano tra fornitori
   for (let i = 0; i < S.length; i += 80) await db.batch(S.slice(i, i + 80));
   return { ok: true, ...(await demoStatus()) };
 }
@@ -166,6 +168,7 @@ export async function deleteDemo() {
   await adopt('customers', ['name', 'phone', 'email', 'notes', 'created_at'], [['repairs', 'customer_id'], ['sales', 'customer_id']]);
   await adopt('suppliers', ['name', 'phone', 'email', 'website', 'notes', 'created_at'], [['products', 'supplier_id']]);
   const D = [
+    ...DEMO_PURCHASE_DELETES,
     'DELETE FROM payments WHERE id < 0',
     'DELETE FROM expenses WHERE id < 0',
     'DELETE FROM sale_items WHERE id < 0 OR sale_id < 0',
