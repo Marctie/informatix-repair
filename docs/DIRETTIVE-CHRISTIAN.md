@@ -169,3 +169,5 @@ Ordine consigliato, a lotti (ognuno con test, manuale aggiornato, commit e deplo
 - **Punto 6 – FATTO (2026-10-14)**: menu a tendina "Aree ▾" tra Tutti e Da ordinare (aree = categorie, elenco standard + quelle già usate, con conteggio). Non ancora: aree personalizzabili/sotto-aree, Analisi per area.
 
 - **Punto 7 – FATTO (2026-10-14)**: listino servizi (tabella services, migrazione 0008) con pulsanti in Vendite e gestione; costo del servizio nel guadagno. Non ancora: servizi come manodopera nelle riparazioni, ricavi servizi separati in Analisi. **LOTTO A COMPLETATO** (resta: registro modifiche/eliminazioni, margini nascosti al ruolo Cassa).
+
+- **Acquisti collegato al menu (2026-10-14)**: voce Acquisti nel gestionale (import fattura XML, elenco, storico prezzi). Verificata la pagina vuota a 1280 px; da provare con una fattura vera e a telefono.
