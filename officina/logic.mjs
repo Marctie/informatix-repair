@@ -161,6 +161,8 @@ async function decorateRepair(r, full = false) {
   const st = STATUSES[r.status];
   const out = {
     ...r,
+    // nell'elenco i controlli compilati (JSON) non servono: si leggono nel dettaglio
+    ...(full ? {} : { checklist_in: undefined, checklist_pre: undefined, checklist_out: undefined }),
     status_label: st.label,
     progress: progressPct(r.status),
     next_status: NEXT_STATUS[r.status] || null,
@@ -170,6 +172,11 @@ async function decorateRepair(r, full = false) {
   if (full) {
     out.events = await db.prepare('SELECT * FROM repair_events WHERE repair_id = ? ORDER BY id DESC').all(r.id);
     out.parts = await db.prepare('SELECT * FROM repair_parts WHERE repair_id = ? ORDER BY id').all(r.id);
+    for (const p of ['in', 'pre', 'out']) {
+      let c = null;
+      try { c = r[`checklist_${p}`] ? JSON.parse(r[`checklist_${p}`]) : null; } catch { /* JSON rovinato: come se non fosse compilata */ }
+      out[`checklist_${p}`] = Array.isArray(c?.items) ? c : null;
+    }
     out.parts_cost = money(out.parts.reduce((a, p) => a + p.qty * p.unit_cost, 0));
     out.profit_estimate = (r.final_price ?? r.quote) == null ? null : money((r.final_price ?? r.quote) - out.parts_cost);
     out.paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);

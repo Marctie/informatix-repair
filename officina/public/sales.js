@@ -1,6 +1,6 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
-import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete } from './util.js';
+import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
@@ -342,6 +342,12 @@ export async function settingsView(el) {
         <div class="row tight"><a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>${ONLINE ? '<button class="btn btn-outline" id="st-r2">Salva ora nel cloud</button>' : ''}</div>
         <p class="hint">${ONLINE ? 'Per ripristinare una copia serve l’assistenza: scrivici prima di cancellare qualcosa di importante.' : 'Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.'}</p>
       </section>
+      <section class="card panel sec" id="st-ck">
+        <h2 class="sec-t">Checklist per tipo di dispositivo</h2>
+        <p class="hint">Le voci dei controlli (ingresso, ritiro, collaudo) cambiano con il tipo di dispositivo. Una voce per riga; le modifiche valgono per le riparazioni nuove e per quelle ancora da compilare.</p>
+        <div class="field"><label class="l" for="ck-type">Tipo di dispositivo</label><select id="ck-type">${Object.entries(META.device_types || {}).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select></div>
+        <div id="ck-body"></div>
+      </section>
       <section class="card panel sec" id="st-demo">
         <h2 class="sec-t">Dati demo</h2>
         <p class="hint">Carica clienti, riparazioni in ogni stato, magazzino, vendite e incassi di esempio per vedere tutto il gestionale al lavoro. Sono segnati come “(DEMO)” e si cancellano con un click, senza toccare i dati veri.</p>
@@ -365,6 +371,31 @@ export async function settingsView(el) {
     };
   };
   drawDemo();
+  // checklist per tipo: tre elenchi modificabili (una voce per riga)
+  const ckBox = $('#ck-body', el);
+  let ckAll = {};
+  const drawCk = () => {
+    const t = $('#ck-type', el).value;
+    const c = ckAll[t];
+    if (!c) return;
+    const ta = (p, title) => `<div class="field"><label class="l" for="ck-${p}">${title}</label><textarea id="ck-${p}" rows="7" data-ph="${p}">${esc((c[p] || []).join('\n'))}</textarea></div>`;
+    ckBox.innerHTML = `${ta('in', 'Controllo all’ingresso')}${ta('pre', 'Al ritiro in laboratorio')}${ta('out', 'Collaudo finale')}
+      <div class="row tight"><button class="btn btn-outline" id="ck-save">Salva checklist</button>${c.custom ? '<button class="btn btn-ghost" id="ck-reset">Ripristina le voci predefinite</button>' : '<span class="hint">Voci predefinite in uso.</span>'}</div>`;
+    $('#ck-save', ckBox).onclick = async () => {
+      const body = {};
+      $$('[data-ph]', ckBox).forEach((x) => { body[x.dataset.ph] = x.value.split('\n').map((l) => l.trim()).filter(Boolean); });
+      const out = await safe(() => api('PUT', `/api/checklists/${t}`, body));
+      if (out) { ckAll[t] = out; toast('Checklist salvata'); drawCk(); }
+    };
+    const rs = $('#ck-reset', ckBox);
+    if (rs) rs.onclick = async () => {
+      if (!(await confirmDelete(`le voci personalizzate di ${META.device_types[t].label}`, { verb: 'Ripristinare', detail: 'Tornano le voci predefinite. Le riparazioni già compilate non cambiano.' }))) return;
+      const out = await safe(() => api('DELETE', `/api/checklists/${t}`));
+      if (out) { ckAll[t] = out; toast('Voci predefinite ripristinate'); drawCk(); }
+    };
+  };
+  $('#ck-type', el).onchange = drawCk;
+  safe(() => api('GET', '/api/checklists')).then((r) => { ckAll = r || {}; drawCk(); });
   if ($('#st-r2', el)) $('#st-r2', el).onclick = async () => {
     const out = await safe(() => api('POST', '/api/backup/r2', {}));
     if (out?.ok) toast('Copia salvata nel cloud');

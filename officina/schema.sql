@@ -36,9 +36,14 @@ CREATE TABLE IF NOT EXISTS repairs (
   eta_date TEXT, warranty_days INTEGER NOT NULL DEFAULT 90,
   quote_decision TEXT, quote_decided_at TEXT,
   tech_notes TEXT, customer_note TEXT,
+  checklist_in TEXT, checklist_pre TEXT, checklist_out TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   delivered_at TEXT
+);
+CREATE TABLE IF NOT EXISTS checklist_templates (
+  device_type TEXT NOT NULL, phase TEXT NOT NULL, items TEXT NOT NULL,
+  PRIMARY KEY (device_type, phase)
 );
 CREATE TABLE IF NOT EXISTS repair_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
