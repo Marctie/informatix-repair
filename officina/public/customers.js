@@ -72,7 +72,7 @@ export async function openCustomer(id, done) {
   $('#cu-docs', m.el).onclick = () => openDocuments(c);
   $('#cu-edit', m.el).onclick = () => { m.close(); editCustomer(c, done); };
   $('#cu-del', m.el).onclick = async () => {
-    if (!(await confirmDelete(c.name, { typed: 'ELIMINA', detail: 'Cliente e dati collegati.' }))) return;
+    if (!(await confirmDelete(c.name, { typed: 'ELIMINA', detail: 'Il cliente e le sue riparazioni concluse vengono cancellati (incassi e vendite restano in contabilità).' }))) return;
     const out = await safe(() => api('DELETE', `/api/customers/${c.id}`));
     if (out) { m.close(); toast('Cliente eliminato'); done?.(); }
   };

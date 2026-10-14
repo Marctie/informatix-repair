@@ -294,7 +294,7 @@ export async function openRepairDetail(id, onChange) {
           ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
           <select id="d-status" style="width:auto;min-width:11rem" aria-label="Cambia stato"><option value="">Cambia stato…</option>${statusOptions}</select>
           ${['ready', 'repairing', 'approved'].includes(r.status) ? '<button class="btn btn-green" data-act="deliver">✔ Consegna e incassa</button>' : ''}
-        </div>` : ''}
+        </div>` : `<div class="row"><button class="btn btn-outline" data-act="delrepair" style="color:#B91C1C">🗑 Elimina riparazione</button></div>`}
       </div>
 
       <div class="cols">
@@ -450,6 +450,7 @@ export async function openRepairDetail(id, onChange) {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     switch (b.dataset.act) {
+      case 'delrepair': { if (!(await confirmDelete(`la riparazione ${$('h2', m.el).textContent}`, { typed: 'ELIMINA', detail: 'Storico e firme vengono cancellati. Gli incassi restano in contabilità.' }))) return; const out = await safe(() => api('DELETE', `/api/repairs/${id}`)); if (out) { toast('Riparazione eliminata'); m.close(); onChange?.(); } return; }
       case 'manualpart': return manualPartDialog(id, () => { reloadList(); render(); });
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });

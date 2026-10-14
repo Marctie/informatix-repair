@@ -56,7 +56,7 @@ test('magazzino: prodotto con carico iniziale, movimenti e sotto scorta', async 
 test('riparazione: ingresso veloce, ricambio scala il magazzino, tracciamento pubblico', async () => {
   const prod = (await a('GET', '/api/products?q=Display')).data[0];
   const created = await a('POST', '/api/repairs', {
-    customer: { name: 'Mario Rossi', phone: '3331234567', email: 'mario.rossi@example.com' },
+    customer: { name: 'Mario Rossi', phone: '3490001111', email: 'mario.rossi@example.com' },
     brand_model: 'iPhone 13', problem: 'Schermo rotto', accessories: 'cover', passcode: '1234',
     quote: 129, deposit: 30, eta_date: '2030-01-10',
   });
@@ -67,7 +67,7 @@ test('riparazione: ingresso veloce, ricambio scala il magazzino, tracciamento pu
   assert.ok(r.track_url.includes(`/t/${r.token}`));
 
   // stesso telefono => stesso cliente (niente doppioni)
-  const second = (await a('POST', '/api/repairs', { customer: { name: 'Mario R.', phone: '3331234567' }, brand_model: 'iPad', problem: 'Batteria' })).data;
+  const second = (await a('POST', '/api/repairs', { customer: { name: 'Mario R.', phone: '3490001111' }, brand_model: 'iPad', problem: 'Batteria' })).data;
   assert.equal(second.customer_id, r.customer_id);
   assert.match(second.code, /-0002$/);
 
@@ -87,7 +87,7 @@ test('riparazione: ingresso veloce, ricambio scala il magazzino, tracciamento pu
   const raw = JSON.stringify(pubView);
   assert.ok(!raw.includes('1234'), 'il codice di sblocco non deve mai comparire');
   assert.ok(!raw.includes('mario.rossi@example.com'));
-  assert.ok(!raw.includes('3331234567'));
+  assert.ok(!raw.includes('3490001111'));
   assert.equal(pubView.customer.name, 'Mario Rossi');
   assert.equal(pubView.progress, 0);
   assert.equal(pubView.quote, 129);
@@ -381,8 +381,8 @@ test('notifiche Telegram: testo chiaro, escape HTML, niente segreti', async () =
   assert.ok(p.includes('Display &lt;A&amp;B&gt; ×2'));
   const s = describeEvent({ method: 'PUT', path: '/api/settings', status: 200, user: u, body: { shop_name: 'x', admin_password: 'segreto' } });
   assert.ok(s.includes('nome negozio') && !s.includes('password') && !s.includes('segreto'));
-  const n = describeEvent({ method: 'POST', path: '/api/repairs', status: 200, user: u, body: { problem: 'x', passcode: '9876' }, result: { code: 'R-1', customer_phone: '3331234567', passcode: '9876' } });
-  assert.ok(!n.includes('9876') && !n.includes('3331234567'));
+  const n = describeEvent({ method: 'POST', path: '/api/repairs', status: 200, user: u, body: { problem: 'x', passcode: '9876' }, result: { code: 'R-1', customer_phone: '3490001111', passcode: '9876' } });
+  assert.ok(!n.includes('9876') && !n.includes('3490001111'));
   assert.equal(describeEvent({ method: 'GET', path: '/print/customer/9', status: 404, user: u }), null);
 });
 
@@ -625,4 +625,17 @@ test('notifiche Telegram: azioni sulla vetrina usati ed errori di pubblicazione'
   assert.match(ev('POST', '/api/usati', { ...base, publish: { state: 'error', message: 'GitHub 401' } }), /Pubblicazione sul sito NON riuscita/);
   assert.match(ev('POST', '/api/usati', { error: 'Nome obbligatorio' }, {}, 400), /non riuscit[oa]/);
   assert.equal(ev('GET', '/api/usati', {}), null);
+});
+
+const conclude = async (id) => { for (let i = 0; i < 8 && (await a('GET', `/api/repairs/${id}`)).data.status !== 'ready'; i++) await a('POST', `/api/repairs/${id}/advance`); await a('POST', `/api/repairs/${id}/deliver`, { final_price: 10, method: 'carta' }); };
+test('eliminazione: solo riparazioni concluse; il cliente va via con le sue concluse', async () => {
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Da Eliminare', phone: '3517770001' }, brand_model: 'Tab', problem: 'x' })).data;
+  assert.equal((await a('DELETE', `/api/repairs/${r.id}`)).status, 409); // ancora aperta
+  assert.equal((await a('DELETE', `/api/customers/${r.customer_id}`)).status, 409);
+  await conclude(r.id);
+  assert.equal((await a('DELETE', `/api/customers/${r.customer_id}`)).status, 200);
+  assert.equal((await a('GET', `/api/repairs/${r.id}`)).status, 404);
+  const r2 = (await a('POST', '/api/repairs', { customer: { name: 'Da Eliminare 2', phone: '3517770002' }, brand_model: 'Tab', problem: 'x' })).data;
+  await conclude(r2.id);
+  assert.equal((await a('DELETE', `/api/repairs/${r2.id}`)).status, 200);
 });

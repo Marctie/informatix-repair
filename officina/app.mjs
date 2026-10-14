@@ -213,8 +213,10 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
   }));
   app.delete('/api/customers/:id', h(async (req) => {
-    const n = (await db.prepare('SELECT COUNT(*) AS n FROM repairs WHERE customer_id = ?').get(req.params.id)).n;
-    if (n) throw new L.HttpError(409, 'Il cliente ha delle riparazioni: non si può eliminare.');
+    // si eliminano solo clienti senza lavori in corso; le riparazioni concluse (consegnate/annullate) se ne vanno con lui
+    const open = (await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE customer_id = ? AND status NOT IN ('delivered','cancelled')").get(req.params.id)).n;
+    if (open) throw new L.HttpError(409, 'Il cliente ha riparazioni ancora aperte: concludile prima di eliminarlo.');
+    await db.prepare('DELETE FROM repairs WHERE customer_id = ?').run(req.params.id);
     await db.prepare('DELETE FROM customers WHERE id = ?').run(req.params.id);
     return { ok: true };
   }));
@@ -342,6 +344,13 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/repairs/:id', h(async (req) => {
     const r = await L.getRepair(req.params.id);
     return { ...r, track_url: await trackUrl(r.token) };
+  }));
+  app.delete('/api/repairs/:id', h(async (req) => {
+    const r = await db.prepare('SELECT status FROM repairs WHERE id = ?').get(req.params.id);
+    if (!r) throw new L.HttpError(404, 'Riparazione non trovata');
+    if (!['delivered', 'cancelled'].includes(r.status)) throw new L.HttpError(409, 'Si possono eliminare solo riparazioni concluse (consegnate o annullate).');
+    await db.prepare('DELETE FROM repairs WHERE id = ?').run(req.params.id); // storico, ricambi e firme vanno via; incassi e vendite restano in contabilita'
+    return { ok: true };
   }));
   app.patch('/api/repairs/:id', h((req) => L.updateRepair(req.params.id, req.body)));
   app.post('/api/repairs/:id/status', h(async (req) => {
