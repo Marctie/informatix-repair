@@ -46,6 +46,7 @@ export async function salesView(el) {
           <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(subtotal)}</b></div>
         </div>
+        <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${wantPrint() ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
     const disc = $('#s-disc', el);
@@ -104,13 +105,15 @@ export async function salesView(el) {
       cart.push({ name, qty: 1, unit_price: price }); $('#s-free', el).value = ''; $('#s-free-p', el).value = ''; return renderCart();
     }
     if (e.target.id === 's-pay') {
+      const printNow = $('#s-print', el).checked;
+      try { localStorage.setItem('sale_print', printNow ? '1' : '0'); } catch { /* memoria non disponibile */ }
       e.target.disabled = true;
       const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, method: $('#s-method', el).value, customer_id: customer?.id || null }));
       e.target.disabled = false;
       if (!out) return;
       cart.length = 0; renderCart(); recent();
       toast(`Venduto: ${eur(out.total)}`);
-      window.open(`/print/sale/${out.id}`, '_blank');
+      if (printNow) window.open(`/print/sale/${out.id}`, '_blank');
     }
   });
   el.addEventListener('change', (e) => {
@@ -195,6 +198,8 @@ export async function cashView(el, qs = new URLSearchParams()) {
   await load();
 }
 
+/** Ultima scelta di stampa (per postazione): di default la ricevuta si stampa. */
+const wantPrint = () => { try { return localStorage.getItem('sale_print') !== '0'; } catch { return true; } };
 const METHODS = ['contanti', 'carta', 'bonifico'];
 const DOC_LABEL = { scontrino: 'Scontrino', fattura: 'Fattura', ricevuta: 'Ricevuta', nessuno: 'Senza giustificativo' };
 const opt = (list, sel, label = (v) => v) => list.map((v) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(label(v))}</option>`).join('');
