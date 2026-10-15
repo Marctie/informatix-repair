@@ -2,6 +2,7 @@
 import { scanWithCamera } from './scan.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
+import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagatore
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 
 import { signIntakeAtDesk, signDialog } from './sign.js';
@@ -185,6 +186,7 @@ export function openRepairForm(onDone, preset = {}) {
     customerId = Number(r.dataset.id);
     $('#rf-picked', root).innerHTML = `<div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mt-2 text-sm"><span>✔ <b>${esc(r.dataset.name)}</b> ${esc(r.dataset.phone)}</span><button type="button" class="btn btn-ghost btn-sm" id="rf-unpick">cambia</button></div>`;
     $('#rf-picked', root).classList.remove('hidden');
+    debtorNotice($('#rf-picked', root), customerId); // Agente C
     $('#rf-new', root).classList.add('hidden');
     $('#rf-search', root).classList.add('hidden');
     sugg.classList.add('hidden');

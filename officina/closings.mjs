@@ -213,15 +213,15 @@ export function registerClosingRoutes(app, h, { adminOnly, media }) {
       return c.body(closingsCsv(d.rows), 200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="chiusure-cassa-${d.from || 'inizio'}_${d.to || localDate()}.csv"`, 'cache-control': 'no-store' });
     } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Esportazione non riuscita' }, e.status || 500); }
   });
-  app.get('/api/closings/:id{[0-9]+}', h(async (req) => decorate(await getClosing(req.params.id))));
+  app.get('/api/closings/:id{-?[0-9]+}', h(async (req) => decorate(await getClosing(req.params.id))));
   app.post('/api/closings', h((req) => createClosing(req.body, req.user)));
-  app.put('/api/closings/:id{[0-9]+}', h((req) => updateClosing(req.params.id, req.body, req.user)));
-  app.post('/api/closings/:id{[0-9]+}/lock', h((req) => lockClosing(req.params.id, req.user)));
-  app.post('/api/closings/:id{[0-9]+}/unlock', h((req) => { adminOnly(req); return unlockClosing(req.params.id, req.body.reason, req.user); }));
-  app.delete('/api/closings/:id{[0-9]+}', h((req) => { adminOnly(req); return deleteClosing(req.params.id, req.user, media(req.c)); }));
-  app.post('/api/closings/:id{[0-9]+}/photo', h((req) => setPhoto(req.params.id, req.body.image, req.user, ensureMedia(req.c))));
-  app.delete('/api/closings/:id{[0-9]+}/photo', h((req) => removePhoto(req.params.id, req.user, media(req.c))));
-  app.get('/api/closings/:id{[0-9]+}/photo', async (c) => {
+  app.put('/api/closings/:id{-?[0-9]+}', h((req) => updateClosing(req.params.id, req.body, req.user)));
+  app.post('/api/closings/:id{-?[0-9]+}/lock', h((req) => lockClosing(req.params.id, req.user)));
+  app.post('/api/closings/:id{-?[0-9]+}/unlock', h((req) => { adminOnly(req); return unlockClosing(req.params.id, req.body.reason, req.user); }));
+  app.delete('/api/closings/:id{-?[0-9]+}', h((req) => { adminOnly(req); return deleteClosing(req.params.id, req.user, media(req.c)); }));
+  app.post('/api/closings/:id{-?[0-9]+}/photo', h((req) => setPhoto(req.params.id, req.body.image, req.user, ensureMedia(req.c))));
+  app.delete('/api/closings/:id{-?[0-9]+}/photo', h((req) => removePhoto(req.params.id, req.user, media(req.c))));
+  app.get('/api/closings/:id{-?[0-9]+}/photo', async (c) => {
     try {
       const row = await getClosing(c.req.param('id'));
       if (!row.photo_key) return c.text('Nessuna foto', 404);
