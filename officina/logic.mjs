@@ -68,8 +68,9 @@ export const newToken = () => {
 async function nextCode(table, prefix) {
   const year = nowLocal().slice(0, 4);
   const like = `${prefix}-${year}-%`;
-  const row = await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE code LIKE ?`).get(like);
-  return `${prefix}-${year}-${String(row.n + 1).padStart(4, '0')}`;
+  // il numero piu' alto, non il conteggio: dopo un'eliminazione il conteggio ridarebbe un codice gia' in uso (UNIQUE)
+  const row = await db.prepare(`SELECT MAX(CAST(substr(code, ${prefix.length + 7}) AS INTEGER)) AS n FROM ${table} WHERE code LIKE ?`).get(like);
+  return `${prefix}-${year}-${String((row.n || 0) + 1).padStart(4, '0')}`;
 }
 
 export async function logEvent(repairId, status, note, isPublic = 1) {
