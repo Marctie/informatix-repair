@@ -79,7 +79,8 @@ CREATE TABLE IF NOT EXISTS repair_parts (
   name TEXT NOT NULL, qty INTEGER NOT NULL DEFAULT 1,
   unit_price REAL NOT NULL DEFAULT 0, unit_cost REAL NOT NULL DEFAULT 0,
   supplier_code TEXT, supplier_name TEXT, bought_at TEXT,
-  vat_rate REAL, cost_net REAL, cost_vat REAL, vat_applied INTEGER NOT NULL DEFAULT 0
+  vat_rate REAL, cost_net REAL, cost_vat REAL, vat_applied INTEGER NOT NULL DEFAULT 0,
+  order_state TEXT, ordered_at TEXT                 -- materiali da ordinare: NULL | da_ordinare | ordinato | arrivato
 );
 CREATE TABLE IF NOT EXISTS services (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,6 +229,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   valid_until TEXT NOT NULL, discount REAL NOT NULL DEFAULT 0, notes TEXT, terms TEXT,
   repair_id INTEGER REFERENCES repairs(id) ON DELETE SET NULL,
   sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
+  sent_at TEXT, sent_via TEXT,                      -- ultimo invio al cliente (whatsapp | email | link)
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -477,3 +479,46 @@ CREATE TABLE IF NOT EXISTS notes (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_notes_pinned ON notes(pinned, archived);
+-- Agente D: carta punti NFC protetta (migrazione 0027)
+CREATE TABLE IF NOT EXISTS loyalty_cards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_no TEXT NOT NULL UNIQUE,                    -- numero stampabile, es. C-000012
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  uid TEXT NOT NULL,                               -- UID del chip, esadecimale maiuscolo
+  status TEXT NOT NULL DEFAULT 'attiva',           -- attiva | bloccata | persa | annullata
+  points INTEGER NOT NULL DEFAULT 0,               -- saldo punti: vive SOLO qui (sul chip non c'e' mai saldo)
+  counter INTEGER NOT NULL DEFAULT 0,              -- contatore del codice a rotazione scritto sul chip
+  pin_hash TEXT,                                   -- HMAC del PIN (mai il PIN)
+  fail_count INTEGER NOT NULL DEFAULT 0,           -- tentativi falliti di fila
+  locked_reason TEXT,
+  notes TEXT, created_by TEXT,
+  issued_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  last_used_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_loyalty_uid_live ON loyalty_cards(uid) WHERE status IN ('attiva','bloccata');
+CREATE INDEX IF NOT EXISTS idx_loyalty_customer ON loyalty_cards(customer_id);
+CREATE TABLE IF NOT EXISTS loyalty_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  card_id INTEGER REFERENCES loyalty_cards(id) ON DELETE CASCADE,   -- NULL = carta sconosciuta
+  kind TEXT NOT NULL,                              -- emissione | verifica | accredito | riscatto | rettifica | riemissione | blocco | sblocco | sostituzione | tentativo_fallito | sospetta_clonazione
+  points INTEGER NOT NULL DEFAULT 0,               -- variazione del saldo (+/-)
+  ref_kind TEXT, ref_id INTEGER,                   -- vendita/riparazione che ha generato i punti
+  voucher_id INTEGER REFERENCES vouchers(id) ON DELETE SET NULL,
+  by_user TEXT, ip TEXT, detail TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_loyalty_events_card ON loyalty_events(card_id);
+CREATE INDEX IF NOT EXISTS idx_loyalty_events_who ON loyalty_events(by_user, created_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_loyalty_accrual_once ON loyalty_events(ref_kind, ref_id) WHERE kind = 'accredito' AND ref_id IS NOT NULL;
+
+-- Agente D: formati dei documenti PDF imparati per fornitore (migrazione 0028)
+CREATE TABLE IF NOT EXISTS supplier_formats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  supplier_key TEXT NOT NULL UNIQUE,               -- vat:<partita IVA> oppure name:<nome normalizzato>
+  supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+  label TEXT,
+  pattern TEXT NOT NULL,
+  uses INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

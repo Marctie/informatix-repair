@@ -3,6 +3,7 @@ import { scanWithCamera } from './scan.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
 import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagatore
+import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 import { retroField, retroVal } from './retro.js';
@@ -391,7 +392,7 @@ export async function openRepairDetail(id, onChange) {
                 <div class="row" style="flex-wrap:nowrap;display:none" id="d-dep2"><input id="d-dep2a" inputmode="decimal" placeholder="Seconda quota €" aria-label="Seconda quota" /><select id="d-dep2m" aria-label="Seconda quota pagata con" style="width:auto"><option>carta</option><option>contanti</option><option>bonifico</option></select></div>
                 ${retroField('d-dep-retro')}
                 <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
-              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button><button class="btn btn-outline btn-sm" data-act="sendquote">📨 Invia preventivo al cliente</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
 
@@ -409,7 +410,7 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
             <div class="plist">
-              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} ${p.order_state ? `<button type="button" class="badge ${p.order_state === 'arrivato' ? 'bg-emerald-100 text-emerald-700' : p.order_state === 'ordinato' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-800'}" data-pstate="${p.id}" data-pnext="${p.order_state === 'da_ordinare' ? 'ordinato' : p.order_state === 'ordinato' ? 'arrivato' : ''}" title="Tocca per far avanzare lo stato">${p.order_state === 'da_ordinare' ? '📋 Da ordinare' : p.order_state === 'ordinato' ? '📮 Ordinato' : '✅ Arrivato'}</button>` : ''} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
             ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>
             <div class="row tight"><button class="btn btn-outline btn-sm" data-act="manualpart">＋ Ricambio non a magazzino</button></div>` : ''}
@@ -470,6 +471,8 @@ export async function openRepairDetail(id, onChange) {
 
   const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
+    const ps = e.target.closest('[data-pstate]');
+    if (ps) { if (!ps.dataset.pnext) return; return act(() => api('POST', `/api/materiali/parts/${ps.dataset.pstate}/state`, { state: ps.dataset.pnext }), ps.dataset.pnext === 'ordinato' ? 'Segnato come ordinato' : 'Segnato come arrivato'); }
     const ts = e.target.closest('[data-tostock]');
     if (ts) return act(() => api('POST', `/api/repairs/${id}/parts/${ts.dataset.tostock}/stock`), 'Ricambio caricato a magazzino: ora è un articolo a catalogo');
 
@@ -490,6 +493,7 @@ export async function openRepairDetail(id, onChange) {
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
+      case 'sendquote': return sendQuoteDialog(id, () => { reloadList(); render(); });
       case 'askquote': return act(() => api('POST', `/api/repairs/${id}/status`, { status: 'quote_pending' }), 'Il cliente può ora approvare dal link');
       case 'depsplit': { const r2 = $('#d-dep2', body); r2.style.display = r2.style.display === 'none' ? '' : 'none'; return; }
       case 'deposit': {
@@ -673,6 +677,7 @@ async function manualPartDialog(repairId, done) {
       <div class="field"><label class="l" for="mp-price">Prezzo al cliente € (cad.)</label><input id="mp-price" inputmode="decimal" placeholder="0 = incluso nel preventivo" /></div>
       <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" /></div>
       <div class="field"><label class="l" for="mp-date">Data d’acquisto</label><input id="mp-date" type="date" value="${today()}" /></div>
+      <label class="field" style="grid-column:1/-1;display:flex;gap:.5rem;align-items:center"><input id="mp-order" type="checkbox" style="width:auto" /> <span>Ancora da ordinare al fornitore (finisce nella lista “Da ordinare”)</span></label>
     </div><p class="hint">Non scala nessuna giacenza. Il costo entra nel guadagno della riparazione.</p>`,
     { title: 'Ricambio non a magazzino', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="mp-ok">Aggiungi</button>' });
   const vatVals = canSeeCosts() ? bindVat(m.el, 'mp', '#mp-cost') : () => ({});
@@ -680,7 +685,7 @@ async function manualPartDialog(repairId, done) {
     const v = (id) => $(`#${id}`, m.el).value;
     const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, {
       name: v('mp-name'), qty: v('mp-qty'), unit_cost: ($('#mp-cost', m.el) ? v('mp-cost') : '').replace(',', '.'), unit_price: v('mp-price').replace(',', '.') || 0,
-      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'), ...vatVals(),
+      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'), to_order: $('#mp-order', m.el).checked, ...vatVals(),
     }));
     if (out) { m.close(); toast('Ricambio aggiunto'); done(); }
   };

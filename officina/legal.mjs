@@ -8,19 +8,19 @@ export const LEGAL_DEFAULTS = {
   storage_days: '15',
   storage_fee: '',
   consent_intake:
-    'Affido a {negozio} il dispositivo descritto in scheda per diagnosi e riparazione. Dichiaro di avere letto le condizioni riportate (preventivo indicativo fino all’approvazione, termini di ritiro, garanzia di {garanzia} giorni sulla riparazione, responsabilità sui dati: ho effettuato o rinuncio al backup) e di essere informato sul trattamento dei miei dati come da informativa privacy disponibile in negozio e sul sito. Autorizzo il laboratorio ad accedere al dispositivo per i soli controlli necessari alla riparazione.',
+    'Affido a {negozio} il dispositivo descritto in scheda per diagnosi e riparazione. Dichiaro di avere letto le condizioni riportate (preventivo indicativo fino all’approvazione, termini di ritiro, garanzia di {garanzia} giorni sulla riparazione, che non limita i miei diritti previsti dalla legge; responsabilità sui dati: ho effettuato o rinuncio al backup, e il laboratorio non risponde dei dati presenti sul dispositivo) e di avere ricevuto l’informativa sul trattamento dei miei dati personali (art. 13 Regolamento UE 2016/679, GDPR) disponibile in negozio e sul sito: i dati servono a eseguire la riparazione e gli obblighi di legge e non sono ceduti a terzi, se non per obbligo di legge. Autorizzo il laboratorio ad accedere al dispositivo per i soli controlli necessari alla riparazione, senza copiare o consultare dati personali non necessari.',
   quote_accept_title: 'Confermi il preventivo?',
   quote_accept_text:
-    'Stai accettando il preventivo n. {codice} di {importo} per la riparazione di {dispositivo}{consegna}. Con la conferma autorizzi il laboratorio a eseguire i lavori descritti. Se non vengono eseguiti, o se vengono eseguiti solo in parte, hai diritto al ritiro del dispositivo. Una volta iniziati i lavori non è possibile annullare l’incarico senza il pagamento delle attività già svolte e dei ricambi già acquistati o montati (condizioni da definire).',
+    'Stai accettando il preventivo n. {codice} di {importo} per la riparazione di {dispositivo}{consegna}. Con la conferma autorizzi il laboratorio a eseguire i lavori descritti. Se non vengono eseguiti, o se vengono eseguiti solo in parte, hai diritto al ritiro del dispositivo. Se rinunci dopo l’inizio dei lavori, dovrai pagare solo le attività già svolte e i ricambi già acquistati o montati. L’importo può cambiare solo se ti avvisiamo e tu confermi di nuovo.',
   quote_decline_title: 'Rifiuti il preventivo?',
   quote_decline_text: 'Stai rifiutando il preventivo n. {codice}. Il dispositivo non verrà riparato. Scegli cosa fare:',
   quote_decline_pickup:
-    'Passerò a ritirarlo. Il dispositivo resta in negozio {giorni} giorni dalla data di questa scelta. Dopo tale termine potrà essere custodito in deposito a pagamento ({tariffa}) oppure, previo avviso, essere trattato come indicato nelle condizioni di servizio.',
+    'Passerò a ritirarlo. Il dispositivo resta in negozio {giorni} giorni dalla data di questa scelta. Dopo tale termine potrà essere custodito in deposito a pagamento ({tariffa}); potrò sempre ritirarlo pagando quanto dovuto. Prima di qualsiasi altra decisione sul dispositivo riceverò un ulteriore avviso scritto.',
   quote_decline_cede:
     'Cedo il dispositivo al negozio. Dichiaro di essere il proprietario del dispositivo e cedo la proprietà al laboratorio, che potrà smaltirlo oppure recuperarne e riutilizzarne i componenti, senza nulla dovere al cliente. Ho già effettuato o rinuncio al backup dei miei dati e ho rimosso o autorizzo la rimozione di codici di sblocco e account.',
   quote_sign_text: 'Firmando confermo di avere letto e compreso quanto sopra e che la scelta è mia.',
   storage_notice:
-    'Ciao {nome}, il tuo {dispositivo} (rif. {codice}) non è stato riparato e ti aspetta in negozio dal {data}. Dal {scadenza} sarà custodito in deposito a pagamento ({tariffa}) oppure potrà essere smaltito/ceduto secondo le condizioni che hai firmato. Passa a ritirarlo o scrivici per accordarci: {telefono}.',
+    'Ciao {nome}, il tuo {dispositivo} (rif. {codice}) non è stato riparato e ti aspetta in negozio dal {data}. Dal {scadenza} sarà custodito in deposito a pagamento ({tariffa}) oppure, dopo un ulteriore avviso scritto, potrà essere smaltito/ceduto secondo le condizioni che hai firmato. Puoi sempre ritirarlo pagando quanto dovuto. Passa a ritirarlo o scrivici per accordarci: {telefono}.',
 };
 
 /** Sostituisce i segnaposto {nome}; quelli sconosciuti restano com'erano. */
