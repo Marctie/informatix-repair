@@ -2,8 +2,16 @@
 import { scanWithCamera } from './scan.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
+import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagatore
+import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
+import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
+import { retroField, retroVal } from './retro.js';
+import { showBlackAlert, watchBlack } from './blacks.js';
 
+import { attachModelSuggest } from './modelli.js'; // suggerimenti marca/modello dalla terza lettera
+import { repairExternals } from './esterne.js'; // sezione "Riparazione esterna" nella scheda
+import { repairLoans } from './prestiti.js'; // sezione "Muletto in prestito" nella scheda
 import { signIntakeAtDesk, signDialog } from './sign.js';
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
 
@@ -31,6 +39,7 @@ export function openRepairForm(onDone, preset = {}) {
           <div id="rf-sugg" class="suggest card hidden"></div>
         </div>
         <div id="rf-picked" class="hidden"></div>
+        <div id="rf-black" aria-live="polite"></div>
         <div id="rf-new" class="fgrid c3">
           <div class="field"><label class="l" for="rf-name">Nome e cognome *</label><input id="rf-name" value="${esc(preset.name || '')}" /></div>
           <div class="field"><label class="l" for="rf-phone">Telefono</label><input id="rf-phone" inputmode="tel" value="${esc(preset.phone || '')}" /></div>
@@ -81,6 +90,7 @@ export function openRepairForm(onDone, preset = {}) {
           <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
         </div>
+        ${retroField('rf-retro')}
         <div class="field">
           <label class="l">Consegna stimata</label>
           <div class="row tight">
@@ -95,6 +105,11 @@ export function openRepairForm(onDone, preset = {}) {
   );
   const root = m.el;
   let customerId = null;
+  // marca e modello: dalla terza lettera i suggerimenti del catalogo; scegliendo si imposta anche il tipo di dispositivo
+  attachModelSuggest($('#rf-model', root), {
+    getKind: () => curType(),
+    onPick: (md) => { const chip = $(`#rf-types .chip[data-v="${md.kind}"]`, root); if (chip && !chip.classList.contains('on')) chip.click(); },
+  });
 
   // scelte rapide
   // il tipo di dispositivo cambia etichette (seriale/IMEI, PIN/password), accessori suggeriti e controlli d'ingresso
@@ -180,15 +195,19 @@ export function openRepairForm(onDone, preset = {}) {
     sugg.innerHTML = (list || []).map((c) => `<div data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone || '')}" data-email="${esc(c.email || '')}"><b>${esc(c.name)}</b> <span class="text-gray-500">${esc(c.phone || '')}</span>${c.repairs_count ? `<span class="text-xs text-gray-400"> · ${c.repairs_count} riparazioni</span>` : ''}</div>`).join('') || '<div style="color:#9CA3AF;cursor:default">Nessun cliente trovato: compila i campi sotto per crearne uno nuovo.</div>';
     sugg.classList.remove('hidden');
   }, 200);
+  const checkBlack = watchBlack($('#rf-black', root), () => ({ customer_id: customerId || '', name: customerId ? '' : $('#rf-name', root).value.trim(), phone: customerId ? '' : $('#rf-phone', root).value.trim(), email: customerId ? '' : $('#rf-email', root).value.trim() }));
+  for (const id of ['#rf-name', '#rf-phone', '#rf-email']) $(id, root).addEventListener('input', checkBlack);
   sugg.onclick = (e) => {
     const r = e.target.closest('[data-id]'); if (!r) return;
     customerId = Number(r.dataset.id);
+    checkBlack();
     $('#rf-picked', root).innerHTML = `<div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mt-2 text-sm"><span>✔ <b>${esc(r.dataset.name)}</b> ${esc(r.dataset.phone)}</span><button type="button" class="btn btn-ghost btn-sm" id="rf-unpick">cambia</button></div>`;
     $('#rf-picked', root).classList.remove('hidden');
+    debtorNotice($('#rf-picked', root), customerId); // Agente C
     $('#rf-new', root).classList.add('hidden');
     $('#rf-search', root).classList.add('hidden');
     sugg.classList.add('hidden');
-    $('#rf-unpick', root).onclick = () => { customerId = null; $('#rf-picked', root).classList.add('hidden'); $('#rf-new', root).classList.remove('hidden'); $('#rf-search', root).classList.remove('hidden'); };
+    $('#rf-unpick', root).onclick = () => { customerId = null; checkBlack(); $('#rf-picked', root).classList.add('hidden'); $('#rf-new', root).classList.remove('hidden'); $('#rf-search', root).classList.remove('hidden'); };
   };
 
   const doSave = async (btn, print) => {
@@ -211,6 +230,7 @@ export function openRepairForm(onDone, preset = {}) {
       quote_agreed: $('#rf-agreed', root).checked,
       deposit: $('#rf-deposit', root).value,
       deposit_method: $('#rf-method', root).value,
+      ...retroVal(root, 'rf-retro'),
       eta_date: $('#rf-etadate', root).value,
       urgent: $('#rf-urgent', root).checked,
     };
@@ -228,6 +248,8 @@ export function openRepairForm(onDone, preset = {}) {
     }
     showCreated(r, onDone);
     showDeviceAlerts(r.device_alerts);
+    showBlackAlert(r.blacklist_alert);
+    if (r.model_added) toast(`Modello nuovo aggiunto al catalogo: ${r.model_added.brand} ${r.model_added.model}`);
   };
   $('#rf-save', root).onclick = (ev) => doSave(ev.currentTarget, false);
   $('#rf-save-print', root).onclick = (ev) => doSave(ev.currentTarget, true);
@@ -368,8 +390,9 @@ export async function openRepairDetail(id, onChange) {
             ${!done ? `
               <div class="stack" style="gap:.5rem"><div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><select id="d-depm" aria-label="Pagato con" style="width:auto"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
                 <div class="row" style="flex-wrap:nowrap;display:none" id="d-dep2"><input id="d-dep2a" inputmode="decimal" placeholder="Seconda quota €" aria-label="Seconda quota" /><select id="d-dep2m" aria-label="Seconda quota pagata con" style="width:auto"><option>carta</option><option>contanti</option><option>bonifico</option></select></div>
+                ${retroField('d-dep-retro')}
                 <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
-              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button><button class="btn btn-outline btn-sm" data-act="sendquote">📨 Invia preventivo al cliente</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
 
@@ -387,7 +410,7 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
             <div class="plist">
-              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} ${p.order_state ? `<button type="button" class="badge ${p.order_state === 'arrivato' ? 'bg-emerald-100 text-emerald-700' : p.order_state === 'ordinato' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-800'}" data-pstate="${p.id}" data-pnext="${p.order_state === 'da_ordinare' ? 'ordinato' : p.order_state === 'ordinato' ? 'arrivato' : ''}" title="Tocca per far avanzare lo stato">${p.order_state === 'da_ordinare' ? '📋 Da ordinare' : p.order_state === 'ordinato' ? '📮 Ordinato' : '✅ Arrivato'}</button>` : ''} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
             ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>
             <div class="row tight"><button class="btn btn-outline btn-sm" data-act="manualpart">＋ Ricambio non a magazzino</button></div>` : ''}
@@ -395,6 +418,8 @@ export async function openRepairDetail(id, onChange) {
           </section>
         </div>
       </div>
+
+      <div id="d-extras" class="sec" style="gap:1.6rem"></div>
 
       <section class="sec">
         <h3 class="sec-t">Note del tecnico</h3>
@@ -425,6 +450,11 @@ export async function openRepairDetail(id, onChange) {
       </section>`;
 
     bindChecklistGrids(body);
+    // riparazione esterna e muletto collegati a questa scheda (lotto B)
+    const extras = $('#d-extras', body);
+    extras.innerHTML = '<div id="d-ext" class="sec"></div><div id="d-loan" class="sec"></div>';
+    repairExternals($('#d-ext', extras), r, () => { reloadList(); render(); });
+    repairLoans($('#d-loan', extras), r, () => { reloadList(); render(); });
     // ricerca ricambi
     const ps = $('#d-part', body);
     if (ps) ps.oninput = debounce(async (e) => {
@@ -441,6 +471,8 @@ export async function openRepairDetail(id, onChange) {
 
   const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
+    const ps = e.target.closest('[data-pstate]');
+    if (ps) { if (!ps.dataset.pnext) return; return act(() => api('POST', `/api/materiali/parts/${ps.dataset.pstate}/state`, { state: ps.dataset.pnext }), ps.dataset.pnext === 'ordinato' ? 'Segnato come ordinato' : 'Segnato come arrivato'); }
     const ts = e.target.closest('[data-tostock]');
     if (ts) return act(() => api('POST', `/api/repairs/${id}/parts/${ts.dataset.tostock}/stock`), 'Ricambio caricato a magazzino: ora è un articolo a catalogo');
 
@@ -461,12 +493,13 @@ export async function openRepairDetail(id, onChange) {
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
+      case 'sendquote': return sendQuoteDialog(id, () => { reloadList(); render(); });
       case 'askquote': return act(() => api('POST', `/api/repairs/${id}/status`, { status: 'quote_pending' }), 'Il cliente può ora approvare dal link');
       case 'depsplit': { const r2 = $('#d-dep2', body); r2.style.display = r2.style.display === 'none' ? '' : 'none'; return; }
       case 'deposit': {
         const second = $('#d-dep2', body).style.display !== 'none' && $('#d-dep2a', body).value.trim();
         const payments = [{ method: $('#d-depm', body).value, amount: $('#d-dep', body).value }, ...(second ? [{ method: $('#d-dep2m', body).value, amount: $('#d-dep2a', body).value }] : [])];
-        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments }), 'Acconto registrato');
+        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments, ...retroVal(body, 'd-dep-retro') }), 'Acconto registrato');
       }
       case 'savetech': return act(() => api('PATCH', `/api/repairs/${id}`, { tech_notes: $('#d-tech', body).value }), 'Note del tecnico salvate');
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
@@ -576,6 +609,7 @@ export function deliverDialog(id, done) {
           <div class="field"><span class="l">Saldo da incassare</span><b class="font-heading" style="font-size:1.4rem" id="dl-due">${eur(Math.max(0, total - r.paid))}</b></div>
         </div>
         <div class="sec" id="dl-settle"></div>
+        ${retroField('dl-retro')}
         <p class="hint">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>
       </section>`,
       { title: 'Consegna e incasso', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-green btn-lg" id="dl-ok">Conferma consegna</button>` }
@@ -587,7 +621,7 @@ export function deliverDialog(id, done) {
     $('#dl-ok', m.el).onclick = async () => {
       const bad = settle.validate();
       if (bad) return toast(bad, false);
-      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload() }));
+      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload(), ...retroVal(m.el, 'dl-retro') }));
       if (!out) return;
       m.close();
       toast(`Consegnata. Incassati ${eur(out.collected)}`);
@@ -619,6 +653,7 @@ async function editDialog(id, done) {
     </section>`,
     { title: `Modifica ${r.code}`, wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ed-ok">Salva modifiche</button>` }
   );
+  attachModelSuggest($('[data-k="brand_model"]', m.el), { getKind: () => $('[data-k="device_type"]', m.el).value });
   $('#ed-ok', m.el).onclick = async () => {
     const v = (k) => $(`[data-k="${k}"]`, m.el).value;
     const out = await safe(() => api('PATCH', `/api/repairs/${id}`, {
@@ -631,22 +666,26 @@ async function editDialog(id, done) {
 }
 
 /** Ricambio non caricato a magazzino: descrizione, quantità, costo d'acquisto e prezzo al cliente (non tocca le giacenze). */
-function manualPartDialog(repairId, done) {
+async function manualPartDialog(repairId, done) {
+  await ensureVatDefault();
   const m = openModal(`<div class="fgrid c2">
       <div class="field" style="grid-column:1/-1"><label class="l" for="mp-name">Descrizione</label><input id="mp-name" placeholder="es. Display iPhone 12" /></div>
       <div class="field"><label class="l" for="mp-qty">Quantità</label><input id="mp-qty" inputmode="numeric" value="1" /></div>
       <div class="field"><label class="l" for="mp-code">Codice fornitore</label><input id="mp-code" /></div>
       ${canSeeCosts() ? `<div class="field"><label class="l" for="mp-cost">Prezzo d’acquisto € (cad.)</label><input id="mp-cost" inputmode="decimal" /></div>` : ""}
+      ${canSeeCosts() ? `<div style="grid-column:1/-1">${vatBlock('mp')}</div>` : ''}
       <div class="field"><label class="l" for="mp-price">Prezzo al cliente € (cad.)</label><input id="mp-price" inputmode="decimal" placeholder="0 = incluso nel preventivo" /></div>
       <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" /></div>
       <div class="field"><label class="l" for="mp-date">Data d’acquisto</label><input id="mp-date" type="date" value="${today()}" /></div>
+      <label class="field" style="grid-column:1/-1;display:flex;gap:.5rem;align-items:center"><input id="mp-order" type="checkbox" style="width:auto" /> <span>Ancora da ordinare al fornitore (finisce nella lista “Da ordinare”)</span></label>
     </div><p class="hint">Non scala nessuna giacenza. Il costo entra nel guadagno della riparazione.</p>`,
     { title: 'Ricambio non a magazzino', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="mp-ok">Aggiungi</button>' });
+  const vatVals = canSeeCosts() ? bindVat(m.el, 'mp', '#mp-cost') : () => ({});
   $('#mp-ok', m.el).onclick = async () => {
     const v = (id) => $(`#${id}`, m.el).value;
     const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, {
       name: v('mp-name'), qty: v('mp-qty'), unit_cost: ($('#mp-cost', m.el) ? v('mp-cost') : '').replace(',', '.'), unit_price: v('mp-price').replace(',', '.') || 0,
-      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'),
+      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'), to_order: $('#mp-order', m.el).checked, ...vatVals(),
     }));
     if (out) { m.close(); toast('Ricambio aggiunto'); done(); }
   };

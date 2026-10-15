@@ -92,12 +92,12 @@ test('parser XML: entità definite nel file non vengono espanse (nessun rischio 
   assert.equal(n.text.trim(), '&c; è & <x>');
 });
 
-test('lettori: DDT/PDF è un segnaposto che dice "formato non ancora supportato"', async () => {
+test('lettori: DDT/PDF è supportato ma solo col testo estratto dal browser', async () => {
   assert.equal(parsers.fatturapa.supported, true);
-  assert.equal(parsers.ddt_pdf.supported, false);
+  assert.equal(parsers.ddt_pdf.supported, true);
   const r = await a('POST', '/api/purchases/preview', { xml: '%PDF-1.4 ...', filename: 'ddt.pdf' });
   assert.equal(r.status, 400);
-  assert.match(r.data.error, /non ancora supportato/i);
+  assert.match(r.data.error, /PDF va letto dal browser/i);
   const p7 = await a('POST', '/api/purchases/preview', { xml: 'x', filename: 'fattura.xml.p7m' });
   assert.equal(p7.status, 400);
   assert.match(p7.data.error, /\.p7m/);

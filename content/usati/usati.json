@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-27",
+  "updated": "2026-10-14",
   "items": [
     {
       "slug": "iphone-17-pro-max-512-argento-sigillato",
@@ -238,9 +238,7 @@
           "Original box"
         ]
       ],
-      "category": "smartphone",
-      "sold": false,
-      "soldAt": null
+      "category": "smartphone"
     },
     {
       "slug": "iphone-13-mini-128-rosa",
@@ -340,7 +338,6 @@
       "name": "MacBook Air 13\"",
       "memory": "8 GB + 256 GB",
       "color": "Space Gray",
-      "category": "computer",
       "condition": "usato",
       "conditionLabel": "Usato con scatola",
       "conditionLabelEn": "Used, with box",
@@ -403,14 +400,12 @@
           "Original box"
         ]
       ],
+      "category": "computer",
       "contact": true
     },
     {
       "slug": "samsung-galaxy-tab-a11-plus-5g",
       "name": "Samsung Galaxy Tab A11+ 5G",
-      "memory": "",
-      "color": "",
-      "category": "computer",
       "condition": "usato",
       "conditionLabel": "Con scatola originale",
       "conditionLabelEn": "With original box",
@@ -441,6 +436,7 @@
           "Original box"
         ]
       ],
+      "category": "computer",
       "contact": true
     },
     {
@@ -449,7 +445,6 @@
       "memory": "8 GB + 256 GB",
       "color": "Nero",
       "colorEn": "Black",
-      "category": "smartphone",
       "condition": "usato",
       "conditionLabel": "Con scatola originale",
       "conditionLabelEn": "With original box",
@@ -512,6 +507,7 @@
           "Original box"
         ]
       ],
+      "category": "smartphone",
       "contact": true
     },
     {
@@ -522,7 +518,6 @@
       "memoryEn": "USB-C case",
       "color": "Bianco",
       "colorEn": "White",
-      "category": "audio-gaming",
       "condition": "usato",
       "conditionLabel": "In scatola originale",
       "conditionLabelEn": "In original box",
@@ -561,6 +556,7 @@
           "Original box"
         ]
       ],
+      "category": "audio-gaming",
       "contact": true
     },
     {
@@ -570,7 +566,6 @@
       "memoryEn": "USB-C case",
       "color": "Bianco",
       "colorEn": "White",
-      "category": "audio-gaming",
       "condition": "usato",
       "conditionLabel": "In scatola originale",
       "conditionLabelEn": "In original box",
@@ -601,6 +596,7 @@
           "Original box"
         ]
       ],
+      "category": "audio-gaming",
       "contact": true
     },
     {
@@ -609,7 +605,6 @@
       "memory": "PlayStation 5",
       "color": "Disco Blu-ray",
       "colorEn": "Blu-ray disc",
-      "category": "audio-gaming",
       "condition": "nuovo",
       "conditionLabel": "Nuovo sigillato",
       "conditionLabelEn": "Sealed new",
@@ -655,7 +650,8 @@
           "Packaging",
           "Sealed"
         ]
-      ]
+      ],
+      "category": "audio-gaming"
     }
   ]
 }

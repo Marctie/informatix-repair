@@ -13,12 +13,25 @@ import { usatiView } from './usati.js';
 import { portaleView } from './portale.js';
 import { purchasesView } from './purchases.js';
 import { ordiniView } from './ordini.js';
+import { materialiView } from './materiali.js'; // agente D
+import { carteView } from './carte.js'; // agente D
 import { preventiviView } from './preventivi.js';
 import { promemoriaView, mountTodayReminders } from './promemoria.js';
 
 import { dispositiviView } from './dispositivi.js';
 import { buoniView } from './buoni.js';
 import { credenzialiView } from './credenziali.js';
+import { blacksView } from './blacks.js';
+// --- Agente C ---
+import { chiusureView } from './chiusure.js';
+import { fattureView } from './fatture.js';
+import { dareavereView } from './dareavere.js';
+// --- fine Agente C ---
+// --- Agente B: catalogo modelli, storico, riparazioni esterne, note ---
+import { modelliView } from './modelli.js';
+import { storicoView } from './storico.js';
+import { esterneView } from './esterne.js';
+import { noteView } from './note.js';
 
 // Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
 const GROUPS = [
@@ -39,16 +52,30 @@ const VIEWS = [
   { id: 'promemoria', label: 'Promemoria', icon: '🔔', render: promemoriaView, group: 'banco' },
   { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true, group: 'magazzino' },
   { id: 'ordini', label: 'Ordini', icon: '📮', render: ordiniView, group: 'magazzino' },
+  { id: 'materiali', label: 'Da ordinare', icon: '📋', render: materialiView, group: 'magazzino' }, // agente D
   { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView, group: 'magazzino' },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView, group: 'magazzino' },
   { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView, group: 'magazzino' },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView, group: 'negozio' },
+  { id: 'carte', label: 'Carte punti', icon: '💳', render: carteView, group: 'negozio' }, // agente D
   { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView, group: 'negozio' },
+  { id: 'blacks', label: 'Blacks', icon: '⛔', render: blacksView, group: 'gestione' },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true, group: 'gestione' },
+  // --- Agente B (voci del menu: storico, esterne, note, modelli) ---
+  { id: 'storico', label: 'Storico riparazioni', icon: '📋', render: storicoView, group: 'banco' },
+  { id: 'esterne', label: 'Riparazioni esterne', icon: '🚚', render: esterneView, group: 'banco' },
+  { id: 'note', label: 'Note', icon: '📝', render: noteView, group: 'banco' },
+  { id: 'modelli', label: 'Modelli', icon: '🏷️', render: modelliView, group: 'magazzino' },
+  // --- fine voci Agente B ---
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true, group: 'gestione' },
   { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true, group: 'gestione' },
   { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true, group: 'gestione' },
+  // --- Agente C ---
+  { id: 'chiusure', label: 'Chiusure cassa', icon: '🧮', render: chiusureView, group: 'banco' },
+  { id: 'dareavere', label: 'Dare/avere', icon: '⚖️', render: dareavereView, group: 'banco' },
+  { id: 'fatture', label: 'Archivio fatture', icon: '🗂️', render: fattureView, group: 'gestione' },
+  // --- fine Agente C ---
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
 let ME = null;
@@ -86,7 +113,7 @@ document.addEventListener('click', (e) => {
 const view = $('#view');
 
 // ---------- Avvisi: campanella e riquadro in home ----------
-const ALERT_ICO = { out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
+const ALERT_ICO = { invoice_overdue: '🗂️', invoice_due: '🗂️', bad_payer: '⚠️', out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
 const alertRow = (a) => `<a href="${a.link}" class="flex gap-3 px-4 py-3 border-b border-line last:border-0 text-sm hover:bg-lightbg" data-alert>
   <span aria-hidden="true">${ALERT_ICO[a.type] || '🔔'}</span><span class="min-w-0"><b class="block">${esc(a.title)}</b><span class="text-gray-500">${esc(a.detail)}</span></span></a>`;
 export async function refreshBell() {

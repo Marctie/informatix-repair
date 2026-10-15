@@ -1,8 +1,11 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
+import { computeVat, parseRate, truthy } from './iva.mjs';
+import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
 import { deviceHook, alertText } from './dispositivi.mjs';
+import { ensureModel } from './modelli.mjs';
 
 import { fillText, isVerified, buildQuoteFlow } from './legal.mjs';
 
@@ -110,15 +113,16 @@ const phoneKey = (p) => {
   const d = String(p || '').replace(/\D/g, '');
   return d.length >= 7 ? d.slice(-9) : d;
 };
-export async function upsertCustomer({ id, name, phone, email, notes }) {
+export async function upsertCustomer(input) {
+  const { id } = input;
   if (id) {
     const c = await db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
     if (!c) throw new HttpError(404, 'Cliente non trovato');
     return c.id;
   }
-  const n = need(name, 'Nome cliente');
+  const f = cleanCustomer(input);
   // evita doppioni: stesso telefono => stesso cliente
-  const ph = str(phone);
+  const ph = f.phone;
   if (ph) {
     const key = phoneKey(ph);
     if (key) {
@@ -126,7 +130,7 @@ export async function upsertCustomer({ id, name, phone, email, notes }) {
       if (same) return same.id;
     }
   }
-  const r = await db.prepare("INSERT INTO customers (name, phone, email, notes, created_at) VALUES (?,?,?,?,datetime('now','localtime'))").run(n, ph, str(email), str(notes));
+  const r = await db.prepare(`INSERT INTO customers (${CUSTOMER_COLS.join(', ')}, created_at) VALUES (${CUSTOMER_COLS.map(() => '?').join(',')},datetime('now','localtime'))`).run(...CUSTOMER_COLS.map((k) => f[k]));
   return Number(r.lastInsertRowid);
 }
 
@@ -155,6 +159,8 @@ export async function createRepair(b) {
     );
     const id = Number(r.lastInsertRowid);
     await logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
+    // Catalogo modelli: se il modello scritto non c'e' lo aggiunge (il catalogo e' un aiuto: non blocca mai la scheda)
+    const modelAdded = await ensureModel(str(b.device_type) || 'smartphone', b.brand_model);
     // Registro dispositivi: se il seriale e' segnalato (rubato / da verificare) lo scriviamo nella scheda e lo ritorniamo come avviso
     const deviceAlerts = await deviceHook(b.serial, 'riparazione', `Entrato in riparazione ${code}`);
     for (const a of deviceAlerts) await logEvent(id, null, alertText(a), 0);
@@ -163,11 +169,14 @@ export async function createRepair(b) {
       await db.prepare("UPDATE repairs SET status='approved', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
       await logEvent(id, 'approved', 'Preventivo concordato al banco.');
     }
-    return { ...(await getRepair(id)), device_alerts: deviceAlerts };
+    return { ...(await getRepair(id)), device_alerts: deviceAlerts, model_added: modelAdded.added ? modelAdded.model : null };
   });
 }
 
-const REPAIR_SELECT = `SELECT r.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email
+const REPAIR_SELECT = `SELECT r.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+  c.kind AS customer_kind, c.company_name AS customer_company, c.vat_number AS customer_vat, c.fiscal_code AS customer_cf,
+  c.address AS customer_address, c.zip AS customer_zip, c.city AS customer_city, c.province AS customer_province,
+  c.sdi_code AS customer_sdi, c.pec AS customer_pec
   FROM repairs r JOIN customers c ON c.id = r.customer_id`;
 
 export async function getRepair(id) {
@@ -215,9 +224,9 @@ export async function listRepairs({ status, q, customer_id, open } = {}) {
   if (open) where.push("r.status NOT IN ('delivered','cancelled')");
   if (customer_id) { where.push('r.customer_id = ?'); args.push(Number(customer_id)); }
   if (q) {
-    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.color LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ?)');
+    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.color LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ? OR c.company_name LIKE ? OR c.vat_number LIKE ?)');
     const like = `%${q}%`;
-    args.push(like, like, like, like, like, like);
+    args.push(like, like, like, like, like, like, like, like, like);
   }
   const sql = `${REPAIR_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.urgent DESC, r.updated_at DESC, r.id DESC LIMIT 500`;
   return Promise.all((await db.prepare(sql).all(...args)).map((r) => decorateRepair(r)));
@@ -297,7 +306,7 @@ export async function deliverRepair(id, { final_price, method, note, ...pay } = 
   });
 }
 
-export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at }) {
+export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at, price_mode, vat_rate, vat_apply, to_order }) {
   return tx(async () => {
     const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -312,12 +321,18 @@ export async function addPart(repairId, { product_id, name, qty, unit_price, uni
     }
     if (!pName) throw new HttpError(400, 'Nome ricambio obbligatorio');
     // Ricambio a mano (non a magazzino): il costo d'acquisto inserito entra nel guadagno della riparazione.
+    let vat = null;
     if (!pid) {
       cost = num(unit_cost, 0);
       if (cost < 0 || price < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
+      // IVA sul costo: scritto IVA esclusa o inclusa; con "vat_apply" l'IVA si aggiunge davvero al costo (estero, reverse charge...)
+      if (cost > 0 || vat_rate !== undefined || truthy(vat_apply) || price_mode === 'gross') {
+        vat = computeVat({ amount: cost, mode: price_mode === 'gross' ? 'gross' : 'net', rate: parseRate(vat_rate, Number((await getSettings()).vat_rate) || 22), apply: truthy(vat_apply) });
+        cost = vat.cost;
+      }
     }
-    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at) VALUES (?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at));
-    await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}.`, 0);
+    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at, vat_rate, cost_net, cost_vat, vat_applied, order_state) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at), vat ? vat.rate : null, vat ? vat.net : null, vat ? vat.vat : null, vat?.applied ? 1 : 0, !pid && to_order ? 'da_ordinare' : null);
+    await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}${vat?.applied ? ` (IVA ${vat.rate}% aggiunta al costo)` : ''}.`, 0);
     return await getRepair(repairId);
   });
 }
@@ -388,7 +403,7 @@ export async function createSale(b) {
 }
 
 export async function getSale(id) {
-  const s = await db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id = s.customer_id WHERE s.id = ?').get(id);
+  const s = await db.prepare('SELECT s.*, c.name AS customer_name, c.kind AS customer_kind, c.company_name AS customer_company, c.vat_number AS customer_vat, c.fiscal_code AS customer_cf, c.address AS customer_address, c.zip AS customer_zip, c.city AS customer_city, c.province AS customer_province, c.sdi_code AS customer_sdi, c.pec AS customer_pec FROM sales s LEFT JOIN customers c ON c.id = s.customer_id WHERE s.id = ?').get(id);
   if (!s) throw new HttpError(404, 'Vendita non trovata');
   return {
     ...s,

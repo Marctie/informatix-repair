@@ -32,6 +32,7 @@ const NAV_LINKS = [
   { href: '/servizi.html', key: 'common.nav.servizi', match: ['servizi.html'] },
   { href: '/portfolio.html', key: 'common.nav.portfolio', match: ['portfolio.html'] },
   { href: '/usati.html', key: 'common.nav.usati', match: ['usati.html'] },
+  { href: '/segui-riparazione.html', key: 'common.nav.segui', match: ['segui-riparazione.html'], wide: true },
   { href: '/blog.html', key: 'common.nav.blog', match: ['blog.html'] },
   { href: '/contatti.html', key: 'common.nav.contatti', match: ['contatti.html'] },
 ];
@@ -88,10 +89,10 @@ function renderNavbar() {
   if (!mount) return;
   const page = window.location.pathname.split('/').pop();
 
-  const links = (cls) =>
+  const links = (cls, desktop = false) =>
     NAV_LINKS.map(
       (l) =>
-        `<a href="${l.href}" class="${cls}" ${l.match.includes(page) || (l.href === '/blog.html' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${t(l.key)}</a>`
+        `<a href="${l.href}" class="${cls}${desktop && l.wide ? ' hidden xl:inline' : ''}" ${l.match.includes(page) || (l.href === '/blog.html' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${t(l.key)}</a>`
     ).join('');
 
   const langBtn = (cls) => {
@@ -108,7 +109,7 @@ function renderNavbar() {
             <img src="/images/Informatix-logo.png" alt="${SITE.name}" width="56" height="56" class="h-12 w-auto" />
           </a>
           <nav class="hidden md:flex items-center gap-8" aria-label="${t('common.nav.aria')}">
-            ${links('nav-link')}
+            ${links('nav-link', true)}
             <a href="/contatti.html" class="btn-primary !py-2.5 !px-5 text-sm">${t('common.cta.quote')}</a>
             ${langBtn('shrink-0 w-10 h-9 rounded-lg border border-line text-xs font-semibold text-primary hover:border-secondary hover:text-secondary transition-colors')}
           </nav>
@@ -218,6 +219,7 @@ function renderFooter() {
         <div class="container-x py-5 text-center sm:text-left text-xs text-gray-500">
           &copy; ${new Date().getFullYear()} ${SITE.legalName || SITE.name}. ${t('common.footer.rights')}${SITE.vat ? ` VAT ${SITE.vat}.` : ''}
           <span class="mx-1">·</span><a href="/privacy.html" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.privacy')}</a>
+          <span class="mx-1">·</span><a href="https://gestionale.informatixrepair.com" rel="noopener" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.reserved')}</a>
         </div>
       </div>
     </footer>

@@ -22,6 +22,8 @@ const SETTING = {
   shop_name: 'nome negozio', shop_address: 'indirizzo', shop_phone: 'telefono negozio', public_base_url: 'indirizzo pubblico', default_warranty_days: 'garanzia (giorni)',
   terms: 'condizioni sulla scheda', low_stock_default: 'scorta minima generale', stale_days: 'giorni prodotto fermo', ready_days: 'giorni pronta non ritirata',
   storage_days: 'giorni di giacenza', storage_fee: 'tariffa del deposito', legal_verified: 'stato dei testi legali', quote_valid_days: 'validità preventivi (giorni)',
+  loyalty_points_per_euro: 'punti per euro (carte)', loyalty_redeem_step: 'punti per gradino di riscatto', loyalty_euro_per_step: 'euro per gradino di riscatto', loyalty_voucher_months: 'validità buono punti (mesi)', loyalty_max_accrual: 'massimo punti per operazione', loyalty_max_redeem_day: 'massimo punti riscattabili al giorno',
+  materials_reminder_enabled: 'promemoria materiali da ordinare', materials_reminder_time: 'orario promemoria materiali', materials_reminder_days: 'giorni promemoria materiali',
   consent_intake: 'testo consenso all’ingresso', quote_accept_title: 'titolo accettazione preventivo', quote_accept_text: 'testo accettazione preventivo',
   quote_decline_title: 'titolo rifiuto preventivo', quote_decline_text: 'testo rifiuto preventivo', quote_decline_pickup: 'testo ritiro dopo il rifiuto',
   quote_decline_cede: 'testo cessione dopo il rifiuto', quote_sign_text: 'testo firma del preventivo', storage_notice: 'avviso di giacenza',
@@ -35,7 +37,7 @@ const PRINT = { customer: 'scheda cliente', repair: 'scheda cliente', lab: 'sche
 // Sezioni del gestionale, per dire in parole cosa si stava facendo quando qualcosa va storto
 const SECTIONS = [[/^\/api\/repairs/, 'Riparazioni'], [/^\/api\/track/, 'Tracciamento cliente'], [/^\/api\/sales/, 'Vendite'], [/^\/api\/customers|^\/api\/clienti/, 'Clienti'], [/^\/api\/suppliers/, 'Fornitori'],
   [/^\/api\/products|^\/api\/stock|^\/api\/reorder/, 'Magazzino'], [/^\/api\/services/, 'Listino servizi'], [/^\/api\/expenses/, 'Spese'], [/^\/api\/usati/, 'Vetrina usati'], [/^\/api\/orders/, 'Ordini'],
-  [/^\/api\/quotes/, 'Preventivi'], [/^\/api\/reminders/, 'Promemoria'], [/^\/api\/buoni/, 'Buoni'], [/^\/api\/dispositivi/, 'Dispositivi'], [/^\/api\/documenti/, 'Documenti d’identità'],
+  [/^\/api\/quotes/, 'Preventivi'], [/^\/api\/reminders/, 'Promemoria'], [/^\/api\/buoni/, 'Buoni'], [/^\/api\/carte/, 'Carte punti'], [/^\/api\/materiali/, 'Materiali da ordinare'], [/^\/api\/dispositivi/, 'Dispositivi'], [/^\/api\/documenti/, 'Documenti d’identità'],
   [/^\/api\/credenziali/, 'Credenziali fornitori'], [/^\/api\/purchases/, 'Acquisti'], [/^\/api\/users/, 'Utenti'], [/^\/api\/settings|^\/api\/checklists/, 'Impostazioni'], [/^\/api\/audit/, 'Registro'],
   [/^\/api\/backup/, 'Backup'], [/^\/api\/demo/, 'Dati demo'], [/^\/print\//, 'Stampa']];
 const VERB = { POST: 'registrare', PUT: 'modificare', PATCH: 'modificare', DELETE: 'eliminare', GET: 'aprire' };
@@ -87,12 +89,14 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (status === 401 || status === 403) return `⛔ <b>Operazione non permessa</b> (${status})\nTentativo di ${VERB[m] || m} in ${esc(section(path))}\n${esc(short(r.error || '', 200))}${foot}`;
   const alerts = (list) => (list || []).map((a) => `\n🚨 <b>Seriale segnalato</b>: ${esc(short(a.brand_model || a.title || '', 60))} ${esc(a.flag_label || DEVICE_FLAG[a.flag] || '')}`.trimEnd()).join('');
 
+  const blk = (list) => (list || []).map((b) => `\n⛔ <b>CLIENTE SEGNALATO (Blacks)</b>: ${esc(short(b.name, 60))} · ${esc(short(b.reason, 80))}`).join('');
+
   // ---- Riparazioni
   let x;
   if (m === 'POST' && path === '/api/repairs') {
     if (!isOk) return fail('Nuova riparazione');
     const money = [r.quote != null ? `Preventivo ${eur(r.quote)}` : 'Preventivo da fare', Number(r.deposit) > 0 ? `acconto ${eur(r.deposit)}${body.deposit_method ? ` (${esc(body.deposit_method)})` : ''}` : ''];
-    return `🛠️ <b>Nuova riparazione ${esc(r.code)}</b>${r.urgent ? ' · 🔥 URGENTE' : ''}\n${esc(r.brand_model)} — ${esc(short(r.problem || body.problem, 120))}\nCliente: ${esc(r.customer_name)} ${esc(maskPhone(r.customer_phone))}\n${join(...money)}${r.status === 'approved' ? '\n✅ Preventivo concordato al banco' : ''}${alerts(r.device_alerts)}${foot}`;
+    return `🛠️ <b>Nuova riparazione ${esc(r.code)}</b>${r.urgent ? ' · 🔥 URGENTE' : ''}\n${esc(r.brand_model)} — ${esc(short(r.problem || body.problem, 120))}\nCliente: ${esc(r.customer_name)} ${esc(maskPhone(r.customer_phone))}\n${join(...money)}${r.status === 'approved' ? '\n✅ Preventivo concordato al banco' : ''}${alerts(r.device_alerts)}${blk(r.blacklist_alert)}${foot}`;
   }
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/status$/)) && m === 'POST') return isOk ? `🔄 <b>${esc(r.code)}</b> → ${esc(STATUS[r.status] || r.status)}\n${join(esc(r.brand_model), esc(r.customer_name))}${r.status === 'cancelled' && r.device_fate ? `\n📦 Dispositivo ${esc(FATE[r.device_fate] || r.device_fate)}` : ''}${body.note ? `\nNota: ${esc(short(body.note, 150))}` : ''}${foot}` : fail('Cambio stato');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/advance$/)) && m === 'POST') return isOk ? `⏭️ <b>${esc(r.code)}</b> → ${esc(STATUS[r.status] || r.status)}\n${join(esc(r.brand_model), esc(r.customer_name))}${foot}` : fail('Avanzamento');
@@ -135,6 +139,11 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((x = path.match(/^\/api\/quote\/([^/]+)\/decision$/)) && m === 'POST') {
     if (!isOk) return fail('Risposta del cliente al preventivo');
     const yes = r.decision === 'accettato';
+    if (!yes) {
+      const why = String(body.reason || '').trim();
+      const by = String(body.signer_name || '').trim();
+      return `❌ <b>PREVENTIVO RIFIUTATO dal cliente</b> (firmato dal link)\n🧾 ${esc(r.code)} · ${esc(r.who)} · totale ${eur(r.total)}${by ? `\nFirmato da: ${esc(short(by, 60))}` : ''}${why ? `\nMotivo: ${esc(short(why, 200))}` : '\nMotivo: non indicato'}\n📞 Ricontattalo: forse con uno sconto o un'alternativa si recupera.${foot}`;
+    }
     return `${yes ? '✅' : '❌'} <b>Il cliente ha ${yes ? 'ACCETTATO' : 'RIFIUTATO'} il preventivo ${esc(r.code)}</b> (firmato dal link)\n${join(esc(r.who), `totale ${eur(r.total)}`)}${yes ? '\nPuoi convertirlo in riparazione o in vendita.' : ''}${foot}`;
   }
   if ((x = path.match(/^\/api\/track\/([^/]+)\/sign$/)) && m === 'POST') return isOk ? `✍️ <b>Scheda di ingresso FIRMATA dal cliente</b> (da link)\n${esc(r.code || '')}${foot}` : fail('Firma della scheda di ingresso');
@@ -159,7 +168,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     const voucherOff = (r.vouchers || []).filter((v) => v.kind !== 'regalo').reduce((a, v) => a + Number(v.amount || 0), 0);
     const baseOff = Math.round((Number(r.discount || 0) - voucherOff) * 100) / 100; // lo sconto del buono e' gia' nella riga del buono
     const items = (r.items || []).map((i) => `• ${esc(short(i.name, 50))} ×${esc(i.qty)} · ${eur(i.unit_price)}`).join('\n');
-    return `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)}\n💶 ${how}${r.customer_name ? `\nCliente: ${esc(r.customer_name)}` : ''}\n${items}${baseOff > 0 ? `\nSconto ${eur(baseOff)}` : ''}${vouchers}${alerts(r.device_alerts)}${foot}`;
+    return `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)}\n💶 ${how}${r.customer_name ? `\nCliente: ${esc(r.customer_name)}` : ''}\n${items}${baseOff > 0 ? `\nSconto ${eur(baseOff)}` : ''}${vouchers}${alerts(r.device_alerts)}${blk(r.blacklist_alert)}${foot}`;
   }
   if (path === '/api/expenses' && m === 'POST') return isOk ? `🧾 <b>Nuova spesa</b> ${eur(r.amount)} (${esc(r.method || 'contanti')})\n${join(esc(short(r.description, 100)), esc(r.category), esc(r.vendor))}${r.reimbursable ? ' · da rimborsare' : ''}${foot}` : fail('Nuova spesa');
   if ((x = path.match(/^\/api\/expenses\/(\d+)$/)) && (m === 'PUT' || m === 'DELETE')) {

@@ -20,6 +20,7 @@ export default defineConfig({
         privacy: resolve(__dirname, 'privacy.html'),
         blog: resolve(__dirname, 'blog.html'),
         usati: resolve(__dirname, 'usati.html'),
+        segui: resolve(__dirname, 'segui-riparazione.html'),
         ...blogPages,
         notFound: resolve(__dirname, '404.html'),
       },
