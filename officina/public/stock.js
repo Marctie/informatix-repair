@@ -53,6 +53,7 @@ export async function stockView(el, params) {
     all.forEach((p) => { const k = p.category || 'Altro'; counts[k] = (counts[k] || 0) + 1; });
     const names = [...new Set([...CATEGORIES, ...Object.keys(counts)])];
     const sel = $('#p-area', el);
+    if (!sel) return; // pagina cambiata nel frattempo
     sel.innerHTML = `<option value="">Aree ▾</option>` + names.map((n) => `<option value="${esc(n)}" ${n === area ? 'selected' : ''}>${esc(n)} (${counts[n] || 0})</option>`).join('');
     sel.classList.toggle('on', !!area);
     if (area && !names.includes(area)) area = '';

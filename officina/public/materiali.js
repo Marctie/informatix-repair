@@ -43,7 +43,7 @@ export async function mountMaterialsSettings(host) {
   const cfg = await safe(() => api('GET', '/api/materiali/config'));
   if (!cfg) return;
   const sec = document.createElement('section');
-  sec.className = 'card panel sec lg:col-span-2 lg:col-start-1';
+  sec.className = 'card panel sec';
   sec.id = 'st-materials';
   sec.innerHTML = `<h2 class="sec-t">Promemoria materiali da ordinare</h2>
     <p class="hint">Ogni giorno all’orario scelto arriva un messaggio su Telegram con l’elenco da ordinare, <b>solo se c’è qualcosa da ordinare</b>.</p>
@@ -51,7 +51,7 @@ export async function mountMaterialsSettings(host) {
       <div class="field"><label class="l" for="mt-on">Promemoria</label><select id="mt-on"><option value="1" ${cfg.enabled ? 'selected' : ''}>Acceso</option><option value="0" ${cfg.enabled ? '' : 'selected'}>Spento</option></select></div>
       <div class="field"><label class="l" for="mt-time">Orario</label><input id="mt-time" type="time" value="${esc(cfg.time)}" /></div>
     </div>
-    <div class="field"><span class="l">Giorni</span><div class="row tight">${DAYS.map(([d, l]) => `<label class="chip ${cfg.days.includes(d) ? 'on' : ''}" style="cursor:pointer"><input type="checkbox" data-day="${d}" ${cfg.days.includes(d) ? 'checked' : ''} style="position:absolute;opacity:0;width:0;height:0" />${l}</label>`).join('')}</div>
+    <div class="field"><span class="l">Giorni</span><div class="row">${DAYS.map(([d, l]) => `<label class="chip ${cfg.days.includes(d) ? 'on' : ''}" style="cursor:pointer"><input type="checkbox" data-day="${d}" ${cfg.days.includes(d) ? 'checked' : ''} style="position:absolute;opacity:0;width:0;height:0" />${l}</label>`).join('')}</div>
       <span class="hint">Predefinito: dal lunedì al venerdì alle 12:00.</span></div>
     <div><button class="btn btn-primary" id="mt-save">Salva promemoria</button></div>`;
   host.before(sec);
