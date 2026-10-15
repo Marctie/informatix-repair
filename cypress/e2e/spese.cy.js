@@ -83,9 +83,10 @@ describe('Spese in Cassa', () => {
 
   it('eliminazione rifiutata dalla conferma: la spesa resta', () => {
     cy.visit('/#/cassa');
-    cy.on('window:confirm', () => false);
     cy.contains('[data-exp]', 'Spesa extra modificata').click();
     cy.get('#ex-del').click();
+    cy.get('#cd-go').should('be.visible');
+    cy.get('.modal-bg [data-close]').last().click(); // Annulla nella doppia conferma
     cy.get('#ex-ok').should('be.visible');
     cy.get('.modal-bg [data-close]').first().click();
     cy.contains('Spese del periodo (2)');
@@ -93,9 +94,11 @@ describe('Spese in Cassa', () => {
 
   it('elimina una spesa con conferma', () => {
     cy.visit('/#/cassa');
-    cy.on('window:confirm', (t) => { expect(t).to.contain('Eliminare questa spesa'); return true; });
     cy.contains('[data-exp]', 'Spesa extra modificata').click();
     cy.get('#ex-del').click();
+    cy.get('#cd-go').click();
+    cy.get('body').then(($b) => { if ($b.find('#cd-typed').length) cy.get('#cd-typed').type('ELIMINA'); });
+    cy.get('#cd-go').click();
     cy.get('#toast').should('contain', 'Spesa eliminata');
     cy.contains('Spese del periodo (1)');
     cy.contains('Spesa extra modificata').should('not.exist');
@@ -162,8 +165,10 @@ describe('Dati demo e spese', () => {
 
   it('eliminando i demo spariscono anche le spese demo, non le vere', () => {
     cy.visit('/#/impostazioni');
-    cy.on('window:confirm', () => true);
-    cy.contains('button', 'Elimina i dati demo').click();
+    cy.get('#view').contains('button', 'Elimina i dati demo').click();
+    cy.get('#cd-go').click();
+    cy.get('body').then(($b) => { if ($b.find('#cd-typed').length) cy.get('#cd-typed').type('ELIMINA'); });
+    cy.get('#cd-go').click();
     cy.contains('button', 'Carica i dati demo');
     cy.visit('/#/cassa?days=30');
     cy.contains('Cartucce per la stampante');

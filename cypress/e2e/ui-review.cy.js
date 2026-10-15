@@ -183,7 +183,7 @@ describe('Rassegna grafica di tutte le schermate', () => {
         cy.screenshot(`ui-${vp}-m-${name}`, { capture: 'viewport', overwrite: true });
       });
       const openNew = () => (w < 1024 ? cy.get('#nav-new').click() : cy.get('#top-new').click());
-      modal('nuova-riparazione', openNew, 'Seriale / IMEI');
+      modal('nuova-riparazione', openNew, 'Marca e modello');
       it('finestra nuova-riparazione compilata + suggerimenti cliente', () => {
         cy.visit('/#/oggi');
         cy.get('#view').should('contain', 'In lavorazione');
