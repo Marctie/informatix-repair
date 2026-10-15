@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manuale · Officina Informatix Repair</title>
+<link rel="icon" href="data:," />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{--red:#DC2626;--red-d:#B91C1C;--ink:#0B0F19;--line:#E5E7EB;--bg:#F5F6F8;--muted:#6B7280;--ok:#059669;--warn:#B45309}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:4.5rem}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:#111827;line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:Poppins,system-ui,sans-serif;letter-spacing:-.01em;line-height:1.2;margin:0}
+  a{color:var(--red-d)}
+  .top{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff}
+  .top .in{max-width:1100px;margin:0 auto;padding:.7rem 1rem;display:flex;align-items:center;gap:.8rem}
+  .logo{width:2.2rem;height:2.2rem;border-radius:.55rem;background:linear-gradient(135deg,#DC2626,#B91C1C);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex:none}
+  .top b{font-family:Poppins,sans-serif;font-size:.95rem}
+  .top .sp{flex:1}
+  .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem .9rem;border-radius:.7rem;font-weight:600;font-size:.85rem;text-decoration:none;border:1px solid transparent;cursor:pointer;font-family:inherit}
+  .btn-red{background:var(--red);color:#fff} .btn-line{background:#fff;color:#111827;border-color:var(--line)}
+  .wrap{max-width:1100px;margin:0 auto;padding:1.2rem 1rem 4rem;display:grid;grid-template-columns:15rem 1fr;gap:2rem;align-items:start}
+  nav.toc{position:sticky;top:4.2rem;background:#fff;border:1px solid var(--line);border-radius:1rem;padding:.8rem;font-size:.85rem;max-height:calc(100vh - 5.5rem);overflow:auto}
+  nav.toc a{display:block;padding:.4rem .6rem;border-radius:.5rem;color:#374151;text-decoration:none;font-weight:500}
+  nav.toc a:hover{background:var(--bg);color:var(--red-d)}
+  nav.toc p{margin:.6rem .6rem .2rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  main{min-width:0}
+  section{background:#fff;border:1px solid var(--line);border-radius:1.1rem;padding:1.4rem 1.4rem 1.2rem;margin-bottom:1.1rem}
+  section h2{font-size:1.45rem;margin-bottom:.3rem}
+  section h2 .n{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.6rem;background:var(--red);color:#fff;font-size:.95rem;margin-right:.55rem;vertical-align:middle}
+  .lead{color:var(--muted);margin:.2rem 0 1rem}
+  h3{font-size:1.05rem;margin:1.3rem 0 .4rem}
+  p{margin:.5rem 0}
+  ol.steps{list-style:none;counter-reset:s;padding:0;margin:.6rem 0}
+  ol.steps>li{counter-increment:s;position:relative;padding:.55rem .8rem .55rem 3rem;margin:.35rem 0;background:var(--bg);border-radius:.8rem}
+  ol.steps>li:before{content:counter(s);position:absolute;left:.7rem;top:.55rem;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--ink);color:#fff;font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+  ol.steps small{display:block;color:var(--muted);font-size:.85rem}
+  ul{padding-left:1.2rem;margin:.4rem 0} li{margin:.2rem 0}
+  .call{border-radius:.9rem;padding:.8rem 1rem;margin:.9rem 0;font-size:.95rem;border:1px solid}
+  .call b:first-child{display:block;font-family:Poppins,sans-serif;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.15rem}
+  .tip{background:#ECFDF5;border-color:#A7F3D0;color:#065F46}
+  .warn{background:#FFFBEB;border-color:#FDE68A;color:#78350F}
+  .stop{background:#FEF2F2;border-color:#FECACA;color:#7F1D1D}
+  figure{margin:1rem 0;text-align:center}
+  figure img{max-width:100%;border:1px solid var(--line);border-radius:.8rem;box-shadow:0 8px 24px -12px rgba(16,24,40,.35)}
+  figure.phone img{max-width:290px}
+  figcaption{font-size:.8rem;color:var(--muted);margin-top:.4rem}
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+  .flow{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:.8rem 0}
+  .flow .st{padding:.35rem .7rem;border-radius:999px;font-size:.8rem;font-weight:700;background:#fff;border:1px solid var(--line)}
+  .flow .ar{color:var(--muted);font-weight:700}
+  .st.g{background:#ECFDF5;border-color:#A7F3D0;color:#065F46}.st.a{background:#FFFBEB;border-color:#FDE68A;color:#78350F}.st.b{background:#EFF6FF;border-color:#BFDBFE;color:#1E40AF}.st.r{background:#FEF2F2;border-color:#FECACA;color:#991B1B}.st.k{background:#F3F4F6;color:#374151}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;margin:.6rem 0}
+  th,td{text-align:left;padding:.55rem .6rem;border-bottom:1px solid var(--line);vertical-align:top} th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .scroll{overflow-x:auto}
+  .qa dt{font-weight:700;margin-top:.8rem} .qa dd{margin:.15rem 0 0;color:#374151}
+  kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:.35rem;padding:0 .4rem;font-size:.8rem;background:#fff}
+  .cheat{border:2px solid var(--ink)}
+  .cheat .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.8rem}
+  .cheat .box{background:var(--bg);border-radius:.9rem;padding:.8rem}
+  .cheat .box>b:first-child{font-family:Poppins,sans-serif;display:block;margin-bottom:.2rem}
+  .cheat .box span.k{display:inline-block;background:var(--red);color:#fff;border-radius:.4rem;font-size:.7rem;font-weight:800;padding:0 .4rem;margin-right:.3rem}
+  footer{text-align:center;color:var(--muted);font-size:.8rem;padding:1rem}
+  @media (max-width:860px){
+    .wrap{grid-template-columns:1fr;gap:1rem}
+    nav.toc{position:static;max-height:none;display:flex;flex-wrap:nowrap;gap:.35rem;overflow-x:auto;padding:.5rem;-webkit-overflow-scrolling:touch}
+    nav.toc p{display:none} nav.toc a{background:var(--bg);font-size:.8rem;white-space:nowrap;flex:none}
+    .pair{grid-template-columns:1fr} .cheat .grid{grid-template-columns:1fr}
+    section{padding:1.1rem 1rem}
+    section h2{font-size:1.25rem}
+    .top .hide-sm{display:none}
+  }
+  @media print{
+    @page{size:A4;margin:14mm}
+    body{background:#fff;font-size:11pt}
+    .top,nav.toc,.noprint{display:none!important}
+    .wrap{display:block;padding:0;max-width:none}
+    section{border:0;border-radius:0;padding:0;margin:0 0 6mm;break-inside:auto}
+    section h2{break-after:avoid} figure,.call,ol.steps>li,tr{break-inside:avoid}
+    figure img{box-shadow:none;max-width:78%}
+    figure.phone img{max-width:200px}
+    #rapido{break-after:page;border:2px solid #000}
+    a{color:#000;text-decoration:none}
+  }
+  main b, main code{overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div class="logo">IX</div><div><b>Manuale Officina</b><div style="font-size:.7rem;color:#9CA3AF" class="hide-sm">Informatix Repair · per Christian</div></div>
+  <div class="sp"></div>
+  <button class="btn btn-line noprint" onclick="window.print()">🖨️ Stampa / PDF</button>
+  <a class="btn btn-red" href="/">← Torna al gestionale</a>
+</div></header>
+
+<div class="wrap">
+<nav class="toc" aria-label="Indice">
+  <p>Inizia da qui</p>
+  <a href="#rapido">Foglio rapido (1 pagina)</a>
+  <a href="#avvio">1 · Accendere e aprire</a>
+  <p>Il lavoro di ogni giorno</p>
+  <a href="#accettazione">2 · Arriva un cliente</a>
+  <a href="#preventivo">3 · Diagnosi e preventivo</a>
+  <a href="#lavori">4 · Si ripara</a>
+  <a href="#consegna">5 · Pronto e consegna</a>
+  <a href="#cliente">6 · Cosa vede il cliente</a>
+  <p>Il resto del negozio</p>
+  <a href="#magazzino">7 · Magazzino e ordini</a>
+  <a href="#vendite">8 · Vendite al banco</a>
+  <a href="#altro">9 · Clienti, fornitori, cassa</a>
+  <a href="#backup">10 · Backup (importante)</a>
+  <p>Quando qualcosa cambia</p>
+  <a href="#casi">11 · Casi particolari</a>
+  <a href="#stati">12 · Gli stati</a>
+  <a href="#problemi">13 · Qualcosa non va?</a>
+  <a href="#scorciatoie">14 · Scorciatoie</a>
+  <p>Per l'amministratore</p>
+  <a href="#utenti">15 · Utenti</a>
+  <a href="#analisi">16 · Analisi</a>
+  <a href="#demo">17 · Dati demo</a>
+  <a href="#telegram">18 · Avvisi su Telegram</a>
+  <a href="#registro">21 · Registro</a>
+
+  <a href="#ordini">19 · Ordini, preventivi, promemoria</a>
+  <a href="#schede-firme">20 · Schede, firme, non riparabili</a>
+
+  <a href="#dispositivi">22 · Dispositivi e seriali</a>
+  <a href="#buoni">23 · Buoni e conto diviso</a>
+  <a href="#riservati">24 · Documenti e credenziali</a>
+</nav>
+
+<main>
+
+<section id="rapido" class="cheat">
+  <h2>Foglio rapido</h2>
+  <p class="lead">Tutto quello che serve nel 90% dei giorni. Il resto del manuale è per quando hai un dubbio.</p>
+  <div class="grid">
+    <div class="box"><b><span class="k">1</span>Arriva un cliente</b>Tasto rosso <b>＋ Nuova riparazione</b> (o premi <kbd>N</kbd>). Tocca le scelte rapide, scrivi nome, telefono e modello. Premi <b>🖨️ Salva e stampa</b>.</div>
+    <div class="box"><b><span class="k">2</span>Due fogli, un click</b>Escono la <b>scheda cliente</b> (con il QR, la firma e la copia per lui) e la <b>scheda laboratorio</b> (per te, con PIN e checklist). Fai firmare e metti l'etichetta sul dispositivo.</div>
+    <div class="box"><b><span class="k">3</span>Avanza lo stato</b>In <i>Oggi</i> ogni riga ha un tasto nero col <b>prossimo passo</b>: un click e il cliente vede l'aggiornamento.</div>
+    <div class="box"><b><span class="k">4</span>Avvisa con WhatsApp</b>Il tasto 💬 apre WhatsApp con il messaggio già scritto (preventivo, pronto, ritardo). Tu premi solo invio.</div>
+    <div class="box"><b><span class="k">5</span>Consegna e incassa</b>Quando è pronto, tasto <b>Consegnato →</b>: controlla il totale, scegli come ha pagato, conferma. Parte la garanzia.</div>
+    <div class="box"><b><span class="k">★</span>Pistola codici a barre</b>Nella nuova riparazione spara sull'IMEI: finisce nella casella giusta. In qualsiasi altro momento, spara sul codice dell'etichetta (o sull'IMEI): si apre la riparazione.</div>
+    <div class="box"><b><span class="k">6</span>Ogni settimana</b><i>Impostazioni → Scarica backup</i> e copialo su chiavetta o cloud (il sistema salva già da solo ogni notte). Sono tutti i tuoi dati.</div>
+  </div>
+  <div class="call warn" style="margin-top:1rem"><b>Da ricordare</b>Il link/QR del cliente, per ora, si apre <u>solo se il suo telefono è collegato al Wi-Fi del negozio</u>. Fuori dal negozio non funziona finché il sistema non sarà messo online: nel frattempo avvisalo con WhatsApp (tasto 💬).</div>
+</section>
+
+<section id="avvio">
+  <h2><span class="n">1</span>Accendere e aprire</h2>
+  <p class="lead">Il gestionale è online: lo apri da qualsiasi PC, tablet o telefono, senza accendere niente.</p>
+  <ol class="steps">
+    <li>Apri il browser e vai su <b>gestionale.informatixrepair.com</b>.<small>Salvalo tra i preferiti o aggiungilo alla schermata Home del telefono.</small></li>
+    <li>Scrivi la tua <b>email</b> e premi <b>Send login code</b>. Arriva un <b>codice</b> via email: incollalo e sei dentro.<small>Non servono password. Se il codice non arriva, guarda in <b>Spam</b>. Entrano solo le email abilitate dall'amministratore (vedi “Utenti”).</small></li>
+    <li>Vedi la pagina <b>Oggi</b>. Per uscire basta chiudere il browser: dopo un po' di tempo il sistema ti richiede il codice.</li>
+  </ol>
+  <div class="call tip"><b>Se non c'è internet</b>Senza connessione il gestionale online non si apre. Se serve, sul PC del negozio resta la vecchia versione locale (doppio click su <b>AVVIA-OFFICINA</b>, indirizzo <b>http://localhost:4950</b>), ma i dati sono separati: chiedi prima di usarla.</div>
+  <h3>Come è fatta la schermata</h3>
+  <ul>
+    <li><b>A sinistra</b> (sul telefono: <b>in basso</b>) il menu, ordinato a gruppi: <b>Banco</b> (Riparazioni, Clienti, Vendite, Cassa, Preventivi, Promemoria) · <b>Magazzino e acquisti</b> (Magazzino, Ordini, Acquisti, Fornitori, Dispositivi) · <b>Vetrina e buoni</b> · <b>Gestione</b> (Analisi, Impostazioni, Utenti, Credenziali, Registro: alcune solo per gli amministratori) · Manuale. Toccando il titolo di un gruppo lo chiudi o lo riapri (si ricorda su ogni postazione). Sul telefono, <b>Altro</b> apre le stesse voci a griglia.</li>
+    <li><b>In alto</b> la <b>ricerca</b>: scrivi un nome, un telefono, un modello o un codice e trovi subito la scheda. Premi <kbd>/</kbd> per scrivere lì senza usare il mouse.</li>
+    <li>Il tasto rosso <b>＋ Nuova riparazione</b> è sempre a portata di mano (sul telefono è il pulsante rosso <b>Nuova</b> al centro della barra in basso).</li>
+  </ul>
+  <div class="call tip"><b>Dove si usa</b>Da qualsiasi dispositivo con internet. Le pagine si adattano a ogni schermo: PC, tablet e telefono. Il cliente, invece, vede solo la sua riparazione su <b>riparazioni.informatixrepair.com</b>.</div>
+  <figure><img src="/manuale/01-oggi.png" alt="Pagina Oggi" loading="lazy"><figcaption>La pagina <b>Oggi</b>: in alto i numeri, poi le cose da fare ordinate per urgenza.</figcaption></figure>
+</section>
+
+<section id="accettazione">
+  <h2><span class="n">2</span>Arriva un cliente</h2>
+  <p class="lead">Obiettivo: una scheda completa in circa un minuto. Quasi tutto si fa toccando le scelte rapide.</p>
+  <div class="flow"><span class="st">Nuova riparazione</span><span class="ar">→</span><span class="st">Compili la scheda</span><span class="ar">→</span><span class="st g">Salva</span><span class="ar">→</span><span class="st b">QR al cliente</span><span class="ar">→</span><span class="st b">Stampa scheda + etichetta</span></div>
+  <ol class="steps">
+    <li><b>Premi “＋ Nuova riparazione”</b> (oppure <kbd>N</kbd>).</li>
+    <li><b>Cliente.</b> Se è già stato da te, scrivi nome o telefono nella casella in alto e toccalo nell'elenco. Altrimenti compila <b>Nome</b> e <b>Telefono</b> (l'email è facoltativa).<small>Il telefono è importante: serve per WhatsApp e per riconoscere i clienti che tornano. Anche se lo scrivi in modi diversi (+39 333… / 333…) il programma capisce che è lo stesso numero.</small></li>
+    <li><b>Dispositivo.</b> Tocca il tipo (Smartphone, Tablet, Portatile…) e scrivi <b>marca e modello</b> (“iPhone 13”). Poi il <b>colore</b> (scrivi o scegli un suggerimento: nero, argento, blu…): compare sulle schede stampate e nella pagina del cliente, e si trova anche cercando per colore. <b>Seriale/IMEI</b>: <u>spara con la pistola</u> sul codice a barre della scatola o dell'etichetta del dispositivo (vedi sotto). Se non hai la pistola scrivilo a mano: è facoltativo ma utile.</li>
+    <li><b>Problema.</b> Tocca le scelte rapide (“Schermo rotto”, “Non carica”…) e, se serve, aggiungi due parole a mano.</li>
+    <li><b>Cosa lascia e in che stato.</b> Tocca gli accessori lasciati (Caricatore, Cover, SIM…) e le condizioni (Graffi, Display crepato…). Questo ti protegge in caso di contestazioni.</li>
+    <li><b>PIN / schema di sblocco</b> (facoltativo): serve solo a te per provare il dispositivo. Il cliente <u>non lo vede mai</u>.</li>
+    <li><b>Preventivo e tempi.</b> Se sai già il prezzo, scrivilo; se è concordato con il cliente al banco spunta <b>Già concordato</b> (parte direttamente come “approvato”). Se il cliente lascia un <b>acconto</b>, scrivilo e scegli come ha pagato. Tocca la <b>consegna stimata</b> (Domani, +3 giorni, +1 settimana…).<small>Se ancora non sai il prezzo lascia vuoto: lo metterai dopo la diagnosi.</small></li>
+    <li><b>Premi “🖨️ Salva e stampa”</b> (il tasto rosso): salva la scheda e apre subito la stampa dei due documenti. Se preferisci non stampare ora, premi solo <b>Salva</b>.</li>
+  </ol>
+  <figure><img src="/manuale/05-nuova-riparazione.png" alt="Nuova riparazione" loading="lazy"><figcaption>La scheda di ingresso con le scelte rapide già toccate. In basso: Salva, oppure <b>Salva e stampa</b>.</figcaption></figure>
+  <div class="call tip"><b>Cliente di fretta o lavoro urgente?</b>Spunta <b>🔥 Urgente</b> vicino alla data di consegna: la riparazione resta in cima agli elenchi e sulle schede compare il bollino rosso URGENTE.</div>
+
+  <h3>I due fogli che escono</h3>
+  <p>Si stampano insieme (<b>Stampa tutto</b>): <b>pagina 1 per il cliente, pagina 2 per te</b>. Puoi stamparli anche separati, dalla schermata finale o in qualsiasi momento dalla scheda della riparazione.</p>
+  <div class="pair">
+    <div>
+      <h3 style="margin-top:.2rem">👤 Scheda cliente</h3>
+      <ul>
+        <li>Dati del cliente e del dispositivo, accessori lasciati, problema segnalato.</li>
+        <li><b>Preventivo, acconto, saldo previsto e data di consegna.</b></li>
+        <li><b>QR per seguire la riparazione</b> dal telefono (stato in tempo reale e approvazione del preventivo).</li>
+        <li>Condizioni e firme. <u>Il PIN di sblocco non c'è mai</u>: il foglio resta in mano al cliente.</li>
+      </ul>
+      <p>Falla firmare, trattieni una copia se vuoi e consegna l'altra al cliente.</p>
+    </div>
+    <figure><img src="/manuale/12-scheda-cliente.png" alt="Scheda cliente" loading="lazy"><figcaption>La scheda cliente, con il QR.</figcaption></figure>
+  </div>
+  <div class="pair">
+    <figure><img src="/manuale/13-scheda-laboratorio.png" alt="Scheda laboratorio" loading="lazy"><figcaption>La scheda laboratorio, per te.</figcaption></figure>
+    <div>
+      <h3 style="margin-top:.2rem">🔧 Scheda laboratorio</h3>
+      <ul>
+        <li>Tutti i dati del cliente e del dispositivo, più il <b>PIN / schema di sblocco</b> in evidenza.</li>
+        <li><b>Controllo all'ingresso</b>: caselle da barrare per ciò che funziona (display, fotocamere, audio, ricarica, Wi-Fi, SIM, segni di liquido, già aperto da terzi…). Ti protegge da contestazioni.</li>
+        <li><b>Al ritiro</b>: backup proposto, reset autorizzato, blocco account (iCloud/Google) disattivato, SIM/SD restituite, accessori contati, foto fatte.</li>
+        <li><b>Diagnosi</b> (si riempie da sola con le “Note del tecnico” scritte nel gestionale), <b>lavori eseguiti</b>, <b>ricambi</b> usati con costo e prezzo, tempo impiegato, tecnico e data.</li>
+        <li><b>Collaudo finale</b> con tutte le prove da fare prima di avvisare il cliente, e gli spazi per “avvisato il…” e “consegnato il…”.</li>
+      </ul>
+      <p>Tienila nel cassetto o attaccata al dispositivo: è il tuo promemoria di lavoro.</p>
+    </div>
+  </div>
+  <div class="call warn"><b>Se la stampa non parte</b>Se il browser blocca la finestra, usa i pulsanti della schermata che compare dopo il salvataggio (“Stampa scheda cliente + laboratorio”). Nella pagina di anteprima premi <b>Stampa</b> (o <kbd>Ctrl</kbd>+<kbd>P</kbd>) e scegli la stampante. Per l'etichetta scegli la stampante etichette (formato 62×30 mm).</div>
+
+  <h3>Il lettore di codici a barre (la pistola)</h3>
+  <p>La pistola funziona come una tastiera velocissima: legge il codice, lo "scrive" da sola e preme Invio. Non serve installare nulla: basta collegarla al PC.</p>
+  <ul>
+    <li><b>All'accettazione</b>: apri “Nuova riparazione”, punta la pistola sull'<b>IMEI o sul seriale</b> (sulla scatola, sull'etichetta sotto il telefono, o dalle impostazioni digitando *#06#) e premi il grilletto. Il codice va nel campo <i>Seriale / IMEI</i> anche se avevi il cursore in un'altra casella (per esempio la ricerca cliente). Il programma:
+      <ul><li>controlla se un <b>IMEI</b> è valido (“✔ IMEI valido” oppure “⚠ non valido: controlla la lettura”);</li>
+          <li>ti avvisa se quel dispositivo è <b>già in archivio</b> (“⚠ Già in archivio: R-… · nome cliente”): è un cliente che torna, magari in garanzia. Un click e apri la riparazione precedente.</li></ul></li>
+    <li><b>Per ritrovare una riparazione</b>: in qualsiasi pagina, senza cliccare in nessuna casella, spara sul <b>codice a barre dell'etichetta</b> (o sull'IMEI/seriale del dispositivo): si apre subito la scheda. Se il codice non c'è ancora, ti propone di aprire una nuova riparazione con quel seriale.</li>
+    <li><b>Codice a barre stampato</b>: l'<b>etichetta</b> e la <b>scheda laboratorio</b> riportano il codice a barre del numero riparazione (R-2026-0001…): incolla l'etichetta sul dispositivo e, quando lo riprendi in mano, basta uno sparo.</li>
+  </ul>
+  <div class="call tip"><b>Come deve essere impostata la pistola</b>Deve essere in modalità “tastiera” (USB HID, di solito è quella predefinita) e <u>terminare con Invio</u>. Se dopo uno sparo il codice si scrive ma non succede nulla, o va a capo in modo strano, nel libretto della pistola c'è un codice da leggere per attivare il “suffisso Invio / CR”. Se invece non scrive proprio nulla, prova un altro cavo/porta USB.</div>
+  <div class="call warn"><b>Con la fotocamera del telefono</b>Sul telefono compare il pulsante <b>📷</b> (nella ricerca in alto e accanto al seriale) per leggere un codice con la fotocamera. Funziona <u>solo quando il gestionale sarà online con connessione sicura (https)</u> e raggiungibile dal telefono: oggi è solo sul PC, quindi usa la pistola. Su iPhone potrebbe servire un secondo caricamento del lettore al primo uso.</div>
+
+  <h3>Dopo il salvataggio: la schermata del QR</h3>
+  <ol class="steps">
+    <li><b>Fai inquadrare il QR</b> al cliente (anche direttamente dallo schermo): si apre la pagina dove vede lo stato della sua riparazione.</li>
+    <li><b>Etichetta dispositivo</b>: stampa e incolla sul dispositivo (o sulla busta) così non lo confondi con altri.</li>
+    <li>Oppure premi <b>Invia link su WhatsApp</b> per mandargli il collegamento (utile se non può inquadrare il QR).</li>
+  </ol>
+  <figure><img src="/manuale/06-scheda-creata.png" alt="QR del cliente" loading="lazy"><figcaption>Il QR da mostrare al cliente, con i pulsanti per le stampe.</figcaption></figure>
+  <div class="call tip"><b>Se sbagli qualcosa</b>Apri la riparazione e premi <b>✏️ Modifica</b>: puoi correggere cliente, modello, accessori, problema, PIN e garanzia in qualsiasi momento.</div>
+</section>
+
+<section id="preventivo">
+  <h2><span class="n">3</span>Diagnosi e preventivo</h2>
+  <p class="lead">Il cliente decide in autonomia dal telefono, tu non devi rincorrerlo.</p>
+  <div class="flow"><span class="st">Ricevuto</span><span class="ar">→</span><span class="st b">In diagnosi</span><span class="ar">→</span><span class="st a">Preventivo da approvare</span><span class="ar">→</span><span class="st g">Preventivo approvato</span></div>
+  <ol class="steps">
+    <li>Quando inizi a guardare il dispositivo premi il tasto nero <b>In diagnosi →</b> (in <i>Oggi</i> o <i>Riparazioni</i>).</li>
+    <li>Scoperto il guasto, apri la riparazione (click sulla riga), scrivi il <b>Preventivo €</b> e la <b>consegna stimata</b>, premi <b>Salva preventivo/data</b>.</li>
+    <li>Premi <b>Chiedi approvazione</b>. Lo stato diventa <b>Preventivo da approvare</b>.</li>
+    <li>Avvisa il cliente con il tasto <b>💬 WhatsApp</b>: il messaggio con prezzo, data e link è già scritto.</li>
+    <li>Il cliente apre il link e preme <b>Sì, procedi</b> (o No, grazie). Tu vedi subito il risultato nella riga e nella cronologia.</li>
+  </ol>
+  <div class="pair">
+    <figure class="phone"><img src="/manuale/10-cliente-approva.png" alt="Il cliente approva" loading="lazy"><figcaption>Quello che vede il cliente quando deve approvare.</figcaption></figure>
+    <div>
+      <div class="call tip"><b>Se il cliente approva</b>Lo stato passa da solo a <b>Preventivo approvato</b>: puoi iniziare. Tutto è registrato in cronologia (“approvato dal cliente online”).</div>
+      <div class="call stop"><b>Se il cliente rifiuta</b>Compare il segnale rosso <b>Preventivo rifiutato</b> in dashboard. Chiamalo: se ci si accorda su un nuovo prezzo, cambia il preventivo e richiedi di nuovo l'approvazione. Se rinuncia, imposta lo stato <b>Annullato / non riparabile</b> e ricordati di consegnargli il dispositivo.</div>
+      <div class="call warn"><b>Approvazione a voce</b>Se il cliente ti dice “va bene” per telefono, puoi semplicemente passare allo stato successivo (<b>Preventivo approvato →</b>): è registrato come approvato.</div>
+    </div>
+  </div>
+</section>
+
+<section id="lavori">
+  <h2><span class="n">4</span>Si ripara</h2>
+  <p class="lead">Mentre lavori, tieni aggiornati stato, ricambi e messaggi al cliente: bastano pochi tocchi.</p>
+  <div class="flow"><span class="st g">Approvato</span><span class="ar">→</span><span class="st a">In attesa ricambi</span><span class="ar">↔</span><span class="st b">In riparazione</span><span class="ar">→</span><span class="st g">Pronto per il ritiro</span></div>
+  <ul>
+    <li><b>Cambia lo stato</b> con il tasto nero della riga, oppure dalla scheda con “Cambia stato…” (per saltare a uno stato diverso, come <b>In attesa ricambi</b>).</li>
+    <li><b>Ricambi usati</b>: nella scheda scrivi il nome del ricambio nella casella “Aggiungi ricambio dal magazzino” e toccalo. <u>Il pezzo viene scalato dal magazzino da solo</u>. Se ti sei sbagliato premi la ✕ accanto e torna disponibile.</li>
+    <li><b>Ricambio non a magazzino</b> (appena arrivato, non ancora caricato): premi <b>＋ Ricambio non a magazzino</b> e compila descrizione, quantità, prezzo d’acquisto, prezzo al cliente, fornitore, codice e data. Non tocca le giacenze. Sotto l’elenco vedi <b>Costo ricambi</b> e <b>Guadagno stimato</b> (preventivo o prezzo finale meno il costo dei ricambi).</li>
+    <li><b>Messaggio visibile al cliente</b>: una frase breve in evidenza sulla sua pagina (es. “Il display arriva giovedì”). Premi <b>Salva</b>.</li>
+    <li><b>Nota in cronologia</b>: aggiungi una nota; lascia la spunta <i>visibile al cliente</i> se vuoi che la veda, toglila per note solo tue (es. “cliente difficile”).</li>
+    <li><b>Acconto in più</b>: scrivi l'importo, scegli <b>come ha pagato</b> (contanti, carta, bonifico) e premi <b>Registra acconto</b>. Se il cliente paga in due modi, premi <b>＋ Dividi su un altro metodo</b>, scrivi la seconda quota e registra: ogni quota entra in Cassa col suo metodo.</li>
+  </ul>
+  <figure><img src="/manuale/07-dettaglio.png" alt="Scheda di dettaglio" loading="lazy"><figcaption>La scheda completa di una riparazione: stato, cliente, preventivo, ricambi, messaggi e cronologia.</figcaption></figure>
+  <div class="call tip"><b>Preventivo cambiato a lavori iniziati?</b>Se modifichi il preventivo dopo l'approvazione, lo stato torna da solo a <b>Preventivo da approvare</b> e il cliente deve riapprovare. Così non ci sono mai discussioni sul prezzo.</div>
+</section>
+
+<section id="consegna">
+  <h2><span class="n">5</span>Pronto e consegna</h2>
+  <p class="lead">Avvisi in un click, incassi in due.</p>
+  <ol class="steps">
+    <li>Premi <b>Pronto per il ritiro →</b>. La riparazione compare in <i>Oggi</i> nella sezione <b>📞 Pronte: avvisa il cliente</b>.</li>
+    <li>Premi <b>💬</b>: WhatsApp si apre con il messaggio “è pronto, importo da saldare € …, ti aspettiamo”. Invia.</li>
+    <li>Quando il cliente arriva, premi <b>Consegnato →</b>. Si apre la finestra di incasso: il <b>totale</b> è già compilato (puoi correggerlo se è cambiato), scegli <b>contanti / carta / bonifico</b> e premi <b>Conferma consegna</b>.</li>
+    <li>Il programma calcola da solo <b>quanto deve ancora pagare</b> (totale meno acconti), lo registra in cassa e <b>avvia la garanzia</b> (90 giorni, modificabile).</li>
+  </ol>
+  <div class="call warn"><b>Ricevuta fiscale</b>Il gestionale produce documenti <u>non fiscali</u>. Lo scontrino o la fattura continui a farli col tuo registratore telematico / programma di fatturazione.</div>
+  <h3>Se un cliente torna in garanzia</h3>
+  <p>Cercalo con la ricerca in alto, apri la vecchia riparazione: sotto “Preventivo e pagamenti” vedi <b>“garanzia fino al …”</b>. Poi apri una nuova riparazione come al solito (nelle note scrivi che è in garanzia e metti preventivo 0).</p>
+</section>
+
+<section id="cliente">
+  <h2><span class="n">6</span>Cosa vede il cliente</h2>
+  <p class="lead">Una pagina semplice sul suo telefono, che si aggiorna da sola ogni pochi secondi.</p>
+  <div class="pair">
+    <figure class="phone"><img src="/manuale/09-cliente-lavori.png" alt="Pagina del cliente" loading="lazy"><figcaption>La pagina del cliente durante la riparazione.</figcaption></figure>
+    <div>
+      <ul>
+        <li><b>Stato</b> in grande e barra di avanzamento in 6 passi: Ricevuto → Diagnosi → Preventivo → Lavori → Pronto → Ritirato.</li>
+        <li><b>Consegna stimata</b> (la data che hai inserito).</li>
+        <li>Il suo <b>dispositivo</b> (modello, problema, accessori lasciati, stato) e i <b>suoi dati</b> (telefono ed email in parte nascosti per privacy).</li>
+        <li><b>Preventivo</b>, quanto ha già versato e quanto resta da saldare.</li>
+        <li><b>Cronologia</b> con le note che hai reso visibili e il <b>messaggio</b> che hai scritto.</li>
+        <li>Se serve la sua risposta: i pulsanti <b>Sì, procedi / No, grazie</b>.</li>
+        <li>A fine lavori: la durata della <b>garanzia</b>.</li>
+      </ul>
+      <p><b>Non vede mai</b>: il PIN di sblocco, le note interne, i costi dei ricambi.</p>
+    </div>
+  </div>
+  <div class="call warn"><b>Limite attuale</b>Il link e il QR funzionano <u>solo con il telefono collegato al Wi-Fi del negozio</u> (il sistema è su questo PC). Per far seguire la riparazione anche da casa serve metterlo online (è il passo successivo). Finché non è fatto, usa il tasto <b>💬 WhatsApp</b> per gli avvisi importanti: arrivano ovunque.</div>
+  <div class="call tip"><b>Provalo tu</b>Nella scheda di una riparazione premi <b>👁️ Vista cliente</b>: vedi esattamente la pagina del cliente.</div>
+</section>
+
+<section id="magazzino">
+  <h2><span class="n">7</span>Magazzino e ordini</h2>
+  <p class="lead">Sai sempre cosa hai e cosa devi ordinare.</p>
+  <ul>
+    <li><b>Nuovo articolo</b>: nome, categoria, quantità iniziale, <b>scorta minima</b> (sotto questa soglia ti avvisa), costo d'acquisto, prezzo di vendita, fornitore, posizione (scaffale).</li>
+    <li><b>Prima di tutto inserisci i ricambi che usi più spesso</b> (display, batterie, connettori…): così li assegni alle riparazioni con due tocchi.</li>
+    <li><b>−1 / +1</b> sulla riga per correggere al volo la giacenza (es. hai trovato un pezzo in più o ne hai rotto uno).</li>
+    <li><b>📥 Carico merce</b> (pulsante in alto in Magazzino, oppure apri l'articolo) quando arriva merce dal fornitore: cerca l'articolo (o creane uno nuovo), scrivi <b>quantità</b>, <b>fornitore</b>, <b>prezzo d'acquisto</b>, data, codice del fornitore e n. documento (DDT o fattura). Il gestionale aggiorna la giacenza, l'<b>ultimo costo</b> dell'articolo (il <b>costo medio</b> lo vedi in Acquisti) e scrive il prezzo nello <b>storico di Acquisti</b>: grafico a punti e avvisi di prezzo comprendono anche questi carichi. Con lo stesso n. documento più articoli finiscono nello stesso documento.</li>
+    <li><b>📦 Carica a magazzino</b> (nella scheda di una riparazione, accanto a un ricambio “a mano”): lo trasforma in articolo a catalogo, già collegato alla riparazione, con costo, prezzo e fornitore che avevi inserito. La giacenza resta 0 perché il pezzo è già stato usato.</li>
+    <li>I pezzi usati nelle riparazioni e venduti al banco si <b>scalano da soli</b>.</li>
+    <li><b>Archivia</b> un articolo che non tratti più: sparisce dall'elenco ma lo storico resta.</li>
+  </ul>
+  <h3>Da ordinare (la lista della spesa)</h3>
+  <p>Quando un articolo scende alla scorta minima compare in <i>Oggi</i> (“📉 Da riordinare”) e nella scheda <b>Magazzino → Da ordinare</b>, già <b>raggruppato per fornitore</b>.</p>
+  <p><b>Aree</b>: accanto a “Tutti” c’è il menu <b>Aree ▾</b> (Ricambi, Accessori, Cavi e caricatori…): scegline una e vedi solo quegli articoli, con il numero accanto al nome. Per tornare a tutto premi <b>Tutti</b>. L’area di un articolo è il campo “Categoria” della sua scheda.</p>
+  <p><b>Acquisti</b> (voce nel menu): importi la <b>fattura elettronica XML</b> del fornitore con <b>Importa fattura</b>, controlli le righe abbinate agli articoli e confermi. Il gestionale salva lo storico dei prezzi d’acquisto, mostra il grafico a punti per prodotto e ti avvisa quando un prezzo sale o scende.</p>
+  <ol class="steps">
+    <li>Apri <b>Magazzino → Da ordinare</b>.</li>
+    <li>Per ogni fornitore premi <b>💬 Ordina su WhatsApp</b> (o ✉️ Email): il messaggio con articoli e quantità consigliate è già scritto. Se preferisci, <b>📋 Copia ordine</b> e incolla dove vuoi.</li>
+  </ol>
+  <figure><img src="/manuale/03-da-ordinare.png" alt="Da ordinare" loading="lazy"><figcaption>La lista ordini per fornitore, con il messaggio pronto.</figcaption></figure>
+  <div class="call tip"><b>Per far funzionare gli ordini</b>Inserisci in <b>Fornitori</b> il telefono (con WhatsApp) e/o l'email, e collega ogni articolo al suo fornitore.</div>
+</section>
+
+<section id="vendite">
+  <h2><span class="n">8</span>Vendite al banco</h2>
+  <p class="lead">Per accessori, cavi, pellicole e servizi veloci, senza aprire una riparazione.</p>
+  <ol class="steps">
+    <li><b>Servizi</b> (es. Ripristino Windows 11): sopra la voce libera ci sono i pulsanti del <b>listino servizi</b>; un tocco e finiscono nel carrello, senza giacenza. Con <b>Gestisci listino</b> aggiungi, modifichi (✎) o togli (✕) i servizi, con prezzo ed eventuale costo.</li>
+    <li>Vai su <b>Vendite</b>. Scrivi il nome dell'articolo nella ricerca e toccalo: finisce nel carrello. Per un servizio che non è in magazzino usa <b>Voce libera</b> (descrizione + importo).</li>
+    <li><b>Stampa la ricevuta</b>: sopra il tasto Incassa c’è la casella per stamparla o no; il gestionale ricorda l’ultima scelta su quella postazione. La vendita viene registrata comunque, e la ricevuta si ristampa dall’elenco delle vendite recenti (🖨️).</li>
+    <li>Cambia quantità con − / +, o modifica il prezzo di una riga.</li>
+    <li>Se vuoi lo storico, scegli il <b>Cliente</b> (facoltativo). Eventuale <b>sconto €</b> e <b>pagamento</b> (contanti, carta, bonifico).</li>
+    <li>Premi <b>✔ Incassa</b>: l'incasso va in cassa, il magazzino si aggiorna e si apre la ricevuta da stampare.</li>
+  </ol>
+  <figure><img src="/manuale/08-vendite.png" alt="Vendite" loading="lazy"><figcaption>Il carrello della vendita veloce.</figcaption></figure>
+  <p>Gli ultimi incassi sono nella colonna a destra: la 🖨️ ristampa la ricevuta.</p>
+</section>
+
+<section id="altro">
+  <h2><span class="n">9</span>Clienti, fornitori, cassa</h2>
+  <h3>Clienti</h3>
+  <p>Elenco con ricerca. Aprendo un cliente vedi <b>tutte le sue riparazioni e i suoi acquisti</b> e puoi scrivergli su WhatsApp, chiamarlo o aprirgli una nuova riparazione già con i suoi dati. <b>Eliminare un cliente</b>: si può solo se non ha riparazioni aperte; le sue riparazioni concluse (consegnate o annullate) vengono cancellate con lui. <b>Eliminare una riparazione</b>: dalla sua scheda, solo se conclusa (pulsante «Elimina riparazione», conferma scrivendo ELIMINA). Si perdono storico, firme e anche gli incassi della riparazione in cassa. L’operazione finisce nel registro delle attività.</p>
+  <h3>Fornitori</h3>
+  <p>Nome, telefono/WhatsApp, email, sito e note (tempi di consegna, minimo d'ordine). Servono per la lista “Da ordinare”.</p>
+  <h3>Riparazioni</h3>
+  <p>L'elenco di tutte le riparazioni. In alto i filtri per stato con il numero accanto (<b>Aperte</b> è quello normale; <b>Tutte</b> include le consegnate). Puoi anche cercare per nome, telefono, modello o seriale.</p>
+  <figure><img src="/manuale/02-riparazioni.png" alt="Elenco riparazioni" loading="lazy"><figcaption>L'elenco riparazioni con filtri per stato.</figcaption></figure>
+  <h3>Cassa</h3>
+  <p>Quanto hai incassato <b>oggi</b>, negli ultimi <b>7, 30 o 90 giorni</b> o in un periodo a scelta. In alto i numeri: <b>incassato</b>, <b>operazioni</b>, <b>media al giorno</b> e <b>costo dei ricambi</b>. Sotto i grafici:</p>
+  <ul>
+    <li><b>Per metodo di pagamento</b> e <b>riparazioni e vendite</b>, con importo e percentuale.</li>
+    <li><b>Incassi per giorno</b>, per vedere i giorni forti e quelli deboli.</li>
+    <li><b>Giorno della settimana</b> e <b>ora del giorno</b>, per capire quando il negozio incassa di più.</li>
+    <li>In fondo l'<b>elenco di tutti gli incassi</b> (acconti, saldi, vendite).</li>
+  </ul>
+  <h3>Spese e nota spese (PDF)</h3>
+  <p>Oltre agli incassi puoi registrare le <b>spese</b> del negozio (ricambi, bollette, carburante, pranzi di lavoro…). In Cassa premi <b>＋ Nuova spesa</b> e compila: data, importo, descrizione, categoria, fornitore, giustificativo (scontrino, fattura o ricevuta) con il suo numero, IVA, come hai pagato e chi ha anticipato. Se è una spesa anticipata da te, spunta <b>Da rimborsare</b>. Le spese del periodo compaiono in fondo alla Cassa; cliccandone una la modifichi o la elimini.</p>
+  <p>Premi <b>📄 Genera nota spese (PDF)</b>: scegli a nome di chi è (compare sul documento) e, se vuoi, <b>solo le spese da rimborsare</b>. Si apre un PDF in formato A4 con l'intestazione del negozio, il periodo, l'elenco delle voci (data, causale, categoria, documento, IVA, importo), il totale, il riepilogo per categoria, l'avvertenza di allegare i giustificativi originali e gli spazi per le <b>firme</b> (di chi ha sostenuto la spesa e di chi approva). Stampalo, allega scontrini e fatture e firma.</p>
+  <div class="call tip"><b>Importante</b>La nota spese è un documento gestionale, non fiscale. Conserva sempre gli scontrini e le fatture originali: le voci senza giustificativo compaiono in rosso nel PDF e possono essere rimborsate solo secondo le regole interne. Per la deducibilità chiedi al commercialista.</div>
+  <figure><img src="/manuale/04-cassa.png" alt="Cassa" loading="lazy"><figcaption>La cassa del periodo scelto.</figcaption></figure>
+</section>
+
+<section id="backup">
+  <h2><span class="n">10</span>Backup (importante)</h2>
+  <p class="lead">I dati sono al sicuro nel cloud e ogni notte il sistema ne salva una copia da solo.</p>
+  <ul>
+    <li><b>Copia automatica</b>: ogni notte, in automatico. Si conservano le ultime <b>30 copie</b>.</li>
+    <li><b>Salva ora nel cloud</b>: in <b>Impostazioni → Backup dei dati</b> (solo amministratori) crea subito una copia, per esempio prima di una modifica importante.</li>
+    <li><b>Scarica backup</b>: scarica un file <code>officina-backup-AAAA-MM-GG.json</code> sul tuo dispositivo. Conservalo su una chiavetta o nel tuo cloud personale: fallo ogni tanto, meglio a fine mese.</li>
+  </ul>
+  <div class="call stop"><b>Per ripristinare</b>Non si ripristina da soli: scrivici prima di cancellare qualcosa di importante e recuperiamo la copia giusta.</div>
+  <p>In <b>Impostazioni</b> puoi anche cambiare nome, indirizzo e telefono del negozio, i giorni di garanzia standard, il testo delle condizioni che si stampa sulla scheda di ingresso.</p>
+</section>
+
+<section id="casi">
+  <h2><span class="n">11</span>Casi particolari</h2>
+  <dl class="qa">
+    <dt>Il cliente rifiuta il preventivo</dt>
+    <dd>Lo vedi in rosso in <i>Oggi</i>. Chiamalo. Se rinuncia: stato <b>Annullato / non riparabile</b>, poi riconsegna il dispositivo. Se rinegozi: cambia il preventivo e chiedi di nuovo l'approvazione.</dd>
+    <dt>Il preventivo cambia a metà lavoro</dt>
+    <dd>Modifica il preventivo nella scheda: lo stato torna a “Preventivo da approvare” e il cliente riapprova dal link (o a voce, se preferisci, poi premi <i>Preventivo approvato</i>).</dd>
+    <dt>Il dispositivo non è riparabile</dt>
+    <dd>Cambia lo stato in <b>Annullato / non riparabile</b> e scrivi una nota visibile al cliente con la spiegazione. Se ti ha lasciato un acconto, restituiscilo a mano (il gestionale non gestisce rimborsi: annotalo in nota).</dd>
+    <dt>C'è un ritardo sulla consegna</dt>
+    <dd>Cambia la <b>consegna stimata</b> nella scheda: la nuova data si aggiorna subito sul telefono del cliente. Quelle oltre la data compaiono in <i>Oggi → ⏰ In ritardo</i>: il tasto 💬 ha il messaggio “ti scriviamo per un ritardo”.</dd>
+    <dt>Manca un ricambio</dt>
+    <dd>Stato <b>In attesa ricambi</b> + messaggio al cliente (“Arriva giovedì”). Quando arriva, torna a <b>In riparazione</b>. Nel Magazzino registra il carico.</dd>
+    <dt>Il cliente ha perso la ricevuta</dt>
+    <dd>Cercalo per nome o telefono in alto, apri la scheda e ristampa la <b>👤 Scheda cliente</b> (o <b>🖨️ Stampa tutto</b>) oppure rimanda il link su WhatsApp.</dd>
+    <dt>Ho sbagliato a cliccare lo stato</dt>
+    <dd>Scegli lo stato giusto da “Cambia stato…” nella scheda. Una riparazione già <b>consegnata</b> non si può più riaprire: in quel caso crea una nuova riparazione.</dd>
+    <dt>Un cliente è doppio</dt>
+    <dd>Succede raramente (telefoni diversi). Non è un problema per il lavoro; usa quello con più storico e modifica i dati se serve.</dd>
+    <dt>Voglio cancellare una riparazione</dt>
+    <dd>Non si cancellano (per non rovinare cassa e storico). Usa lo stato <b>Annullato</b>.</dd>
+  </dl>
+</section>
+
+<section id="stati">
+  <h2><span class="n">12</span>Gli stati in breve</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Stato</th><th>Quando lo usi</th><th>Cosa legge il cliente</th></tr></thead>
+    <tbody>
+      <tr><td><b>Ricevuto</b></td><td>Appena registri la scheda</td><td>“Abbiamo preso in carico il tuo dispositivo.”</td></tr>
+      <tr><td><b>In diagnosi</b></td><td>Stai cercando il guasto</td><td>“Stiamo controllando il guasto.”</td></tr>
+      <tr><td><b>Preventivo da approvare</b></td><td>Hai scritto il prezzo e aspetti il sì</td><td>Appaiono i pulsanti <i>Sì, procedi / No, grazie</i></td></tr>
+      <tr><td><b>Preventivo approvato</b></td><td>Il cliente ha detto sì (online o a voce)</td><td>“Si procede con la riparazione.”</td></tr>
+      <tr><td><b>In attesa ricambi</b></td><td>Manca un pezzo</td><td>“Stiamo aspettando il ricambio necessario.”</td></tr>
+      <tr><td><b>In riparazione</b></td><td>Ci stai lavorando</td><td>“Il tecnico sta lavorando sul tuo dispositivo.”</td></tr>
+      <tr><td><b>Pronto per il ritiro</b></td><td>Finito: avvisa il cliente</td><td>“Puoi passare a ritirare il tuo dispositivo.”</td></tr>
+      <tr><td><b>Consegnato</b></td><td>Il cliente ha ritirato e pagato</td><td>“Dispositivo consegnato” + garanzia</td></tr>
+      <tr><td><b>Annullato / non riparabile</b></td><td>Rinuncia o impossibile riparare</td><td>“La riparazione non è stata eseguita.”</td></tr>
+    </tbody>
+  </table></div>
+  <div class="flow"><span class="st k">Ricevuto</span><span class="ar">→</span><span class="st b">In diagnosi</span><span class="ar">→</span><span class="st a">Preventivo da approvare</span><span class="ar">→</span><span class="st g">Approvato</span><span class="ar">→</span><span class="st b">In riparazione</span><span class="ar">→</span><span class="st g">Pronto</span><span class="ar">→</span><span class="st k">Consegnato</span></div>
+  <p class="lead">Il tasto nero “prossimo passo” segue sempre questa strada; per deviare (attesa ricambi, annullato) usa “Cambia stato…”.</p>
+</section>
+
+<section id="problemi">
+  <h2><span class="n">13</span>Qualcosa non va?</h2>
+  <dl class="qa">
+    <dt>La pagina non si apre / “impossibile raggiungere il sito”</dt>
+    <dd>Controlla la connessione internet. Il gestionale è online su <b>gestionale.informatixrepair.com</b>: se il resto del web funziona e questa pagina no, scrivici.</dd>
+    <dt>Mi chiede il codice ma non arriva l'email</dt>
+    <dd>Guarda in <b>Spam</b> e aspetta un minuto. Se continua, la tua email forse non è abilitata: chiedi all'amministratore di aggiungerla in <b>Utenti</b>.</dd>
+    <dt>Il cliente dice che il link non si apre</dt>
+    <dd>Il link funziona ovunque, anche fuori dal negozio, con internet. Se non si apre, controlla che il QR/link sia quello della scheda (inizia con <b>riparazioni.informatixrepair.com</b>) o invialo di nuovo su WhatsApp.</dd>
+    <dt>Il QR porta a un indirizzo con “localhost”</dt>
+    <dd>Succede solo con la versione locale. Con il gestionale online il QR è già corretto: apri <b>gestionale.informatixrepair.com</b> e ristampa la scheda da lì.</dd>
+    <dt>WhatsApp non si apre</dt>
+    <dd>Serve WhatsApp Web/Desktop collegato sul PC. Se il cliente non ha il telefono nella scheda, il tasto 💬 non compare: aggiungilo con ✏️ Modifica.</dd>
+    <dt>Il magazzino mostra un numero negativo</dt>
+    <dd>Hai venduto o assegnato più pezzi di quelli registrati. Fai un <b>Registra carico</b> con la quantità giusta, oppure usa −1/+1.</dd>
+    <dt>La pistola non scrive niente, o scrive caratteri strani</dt>
+    <dd>Verifica che sia collegata e in modalità tastiera (USB HID). Se i caratteri sono sbagliati (es. lettere al posto dei numeri) la tastiera del PC è su una lingua diversa dall'italiano: imposta la pistola per tastiera “italiana” seguendo il suo libretto.</dd>
+    <dt>Dopo lo sparo non succede nulla</dt>
+    <dd>Manca il “suffisso Invio” sulla pistola (vedi il riquadro nel capitolo 2). Nel frattempo premi Invio a mano dopo lo sparo.</dd>
+    <dt>Ho chiuso per sbaglio la pagina</dt>
+    <dd>Nessun problema: i dati sono già salvati online. Riapri <b>gestionale.informatixrepair.com</b>.</dd>
+  </dl>
+</section>
+
+<section id="scorciatoie">
+  <h2><span class="n">14</span>Scorciatoie</h2>
+  <table>
+    <tbody>
+      <tr><td><kbd>N</kbd></td><td>Nuova riparazione (da qualsiasi pagina)</td></tr>
+      <tr><td><kbd>/</kbd></td><td>Vai alla ricerca</td></tr>
+      <tr><td>🔫 sparo</td><td>Con la pagina libera: apre la riparazione col codice letto. Nel modulo di nuova riparazione: riempie il seriale/IMEI</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Chiudi la finestra aperta</td></tr>
+      <tr><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>Stampa la pagina di stampa aperta</td></tr>
+    </tbody>
+  </table>
+  <h3>Idee per lavorare ancora più veloce</h3>
+  <ul>
+    <li>Tieni <b>Oggi</b> aperta in una scheda del browser per tutto il giorno: è il tuo “cruscotto”.</li>
+    <li>Compila il magazzino <b>una volta</b> con i ricambi più usati: poi ti basta toccarli.</li>
+    <li>Usa sempre le <b>scelte rapide</b> in accettazione: meno scrittura, meno errori.</li>
+    <li>A fine giornata guarda <b>Oggi</b>: se è vuota di rosso (ritardi, rifiuti), hai finito.</li>
+  </ul>
+</section>
+
+<footer>Manuale Officina · Informatix Repair · versione 1.0 · ottobre 2026</footer>
+<section id="utenti">
+  <h2><span class="n">15</span>Utenti (solo amministratore)</h2>
+  <p class="lead">Decidi tu chi può entrare nel gestionale.</p>
+  <ol class="steps">
+    <li>Apri <b>Utenti</b> dal menu (lo vedono solo gli amministratori).</li>
+    <li>Premi <b>＋ Nuovo utente</b>, scrivi l'<b>email</b> della persona o della postazione (Cassa, Laboratorio, Vendite) e scegli il ruolo.</li>
+    <li>Da quel momento quella persona può entrare con il codice via email. Per togliere l'accesso: <b>Modifica</b> → togli la spunta <b>Può accedere</b>, oppure <b>Elimina</b> (ogni eliminazione chiede una doppia conferma; per clienti e utenti bisogna anche scrivere ELIMINA).</li>
+  </ol>
+  <ul>
+    <li><b>Amministratore</b>: usa tutto, gestisce utenti, impostazioni e analisi.</li>
+    <li><b>Postazione / collaboratore</b>: usa riparazioni, clienti, magazzino, vendite e cassa.</li>
+    <li><b>Cassa (permessi limitati)</b>: come la postazione, ma senza Impostazioni, Analisi, Utenti e Registro. Pensato per chi sta solo al banco. <b>Non vede i costi d'acquisto, i margini e i guadagni</b> (né nelle schermate né nei dati che il programma le invia), non vede Acquisti e non può fare il carico merce.</li>
+    <li>Il profilo del <b>proprietario</b> (🔒) è protetto: non si può modificare né eliminare.</li>
+  </ul>
+  <div class="call tip"><b>Chi non è in elenco</b>Può chiedere il codice, ma dopo vede “Questo indirizzo email non è abilitato” e non entra.</div>
+</section>
+
+<section id="telegram">
+  <h2><span class="n">18</span>Avvisi su Telegram (proprietario)</h2>
+  <p class="lead">Il proprietario riceve un messaggio sul telefono per ogni cosa che accade nel gestionale.</p>
+  <ul>
+    <li><b>Cosa arriva</b>: nuove riparazioni, cambi di stato, consegne e incassi, acconti, note, ricambi, vendite, spese, carico merce, listino servizi, buoni, ordini, preventivi, promemoria, dispositivi, modifiche a clienti, fornitori e magazzino, utenti e impostazioni, backup, stampe e la risposta del cliente al preventivo.</li>
+    <li><b>Dati veri</b>: ogni messaggio riporta codice, dispositivo, cliente e importi. Alla consegna e nelle vendite si vedono le <b>quote del pagamento diviso</b> (es. carta 50 € + contanti 55 €) e il <b>buono</b> usato; eliminando una riparazione o un cliente il messaggio dice <b>quanti incassi sono stati tolti dalla cassa e per quanto</b>. Nelle impostazioni compaiono solo i campi cambiati davvero (prima → dopo).</li>
+    <li><b>Sicurezza</b>: accessi al gestionale, tentativi di accesso con email non abilitate, operazioni non permesse a un ruolo, eventuali <b>errori</b> con il dettaglio. Arriva un avviso anche quando qualcuno <b>apre un documento d’identità</b> o <b>copia/mostra una password</b> di un fornitore (mai i contenuti).</li>
+    <li><b>Senza suono</b>: stampe, foto, checklist, note, promemoria e piccoli errori di compilazione arrivano silenziosi, per non disturbare.</li>
+    <li><b>Privacy</b>: i PIN di sblocco dei dispositivi e le password non vengono mai inviati; i telefoni compaiono mascherati.</li>
+    <li>Il bot è solo per il proprietario: non risponde a nessun altro e non si possono dargli comandi.</li>
+    <li><b>Bot di controllo (Termux)</b>: un piccolo programma sul telefono controlla ogni 5 minuti gestionale, tracciamento clienti, sito e Vetrina Usati. Avvisa se uno va giù, torna su o è <b>lento</b>; se la <b>Vetrina sul sito non corrisponde</b> al gestionale (con il consiglio di premere «Ripubblica sul sito»); se manca il <b>backup della notte</b>.</li>
+    <li><b>Buongiorno</b> (ogni giorno alle 8:30): promemoria del giorno, riparazioni pronte da ritirare e da quanti giorni, in ritardo, preventivi in attesa o rifiutati, giacenze scadute, ordini arrivati da avvisare, preventivi in scadenza, articoli esauriti o sotto scorta.</li>
+    <li><b>Riepilogo della sera</b> (21:00): incassi del giorno divisi per metodo (contanti, carta…) e per tipo (riparazioni, vendite, ordini), spese e netto, vendite con gli articoli, riparazioni entrate e consegnate, totali del mese, Vetrina Usati (in vetrina e venduti), articoli del blog, accessi e backup.</li>
+  </ul>
+</section>
+
+<section id="ordini">
+  <h2><span class="n">19</span>Ordini, preventivi e promemoria</h2>
+  <p class="lead">Tre voci del menu per non dimenticare niente: cosa ordinare per i clienti, i preventivi con scadenza e gli appuntamenti con data e ora.</p>
+  <h3>Ordini (menu “Ordini”)</h3>
+  <ol class="steps">
+    <li>Premi <b>＋ Nuovo ordine</b>, scegli il <b>cliente</b> (cerca per nome o telefono), aggiungi gli <b>articoli</b> (es. “Pellicola iPhone 13”), il fornitore se lo sai, la data prevista e, se il cliente lascia un <b>acconto</b>, l'importo: finisce in <b>Cassa</b> come ogni incasso.</li>
+    <li>Lo stato avanza con un tocco: <b>Da ordinare → Ordinato → Arrivato → Consegnato</b> (il pulsante nero a destra di ogni riga).</li>
+    <li><b>Da ordinare</b> (pulsante in alto): tutte le righe ancora da ordinare, <b>raggruppate per fornitore</b>, con messaggio pronto da inviare su WhatsApp o email e il pulsante “Fatto: segna ordinati”.</li>
+    <li>Quando l'ordine è <b>Arrivato</b> compare un avviso nella campanella 🔔 e il pulsante verde <b>Avvisa</b> apre WhatsApp con il messaggio già scritto per il cliente.</li>
+    <li>Alla <b>consegna</b> puoi incassare subito il saldo. Un ordine con incassi non si elimina: si <b>annulla</b>. Ogni eliminazione chiede la doppia conferma.</li>
+    <li>“Per il negozio (scorte)” registra un ordine al fornitore senza cliente (es. HDD per il magazzino). Un ordine <b>Ordinato</b> oltre la data prevista finisce tra gli avvisi come “in ritardo”.</li>
+  </ol>
+  <h3>Preventivi (menu “Preventivi”)</h3>
+  <p>Un preventivo vive da solo: non serve un dispositivo in laboratorio (utile per assemblaggio PC, forniture, lavori a domicilio).</p>
+  <ol class="steps">
+    <li><b>＋ Nuovo preventivo</b>: scegli il cliente dall'anagrafica oppure scrivi solo nome e telefono, aggiungi le <b>voci</b> (descrizione, quantità, prezzo) ed eventuale sconto.</li>
+    <li>La <b>data di validità</b> viene proposta a 15 giorni da oggi: puoi cambiarla. Sul foglio stampato compare in evidenza “Preventivo valido fino al …”.</li>
+    <li>Dalla scheda del preventivo: <b>🖨️ Stampa / PDF</b> (scegli “Salva come PDF” nella finestra di stampa), <b>💬 WhatsApp</b> con il testo già pronto, poi <b>Segna inviato</b>, <b>Accettato dal cliente</b> o <b>Rifiutato</b>.</li>
+    <li>Un preventivo oltre la data diventa <b>Scaduto</b> (filtro dedicato) e non si può più accettare né convertire: con <b>Modifica / prolunga</b> si sposta la scadenza. Quelli inviati in scadenza (3 giorni) o scaduti compaiono nella campanella 🔔.</li>
+    <li><b>→ Riparazione</b>: crea la riparazione con il preventivo già indicato (e <b>approvata</b> se il cliente aveva accettato). <b>→ Vendita</b>: registra la vendita e l'incasso in cassa con il metodo scelto. Dopo la conversione il preventivo resta consultabile ma non si modifica.</li>
+    <li><b>🔗 Link per il cliente</b>: crea un indirizzo segreto (lo copia e propone WhatsApp con il messaggio pronto). Il cliente apre il link dal telefono, vede le voci, il totale e la scadenza (non vede telefoni né altri dati) e può <b>accettare o rifiutare firmando col dito</b>. Il preventivo diventa subito <b>Accettato</b> o <b>Rifiutato</b>, ti arriva un messaggio su Telegram e nella scheda vedi chi ha firmato, quando e da quale indirizzo IP. Si risponde una volta sola; dopo la scadenza il link non permette più di accettare.</li>
+  </ol>
+  <h3>Promemoria (menu “Promemoria”)</h3>
+  <ol class="steps">
+    <li>In cima scrivi <b>cosa devi ricordare</b>, scegli <b>quando</b> (data e ora, oppure le scorciatoie “Tra 1 ora”, “Oggi 18:00”, “Domani 9:00”) e premi <b>Aggiungi promemoria</b> (o Invio).</li>
+    <li>Con <b>＋ Con cliente / riparazione…</b> puoi aggiungere dettagli e <b>collegarlo</b> a un cliente, a una riparazione o a un ordine: il nome comparirà accanto al promemoria.</li>
+    <li>I promemoria di oggi (e quelli scaduti non ancora fatti) stanno in <b>Oggi</b>, nel riquadro “Promemoria di oggi”, e nella <b>campanella</b> 🔔. Il segno ✓ lo segna come <b>fatto</b>; <b>Rimanda</b> lo sposta di 1 ora, 3 ore o a domani alla stessa ora.</li>
+    <li>Quando arriva l'ora, il proprietario riceve anche un <b>messaggio su Telegram</b> (una volta sola). Il controllo avviene ogni minuto se il gestionale è aperto in una postazione, e comunque ogni 5 minuti dal bot di controllo sul telefono (quindi arriva anche a gestionale chiuso).</li>
+    <li>Filtri: <b>Aperti</b>, <b>Da fare oggi</b>, <b>Fatti</b>, più la ricerca. Cliccando un promemoria lo modifichi o lo elimini (con doppia conferma).</li>
+  </ol>
+</section>
+
+<section id="demo">
+  <h2><span class="n">17</span>Dati demo per provare tutto</h2>
+  <p class="lead">Per vedere il gestionale “pieno” senza inserire niente a mano.</p>
+  <ol class="steps">
+    <li>Vai su <b>Impostazioni</b> → riquadro <b>Dati demo</b> → <b>Carica i dati demo</b>.</li>
+    <li>Compaiono clienti, riparazioni in tutti gli stati, magazzino con scorte basse, vendite e incassi degli ultimi due mesi, <b>compresi quelli di oggi e di ieri</b>, così la Cassa si vede piena subito. Tutto è segnato <b>(DEMO)</b> o con codice <b>DEMO-…</b>.</li>
+    <li>Quando hai finito, torna nello stesso riquadro e premi <b>Elimina i dati demo</b>: spariscono solo quelli, i dati veri restano.</li>
+  </ol>
+  <div class="call tip"><b>Per il cliente</b>Le riparazioni demo hanno anche il link di tracciamento: la ricerca “numero ricevuta + ultime 4 cifre” funziona, ad esempio con <b>DEMO-004</b> e <b>0104</b>.</div>
+</section>
+
+<section id="analisi">
+  <h2><span class="n">16</span>Analisi (solo amministratore)</h2>
+  <p class="lead">I numeri del negozio in un colpo d'occhio, per il periodo che scegli.</p>
+  <ul>
+    <li><b>Periodo</b>: in alto scegli Oggi, 7, 30, 90 giorni, Anno oppure due date.</li>
+    <li><b>Riparazioni</b>: quante ne sono entrate e consegnate, tempo medio di lavorazione, quelle in ritardo, i modelli più riparati, i tipi di dispositivo e gli stati.</li>
+    <li><b>Incassi</b>: totale, media al giorno, confronto con il periodo precedente, grafico dei giorni, metodi di pagamento e <b>margine</b> (incasso meno costo dei ricambi).</li>
+    <li><b>Vendite</b>: numero di vendite, fatturato, scontrino medio, prodotti più e meno venduti e ricambi più usati nelle riparazioni.</li>
+  </ul>
+  <ul>
+    <li><b>Magazzino</b>: numero di prodotti e pezzi, valore a costo e a prezzo di vendita, prodotti più e meno richiesti, esauriti e sotto scorta, prodotti fermi da troppo tempo.</li>
+  </ul>
+  <p>Presto arriveranno anche gli avvisi sui prezzi dei fornitori e il grafico dei prezzi.</p>
+  <h3>La campanella 🔔 e gli avvisi</h3>
+  <p>In alto, accanto alla ricerca, la campanella mostra quanti <b>avvisi</b> ci sono; in <b>Oggi</b> trovi gli stessi avvisi nel riquadro in alto. Ogni avviso si clicca e ti porta alla pagina giusta. Gli avvisi sono:</p>
+  <ul>
+    <li>🛑 <b>Prodotto esaurito</b> e 📉 <b>sta per esaurirsi</b> (scorta sotto la soglia): da riordinare, con il nome del fornitore.</li>
+    <li>🐌 <b>Prodotto fermo</b>: nessuna vendita o uso da molti giorni. Valuta un'offerta o controlla il prezzo di vendita.</li>
+    <li>⏰ <b>Riparazione in ritardo</b>, ❌ <b>preventivo rifiutato</b> (da richiamare) e 📞 <b>riparazione pronta e non ritirata</b>.</li>
+  </ul>
+  <p>Le soglie le decidi tu in <b>Impostazioni → Avvisi</b>: scorta minima generale (per i prodotti senza soglia propria), giorni dopo i quali un prodotto è “fermo” e giorni dopo i quali una riparazione pronta non ritirata va ricordata. Con <b>0</b> l'avviso si spegne.</p>
+</section>
+
+<section id="registro">
+  <h2><span class="n">21</span>Registro (solo amministratore)</h2>
+  <p class="lead">Chi ha eliminato o cambiato cosa, e quando. Non si può cancellare né modificare.</p>
+  <ul>
+    <li>Apri <b>Registro</b> dal menu (lo vedono solo gli amministratori). Ogni riga dice <b>chi</b> (l'email), <b>cosa</b> (creato, modificato o eliminato), <b>che tipo di cosa</b> (cliente, riparazione, articolo, fornitore, utente, spesa, servizio, ricambio, vendita, pagamento, impostazioni, carico merce, acquisto), il <b>nome</b> e <b>quando</b>.</li>
+    <li>Sono registrate tutte le eliminazioni e le modifiche importanti: clienti, riparazioni (cambi di stato, ricambi, consegne e incassi, acconti), articoli e movimenti di magazzino, carichi merce, fornitori, utenti, spese, servizi, vendite e impostazioni.</li>
+    <li><b>Filtri</b>: per tipo, per utente e per periodo (Dal / Al); la <b>ricerca</b> trova nome, descrizione o utente. Le voci sono a pagine da 50: usa <b>Precedenti</b> e <b>Successive</b>.</li>
+    <li>Non vengono mai salvati codici di sblocco o altri dati riservati: solo il nome dell'oggetto e il tipo di azione.</li>
+  </ul>
+  <div class="call tip"><b>A cosa serve</b>Se qualcosa sparisce o cambia e nessuno se lo ricorda, qui trovi chi è stato. Il registro entra anche nel backup.</div>
+
+</section>
+
+<section id="dispositivi">
+  <h2><span class="n">22</span>Dispositivi e seriali</h2>
+  <p class="lead">Il registro dei telefoni, portatili e console con seriale/IMEI: serve per avere tutto segnato in caso di furto o denuncia.</p>
+  <ol class="steps">
+    <li>Apri <b>Dispositivi</b> dal menu e premi <b>＋ Nuovo dispositivo</b>. Scrivi marca e modello, spara o scrivi il <b>seriale/IMEI</b> (anche con la fotocamera 📷): sotto compare subito se l'IMEI è valido e se il seriale è già nel registro.</li>
+    <li>Scegli la <b>sottoclasse</b>: Nuovi, Usati, Ricondizionati, Da smaltire, In arrivo. Costo, prezzo, provenienza e note stanno sotto “Più opzioni”.</li>
+    <li>Le schede in alto filtrano per sottoclasse; la ricerca trova anche per seriale (con la pistola basta sparare nella casella).</li>
+    <li>Aprendo un dispositivo vedi lo <b>storico</b>: quando è stato registrato, le riparazioni che hanno lo stesso seriale e le vendite in cui è comparso.</li>
+  </ol>
+  <h3>Rubato o da verificare</h3>
+  <ul>
+    <li>Dalla scheda premi <b>⚠ Segnala rubato / da verificare</b>, scrivi il motivo e (se c'è) il numero di denuncia.</li>
+    <li>Da quel momento, se quel seriale entra in <b>riparazione</b> o in <b>vendita</b> (campo seriale nel carrello), compare un <b>avviso rosso</b> e una nota interna nella scheda. Anche scrivendolo nella nuova riparazione l'avviso compare sotto il campo, prima di salvare.</li>
+    <li>Togliere la segnalazione è riservato all'<b>amministratore</b>.</li>
+    <li><b>⬇ Elenco seriali (CSV)</b> esporta l'elenco (tutti, per sottoclasse o solo i segnalati) da allegare a una denuncia; si apre con Excel.</li>
+  </ul>
+  <div class="call tip"><b>Cosa non c'è (ancora)</b>La “blacklist/Blacks” è in sospeso: serve capire cosa intende Christian. Vetrina usati e Dispositivi sono due cose separate che non si parlano.</div>
+</section>
+
+<section id="buoni">
+  <h2><span class="n">23</span>Buoni e conto diviso</h2>
+  <p class="lead">Buoni sconto e regalo, e il pagamento ripartito su più metodi o persone. Ogni quota entra in Cassa: niente è nascosto.</p>
+  <h3>I buoni</h3>
+  <ol class="steps">
+    <li>Apri <b>Buoni</b> → <b>＋ Nuovo buono</b>. Scegli il tipo: <b>buono regalo</b> (credito che si usa anche a più riprese), <b>sconto in euro</b> o <b>sconto in percentuale</b> (si usa una volta sola). Scadenza facoltativa; il codice si genera da solo (o lo scrivi tu). Si può <b>stampare</b>.</li>
+    <li>In <b>Vendite</b> e nella <b>consegna di una riparazione</b> scrivi o spara il <b>codice buono</b> e premi <b>Applica</b>: vedi quanto toglie e quanto resta da pagare.</li>
+    <li>Il buono regalo usato solo in parte <b>resta con il saldo</b> (ricevuta e scheda del buono lo mostrano). Un buono esaurito, scaduto o annullato non si può usare.</li>
+  </ol>
+  <h3>Dividere il conto</h3>
+  <ol class="steps">
+    <li>Nel riquadro di pagamento premi <b>➗ Dividi il conto</b>: compaiono due quote (metodo, importo, chi paga). <b>＋ Aggiungi quota</b> ne aggiunge fino a 6; <b>Completa l'ultima</b> calcola il resto.</li>
+    <li>Compare <b>✔ Quadra</b> quando la somma coincide con il totale: solo allora si può incassare. Si può usare insieme a un buono.</li>
+    <li>Con un solo metodo in contanti puoi scrivere i <b>contanti ricevuti</b> e vedi il <b>resto da dare</b>.</li>
+  </ol>
+  <div class="call tip"><b>In Cassa</b>Ogni quota è una riga dell'elenco incassi (“quota 1/2 (Anna)”) e conta nei totali per metodo. I buoni usati hanno un riquadro a parte; il buono regalo compare come metodo “buono”.</div>
+</section>
+
+<section id="riservati">
+  <h2><span class="n">24</span>Documenti d'identità e credenziali fornitori</h2>
+  <p class="lead">Dati molto sensibili: conservati <b>cifrati</b>, visibili solo all'amministratore e ogni accesso viene registrato.</p>
+  <h3>Documenti dei clienti</h3>
+  <ol class="steps">
+    <li>Apri il cliente e premi <b>🪪 Documenti</b> → <b>＋ Aggiungi documento</b>. Scegli tipo e motivo (di norma l'acquisto di un usato: per una semplice riparazione non serve), scrivi i dati e carica <b>foto o PDF</b> di fronte e retro (le foto si ridimensionano da sole).</li>
+    <li>Prima di salvare spunta la <b>presa visione dell'informativa</b> da parte del cliente. Il testo è una <b>bozza da far verificare</b>.</li>
+    <li>Solo l'<b>amministratore</b> li vede; può abilitare anche Cassa o postazioni da <b>Permessi e registro accessi</b>. Lo stesso pulsante mostra chi ha aperto cosa e quando.</li>
+    <li><b>Elimina definitivamente</b> chiede la doppia conferma (e di scrivere ELIMINA).</li>
+  </ol>
+  <h3>Credenziali dei fornitori (solo amministratore)</h3>
+  <ol class="steps">
+    <li>Apri <b>Credenziali</b> → <b>＋ Nuovo accesso</b>: fornitore, sito, nome utente, password, agente e telefono.</li>
+    <li>Nell'elenco: <b>🌐 Apri il sito</b>, <b>Copia utente</b>, <b>Copia password</b> (un tocco) e <b>Mostra</b> (si nasconde da sola dopo 15 secondi). Ogni copia o visione è registrata.</li>
+  </ol>
+  <div class="call warn"><b>La chiave (VAULT_KEY)</b>Tutto è cifrato con una chiave segreta. Sul PC viene creata al primo avvio in <code>officina/data/vault.key</code>; online è il segreto del Worker <code>VAULT_KEY</code> (<code>wrangler secret put VAULT_KEY</code>). <b>Conservane una copia al sicuro, fuori dal gestionale: se si perde, documenti e password non si recuperano.</b> La chiave non va mai scritta nel codice né nel repository.</div>
+
+</section>
+
+<section id="schede-firme">
+  <h2><span class="n">20</span>Schede, checklist, firme e dispositivi non riparati</h2>
+  <p class="lead">Controlli diversi per ogni tipo di dispositivo, schede stampate su un solo foglio, firma del cliente sul tablet o da casa.</p>
+  <h3>Checklist per tipo di dispositivo</h3>
+  <ul>
+    <li>Scegliendo il tipo (Smartphone, Tablet, Portatile, PC fisso, Console, Altro) cambiano le voci dei controlli e le etichette (IMEI solo per telefoni e tablet, “password” per i PC).</li>
+    <li>Nel modulo <b>Nuova riparazione</b> e nella scheda riparazione trovi tre elenchi: ingresso, pratiche al ritiro, collaudo. Un tocco su una voce: ✔ funziona, ✖ non funziona, – non presente. Poi <b>Salva</b>: resta nella riparazione con nome e data, non serve stamparlo.</li>
+    <li>Le voci si cambiano in <b>Impostazioni → Checklist per tipo di dispositivo</b> (una voce per riga; “Ripristina” torna alle predefinite).</li>
+  </ul>
+  <h3>Stampe su un solo foglio</h3>
+  <ul>
+    <li><b>Scheda cliente</b>: un A4 diviso a metà, la stessa scheda due volte (copia negozio e copia cliente), ognuno firma la sua. Se il cliente ha firmato in digitale la firma compare su entrambe.</li>
+    <li><b>Scheda laboratorio</b>: sempre una pagina; i testi lunghi si troncano con “continua sul gestionale”. I controlli già compilati escono con ✔ ✖ –.</li>
+  </ul>
+  <h3>Firma del cliente</h3>
+  <ul>
+    <li>Nella scheda riparazione: <b>Firma qui (tablet)</b> apre il riquadro: il cliente legge il consenso e firma col dito.</li>
+    <li><b>Chiedi firma a distanza</b>: apre WhatsApp con il link; il cliente legge e firma dal telefono, senza scaricare PDF. Si registrano data, ora e IP.</li>
+    <li>I testi di consenso sono <b>bozze da far verificare</b> (Impostazioni → Testi di consenso): finché non scegli “Testi verificati” le stampe e le schermate lo segnalano.</li>
+  </ul>
+  <h3>Preventivo a distanza</h3>
+  <ul>
+    <li>Dal link il cliente preme <b>Sì</b>: conferma con testo chiaro, poi firma. Con <b>No</b>: sceglie se ritirare il dispositivo (giacenza di 15 giorni) o cederlo al negozio, poi firma.</li>
+    <li>Più soluzioni (es. display compatibile o originale): aggiungile in <b>Soluzioni fra cui il cliente sceglie</b>; il cliente ne sceglie una e firma.</li>
+    <li>Ti arriva un messaggio Telegram; data, ora e IP della firma restano nella riparazione.</li>
+  </ul>
+  <h3>Annullato / non riparabile</h3>
+  <ul>
+    <li>Cambiando lo stato in “Annullato / non riparabile” scegli: resta in negozio, ritirato, oppure lasciato da smaltire/pezzi di ricambio (cessione firmata).</li>
+    <li>Parte il conto dei <b>15 giorni</b> (cambiabili in Impostazioni). In <b>Oggi</b> e nella campanella compaiono “giacenza in scadenza” e “giacenza scaduta”: smaltisci oppure sposta in <b>deposito a pagamento</b>; c'è il pulsante per avvisare il cliente su WhatsApp. Non cambia nulla in automatico e nessun incasso viene registrato da solo.</li>
+  </ul>
+</section>
+
+</main>
+</div>
+</body>
+</html>

@@ -39,12 +39,15 @@
   .btn-ghost{ color:#6B7280; font-weight:600; border-radius:.7rem; padding:.55rem .8rem; transition:.15s; }
   .btn-ghost:hover{ color:#111827; background:#F5F6F8; }
 
-  input,select,textarea{ border:1px solid #E5E7EB; border-radius:.6rem; padding:.6rem .8rem; width:100%; font-size:.9rem; background:#fff; color:#111827; transition:.15s; }
-  input::placeholder,textarea::placeholder{ color:#9CA3AF; }
-  input:hover,select:hover,textarea:hover{ border-color:#D1D5DB; }
-  input:focus,select:focus,textarea:focus{ outline:none; border-color:#DC2626; box-shadow:0 0 0 3px rgb(220 38 38 / .12); }
+  /* 'html body' = piu' specifico del reset di Tailwind (iniettato dopo questo foglio), che altrimenti azzera padding e font dei campi */
+  html body input:not([type=checkbox]):not([type=radio]):not([type=file]),html body select,html body textarea{ width:100%; min-height:2.75rem; padding:.6rem .85rem; font:inherit; font-size:.95rem; line-height:1.4; border:1px solid #CBD2DB; border-radius:.7rem; background:#fff; color:#111827; transition:.15s; -webkit-appearance:none; appearance:none; }
+  html body select{ padding-right:2.4rem; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right .8rem center; }
+  html body textarea{ display:block; min-height:4.5rem; line-height:1.5; resize:vertical; }
+  html body input::placeholder,html body textarea::placeholder{ color:#9CA3AF; opacity:1; }
+  html body input:hover,html body select:hover,html body textarea:hover{ border-color:#9CA3AF; }
+  html body input:focus,html body select:focus,html body textarea:focus{ outline:none; border-color:#DC2626; box-shadow:0 0 0 3px rgb(220 38 38 / .14); }
   select{ cursor:pointer; }
-  label{ font-size:.78rem; font-weight:600; color:#4B5563; margin-bottom:.35rem; display:block; letter-spacing:.01em; }
+  label{ font-size:.8rem; font-weight:600; color:#1F2937; margin-bottom:.4rem; display:block; letter-spacing:.01em; }
   .field-hint{ font-size:.72rem; color:#9CA3AF; margin-top:.3rem; }
 
   .badge{ display:inline-flex; align-items:center; gap:.3rem; border-radius:999px; padding:.25rem .7rem; font-size:.7rem; font-weight:700; letter-spacing:.01em; white-space:nowrap; }
@@ -114,6 +117,7 @@
       </div>
     </div>
     <div class="flex items-center gap-2">
+      <a id="to-officina" href="#" class="btn-ghost !text-gray-300 hover:!text-white hover:!bg-white/10 text-sm">← Officina</a>
       <a href="/usati.html" target="_blank" class="hidden sm:inline-flex btn-ghost !text-gray-300 hover:!text-white hover:!bg-white/10 text-sm">Anteprima vetrina ↗</a>
       <button id="btn-new" class="btn-primary text-sm">+ Nuovo articolo</button>
     </div>
@@ -221,5 +225,6 @@
 <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-sm font-medium px-4 py-2.5 rounded-full"></div>
 
 <script src="app.js"></script>
+<script>document.getElementById('to-officina').href = location.protocol + '//' + location.hostname + ':4950/';</script>
 </body>
 </html>

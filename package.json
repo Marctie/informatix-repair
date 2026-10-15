@@ -11,7 +11,9 @@
     "cap:open": "npx cap open android",
     "blog": "node scripts/build-blog.mjs",
     "usati": "node scripts/build-usati.mjs",
-    "admin": "node admin/server.mjs"
+    "admin": "node admin/server.mjs",
+    "officina": "node officina/server.mjs",
+    "test:officina": "node --test officina/tests/notifiche.test.mjs officina/tests/api.test.mjs officina/tests/acquisti.test.mjs officina/tests/registro.test.mjs officina/tests/ordini.test.mjs officina/tests/dispositivi.test.mjs officina/tests/schede.test.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
@@ -22,13 +24,19 @@
     "sharp": "^0.35.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^6.0.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "wrangler": "^4.150.0"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
     "@fontsource/inter": "^5.3.0",
-    "@fontsource/poppins": "^5.3.0"
+    "@fontsource/poppins": "^5.3.0",
+    "@hono/node-server": "^2.1.5",
+    "hono": "^4.13.13",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
+    "uqr": "^0.1.3"
   }
 }
