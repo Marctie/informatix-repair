@@ -16,6 +16,12 @@ import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
 import { registerQuoteRoutes, quoteAlerts, registerPublicQuoteRoutes } from './preventivi.mjs';
 import { registerReminderRoutes, reminderAlertsNotify } from './promemoria.mjs';
 
+// --- Agente C: chiusure di cassa, archivio fatture, dare/avere ---
+import { registerClosingRoutes, CLOSING_TABLES } from './closings.mjs';
+import { registerInvoiceRoutes, invoiceAlerts, INVOICE_TABLES } from './invoices.mjs';
+import { registerLedgerRoutes, ledgerAlerts, assertNoLedger, LEDGER_TABLES } from './dareavere.mjs';
+// --- fine Agente C ---
+
 import { registerDeviceRoutes, DEVICE_TABLES } from './dispositivi.mjs';
 import { registerVoucherRoutes, VOUCHER_TABLES } from './buoni.mjs';
 import { registerDocumentRoutes, DOCUMENT_TABLES } from './documenti.mjs';
@@ -33,7 +39,7 @@ import * as SG from './signatures.mjs';
 import * as R from './remote.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
-const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
+const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, invoiceAlerts, ledgerAlerts];
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -219,6 +225,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
   }));
   app.delete('/api/customers/:id', h(async (req) => {
+    await assertNoLedger(req.params.id); // Agente C: niente eliminazione con dare/avere
     // si eliminano solo clienti senza lavori in corso; le riparazioni concluse (consegnate/annullate) se ne vanno con lui
     const open = (await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE customer_id = ? AND status NOT IN ('delivered','cancelled')").get(req.params.id)).n;
     if (open) throw new L.HttpError(409, 'Il cliente ha riparazioni ancora aperte: concludile prima di eliminarlo.');
@@ -287,6 +294,12 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerVoucherRoutes(app, h, { page, getSettings });
   registerDocumentRoutes(app, h);
   registerCredentialRoutes(app, h);
+
+  // --- Agente C: chiusure di cassa (closings.mjs), archivio fatture (invoices.mjs), dare/avere (dareavere.mjs) ---
+  registerClosingRoutes(app, h, { adminOnly, media: usati.media || (() => missingMedia()) });
+  registerInvoiceRoutes(app, h, { adminOnly });
+  registerLedgerRoutes(app, h, { adminOnly });
+  // --- fine Agente C ---
 
   // Magazzino
   const checkProduct = (b) => {
@@ -489,6 +502,6 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   return dump;
 }
