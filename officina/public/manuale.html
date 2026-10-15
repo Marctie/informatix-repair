@@ -134,6 +134,7 @@
   <a href="#preventivo-online">26 · Preventivo dalla riparazione</a>
   <a href="#carte-punti">27 · Carte punti NFC</a>
   <a href="#import-pdf">28 · DDT e fatture in PDF</a>
+  <a href="#testi-legali">29 · Testi legali controllati</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -762,6 +763,15 @@
     <li>Lo stesso documento (stesso fornitore, numero e data) non si importa due volte.</li>
   </ul>
   <div class="call warn"><b>Limiti</b>Servono PDF “digitali” (generati da un programma), non foto o scansioni: in quel caso compare un avviso e puoi scrivere le righe a mano. Finora non ho potuto vedere i DDT veri dei tuoi fornitori: il lettore usa regole generali (intestazioni di colonna, numeri, partita IVA con controllo, totali) e migliora con le tue correzioni. <b>Mandami 2-3 PDF di esempio per fornitore</b> per tararlo meglio.</div>
+</section>
+<section id="testi-legali">
+  <h2><span class="n">29</span>Testi legali: cosa è stato controllato</h2>
+  <ul>
+    <li>I testi di consenso, preventivo, rifiuto e giacenza (<i>Impostazioni → Testi di consenso</i>) sono stati riletti e allineati a fonti italiane: garanzia legale di 24 mesi sui beni venduti (Codice del Consumo art. 133), diritto di trattenere il dispositivo fino al pagamento (art. 2756 c.c.), informativa privacy (art. 13 GDPR) e copia del documento d’identità solo se serve e con una durata di conservazione.</li>
+    <li>Novità nei testi: il cliente può <b>sempre ritirare pagando quanto dovuto</b>; prima di smaltire o cedere un dispositivo arriva un <b>ulteriore avviso scritto</b>; in caso di rinuncia a lavori iniziati si pagano solo lavoro svolto e ricambi acquistati.</li>
+    <li>Restano <b>bozze</b> finché non spunti “Testi verificati”: non sono consulenza legale. Il file <code>docs/TESTI-LEGALI-BOZZE.md</code> (sezione “Revisione”) elenca con le fonti cosa è verificato e cosa va <b>fatto confermare a un professionista</b> (vendita/smaltimento del non ritirato, garanzia sulle riparazioni, informativa completa).</li>
+    <li>Le condizioni stampate sulla scheda (campo “Condizioni”) hanno il nuovo testo solo nelle installazioni nuove: per quella in uso, copialo da <code>officina/dbref.mjs</code> o dal file di revisione.</li>
+  </ul>
 </section>
 <!-- agente D: fine sezioni -->
 
