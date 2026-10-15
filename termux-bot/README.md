@@ -9,7 +9,7 @@ Solo libreria standard di Python 3: nessuna dipendenza.
 - Numeri del gestionale da `https://riparazioni.informatixrepair.com/api/monitor` con la chiave `MONITOR_TOKEN` (stessa chiave nei segreti del Worker e nel `.env`). Senza chiave giusta l'indirizzo risponde 404.
   Controlli: **Vetrina Usati allineata** (articoli sul sito = articoli nel gestionale, salvo modifiche ancora da pubblicare; avviso dopo 15 minuti), **errore di pubblicazione**, **backup notturno** presente dopo le 6:00, **dati leggibili**. Ogni lettura fa partire anche i **promemoria scaduti** del gestionale (arrivano anche a gestionale chiuso).
 
-**Buongiorno** (lun-sab alle 8:30): promemoria di oggi, riparazioni pronte da ritirare (da quanti giorni), in ritardo, preventivi in attesa o rifiutati, giacenze scadute, ordini arrivati da avvisare / in ritardo / da fare, preventivi in scadenza, magazzino esaurito o sotto scorta, backup della notte.
+**Buongiorno** (tutti i giorni alle 8:30): promemoria di oggi, riparazioni pronte da ritirare (da quanti giorni), in ritardo, preventivi in attesa o rifiutati, giacenze scadute, ordini arrivati da avvisare / in ritardo / da fare, preventivi in scadenza, magazzino esaurito o sotto scorta, backup della notte.
 
 **Riepilogo** (ogni sera alle 21:00): servizi e minuti di fermo del giorno; incassi di oggi per metodo e per tipo, buoni usati, spese e netto; vendite (numero, totale, articoli); riparazioni entrate, consegnate, aperte per stato, in ritardo, urgenti, pronte non ritirate; ordini; totali del mese; Vetrina Usati (in vetrina, venduti, sito allineato); articoli del blog pubblicati oggi; attività e ultimi accessi; backup.
 

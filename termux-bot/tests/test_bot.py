@@ -214,9 +214,13 @@ class Orari(unittest.TestCase):
         go(datetime(2026, 10, 15, 19, 30, tzinfo=timezone.utc))
         self.assertEqual(len(sent), 2)
 
-    def test_domenica_niente_buongiorno_e_ora_solare(self):
+    def test_buongiorno_anche_la_domenica_e_ora_solare(self):
         sched = bot.Schedule(datetime(2026, 10, 18, 7, 0, tzinfo=ROME))
-        self.assertFalse(sched.due_morning(bot.rome_now(datetime(2026, 10, 18, 6, 30, tzinfo=timezone.utc))))  # domenica
+        self.assertTrue(sched.due_morning(bot.rome_now(datetime(2026, 10, 18, 6, 30, tzinfo=timezone.utc))))  # domenica 8:30
+        # dopo il cambio d'ora (25/10) le 8:30 di Roma sono le 7:30 UTC
+        s3 = bot.Schedule(datetime(2026, 11, 2, 7, 0, tzinfo=timezone(timedelta(hours=1))))
+        self.assertFalse(s3.due_morning(bot.rome_now(datetime(2026, 11, 2, 7, 29, tzinfo=timezone.utc))))
+        self.assertTrue(s3.due_morning(bot.rome_now(datetime(2026, 11, 2, 7, 30, tzinfo=timezone.utc))))
         # inverno: 20:00 UTC = 21:00 Roma
         s2 = bot.Schedule(bot.rome_now(datetime(2026, 12, 1, 12, 0, tzinfo=timezone.utc)))
         self.assertFalse(s2.due_summary(bot.rome_now(datetime(2026, 12, 1, 19, 59, tzinfo=timezone.utc))))
