@@ -1,4 +1,4 @@
-# Domande aperte (aggiornato 2026-10-14)
+# Domande aperte (aggiornato 2026-10-15)
 
 > **Direttive di Christian (19 punti)**: ogni punto ha le sue domande in `docs/DIRETTIVE-CHRISTIAN.md`, con il piano proposto in fondo. Da mandare a Christian insieme a questo elenco.
 
@@ -61,6 +61,14 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 31. Canone mensile o vendita una tantum?
 32. L'hosting lo gestisci tu (account tuo) o ogni cliente ha il suo account Cloudflare?
 33. Quanti clienti ipotizzi nel primo anno? (serve per scegliere il login e i piani Cloudflare)
+
+### Aggiunte 2026-10-15 (bot e notifiche)
+58. **VAULT_KEY: richiesta del 15/10 con un valore scritto in chat (non trascritto qui)**: cosa vuoi fare esattamente? Se e' un nome con cui salvarla, ok. Se e' il **valore** della chiave: e' troppo facile da indovinare (e ora e' scritto in chat) e cambiarla renderebbe **illeggibili** documenti d'identita' e credenziali gia' salvati (andrebbero rifatti). La chiave attuale e' casuale, copia in Mega `Informatix-Chiavi`.
+59. **Incasso di prova da 34 €** ("Saldo R-2026-0001" del 14/10) rimasto in cassa dopo l'eliminazione della riparazione di prova: lo togliamo? (Non c'e' un pulsante: si fa con una correzione sul database, registrata nel CHATLOG.)
+60. **Utente "Utente di prova"** `utente.archivio@libero.it` e' ancora **amministratore attivo**: disattivarlo o eliminarlo dalla pagina Utenti?
+61. **Eliminando una riparazione conclusa si cancellano anche i suoi incassi** (scelta del 14/10 pomeriggio): va bene cosi' o preferisci che gli incassi restino in cassa (o diventino uno "storno" visibile)? Ora almeno l'avviso Telegram dice quanti incassi e per quanto.
+62. **BotFather**: il bot puo' ancora essere aggiunto ai gruppi. Per chiuderlo: BotFather → `/setjoingroups` → @informatix_repair_bot → Disable (solo tu puoi farlo).
+63. Buongiorno del bot: va bene **lun-sab alle 8:30**? Il riepilogo resta ogni sera alle 21:00.
 
 ## Default scelti dall'agente B (da confermare con Christian)
 - Giacenza: 15 giorni dal rifiuto del cliente (o dall'annullamento); alla scadenza solo avviso, nessun cambio di stato automatico; deposito a pagamento = solo tariffa testuale, nessun incasso registrato.

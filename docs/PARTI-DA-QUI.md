@@ -62,3 +62,19 @@ Leggi in quest'ordine: 1) `docs/CHATLOG.md` sezione "STATO A FINE GIORNATA 2026-
 **Ambiente/autorizzazioni**: regole Bash gia' aggiunte dall'utente per `wrangler deploy`, `d1 migrations apply`, `d1 execute`, `git merge`. Un errore D1 7403 al primo tentativo e' passeggero: riprovare. Token del bot Telegram: l'utente ha deciso di NON revocarlo.
 **Metodo che funziona**: agenti in worktree isolati su rami `agente-*`, migrazioni numerate a parte, fusione fatta da me con script che tiene entrambe le parti (attenzione: le righe di chiusura condivise `);`/`});`/`</section>` si perdono nei conflitti: controllare schema.sql e manuale dopo ogni fusione, poi `npm run test:officina`).
 **Preferenze dell'utente**: una cosa per volta quando chiede cosa serve da lui; passi da fare al terminale spiegati semplici; mai incollare segreti in chat (ma lui lo ha fatto una volta: spiegare e far rigenerare).
+
+## RIPARTENZA NELLA NUOVA CHAT (aggiornata 2026-10-15) – SOSTITUISCE LE PRECEDENTI
+**Stato**: tutto il lavoro del 14/10 e' online; il 15/10 mattina: notifiche Telegram riscritte con i dati veri, bug della numerazione dopo un'eliminazione corretto, `/api/monitor` + segreto `MONITOR_TOKEN`, bot Termux v2 installato sul Samsung (buongiorno 8:30, riepilogo 21:00, controlli Vetrina/backup/lentezza). Test 88 + 31 verdi. Dettagli: CHATLOG "Sessione 2026-10-15 (mattina)".
+**Cosa resta (in ordine)**:
+1. Domande per Marco (DOMANDE-APERTE 58-63): VAULT_KEY "da chiarire", incasso di prova da 34 €, utente di prova amministratore, incassi cancellati con l'eliminazione delle riparazioni, BotFather `/setjoingroups`, orari del buongiorno.
+2. **25 ottobre**: routine del blog all'ora solare `0 8,17 * * *`.
+3. Raggruppare il menu (21 voci).
+4. Controllo grafico a 4 formati (320/390/768/1280) di tutte le viste nuove + `ui-review`.
+5. Cypress sul nuovo motore: `cypress-tests` (worktree `../cy-wt`) e' molto indietro: fondere `gestionale-officina` e rifare i test delle viste nuove.
+6. Prova con una fattura XML vera (Acquisti).
+7. Promemoria a gestionale chiuso: ora li fa partire il bot ogni 5 min; resta da valutare un cron sul Worker per quando il telefono e' spento.
+8. Link online per approvare i preventivi autonomi; schermata Impostazioni per la validita' dei preventivi; note libere stile Keep; acconto diviso; rifiuto del preventivo dal link → "annullata" da rivedere.
+9. Pulizia: worktree `.claude/worktrees/agent-*`, rami `agente-*`, `worktree-agent-*`, i 19 `claude/upbeat-fermi-*` remoti.
+10. Prove hardware e risposte di Christian (DOMANDE-APERTE 1-57).
+11. Dopo: import DDT/PDF fornitori, rotazione prodotti, carte NFC, versione vendibile.
+**Bot sul telefono**: `~/informatix-bot` (v2), `.env` con TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_ID, MONITOR_TOKEN. Aggiornamento: `adb push` in `/data/local/tmp/...` + `adb shell run-as com.termux sh script` (lo script imposta PREFIX/HOME/PATH di Termux), riavvio `bash ~/bots/Termux-Launcher/bot_ctl.sh informatix_repair restart`. Prova: `python main.py --anteprima`.
