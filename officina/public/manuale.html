@@ -132,6 +132,7 @@
   <!-- agente D: inizio voci -->
   <a href="#materiali">25 · Materiali da ordinare</a>
   <a href="#preventivo-online">26 · Preventivo dalla riparazione</a>
+  <a href="#carte-punti">27 · Carte punti NFC</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -707,6 +708,45 @@
     <li>Tre modi di inviare: <b>💬 WhatsApp</b> (messaggio già scritto), <b>✉️ Email</b> (si apre il programma di posta), <b>🔗 Copia link</b> (per incollarlo dove vuoi). Il pulsante è spento se il cliente non ha telefono/email.</li>
     <li>Il link è lo stesso dei preventivi della sezione <b>Preventivi</b> (<code>/p/…</code>): il cliente vede voci, totale e scadenza e accetta o rifiuta firmando. Il preventivo compare anche nell’elenco Preventivi, collegato alla riparazione. Ti arriva l’avviso su Telegram.</li>
     <li>Riaprendo la finestra vedi lo stato (inviato, accettato, rifiutato, scaduto) e quando e come è stato inviato. Se è <b>scaduto</b> scegli una nuova validità e rinvialo: resta lo stesso preventivo. Se il cliente ha già accettato non si cambia più.</li>
+  </ul>
+</section>
+<section id="carte-punti">
+  <h2><span class="n">27</span>Carte punti NFC</h2>
+  <p class="lead">Una tessera NFC per cliente: più acquisti e riparazioni, più punti; i punti si cambiano in un <b>buono regalo</b>. Le regole di protezione stanno sul server, non sulla carta.</p>
+  <h3>Come funziona (e perché non si può truccare)</h3>
+  <ul>
+    <li><b>I punti stanno solo nel gestionale.</b> Sul chip non c’è nessun saldo da modificare: c’è solo un codice firmato che identifica la carta.</li>
+    <li>Il chip ha un <b>UID</b> (si può copiare) e un <b>codice firmato</b> con un segreto che esiste solo sul server. Il codice <b>cambia a ogni passaggio</b>: se qualcuno copia il chip e usa la copia, il codice vecchio viene riconosciuto, la carta si <b>blocca da sola</b> e resta tutto nel registro della carta.</li>
+    <li>Con un lettore USB che legge <b>solo l’UID</b> (non può scrivere sul chip) si vede la carta ma <b>per riscattare serve il PIN</b> (4 cifre, scelto o generato all’emissione e dato al cliente). Dopo 5 errori la carta si blocca.</li>
+    <li>I punti si danno <b>solo da vendite e riparazioni consegnate vere</b>, una volta sola per documento e con l’importo letto dal server: nessuno può digitare “+500 punti”. Una rettifica manuale la fa solo l’amministratore, con un motivo che resta nel registro.</li>
+    <li><b>Limiti</b>: massimo punti per operazione, massimo riscatto al giorno per carta, massimo di operazioni al minuto e di errori in 10 minuti per postazione. Ogni operazione è nel <b>storico della carta</b> (chi, quando, quanto).</li>
+    <li>Il riscatto crea un <b>buono regalo</b> (sezione Buoni): in cassa compare come tutti gli altri buoni, niente è nascosto.</li>
+  </ul>
+  <h3>Uso quotidiano</h3>
+  <ul>
+    <li>Menu <b>Vetrina e buoni → Carte punti</b>. Scegli il <b>lettore</b>, premi <b>Attiva lettore</b> e avvicina la carta: si apre la scheda con saldo e storico.</li>
+    <li><b>＋ Nuova carta</b>: scegli il cliente, avvicina il chip (o scrivi l’UID), <b>Emetti</b>. Si scrive il codice sul chip (se il lettore sa scrivere) e compare il <b>PIN, una volta sola</b>: consegnalo al cliente.</li>
+    <li><b>Accredita punti</b>: dopo il passaggio della carta, l’elenco delle vendite/riparazioni consegnate del cliente non ancora premiate; un tocco e i punti arrivano. <b>Riscatta in buono</b>: a multipli del gradino (predefinito 100 punti = 5 €).</li>
+    <li><b>Blocca</b> (se la carta è smarrita), <b>Sblocca</b> e <b>Rettifica punti</b> (amministratore), <b>Carta persa / sostituisci</b> (amministratore: chiude la vecchia e passa i punti a un chip nuovo), <b>Riscrivi codice</b> (se la scrittura sul chip non è riuscita).</li>
+    <li>Le <b>regole dei punti</b> (punti per euro, gradino, valore del buono, limiti) si cambiano da “Modifica le regole” nella pagina. Sono <b>valori provvisori</b> in attesa del regolamento di Christian.</li>
+  </ul>
+  <h3>Lettori supportati (uno solo nell’interfaccia)</h3>
+  <ul>
+    <li><b>Telefono Android</b> (Chrome, NFC acceso, sito in HTTPS): legge UID e codice e sa scrivere il codice nuovo (riavvicina il chip quando richiesto).</li>
+    <li><b>Lettore USB “tastiera”</b>: scrive l’UID e preme Invio. Metti il cursore nel campo “UID a mano” e passa la carta. Solo UID: il riscatto chiede il PIN. Se il tuo lettore stampa numeri decimali o byte invertiti, scegli “Numero decimale” e/o “Invertito” nelle due caselle che compaiono sotto il lettore (si ricordano su quella postazione).</li>
+    <li><b>Lettore PC/SC</b> (quelli USB “veri”, es. ACR122/ACR1252): serve il <b>programma ponte</b> <code>node officina/tools/nfc-bridge.mjs</code> sul PC del lettore (modulo opzionale <code>npm i nfc-pcsc</code>); con <code>--simulate</code> si prova senza lettore. Il ponte ascolta solo su questo PC.</li>
+    <li><b>A mano</b>: UID digitato o incollato (emergenza e prove).</li>
+  </ul>
+  <div class="call warn"><b>Segreto delle firme</b>Online: <code>wrangler secret put NFC_SECRET</code> (almeno 16 caratteri casuali). In mancanza si usa <code>VAULT_KEY</code>. Sul PC si usa la chiave già creata in <code>officina/data/vault.key</code>. <b>Non cambiarlo e non perderlo</b>: con un segreto diverso tutti i codici scritti sui chip risultano falsi (le carte vanno riscritte da “Riscrivi codice”).</div>
+  <h3>Cosa deve provare Christian (hardware)</h3>
+  <ul>
+    <li><b>1. Telefono Android</b>: apri il gestionale (HTTPS) in Chrome, <i>Carte punti → lettore “Telefono Android” → Attiva</i>. Emetti una carta su un chip NTAG213/215 vergine: deve comparire il PIN e il telefono deve chiedere di riavvicinare il chip per scrivere.</li>
+    <li><b>2. Rotazione</b>: passa la carta due volte. Alla seconda il saldo è lo stesso e il passaggio è “codice verificato”. Il codice sul chip deve cambiare ogni volta (lo storico mostra un “Passaggio” a ogni lettura).</li>
+    <li><b>3. Copia</b>: se hai un secondo chip modificabile, copia il contenuto del primo, usa il <b>primo</b> normalmente e poi prova la <b>copia</b>: deve comparire “Carta BLOCCATA… possibile copia” e la carta risultare bloccata (sblocco dall’amministratore).</li>
+    <li><b>4. Lettore USB tastiera</b> (quello che sceglierai): passa la carta nel campo “UID a mano”; verifica che l’UID compaia e la scheda si apra. Se l’UID è diverso da quello del telefono (decimale o invertito) dimmelo con la lunghezza e un esempio: si imposta il formato.</li>
+    <li><b>5. Lettore PC/SC</b> (se lo userai): avvia il ponte, scegli “Lettore PC”, passa la carta. <b>La lettura reale PC/SC non è stata provata senza il tuo lettore</b>: se non va, scrivimi il messaggio del terminale.</li>
+    <li><b>6. Riscatto</b>: accredita i punti di una vendita, riscatta 100 punti con il solo UID (deve chiedere il PIN), poi controlla che il buono compaia in <i>Buoni</i> e che usandolo in cassa i totali tornino.</li>
+    <li><b>7. Regolamento</b>: dimmi quanti punti per euro, il valore del buono e le scadenze che vuoi (domanda 21): finché non lo fai valgono i valori provvisori.</li>
   </ul>
 </section>
 <!-- agente D: fine sezioni -->
