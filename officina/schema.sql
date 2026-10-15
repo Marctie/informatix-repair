@@ -375,3 +375,15 @@ CREATE TABLE IF NOT EXISTS loyalty_events (
 CREATE INDEX IF NOT EXISTS idx_loyalty_events_card ON loyalty_events(card_id);
 CREATE INDEX IF NOT EXISTS idx_loyalty_events_who ON loyalty_events(by_user, created_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_loyalty_accrual_once ON loyalty_events(ref_kind, ref_id) WHERE kind = 'accredito' AND ref_id IS NOT NULL;
+
+-- Agente D: formati dei documenti PDF imparati per fornitore (migrazione 0028)
+CREATE TABLE IF NOT EXISTS supplier_formats (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  supplier_key TEXT NOT NULL UNIQUE,               -- vat:<partita IVA> oppure name:<nome normalizzato>
+  supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+  label TEXT,
+  pattern TEXT NOT NULL,
+  uses INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

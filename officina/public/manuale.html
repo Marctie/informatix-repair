@@ -133,6 +133,7 @@
   <a href="#materiali">25 · Materiali da ordinare</a>
   <a href="#preventivo-online">26 · Preventivo dalla riparazione</a>
   <a href="#carte-punti">27 · Carte punti NFC</a>
+  <a href="#import-pdf">28 · DDT e fatture in PDF</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -748,6 +749,19 @@
     <li><b>6. Riscatto</b>: accredita i punti di una vendita, riscatta 100 punti con il solo UID (deve chiedere il PIN), poi controlla che il buono compaia in <i>Buoni</i> e che usandolo in cassa i totali tornino.</li>
     <li><b>7. Regolamento</b>: dimmi quanti punti per euro, il valore del buono e le scadenze che vuoi (domanda 21): finché non lo fai valgono i valori provvisori.</li>
   </ul>
+</section>
+<section id="import-pdf">
+  <h2><span class="n">28</span>DDT e fatture in PDF</h2>
+  <p class="lead">In <b>Acquisti → Importa</b>, oltre alla fattura elettronica XML, puoi caricare un <b>DDT o una fattura in PDF</b>: il gestionale legge il testo, ti mostra cosa ha capito e tu correggi prima di confermare.</p>
+  <ul>
+    <li><b>Passo 1</b>: trascina il PDF (o sceglilo). Il testo viene letto <b>nel tuo browser</b> (serve internet la prima volta per il lettore di PDF): il file non parte dal computer.</li>
+    <li><b>Passo 2 · Controlla e correggi</b>: compaiono fornitore, partita IVA, tipo (DDT / fattura / nota di credito), numero, data, totale e la <b>tabella delle righe</b> (codice, descrizione, quantità, UM, prezzo di acquisto, IVA). Le righe dubbie sono in <b>giallo</b> con il motivo (“prezzo mancante”, “qtà × prezzo non torna”…). Correggi, aggiungi o togli righe e premi <b>↻ Applica le correzioni</b>.</li>
+    <li>Sotto c’è l’abbinamento ai prodotti del magazzino, uguale a quello delle fatture XML (per codice fornitore, codice articolo o nome simile); poi <b>Conferma e carica il magazzino</b>. Il carico, lo storico prezzi e gli avvisi sono gli stessi di sempre.</li>
+    <li><b>DDT senza prezzi</b> (non valorizzato): scrivi tu i prezzi di acquisto nella tabella, oppure salta le righe e importa poi la fattura.</li>
+    <li><b>Il sistema impara</b>: dopo ogni conferma ricorda, per quel fornitore, in quale colonna stanno codice, descrizione, quantità e prezzo (da come le hai corrette). Dal documento successivo le righe escono giuste (“formato già imparato”). In fondo alla pagina Importa c’è l’elenco <b>Formati PDF imparati</b> con il tasto <b>Dimentica</b> se uno impara male.</li>
+    <li>Lo stesso documento (stesso fornitore, numero e data) non si importa due volte.</li>
+  </ul>
+  <div class="call warn"><b>Limiti</b>Servono PDF “digitali” (generati da un programma), non foto o scansioni: in quel caso compare un avviso e puoi scrivere le righe a mano. Finora non ho potuto vedere i DDT veri dei tuoi fornitori: il lettore usa regole generali (intestazioni di colonna, numeri, partita IVA con controllo, totali) e migliora con le tue correzioni. <b>Mandami 2-3 PDF di esempio per fornitore</b> per tararlo meglio.</div>
 </section>
 <!-- agente D: fine sezioni -->
 
