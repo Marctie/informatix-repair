@@ -14,7 +14,8 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 const euro = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €';
 const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
 const fmtDateEn = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-const img = (it, n, thumb = false) => `/images/usati/${it.slug}/${n}${thumb ? '-t' : ''}.jpg`;
+// `files` (facoltativo) = nomi dei file foto scritti dal gestionale online; senza, le foto sono 1.jpg, 2.jpg...
+const img = (it, n, thumb = false) => `/images/usati/${it.slug}/${it.files?.[n - 1] ?? n}${thumb ? '-t' : ''}.jpg`;
 const title = (it) => [it.name, it.memory, it.color].filter(Boolean).join(' ');
 const titleEn = (it) => [it.nameEn || it.name, it.memoryEn || it.memory, it.colorEn || it.color].filter(Boolean).join(' ');
 /* Coppia di span IT/EN, mostrati/nascosti via CSS in base a html[lang]. Se manca la traduzione, l'EN ricade sull'IT. */
