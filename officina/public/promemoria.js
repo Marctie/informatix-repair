@@ -62,7 +62,7 @@ export async function promemoriaView(el, params) {
   const list = $('#pm-list', el);
   const chips = [['aperti', 'Aperti'], ['oggi', 'Da fare oggi'], ['fatti', 'Fatti']];
   async function load() {
-    $('#pm-chips', el).innerHTML = chips.map(([k, l]) => `<span class="chip ${stato === k ? 'on' : ''}" data-f="${k}">${l}</span>`).join('') + '<input id="pm-q" type="search" placeholder="Cerca…" style="max-width:14rem" />';
+    $('#pm-chips', el).innerHTML = chips.map(([k, l]) => `<span class="chip ${stato === k ? 'on' : ''}" data-f="${k}">${l}</span>`).join('') + '<input id="pm-q" type="search" placeholder="Cerca…" style="flex:1 1 9rem;min-width:9rem;max-width:14rem" />';
     $('#pm-q', el).value = q;
     $('#pm-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load().then(() => $('#pm-q', el).focus()); });
     const rows = await safe(() => api('GET', `/api/reminders?stato=${stato}&q=${encodeURIComponent(q)}`));
