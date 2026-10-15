@@ -78,7 +78,8 @@ CREATE TABLE IF NOT EXISTS repair_parts (
   product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
   name TEXT NOT NULL, qty INTEGER NOT NULL DEFAULT 1,
   unit_price REAL NOT NULL DEFAULT 0, unit_cost REAL NOT NULL DEFAULT 0,
-  supplier_code TEXT, supplier_name TEXT, bought_at TEXT
+  supplier_code TEXT, supplier_name TEXT, bought_at TEXT,
+  vat_rate REAL, cost_net REAL, cost_vat REAL, vat_applied INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS services (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,7 +142,8 @@ CREATE TABLE IF NOT EXISTS purchase_lines (
   product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
   supplier_code TEXT, description TEXT NOT NULL, qty REAL NOT NULL DEFAULT 1, unit TEXT,
   list_price REAL NOT NULL DEFAULT 0, unit_price REAL NOT NULL DEFAULT 0, discount REAL NOT NULL DEFAULT 0,
-  vat_rate REAL NOT NULL DEFAULT 0, line_total REAL NOT NULL DEFAULT 0, loaded INTEGER NOT NULL DEFAULT 0
+  vat_rate REAL NOT NULL DEFAULT 0, line_total REAL NOT NULL DEFAULT 0, loaded INTEGER NOT NULL DEFAULT 0,
+  vat_amount REAL NOT NULL DEFAULT 0, vat_applied INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_purchase_lines_purchase ON purchase_lines(purchase_id);
 CREATE INDEX IF NOT EXISTS idx_purchase_lines_product ON purchase_lines(product_id);

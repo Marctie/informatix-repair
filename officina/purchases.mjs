@@ -1,6 +1,7 @@
 // Acquisti dai fornitori: import delle fatture elettroniche, carico di magazzino, storico prezzi e avvisi di variazione.
 // Flusso in 2 passi: preview (non scrive nulla) -> confirm (scrive in un unico blocco atomico, senza doppioni).
-import { db, tx } from './dbref.mjs';
+import { db, tx, getSettings } from './dbref.mjs';
+import { computeVat, parseRate, truthy } from './iva.mjs';
 import { HttpError, money, localDate, moveStock } from './logic.mjs';
 import { parseFattura, looksLikeP7m, P7M_MESSAGE } from './fatturapa.mjs';
 
@@ -367,7 +368,10 @@ export async function manualLoad(body) {
   if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'Prezzo d’acquisto non valido');
   const date = str(b.date) || localDate();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Data non valida');
-  const unit = r4(price);
+  // IVA: prezzo scritto IVA esclusa (predefinito) o inclusa; `vat_apply` aggiunge davvero l'IVA al costo (acquisto estero, reverse charge...)
+  const rate = parseRate(b.vat_rate, Number((await getSettings()).vat_rate) || 22);
+  const vat = computeVat({ amount: price, mode: b.price_mode === 'gross' ? 'gross' : 'net', rate, apply: truthy(b.vat_apply) });
+  const unit = vat.cost;
   return tx(async () => {
     let productId = Number(b.product_id) || null;
     let prod = productId ? await db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(productId) : null;
@@ -389,13 +393,14 @@ export async function manualLoad(body) {
     let doc = await db.prepare('SELECT id, source, total FROM purchases WHERE supplier_id = ? AND doc_number = ? AND doc_date = ?').get(supplier.id, docNo, date);
     if (doc && doc.source !== 'manuale') throw new HttpError(409, 'Esiste già un documento importato con questo numero: usa un altro numero o lascia vuoto.');
     const lineTotal = money(qty * unit);
+    const lineVat = money(qty * vat.vat);
     if (!doc) {
       const r = await db.prepare(`INSERT INTO purchases (supplier_id, doc_type, doc_number, doc_date, total, source, notes, imported_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
         .run(supplier.id, 'CARICO', docNo, date, lineTotal, 'manuale', str(b.notes));
       doc = { id: Number(r.lastInsertRowid) };
     } else await db.prepare('UPDATE purchases SET total = total + ? WHERE id = ?').run(lineTotal, doc.id);
-    await db.prepare('INSERT INTO purchase_lines (purchase_id, product_id, supplier_code, description, qty, unit, list_price, unit_price, discount, vat_rate, line_total, loaded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-      .run(doc.id, productId, code, prod.name.slice(0, 300), qty, 'pz', unit, unit, 0, 0, lineTotal, 1);
+    await db.prepare('INSERT INTO purchase_lines (purchase_id, product_id, supplier_code, description, qty, unit, list_price, unit_price, discount, vat_rate, line_total, loaded, vat_amount, vat_applied) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(doc.id, productId, code, prod.name.slice(0, 300), qty, 'pz', vat.net, unit, 0, rate, lineTotal, 1, lineVat, vat.applied ? 1 : 0);
     await db.prepare('INSERT INTO price_history (product_id, supplier_id, unit_price, qty, doc_date, purchase_id) VALUES (?,?,?,?,?,?)').run(productId, supplier.id, unit, qty, date, doc.id);
     if (code) await db.prepare('INSERT OR REPLACE INTO supplier_codes (supplier_id, supplier_code, product_id) VALUES (?,?,?)').run(supplier.id, code, productId);
     await moveStock(productId, qty, `carico merce ${docNo}`, `acquisto:${doc.id}`);
@@ -403,7 +408,7 @@ export async function manualLoad(body) {
     await db.prepare('UPDATE products SET cost = ?, supplier_id = COALESCE(supplier_id, ?) WHERE id = ?').run(unit, supplier.id, productId);
     const out = await db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
     const prices = await productPrices(productId);
-    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier.name, doc_number: docNo, purchase_id: doc.id, avg_cost: prices.avg_cost, new_product: !b.product_id } };
+    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier.name, doc_number: docNo, purchase_id: doc.id, avg_cost: prices.avg_cost, new_product: !b.product_id, vat: { ...vat, line_vat: lineVat } } };
   });
 }
 

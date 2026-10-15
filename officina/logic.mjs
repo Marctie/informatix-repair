@@ -1,5 +1,6 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
+import { computeVat, parseRate, truthy } from './iva.mjs';
 import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
@@ -302,7 +303,7 @@ export async function deliverRepair(id, { final_price, method, note, ...pay } = 
   });
 }
 
-export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at }) {
+export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at, price_mode, vat_rate, vat_apply }) {
   return tx(async () => {
     const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -317,12 +318,18 @@ export async function addPart(repairId, { product_id, name, qty, unit_price, uni
     }
     if (!pName) throw new HttpError(400, 'Nome ricambio obbligatorio');
     // Ricambio a mano (non a magazzino): il costo d'acquisto inserito entra nel guadagno della riparazione.
+    let vat = null;
     if (!pid) {
       cost = num(unit_cost, 0);
       if (cost < 0 || price < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
+      // IVA sul costo: scritto IVA esclusa o inclusa; con "vat_apply" l'IVA si aggiunge davvero al costo (estero, reverse charge...)
+      if (cost > 0 || vat_rate !== undefined || truthy(vat_apply) || price_mode === 'gross') {
+        vat = computeVat({ amount: cost, mode: price_mode === 'gross' ? 'gross' : 'net', rate: parseRate(vat_rate, Number((await getSettings()).vat_rate) || 22), apply: truthy(vat_apply) });
+        cost = vat.cost;
+      }
     }
-    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at) VALUES (?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at));
-    await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}.`, 0);
+    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at, vat_rate, cost_net, cost_vat, vat_applied) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at), vat ? vat.rate : null, vat ? vat.net : null, vat ? vat.vat : null, vat?.applied ? 1 : 0);
+    await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}${vat?.applied ? ` (IVA ${vat.rate}% aggiunta al costo)` : ''}.`, 0);
     return await getRepair(repairId);
   });
 }

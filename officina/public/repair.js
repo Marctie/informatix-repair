@@ -3,6 +3,7 @@ import { scanWithCamera } from './scan.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
+import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 
 import { signIntakeAtDesk, signDialog } from './sign.js';
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
@@ -631,22 +632,25 @@ async function editDialog(id, done) {
 }
 
 /** Ricambio non caricato a magazzino: descrizione, quantità, costo d'acquisto e prezzo al cliente (non tocca le giacenze). */
-function manualPartDialog(repairId, done) {
+async function manualPartDialog(repairId, done) {
+  await ensureVatDefault();
   const m = openModal(`<div class="fgrid c2">
       <div class="field" style="grid-column:1/-1"><label class="l" for="mp-name">Descrizione</label><input id="mp-name" placeholder="es. Display iPhone 12" /></div>
       <div class="field"><label class="l" for="mp-qty">Quantità</label><input id="mp-qty" inputmode="numeric" value="1" /></div>
       <div class="field"><label class="l" for="mp-code">Codice fornitore</label><input id="mp-code" /></div>
       ${canSeeCosts() ? `<div class="field"><label class="l" for="mp-cost">Prezzo d’acquisto € (cad.)</label><input id="mp-cost" inputmode="decimal" /></div>` : ""}
+      ${canSeeCosts() ? `<div style="grid-column:1/-1">${vatBlock('mp')}</div>` : ''}
       <div class="field"><label class="l" for="mp-price">Prezzo al cliente € (cad.)</label><input id="mp-price" inputmode="decimal" placeholder="0 = incluso nel preventivo" /></div>
       <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" /></div>
       <div class="field"><label class="l" for="mp-date">Data d’acquisto</label><input id="mp-date" type="date" value="${today()}" /></div>
     </div><p class="hint">Non scala nessuna giacenza. Il costo entra nel guadagno della riparazione.</p>`,
     { title: 'Ricambio non a magazzino', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="mp-ok">Aggiungi</button>' });
+  const vatVals = canSeeCosts() ? bindVat(m.el, 'mp', '#mp-cost') : () => ({});
   $('#mp-ok', m.el).onclick = async () => {
     const v = (id) => $(`#${id}`, m.el).value;
     const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, {
       name: v('mp-name'), qty: v('mp-qty'), unit_cost: ($('#mp-cost', m.el) ? v('mp-cost') : '').replace(',', '.'), unit_price: v('mp-price').replace(',', '.') || 0,
-      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'),
+      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'), ...vatVals(),
     }));
     if (out) { m.close(); toast('Ricambio aggiunto'); done(); }
   };
