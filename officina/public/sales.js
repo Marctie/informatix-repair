@@ -1,6 +1,7 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
+import { retroField, retroVal } from './retro.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
@@ -63,6 +64,7 @@ export async function salesView(el) {
           <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc))}</b></div>
         </div>
         <div class="sec" id="s-settle"></div>
+        ${retroField('s-retro')}
         <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${wantPrint() ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
@@ -133,7 +135,7 @@ export async function salesView(el) {
       const bad = settle.validate();
       if (bad) return toast(bad, false);
       e.target.disabled = true;
-      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload() }));
+      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload(), ...retroVal(el, 's-retro') }));
       e.target.disabled = false;
       if (!out) return;
       cart.length = 0; settle.reset(); renderCart(); recent();

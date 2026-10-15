@@ -13,7 +13,7 @@
     "usati": "node scripts/build-usati.mjs",
     "admin": "node admin/server.mjs",
     "officina": "node officina/server.mjs",
-    "test:officina": "node --test officina/tests/notifiche.test.mjs officina/tests/api.test.mjs officina/tests/acquisti.test.mjs officina/tests/registro.test.mjs officina/tests/ordini.test.mjs officina/tests/dispositivi.test.mjs officina/tests/schede.test.mjs officina/tests/anagrafiche.test.mjs officina/tests/iva.test.mjs"
+    "test:officina": "node --test officina/tests/notifiche.test.mjs officina/tests/api.test.mjs officina/tests/acquisti.test.mjs officina/tests/registro.test.mjs officina/tests/ordini.test.mjs officina/tests/dispositivi.test.mjs officina/tests/schede.test.mjs officina/tests/anagrafiche.test.mjs officina/tests/iva.test.mjs officina/tests/retroattivo.test.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

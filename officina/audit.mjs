@@ -16,7 +16,7 @@ const KINDS = {
   services: { type: 'servizio', table: 'services', label: (r) => r.name },
   sales: { type: 'vendita', table: 'sales', label: (r) => `Vendita n. ${r.id} (${Number(r.total).toFixed(2)} €)` },
 };
-export const AUDIT_TYPES = ['cliente', 'riparazione', 'articolo', 'fornitore', 'utente', 'spesa', 'servizio', 'ricambio', 'vendita', 'pagamento', 'impostazioni', 'acquisto', 'carico', 'dati demo'];
+export const AUDIT_TYPES = ['cliente', 'riparazione', 'articolo', 'fornitore', 'utente', 'spesa', 'servizio', 'ricambio', 'vendita', 'pagamento', 'impostazioni', 'acquisto', 'carico', 'dati demo', 'retroattivo'];
 
 // sotto-azioni importanti: "METODO ultimo-pezzo" -> [tipo, azione, descrizione]
 const SUB = {

@@ -4,6 +4,7 @@ import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
+import { retroField, retroVal } from './retro.js';
 
 import { signIntakeAtDesk, signDialog } from './sign.js';
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
@@ -82,6 +83,7 @@ export function openRepairForm(onDone, preset = {}) {
           <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
         </div>
+        ${retroField('rf-retro')}
         <div class="field">
           <label class="l">Consegna stimata</label>
           <div class="row tight">
@@ -212,6 +214,7 @@ export function openRepairForm(onDone, preset = {}) {
       quote_agreed: $('#rf-agreed', root).checked,
       deposit: $('#rf-deposit', root).value,
       deposit_method: $('#rf-method', root).value,
+      ...retroVal(root, 'rf-retro'),
       eta_date: $('#rf-etadate', root).value,
       urgent: $('#rf-urgent', root).checked,
     };
@@ -369,6 +372,7 @@ export async function openRepairDetail(id, onChange) {
             ${!done ? `
               <div class="stack" style="gap:.5rem"><div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><select id="d-depm" aria-label="Pagato con" style="width:auto"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
                 <div class="row" style="flex-wrap:nowrap;display:none" id="d-dep2"><input id="d-dep2a" inputmode="decimal" placeholder="Seconda quota €" aria-label="Seconda quota" /><select id="d-dep2m" aria-label="Seconda quota pagata con" style="width:auto"><option>carta</option><option>contanti</option><option>bonifico</option></select></div>
+                ${retroField('d-dep-retro')}
                 <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
               <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
@@ -467,7 +471,7 @@ export async function openRepairDetail(id, onChange) {
       case 'deposit': {
         const second = $('#d-dep2', body).style.display !== 'none' && $('#d-dep2a', body).value.trim();
         const payments = [{ method: $('#d-depm', body).value, amount: $('#d-dep', body).value }, ...(second ? [{ method: $('#d-dep2m', body).value, amount: $('#d-dep2a', body).value }] : [])];
-        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments }), 'Acconto registrato');
+        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments, ...retroVal(body, 'd-dep-retro') }), 'Acconto registrato');
       }
       case 'savetech': return act(() => api('PATCH', `/api/repairs/${id}`, { tech_notes: $('#d-tech', body).value }), 'Note del tecnico salvate');
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
@@ -577,6 +581,7 @@ export function deliverDialog(id, done) {
           <div class="field"><span class="l">Saldo da incassare</span><b class="font-heading" style="font-size:1.4rem" id="dl-due">${eur(Math.max(0, total - r.paid))}</b></div>
         </div>
         <div class="sec" id="dl-settle"></div>
+        ${retroField('dl-retro')}
         <p class="hint">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>
       </section>`,
       { title: 'Consegna e incasso', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-green btn-lg" id="dl-ok">Conferma consegna</button>` }
@@ -588,7 +593,7 @@ export function deliverDialog(id, done) {
     $('#dl-ok', m.el).onclick = async () => {
       const bad = settle.validate();
       if (bad) return toast(bad, false);
-      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload() }));
+      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload(), ...retroVal(m.el, 'dl-retro') }));
       if (!out) return;
       m.close();
       toast(`Consegnata. Incassati ${eur(out.collected)}`);
