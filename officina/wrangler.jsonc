@@ -13,7 +13,7 @@
     // Foto della Vetrina Usati, separate dai backup.
     { "binding": "MEDIA", "bucket_name": "officina-media" }
   ],
-  "triggers": { "crons": ["30 2 * * *"] },
+  "triggers": { "crons": ["30 2 * * *", "* * * * *"] },
   "routes": [
     { "pattern": "gestionale.informatixrepair.com", "custom_domain": true },
     { "pattern": "riparazioni.informatixrepair.com", "custom_domain": true }

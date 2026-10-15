@@ -166,3 +166,56 @@ test('colore del dispositivo: salvato, modificabile, visibile al cliente e sulle
   assert.ok((await call('GET', '/api/repairs?q=argento')).data.some((x) => x.id === r.id), 'si trova anche cercando il colore');
   assert.equal((await newRepair()).color, null, 'senza colore resta vuoto');
 });
+
+test('validità dei preventivi: si imposta dalle Impostazioni e vale per i nuovi preventivi', async () => {
+  assert.equal((await call('GET', '/api/quotes/meta')).data.valid_days, 15);
+  assert.equal((await call('PUT', '/api/settings', { quote_valid_days: '30' })).status, 200);
+  assert.equal((await call('GET', '/api/quotes/meta')).data.valid_days, 30);
+  await call('PUT', '/api/settings', { quote_valid_days: '15' });
+});
+
+const SIG_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+test('preventivo online: link, vista senza dati personali, firma del cliente, una sola risposta', async () => {
+  const q = (await call('POST', '/api/quotes', { customer_name: 'Luigi Bianchi', customer_phone: '3339998877', discount: 20, items: [{ description: 'PC gaming', qty: 1, unit_price: 700 }, { description: 'Windows', qty: 1, unit_price: 40 }] })).data;
+  assert.equal((await call('GET', '/api/quote/inesistente', null, pub)).status, 404);
+  assert.equal((await call('GET', '/api/quote/', null, pub)).status, 404);
+  const link = await call('POST', `/api/quotes/${q.id}/link`, {});
+  assert.equal(link.status, 200);
+  assert.match(text(link), /Link online creato.*P-\d{4}-\d{4}/s);
+  assert.equal((await call('POST', `/api/quotes/${q.id}/link`, {})).data.token, link.data.token, 'il codice resta lo stesso');
+  assert.equal((await call('GET', `/api/quotes/${q.id}`)).data.status, 'inviato', 'la bozza diventa inviata');
+  const v = (await call('GET', `/api/quote/${link.data.token}`, null, pub)).data;
+  assert.equal(v.total, 720);
+  assert.equal(v.can_answer, true);
+  assert.doesNotMatch(JSON.stringify(v), /3339998877/, 'niente telefono nella pagina pubblica');
+  const d = (a) => call('POST', `/api/quote/${link.data.token}/decision`, a, pub);
+  assert.equal((await d({ action: 'accept' })).status, 400, 'la firma è obbligatoria');
+  assert.equal((await d({ action: 'boh', image: SIG_PNG })).status, 400);
+  assert.equal((await d({ action: 'accept', image: 'data:image/png;base64,AAAA' })).status, 400);
+  const ok = await d({ action: 'accept', image: SIG_PNG, signer_name: 'Luigi Bianchi' });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.decision, 'accettato');
+  assert.match(text(ok), /Il cliente ha ACCETTATO il preventivo P-\d{4}-\d{4} \(firmato dal link\)/);
+  assert.match(text(ok), /cliente \(dal link\)/);
+  assert.equal((await d({ action: 'decline', image: SIG_PNG })).status, 409, 'una sola risposta');
+  const adm = (await call('GET', `/api/quotes/${q.id}`)).data;
+  assert.equal(adm.status, 'accettato');
+  assert.equal(adm.signature.kind, 'accept');
+  assert.equal(adm.signature.signer_name, 'Luigi Bianchi');
+  assert.doesNotMatch(JSON.stringify(adm), /iVBORw0KGgo/, 'l’immagine della firma non esce nei dati');
+});
+
+test('preventivo online: scaduto, rifiutato e convertito non si possono più inviare né firmare', async () => {
+  const q = (await call('POST', '/api/quotes', { customer_name: 'Paola', items: [{ description: 'Cavo', unit_price: 10 }] })).data;
+  const t = (await call('POST', `/api/quotes/${q.id}/link`, {})).data.token;
+  await call('POST', `/api/quote/${t}/decision`, { action: 'decline', image: SIG_PNG }, pub);
+  assert.equal((await call('GET', `/api/quotes/${q.id}`)).data.status, 'rifiutato');
+  assert.equal((await call('POST', `/api/quotes/${q.id}/link`, {})).status, 409, 'rifiutato: niente nuovo invio');
+  const { raw } = await import('../db-node.mjs');
+  const q2 = (await call('POST', '/api/quotes', { customer_name: 'Marta', items: [{ description: 'Mouse', unit_price: 5 }] })).data;
+  const t2 = (await call('POST', `/api/quotes/${q2.id}/link`, {})).data.token;
+  raw.prepare("UPDATE quotes SET valid_until = '2020-01-01' WHERE id = ?").run(q2.id);
+  assert.equal((await call('GET', `/api/quote/${t2}`, null, pub)).data.can_answer, false);
+  assert.equal((await call('POST', `/api/quote/${t2}/decision`, { action: 'accept', image: SIG_PNG }, pub)).status, 409);
+  assert.equal((await call('POST', `/api/quotes/${q2.id}/link`, {})).status, 409, 'scaduto: niente invio');
+});

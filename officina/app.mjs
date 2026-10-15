@@ -13,7 +13,7 @@ import { notifyMiddleware } from './notify.mjs';
 import { registerMonitorRoutes } from './monitor.mjs';
 import { registerPurchaseRoutes, PURCHASE_TABLES } from './purchases.mjs';
 import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
-import { registerQuoteRoutes, quoteAlerts } from './preventivi.mjs';
+import { registerQuoteRoutes, quoteAlerts, registerPublicQuoteRoutes } from './preventivi.mjs';
 import { registerReminderRoutes, reminderAlertsNotify } from './promemoria.mjs';
 
 import { registerDeviceRoutes, DEVICE_TABLES } from './dispositivi.mjs';
@@ -61,6 +61,7 @@ export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
 export function createPublicApp() {
   const app = new Hono();
   app.use('/api/track/*', notifyMiddleware);
+  app.use('/api/quote/*', notifyMiddleware);
   // Il sito pubblico (altro dominio) chiama la ricerca per numero ricevuta
   app.use('/api/lookup', cors({ origin: ['https://informatixrepair.com', 'https://www.informatixrepair.com'], allowMethods: ['POST', 'OPTIONS'], allowHeaders: ['content-type'] }));
   app.get('/api/track/:token', h((req) => L.publicView(req.params.token)));
@@ -68,6 +69,8 @@ export function createPublicApp() {
   app.post('/api/track/:token/decision', h((req) => R.customerDecision(req.params.token, req.body, req.c)));
   // Ricerca "per anziani": numero ricevuta + ultime 4 cifre del telefono -> codice di tracciamento
   app.post('/api/lookup', h((req) => L.lookup(req.body?.code, req.body?.phone4)));
+  // Preventivo autonomo: il cliente lo vede e lo firma dal link /p/<codice>
+  registerPublicQuoteRoutes(app, h);
   // Bot di controllo sul telefono: riepilogo numerico, solo con la chiave MONITOR_TOKEN (altrimenti 404)
   registerMonitorRoutes(app, { env: (c) => ({ ...(typeof process !== 'undefined' ? process.env : {}), ...(c.env || {}) }) });
   return app;
@@ -99,7 +102,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', ...Object.keys(LEGAL_DEFAULTS)];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', ...Object.keys(LEGAL_DEFAULTS)];
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }

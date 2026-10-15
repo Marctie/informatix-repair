@@ -74,6 +74,7 @@ export async function openQuote(id, done) {
       <dl class="kv"><dt>Stato</dt><dd>${badge(q)}</dd><dt>Cliente</dt><dd>${esc(q.who)}${q.who_phone ? ` · ${esc(q.who_phone)}` : ''}</dd>
         <dt>Validità</dt><dd><b>${fdate(q.valid_until)}</b> <span class="hint">${esc(validity(q))}</span></dd>
         ${q.repair_code ? `<dt>Riparazione</dt><dd>${esc(q.repair_code)}</dd>` : ''}${q.sale_code ? `<dt>Vendita</dt><dd>${esc(q.sale_code)}</dd>` : ''}
+        ${q.signature ? `<dt>Risposta online</dt><dd>${q.signature.kind === 'accept' ? '✅ Accettato' : '❌ Rifiutato'} e firmato${q.signature.signer_name ? ` da ${esc(q.signature.signer_name)}` : ''} il ${esc(fdate(q.signature.signed_at))}${q.signature.ip ? ` <span class="hint">(IP ${esc(q.signature.ip)})</span>` : ''}</dd>` : ''}
         ${q.notes ? `<dt>Note</dt><dd>${esc(q.notes)}</dd>` : ''}<dt>Creato</dt><dd>${fdate(q.created_at)}</dd></dl></section>
     <section class="sec"><h3 class="sec-t">Voci</h3>
       <div class="plist">${q.items.map((i) => `<div><span>${i.qty}× ${esc(i.description)}</span><b>${eur(i.qty * i.unit_price)}</b></div>`).join('')}</div>
@@ -81,6 +82,7 @@ export async function openQuote(id, done) {
     <section class="sec"><div class="row">
       <a class="btn btn-outline btn-sm" href="/print/quote/${q.id}" target="_blank" rel="noopener">🖨️ Stampa / PDF</a>
       ${wa ? `<a class="btn btn-green btn-sm" id="qd-wa" target="_blank" rel="noopener" href="${wa}">💬 WhatsApp</a>` : ''}
+      ${['bozza', 'inviato'].includes(q.status) && !q.expired ? '<button class="btn btn-outline btn-sm" id="qd-link">🔗 Link per il cliente</button>' : ''}
       ${q.status === 'bozza' ? '<button class="btn btn-dark btn-sm" data-st="inviato">Segna inviato</button>' : ''}
       ${['bozza', 'inviato'].includes(q.status) ? '<button class="btn btn-dark btn-sm" data-st="accettato">Accettato dal cliente</button><button class="btn btn-outline btn-sm" data-st="rifiutato">Rifiutato</button>' : ''}
       ${canConvert ? '<button class="btn btn-primary btn-sm" id="qd-rep">→ Riparazione</button><button class="btn btn-primary btn-sm" id="qd-sale">→ Vendita</button>' : ''}
@@ -94,6 +96,15 @@ export async function openQuote(id, done) {
     if (st) { if (await safe(() => api('POST', `/api/quotes/${id}/status`, { status: st.dataset.st }))) again(); }
     if (e.target.closest('#qd-wa') && q.status === 'bozza') { await safe(() => api('POST', `/api/quotes/${id}/status`, { status: 'inviato' })); done?.(); }
   });
+  if ($('#qd-link', m.el)) $('#qd-link', m.el).onclick = async () => {
+    const out = await safe(() => api('POST', `/api/quotes/${id}/link`, {}));
+    if (!out) return;
+    const url = `${META.track_base}/p/${out.token}`;
+    try { await navigator.clipboard.writeText(url); toast('Link copiato: incollalo dove vuoi'); } catch { window.prompt('Copia questo link:', url); }
+    const w = waLink(q.who_phone, `Buongiorno, ecco il preventivo ${q.code} (${eur(q.total)}): puoi leggerlo e accettarlo dal telefono qui: ${url}`);
+    if (w && window.confirm('Link pronto e copiato. Aprire WhatsApp col messaggio già scritto?')) window.open(w, '_blank', 'noopener');
+    again();
+  };
   if ($('#qd-edit', m.el)) $('#qd-edit', m.el).onclick = () => { m.close(); quoteForm(q, done); };
   if ($('#qd-rep', m.el)) $('#qd-rep', m.el).onclick = () => { m.close(); convertToRepair(q, done); };
   if ($('#qd-sale', m.el)) $('#qd-sale', m.el).onclick = () => { m.close(); convertToSale(q, done); };

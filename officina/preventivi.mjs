@@ -1,7 +1,8 @@
 // Preventivi autonomi con data di validita': non dipendono da una riparazione (es. assemblaggio PC).
 // Stati: bozza -> inviato -> accettato | rifiutato -> convertito (in riparazione o vendita). "Scaduto" non e' uno stato salvato: si calcola dalla data.
-import { db, tx, getSettings } from './dbref.mjs';
-import { HttpError, money, localDate, upsertCustomer, createRepair, createSale } from './logic.mjs';
+import { db, tx, getSettings, nowLocal } from './dbref.mjs';
+import { cleanImage, clientIp } from './signatures.mjs';
+import { HttpError, money, localDate, upsertCustomer, createRepair, createSale, newToken } from './logic.mjs';
 import { nextDocCode } from './ordini.mjs';
 
 const NOW = "datetime('now','localtime')";
@@ -12,7 +13,7 @@ const eur = (n) => Number(n || 0).toLocaleString('it-IT', { style: 'currency', c
 const dIt = (s) => (s ? new Date(`${String(s).slice(0, 10)}T00:00:00`).toLocaleDateString('it-IT') : '—');
 
 export const QUOTE_STATUS = { bozza: 'Bozza', inviato: 'Inviato', accettato: 'Accettato', rifiutato: 'Rifiutato', convertito: 'Convertito', scaduto: 'Scaduto' };
-export const QUOTE_TABLES = ['quotes', 'quote_items'];
+export const QUOTE_TABLES = ['quotes', 'quote_items', 'quote_signatures'];
 export const DEFAULT_VALID_DAYS = 15;
 export const DEFAULT_TERMS = 'Preventivo valido fino alla data indicata; oltre tale data prezzi e disponibilità possono variare. Importi IVA inclusa. I tempi di consegna dei ricambi e dei componenti dipendono dalla disponibilità dei fornitori. Per accettare, firmare in basso o confermare al banco.';
 
@@ -35,7 +36,7 @@ function shape(q) {
 export async function getQuote(id) {
   const q = await db.prepare(`${SELECT} WHERE q.id = ?`).get(id);
   if (!q) throw new HttpError(404, 'Preventivo non trovato');
-  return { ...shape(q), items: await db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY id').all(id) };
+  return { ...shape(q), items: await db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY id').all(id), signature: await db.prepare('SELECT kind, signer_name, ip, signed_at FROM quote_signatures WHERE quote_id = ? ORDER BY id DESC LIMIT 1').get(id) || null };
 }
 
 function cleanItems(list) {
@@ -129,6 +130,67 @@ export async function convertQuote(id, b) {
   throw new HttpError(400, 'Scegli se convertire in riparazione o in vendita');
 }
 
+/** Crea (se manca) il codice del link online. Un preventivo in bozza passa a "inviato". */
+export async function shareQuote(id) {
+  const q = await getQuote(id);
+  if (q.status === 'convertito') throw new HttpError(409, 'Un preventivo già convertito non si invia più.');
+  if (q.status === 'rifiutato') throw new HttpError(409, 'Il preventivo è stato rifiutato.');
+  if (q.expired) throw new HttpError(409, 'Il preventivo è scaduto: prolunga prima la data di validità.');
+  let token = q.token;
+  if (!token) { token = newToken(); await db.prepare('UPDATE quotes SET token = ? WHERE id = ?').run(token, id); }
+  if (q.status === 'bozza') await db.prepare(`UPDATE quotes SET status='inviato', updated_at=${NOW} WHERE id=?`).run(id);
+  return { token };
+}
+
+/** Firma registrata dal cliente dal link (senza l'immagine). */
+const lastQuoteSig = (id) => db.prepare('SELECT kind, signer_name, ip, signed_at FROM quote_signatures WHERE quote_id = ? ORDER BY id DESC LIMIT 1').get(id);
+
+/** Vista pubblica per il cliente: niente telefono ne' email, solo cio' che serve per decidere. */
+export async function quoteView(token) {
+  const row = token ? await db.prepare(`${SELECT} WHERE q.token = ?`).get(token) : null;
+  if (!row) throw new HttpError(404, 'Preventivo non trovato');
+  const q = shape(row);
+  const items = await db.prepare('SELECT description, qty, unit_price FROM quote_items WHERE quote_id = ? ORDER BY id').all(q.id);
+  const s = await getSettings();
+  const sig = await lastQuoteSig(q.id);
+  return {
+    code: q.code, who: q.who, status: q.status, status_view: q.status_view, status_label: q.status_label, decision: q.status === 'accettato' ? 'accettato' : q.status === 'rifiutato' ? 'rifiutato' : null,
+    valid_until: q.valid_until, expired: q.expired, days_left: q.days_left, items: items.map((i) => ({ ...i, total: money(i.qty * i.unit_price) })),
+    subtotal: q.subtotal, discount: q.discount, total: q.total, notes: q.notes, terms: q.terms || DEFAULT_TERMS,
+    can_answer: q.status === 'inviato' && !q.expired,
+    signed: sig ? { kind: sig.kind, signed_at: sig.signed_at } : null,
+    shop: { name: s.shop_name, address: s.shop_address, phone: s.shop_phone },
+  };
+}
+
+/** Risposta del cliente dal link: accetta o rifiuta, sempre con firma disegnata (data, ora e IP registrati). */
+export async function quoteDecision(token, b, c) {
+  const row = token ? await db.prepare(`${SELECT} WHERE q.token = ?`).get(token) : null;
+  if (!row) throw new HttpError(404, 'Preventivo non trovato');
+  const q = shape(row);
+  if (q.status !== 'inviato') throw new HttpError(409, 'Questo preventivo non è in attesa di risposta.');
+  if (q.expired) throw new HttpError(409, 'Il preventivo è scaduto: contatta il negozio.');
+  const action = String(b?.action || '');
+  if (!['accept', 'decline'].includes(action)) throw new HttpError(400, 'Scelta non valida');
+  const image = cleanImage(b.image);
+  const name = String(b.signer_name ?? '').trim().slice(0, 120) || null;
+  const shown = action === 'accept'
+    ? `Accetto il preventivo ${q.code} di ${eur(q.total)}, valido fino al ${dIt(q.valid_until)}, alle condizioni indicate.`
+    : `Non accetto il preventivo ${q.code} di ${eur(q.total)}.`;
+  await tx(async () => {
+    const r = await db.prepare(`UPDATE quotes SET status=?, updated_at=${NOW} WHERE id=? AND status='inviato'`).run(action === 'accept' ? 'accettato' : 'rifiutato', q.id);
+    if (!r.changes) throw new HttpError(409, 'Questo preventivo non è più in attesa di risposta.');
+    await db.prepare('INSERT INTO quote_signatures (quote_id, kind, image, signer_name, text_shown, ip, user_agent, signed_at) VALUES (?,?,?,?,?,?,?,?)')
+      .run(q.id, action, image, name, shown, clientIp(c) || null, String(c?.req.header('user-agent') || '').slice(0, 200) || null, nowLocal());
+  });
+  return quoteView(token);
+}
+
+export function registerPublicQuoteRoutes(app, h) {
+  app.get('/api/quote/:token', h((req) => quoteView(req.params.token)));
+  app.post('/api/quote/:token/decision', h((req) => quoteDecision(req.params.token, req.body, req.c)));
+}
+
 /** Avvisi: preventivi inviati che stanno per scadere (entro 3 giorni) o sono scaduti senza risposta. */
 export async function quoteAlerts() {
   const rows = await db.prepare(`${SELECT} WHERE q.status = 'inviato'`).all();
@@ -182,6 +244,7 @@ export function registerQuoteRoutes(app, h) {
   app.post('/api/quotes', h((req) => createQuote(req.body)));
   app.put('/api/quotes/:id', h((req) => updateQuote(req.params.id, req.body)));
   app.post('/api/quotes/:id/status', h((req) => setQuoteStatus(req.params.id, req.body.status)));
+  app.post('/api/quotes/:id/link', h((req) => shareQuote(req.params.id)));
   app.post('/api/quotes/:id/convert', h((req) => convertQuote(req.params.id, req.body)));
   app.delete('/api/quotes/:id', h(async (req) => {
     const q = await getQuote(req.params.id);

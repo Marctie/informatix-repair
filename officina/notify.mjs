@@ -67,7 +67,7 @@ function settingChanges(body, prev) {
 
 /** Costruisce il testo (HTML di Telegram) di un evento. Restituisce null se non vale la pena avvisare. */
 export function describeEvent({ method, path, status, user, body = {}, result = {}, error, denied, login, ip, country, pre = {}, post = {} }) {
-  const who = user ? `${esc(user.name || user.email)} (${esc(user.email)})` : denied ? `${esc(denied)} (non abilitato)` : /^\/api\/track\//.test(path || '') ? 'cliente (dal link di tracciamento)' : 'visitatore';
+  const who = user ? `${esc(user.name || user.email)} (${esc(user.email)})` : denied ? `${esc(denied)} (non abilitato)` : /^\/api\/(track|quote)\//.test(path || '') ? 'cliente (dal link)' : 'visitatore';
   const where = [ip && `IP ${esc(ip)}`, country && esc(country)].filter(Boolean).join(' · ');
   const foot = `\n👤 ${who}${where ? `\n🌐 ${where}` : ''}`;
 
@@ -128,6 +128,11 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     const what = body.action === 'decline' ? (body.device_choice === 'cede' ? '\n📦 Ha CEDUTO il dispositivo al negozio (da smaltire / recuperare pezzi)' : '\n📦 Ritirerà il dispositivo non riparato: giacenza di 15 giorni') : body.action === 'option' ? `\nSoluzione scelta: ${esc(short(r.my_decision?.option_label, 80))} · ${eur(r.quote)}` : `\nImporto: ${eur(r.quote)}`;
     return `${yes ? '✅' : '❌'} <b>Il cliente ha ${yes ? 'APPROVATO' : 'RIFIUTATO'} il preventivo</b> (firmato)\n${join(esc(r.code), esc(r.device?.model), esc(r.customer?.name))}${what}${foot}`;
   }
+  if ((x = path.match(/^\/api\/quote\/([^/]+)\/decision$/)) && m === 'POST') {
+    if (!isOk) return fail('Risposta del cliente al preventivo');
+    const yes = r.decision === 'accettato';
+    return `${yes ? '✅' : '❌'} <b>Il cliente ha ${yes ? 'ACCETTATO' : 'RIFIUTATO'} il preventivo ${esc(r.code)}</b> (firmato dal link)\n${join(esc(r.who), `totale ${eur(r.total)}`)}${yes ? '\nPuoi convertirlo in riparazione o in vendita.' : ''}${foot}`;
+  }
   if ((x = path.match(/^\/api\/track\/([^/]+)\/sign$/)) && m === 'POST') return isOk ? `✍️ <b>Scheda di ingresso FIRMATA dal cliente</b> (da link)\n${esc(r.code || '')}${foot}` : fail('Firma della scheda di ingresso');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/signature$/)) && m === 'POST') return isOk ? `✍️ <b>${body.kind === 'disposal' ? 'Cessione del dispositivo firmata' : 'Scheda di ingresso firmata al banco'}</b>\n${repLine(r, p)}${body.signer_name ? `\nFirma: ${esc(short(body.signer_name, 60))}` : ''}${foot}` : fail('Firma');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/request-signature$/)) && m === 'POST') return isOk ? `📲 <b>Firma a distanza richiesta</b>\n${repLine(r, p)}${foot}` : fail('Richiesta di firma');
@@ -181,6 +186,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     const q = r.quote || r;
     const head = `${esc(q.code)}${q.who || q.customer_name ? ` · ${esc(q.who || q.customer_name)}` : ''}`;
     if (path === '/api/quotes' && m === 'POST') return isOk ? `🧾 <b>Nuovo preventivo ${head}</b>\nTotale ${eur(q.total)}${q.discount ? ` (sconto ${eur(q.discount)})` : ''} · valido fino al ${esc(dmy(q.valid_until))}${foot}` : fail('Nuovo preventivo');
+    if (/\/link$/.test(path)) return isOk ? `🔗 <b>Link online creato</b> per il preventivo ${esc(p.code)}${p.who ? ` · ${esc(p.who)}` : ''}\n(il cliente potrà accettarlo e firmarlo dal telefono)${foot}` : fail('Link del preventivo');
     if (/\/status$/.test(path)) return isOk ? `🧾 <b>Preventivo ${head}</b> → ${esc(cap(q.status))}\nTotale ${eur(q.total)}${foot}` : fail('Stato del preventivo');
     if (/\/convert$/.test(path)) return isOk ? `🔁 <b>Preventivo ${head} convertito</b> in ${q.sale_code ? `vendita ${esc(q.sale_code)} (incassata ${body.method ? `in ${esc(body.method)}` : ''})` : q.repair_code ? `riparazione ${esc(q.repair_code)}` : esc(body.to)}\nTotale ${eur(q.total)}${foot}` : fail('Conversione del preventivo');
     if (m === 'DELETE') return isOk ? `🗑️ <b>Preventivo eliminato</b>: ${esc(p.code || path.split('/').pop())}${foot}` : fail('Eliminazione preventivo');
@@ -329,6 +335,7 @@ const PRE = [
   ['DELETE', /^\/api\/buoni\/(\d+)$/, 'SELECT code FROM vouchers WHERE id = ?'],
   ['DELETE', /^\/api\/orders\/(\d+)$/, 'SELECT code FROM orders WHERE id = ?'],
   ['DELETE', /^\/api\/quotes\/(\d+)$/, 'SELECT code FROM quotes WHERE id = ?'],
+  ['POST', /^\/api\/quotes\/(\d+)\/link$/, 'SELECT q.code, COALESCE(c.name, q.customer_name) AS who FROM quotes q LEFT JOIN customers c ON c.id = q.customer_id WHERE q.id = ?'],
   ['DELETE', /^\/api\/reminders\/(\d+)$/, 'SELECT title FROM reminders WHERE id = ?'],
   ['DELETE', /^\/api\/dispositivi\/(\d+)$/, 'SELECT brand_model, serial FROM devices WHERE id = ?'],
   ['DELETE', /^\/api\/documenti\/(\d+)$/, 'SELECT d.doc_type, c.name AS customer_name FROM id_documents d JOIN customers c ON c.id = d.customer_id WHERE d.id = ?'],
