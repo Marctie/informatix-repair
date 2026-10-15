@@ -370,7 +370,7 @@ export async function settingsView(el) {
           .map(([k, l]) => `<div class="field"><label class="l" for="st-${k}">${l}</label><textarea id="st-${k}" data-k="${k}" rows="4">${esc(s[k] || '')}</textarea></div>`).join('')}
         <div><button class="btn btn-primary" id="st-save2">Salva impostazioni</button></div>
       </section>
-      <div class="grid gap-5">
+      <div class="grid gap-5 lg:col-start-3 lg:row-start-1 lg:row-span-2">
       <section class="card panel sec">
         <h2 class="sec-t">Backup dei dati</h2>
         <p style="font-size:.92rem">${ONLINE ? 'Ogni notte il sistema salva da solo una copia di tutti i dati (si conservano le ultime 30). Puoi anche scaricarne una tu o salvarne una subito.' : 'Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.'}</p>
