@@ -264,11 +264,11 @@ export function registerLedgerRoutes(app, h, { adminOnly }) {
       return c.body(ledgerCsv(d.rows), 200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="dare-avere-${localDate()}.csv"`, 'cache-control': 'no-store' });
     } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Esportazione non riuscita' }, e.status || 500); }
   });
-  app.get('/api/ledger/customer/:id{[0-9]+}', h((req) => customerLedger(Number(req.params.id))));
-  app.get('/api/ledger/status/:id{[0-9]+}', h((req) => customerStatus(Number(req.params.id))));
-  app.get('/api/ledger/repair/:id{[0-9]+}', h((req) => repairLedger(Number(req.params.id))));
+  app.get('/api/ledger/customer/:id{-?[0-9]+}', h((req) => customerLedger(Number(req.params.id))));
+  app.get('/api/ledger/status/:id{-?[0-9]+}', h((req) => customerStatus(Number(req.params.id))));
+  app.get('/api/ledger/repair/:id{-?[0-9]+}', h((req) => repairLedger(Number(req.params.id))));
   app.post('/api/ledger', h((req) => createEntry(req.body, req.user)));
-  app.delete('/api/ledger/:id{[0-9]+}', h((req) => { adminOnly(req); return deleteEntry(req.params.id, req.user); }));
+  app.delete('/api/ledger/:id{-?[0-9]+}', h((req) => { adminOnly(req); return deleteEntry(req.params.id, req.user); }));
 }
 
 /** Un cliente con movimenti di dare/avere non si elimina: i suoi incassi/rimborsi sono in cassa e nelle spese. */

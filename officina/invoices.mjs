@@ -316,12 +316,12 @@ export function registerInvoiceRoutes(app, h, { adminOnly }) {
     } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Esportazione non riuscita' }, e.status || 500); }
   });
   app.get('/api/invoices/meta', h(() => ({ directions: DIRECTIONS, statuses: STATUS_LABELS, terms_days: DEFAULT_TERMS_DAYS })));
-  app.post('/api/invoices/from-purchase/:id{[0-9]+}', h((req) => fromPurchase(Number(req.params.id), req.body, req.user)));
-  app.post('/api/invoices/from-sale/:id{[0-9]+}', h((req) => fromSale(Number(req.params.id), req.body, req.user)));
-  app.get('/api/invoices/:id{[0-9]+}', h((req) => getInvoice(req.params.id, req.user)));
+  app.post('/api/invoices/from-purchase/:id{-?[0-9]+}', h((req) => fromPurchase(Number(req.params.id), req.body, req.user)));
+  app.post('/api/invoices/from-sale/:id{-?[0-9]+}', h((req) => fromSale(Number(req.params.id), req.body, req.user)));
+  app.get('/api/invoices/:id{-?[0-9]+}', h((req) => getInvoice(req.params.id, req.user)));
   app.post('/api/invoices', h((req) => createInvoice(req.body, req.user)));
-  app.put('/api/invoices/:id{[0-9]+}', h((req) => updateInvoice(req.params.id, req.body, req.user)));
-  app.delete('/api/invoices/:id{[0-9]+}', h((req) => { adminOnly(req); return deleteInvoice(req.params.id, req.user); }));
-  app.post('/api/invoices/:id{[0-9]+}/payments', h((req) => addInvoicePayment(req.params.id, req.body, req.user)));
-  app.delete('/api/invoices/:id{[0-9]+}/payments/:pid{[0-9]+}', h((req) => { adminOnly(req); return deleteInvoicePayment(req.params.id, req.params.pid, req.user); }));
+  app.put('/api/invoices/:id{-?[0-9]+}', h((req) => updateInvoice(req.params.id, req.body, req.user)));
+  app.delete('/api/invoices/:id{-?[0-9]+}', h((req) => { adminOnly(req); return deleteInvoice(req.params.id, req.user); }));
+  app.post('/api/invoices/:id{-?[0-9]+}/payments', h((req) => addInvoicePayment(req.params.id, req.body, req.user)));
+  app.delete('/api/invoices/:id{-?[0-9]+}/payments/:pid{-?[0-9]+}', h((req) => { adminOnly(req); return deleteInvoicePayment(req.params.id, req.params.pid, req.user); }));
 }

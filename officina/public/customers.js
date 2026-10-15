@@ -2,6 +2,7 @@
 import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, statusBadge, waLink, plural } from './util.js';
 import { openRepairForm, openRepairDetail } from './repair.js';
 import { openDocuments } from './documenti.js';
+import { fetchFlags, badPayerBadge, mountCustomerLedger } from './dareavere.js'; // Agente C
 
 export async function customersView(el) {
   el.innerHTML = `
@@ -12,9 +13,10 @@ export async function customersView(el) {
   const list = $('#c-list', el);
   async function load(q = '') {
     const rows = await safe(() => api('GET', `/api/customers?q=${encodeURIComponent(q)}`));
+    const flags = await fetchFlags(); // Agente C: clienti segnalati come cattivi pagatori
     list.innerHTML = (rows || []).map((c) => `<div class="row-h flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-id="${c.id}">
       <div class="w-9 h-9 rounded-full bg-secondary-light text-secondary-dark flex items-center justify-center font-bold">${esc(c.name.charAt(0).toUpperCase())}</div>
-      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(c.name)}</p><p class="text-xs text-gray-500">${esc(c.phone || 'nessun telefono')} ${c.email ? '· ' + esc(c.email) : ''}</p></div>
+      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(c.name)}${flags[c.id] ? ` ${badPayerBadge()}` : ''}</p><p class="text-xs text-gray-500">${esc(c.phone || 'nessun telefono')} ${c.email ? '· ' + esc(c.email) : ''}</p></div>
       <div class="text-xs text-gray-500 text-right">${plural(c.repairs_count, 'riparazione', 'riparazioni')}${c.open_repairs ? `<br><b class="text-secondary">${c.open_repairs} ${c.open_repairs === 1 ? 'aperta' : 'aperte'}</b>` : ''}</div></div>`).join('') || '<p class="empty">Nessun cliente.</p>';
   }
   $('#c-q', el).oninput = debounce((e) => load(e.target.value.trim()));
@@ -58,6 +60,7 @@ export async function openCustomer(id, done) {
         <button class="btn btn-ghost btn-sm" id="cu-del">Elimina</button>
       </div>
     </section>
+    <section class="sec" id="cu-ledger"></section>
     <section class="sec">
       <h3 class="sec-t">Riparazioni (${c.repairs.length})</h3>
       <div class="plist">${c.repairs.map((r) => `<div class="row-h" style="cursor:pointer;flex-wrap:wrap" data-rid="${r.id}"><span class="row tight"><b>${esc(r.brand_model)}</b> ${statusBadge(r)}</span><span class="hint">${esc(r.code)} · ${fdate(r.created_at)}</span></div>`).join('') || '<p class="hint">Nessuna riparazione.</p>'}</div>
@@ -68,6 +71,7 @@ export async function openCustomer(id, done) {
     </section>`,
     { title: c.name, wide: true }
   );
+  mountCustomerLedger($('#cu-ledger', m.el), c, done); // Agente C: dare/avere e alert cattivo pagatore
   $('#cu-new', m.el).onclick = () => { m.close(); openRepairForm(done, { name: c.name, phone: c.phone }); };
   $('#cu-docs', m.el).onclick = () => openDocuments(c);
   $('#cu-edit', m.el).onclick = () => { m.close(); editCustomer(c, done); };

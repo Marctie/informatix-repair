@@ -19,6 +19,11 @@ import { promemoriaView, mountTodayReminders } from './promemoria.js';
 import { dispositiviView } from './dispositivi.js';
 import { buoniView } from './buoni.js';
 import { credenzialiView } from './credenziali.js';
+// --- Agente C ---
+import { chiusureView } from './chiusure.js';
+import { fattureView } from './fatture.js';
+import { dareavereView } from './dareavere.js';
+// --- fine Agente C ---
 
 // Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
 const GROUPS = [
@@ -49,6 +54,11 @@ const VIEWS = [
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true, group: 'gestione' },
   { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true, group: 'gestione' },
   { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true, group: 'gestione' },
+  // --- Agente C ---
+  { id: 'chiusure', label: 'Chiusure cassa', icon: '🧮', render: chiusureView, group: 'banco' },
+  { id: 'dareavere', label: 'Dare/avere', icon: '⚖️', render: dareavereView, group: 'banco' },
+  { id: 'fatture', label: 'Archivio fatture', icon: '🗂️', render: fattureView, group: 'gestione' },
+  // --- fine Agente C ---
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
 let ME = null;
@@ -86,7 +96,7 @@ document.addEventListener('click', (e) => {
 const view = $('#view');
 
 // ---------- Avvisi: campanella e riquadro in home ----------
-const ALERT_ICO = { out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
+const ALERT_ICO = { invoice_overdue: '🗂️', invoice_due: '🗂️', bad_payer: '⚠️', out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
 const alertRow = (a) => `<a href="${a.link}" class="flex gap-3 px-4 py-3 border-b border-line last:border-0 text-sm hover:bg-lightbg" data-alert>
   <span aria-hidden="true">${ALERT_ICO[a.type] || '🔔'}</span><span class="min-w-0"><b class="block">${esc(a.title)}</b><span class="text-gray-500">${esc(a.detail)}</span></span></a>`;
 export async function refreshBell() {
