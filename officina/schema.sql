@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS repair_parts (
   product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
   name TEXT NOT NULL, qty INTEGER NOT NULL DEFAULT 1,
   unit_price REAL NOT NULL DEFAULT 0, unit_cost REAL NOT NULL DEFAULT 0,
-  supplier_code TEXT, supplier_name TEXT, bought_at TEXT
+  supplier_code TEXT, supplier_name TEXT, bought_at TEXT,
+  order_state TEXT, ordered_at TEXT                 -- materiali da ordinare: NULL | da_ordinare | ordinato | arrivato
 );
 CREATE TABLE IF NOT EXISTS services (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -224,6 +225,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   valid_until TEXT NOT NULL, discount REAL NOT NULL DEFAULT 0, notes TEXT, terms TEXT,
   repair_id INTEGER REFERENCES repairs(id) ON DELETE SET NULL,
   sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
+  sent_at TEXT, sent_via TEXT,                      -- ultimo invio al cliente (whatsapp | email | link)
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );

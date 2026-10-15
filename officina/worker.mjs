@@ -8,6 +8,7 @@ import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
 import { notifyDueReminders } from './promemoria.mjs';
+import { notifyMaterialsDue } from './materiali.mjs';
 import { createPublisher } from './publisher.mjs';
 import { r2Media } from './media.mjs';
 import { storageDigest } from './remote.mjs';
@@ -97,6 +98,7 @@ export default {
     // ogni minuto: solo i promemoria scaduti (arrivano su Telegram anche a gestionale chiuso); il resto e' del cron notturno
     if (event.cron === '* * * * *') {
       try { await notifyDueReminders(env); } catch (e) { console.error('promemoria', e); }
+      try { await notifyMaterialsDue(env); } catch (e) { console.error('materiali da ordinare', e); } // una volta al giorno all'orario scelto
       return;
     }
     try {

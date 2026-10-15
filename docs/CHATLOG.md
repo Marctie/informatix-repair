@@ -872,3 +872,9 @@ Marco e' via per una visita: lavoro portato avanti da solo, tutto pubblicato; **
 - **Trovato dai test E2E e corretto**: l'API accettava `method: 'non tracciato'` su vendite singole, acconti, consegne e ordini (il blocco c'era solo nei pagamenti divisi). Ora `assertMethod` (logic.mjs) lo rifiuta ovunque, prima di scrivere qualsiasi cosa. Test dedicato.
 - **Trovati dalla rassegna grafica e corretti**: campo Area del magazzino con testo da 13,6 px, pulsante "Carico merce con fornitore" fuori schermo a 320 px, buco di 222 px tra le sezioni di Impostazioni (griglia a 3 colonne).
 - **Test**: `npm run test:officina` 94 verdi; Cypress su `cypress-tests`: 221 test verdi (novita 10, officina 13, responsive 43, scanner 10, spese 11, ui-review 134).
+
+## Agente D (lotto E-F-G): compito 1 - Materiali da ordinare
+- **Cosa**: nuova voce di menu "Da ordinare" (`#/materiali`, `officina/materiali.mjs` + `public/materiali.js`): unica lista delle righe `da_ordinare` degli ordini e dei ricambi delle riparazioni, raggruppate per fornitore (il ricambio si collega al fornitore dal nome), con "segna ordinato" in blocco, WhatsApp/email/copia testo per fornitore.
+- **Ricambi riparazione**: casella "Ancora da ordinare al fornitore" nel ricambio a mano; etichetta cliccabile Da ordinare -> Ordinato -> Arrivato nella scheda (`repair_parts.order_state`, migrazione **0026**).
+- **Promemoria giornaliero Telegram**: `notifyMaterialsDue` chiamato dal cron al minuto del Worker (`worker.mjs`) e, come ripiego, da `/api/alerts`; orario (predefinito 12:00), giorni (lun-ven) e interruttore in Impostazioni (riquadro "Promemoria materiali da ordinare"); una volta al giorno (`materials_reminder_last`), solo se c'e' qualcosa, finestra di 2 ore dopo l'orario.
+- **Test**: `officina/tests/materiali.test.mjs` (aggregazione, segna ordinato, orari/giorni/una volta al giorno/niente da ordinare).
