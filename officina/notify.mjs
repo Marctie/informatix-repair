@@ -22,6 +22,7 @@ const SETTING = {
   shop_name: 'nome negozio', shop_address: 'indirizzo', shop_phone: 'telefono negozio', public_base_url: 'indirizzo pubblico', default_warranty_days: 'garanzia (giorni)',
   terms: 'condizioni sulla scheda', low_stock_default: 'scorta minima generale', stale_days: 'giorni prodotto fermo', ready_days: 'giorni pronta non ritirata',
   storage_days: 'giorni di giacenza', storage_fee: 'tariffa del deposito', legal_verified: 'stato dei testi legali', quote_valid_days: 'validità preventivi (giorni)',
+  loyalty_points_per_euro: 'punti per euro (carte)', loyalty_redeem_step: 'punti per gradino di riscatto', loyalty_euro_per_step: 'euro per gradino di riscatto', loyalty_voucher_months: 'validità buono punti (mesi)', loyalty_max_accrual: 'massimo punti per operazione', loyalty_max_redeem_day: 'massimo punti riscattabili al giorno',
   materials_reminder_enabled: 'promemoria materiali da ordinare', materials_reminder_time: 'orario promemoria materiali', materials_reminder_days: 'giorni promemoria materiali',
   consent_intake: 'testo consenso all’ingresso', quote_accept_title: 'titolo accettazione preventivo', quote_accept_text: 'testo accettazione preventivo',
   quote_decline_title: 'titolo rifiuto preventivo', quote_decline_text: 'testo rifiuto preventivo', quote_decline_pickup: 'testo ritiro dopo il rifiuto',
@@ -36,7 +37,7 @@ const PRINT = { customer: 'scheda cliente', repair: 'scheda cliente', lab: 'sche
 // Sezioni del gestionale, per dire in parole cosa si stava facendo quando qualcosa va storto
 const SECTIONS = [[/^\/api\/repairs/, 'Riparazioni'], [/^\/api\/track/, 'Tracciamento cliente'], [/^\/api\/sales/, 'Vendite'], [/^\/api\/customers|^\/api\/clienti/, 'Clienti'], [/^\/api\/suppliers/, 'Fornitori'],
   [/^\/api\/products|^\/api\/stock|^\/api\/reorder/, 'Magazzino'], [/^\/api\/services/, 'Listino servizi'], [/^\/api\/expenses/, 'Spese'], [/^\/api\/usati/, 'Vetrina usati'], [/^\/api\/orders/, 'Ordini'],
-  [/^\/api\/quotes/, 'Preventivi'], [/^\/api\/reminders/, 'Promemoria'], [/^\/api\/buoni/, 'Buoni'], [/^\/api\/dispositivi/, 'Dispositivi'], [/^\/api\/documenti/, 'Documenti d’identità'],
+  [/^\/api\/quotes/, 'Preventivi'], [/^\/api\/reminders/, 'Promemoria'], [/^\/api\/buoni/, 'Buoni'], [/^\/api\/carte/, 'Carte punti'], [/^\/api\/materiali/, 'Materiali da ordinare'], [/^\/api\/dispositivi/, 'Dispositivi'], [/^\/api\/documenti/, 'Documenti d’identità'],
   [/^\/api\/credenziali/, 'Credenziali fornitori'], [/^\/api\/purchases/, 'Acquisti'], [/^\/api\/users/, 'Utenti'], [/^\/api\/settings|^\/api\/checklists/, 'Impostazioni'], [/^\/api\/audit/, 'Registro'],
   [/^\/api\/backup/, 'Backup'], [/^\/api\/demo/, 'Dati demo'], [/^\/print\//, 'Stampa']];
 const VERB = { POST: 'registrare', PUT: 'modificare', PATCH: 'modificare', DELETE: 'eliminare', GET: 'aprire' };
