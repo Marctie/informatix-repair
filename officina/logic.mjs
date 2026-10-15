@@ -87,8 +87,18 @@ export async function moveStock(productId, delta, reason, ref) {
   await db.prepare("INSERT INTO stock_moves (product_id, delta, reason, ref, created_at) VALUES (?,?,?,?,datetime('now','localtime'))").run(productId, delta, reason, ref || null);
 }
 
+/** Il metodo di pagamento deve essere vero (contanti, carta, bonifico…): niente incassi "non tracciati". Il buono lo scrive solo il sistema. */
+export function assertMethod(method, { allowVoucher = false } = {}) {
+  const m = String(method ?? '').trim();
+  if (/non\s*tracciat/i.test(m) || m.length > 30 || (!allowVoucher && /^buono$/i.test(m))) {
+    throw new HttpError(400, 'Ogni pagamento deve avere un metodo registrato (contanti, carta, bonifico…).');
+  }
+  return m;
+}
+
 export async function addPayment(kind, refId, label, amount, method) {
   if (!amount || amount <= 0) return;
+  assertMethod(method, { allowVoucher: true });
   await db.prepare("INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,datetime('now','localtime'))").run(
     kind, refId, label, money(amount), method || 'contanti'
   );
@@ -127,6 +137,7 @@ export async function createRepair(b) {
     const settings = await getSettings();
     const quote = num(b.quote);
     const deposit = num(b.deposit, 0);
+    if (deposit > 0) assertMethod(b.deposit_method);
     if ((quote != null && quote < 0) || deposit < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
     const code = await nextCode('repairs', 'R');
     const token = newToken();

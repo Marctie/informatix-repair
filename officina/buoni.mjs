@@ -2,7 +2,7 @@
 //  - sconto_importo / sconto_percentuale: riducono il totale (sconto) e restano registrati in voucher_uses
 //  - regalo: credito con saldo residuo, uso anche parziale; entra in cassa come pagamento con metodo "buono"
 import { db } from './dbref.mjs';
-import { HttpError, money, localDate } from './logic.mjs';
+import { HttpError, money, localDate, assertMethod } from './logic.mjs';
 
 const NOW = "datetime('now','localtime')";
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -78,6 +78,7 @@ export async function planSettlement(b, due) {
     const sum = r2(rows.reduce((a, x) => a + x.amount, 0));
     if (Math.abs(sum - rest) > 0.005) throw new HttpError(400, `Le quote (${sum.toFixed(2)} €) devono coincidere con il totale da pagare (${rest.toFixed(2)} €).`);
   } else {
+    if (rest > 0) assertMethod(b.method);
     rows = rest > 0 ? [{ method: str(b.method) || 'contanti', amount: rest, payer: null }] : [];
   }
   const split = rows.length > 1 || (rows.length === 1 && gift > 0);
