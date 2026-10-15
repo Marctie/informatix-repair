@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS = {
   stale_days: '90',
   ready_days: '7',
   terms:
-    'Il preventivo è indicativo fino all’approvazione. I dispositivi non ritirati entro 60 giorni dalla comunicazione di fine lavori possono essere trattenuti a copertura delle spese. Il negozio non risponde dei dati presenti sul dispositivo: si consiglia di effettuare un backup prima della consegna. Garanzia sulla riparazione secondo quanto indicato in ricevuta.',
+    'Il preventivo è indicativo fino all’approvazione. Il dispositivo può essere trattenuto fino al pagamento di quanto dovuto per la riparazione. I dispositivi non ritirati dopo l’avviso di fine lavori possono essere custoditi in deposito a pagamento e, dopo ulteriore avviso scritto, trattati secondo le condizioni firmate. Il negozio non risponde dei dati presenti sul dispositivo: si consiglia di effettuare un backup prima della consegna. Garanzia sulla riparazione indicata in ricevuta, senza limitare i diritti di legge del consumatore.',
 };
 
 export async function ensureDefaults() {
