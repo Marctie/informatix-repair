@@ -10,6 +10,7 @@ import { barcodeSvg } from './barcode.mjs';
 import { listExpenses, createExpense, updateExpense, deleteExpense, CATEGORIES, DOC_TYPES } from './expenses.mjs';
 import { buildNotaSpese } from './notaspese.mjs';
 import { notifyMiddleware } from './notify.mjs';
+import { registerMonitorRoutes } from './monitor.mjs';
 import { registerPurchaseRoutes, PURCHASE_TABLES } from './purchases.mjs';
 import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
 import { registerQuoteRoutes, quoteAlerts } from './preventivi.mjs';
@@ -67,6 +68,8 @@ export function createPublicApp() {
   app.post('/api/track/:token/decision', h((req) => R.customerDecision(req.params.token, req.body, req.c)));
   // Ricerca "per anziani": numero ricevuta + ultime 4 cifre del telefono -> codice di tracciamento
   app.post('/api/lookup', h((req) => L.lookup(req.body?.code, req.body?.phone4)));
+  // Bot di controllo sul telefono: riepilogo numerico, solo con la chiave MONITOR_TOKEN (altrimenti 404)
+  registerMonitorRoutes(app, { env: (c) => ({ ...(typeof process !== 'undefined' ? process.env : {}), ...(c.env || {}) }) });
   return app;
 }
 
