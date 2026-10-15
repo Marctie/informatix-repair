@@ -78,3 +78,13 @@ Leggi in quest'ordine: 1) `docs/CHATLOG.md` sezione "STATO A FINE GIORNATA 2026-
 10. Prove hardware e risposte di Christian (DOMANDE-APERTE 1-57).
 11. Dopo: import DDT/PDF fornitori, rotazione prodotti, carte NFC, versione vendibile.
 **Bot sul telefono**: `~/informatix-bot` (v2), `.env` con TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_ID, MONITOR_TOKEN. Aggiornamento: `adb push` in `/data/local/tmp/...` + `adb shell run-as com.termux sh script` (lo script imposta PREFIX/HOME/PATH di Termux), riavvio `bash ~/bots/Termux-Launcher/bot_ctl.sh informatix_repair restart`. Prova: `python main.py --anteprima`.
+
+## RIPARTENZA NELLA NUOVA CHAT (aggiornata 2026-10-15, sera) – SOSTITUISCE LE PRECEDENTI
+**Fatto il 15/10** (tutto online, deploy fino a 6a0a017f+; migrazioni 0015 colore, 0016 preventivo online): notifiche Telegram con dati veri, bot Termux v2, /api/monitor, colore del dispositivo, menu a gruppi, preventivo online con firma (`/p/<codice>`), validita' preventivi in Impostazioni, cron al minuto per i promemoria, acconto con metodo e diviso, pagamenti sempre tracciati ovunque, pulizia dei rami `agente-*` e dei worktree, controllo grafico 20 viste x 4 formati, Cypress riallineato. Dettagli: CHATLOG "Sessione 2026-10-15".
+**Cosa resta**:
+1. Prove di Marco e Christian su quanto sopra (colore sulle schede stampate, link preventivo dal telefono, acconto diviso, nuovo menu, Buongiorno 8:30 e riepilogo 21:00 del bot).
+2. Domande per Marco: 62 (BotFather `/setjoingroups` -> Disable), 27 (cancellare i 19 rami `claude/upbeat-fermi-*`?). **25 ottobre**: routine blog `0 8,17 * * *`.
+3. Prova con una fattura XML vera (Acquisti): serve un file reale da Christian.
+4. Da decidere con Christian: rifiuto del preventivo dal link -> "annullata"? (resta cosi'), note libere stile Keep (domanda 44), blacklist "Blacks" (12b), carte NFC/punti, DDT/PDF fornitori, testi legali da far verificare.
+5. Poi: rotazione prodotti, import DDT, versione vendibile.
+**Metodo**: i test E2E si lanciano da `../cy-wt` (`npm run test:e2e`, anche `-- --spec cypress/e2e/<file>.cy.js`), prima `git merge gestionale-officina` li'. Mai Cypress in `main`.
