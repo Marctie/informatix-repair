@@ -26,6 +26,7 @@ import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
+import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
 
 import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
@@ -85,6 +86,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   if (auth) app.use('*', auth);
   app.use('*', cassaMiddleware); // ruolo cassa: niente costi/margini nelle risposte
   app.use('/api/*', auditMiddleware); // registro eliminazioni/modifiche (dopo l'accesso: sa chi è)
+  app.use('/api/*', retroMiddleware); // inserimento retroattivo (entry_date), sempre registrato
 
   const trackBase = async () => {
     const s = await getSettings();
@@ -97,6 +99,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   };
 
   registerAuditRoutes(app, h, adminOnly);
+  registerRetroRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
