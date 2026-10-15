@@ -878,3 +878,8 @@ Marco e' via per una visita: lavoro portato avanti da solo, tutto pubblicato; **
 - **Ricambi riparazione**: casella "Ancora da ordinare al fornitore" nel ricambio a mano; etichetta cliccabile Da ordinare -> Ordinato -> Arrivato nella scheda (`repair_parts.order_state`, migrazione **0026**).
 - **Promemoria giornaliero Telegram**: `notifyMaterialsDue` chiamato dal cron al minuto del Worker (`worker.mjs`) e, come ripiego, da `/api/alerts`; orario (predefinito 12:00), giorni (lun-ven) e interruttore in Impostazioni (riquadro "Promemoria materiali da ordinare"); una volta al giorno (`materials_reminder_last`), solo se c'e' qualcosa, finestra di 2 ore dopo l'orario.
 - **Test**: `officina/tests/materiali.test.mjs` (aggregazione, segna ordinato, orari/giorni/una volta al giorno/niente da ordinare).
+
+## Agente D: compito 2 - Preventivo dalla scheda riparazione
+- **Cosa**: `officina/preventivo-riparazione.mjs` + `public/preventivo-rip.js`. Bottone "📨 Invia preventivo al cliente" nella scheda riparazione: crea (o ritrova, idempotente) il preventivo online collegato (`quotes.repair_id`), voci ricavate da ricambi con prezzo + intervento (o voce unica), validita' in giorni (default `quote_valid_days`, modificabile 1-365, rinnovabile se scaduto), link `/p/<codice>` esistente. Invio: WhatsApp / email (mailto) / copia link; registra `sent_at` e `sent_via` (migrazione **0026**, colonne su `quotes`).
+- **API**: `GET/POST /api/repairs/:id/online-quote`. Rifiuta: riparazione conclusa (409), preventivo gia' accettato (409), niente importo (400), canale/validita' non validi (400, prima di scrivere).
+- **Test**: `officina/tests/preventivo-riparazione.test.mjs`. Non toccate accettazione/rifiuto (ambito agente A).
