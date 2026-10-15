@@ -239,3 +239,16 @@ test('acconto: metodo scelto, diviso su più metodi, ogni quota in cassa e nell�
   }
   assert.equal((await call('GET', `/api/repairs/${r.id}`)).data.deposit, 100.5, 'le richieste rifiutate non registrano nulla');
 });
+
+test('pagamenti sempre tracciati: "non tracciato" rifiutato su vendite, acconti, consegne e ordini (non solo nel conto diviso)', async () => {
+  const sales0 = (await call('GET', '/api/sales')).data.length;
+  assert.equal((await call('POST', '/api/sales', { items: [{ name: 'Prova', unit_price: 100 }], method: 'non tracciato' })).status, 400);
+  assert.equal((await call('POST', '/api/sales', { items: [{ name: 'Prova', unit_price: 100 }], method: 'Non Tracciato' })).status, 400);
+  assert.equal((await call('GET', '/api/sales')).data.length, sales0, 'nessuna vendita a metà');
+  assert.equal((await call('POST', '/api/repairs', { customer: { name: 'X', phone: '3330000001' }, brand_model: 'Tel', problem: 'x', deposit: 10, deposit_method: 'non tracciato' })).status, 400);
+  const r = await newRepair({ quote: 50 });
+  await toReady(r.id);
+  assert.equal((await call('POST', `/api/repairs/${r.id}/deliver`, { method: 'non tracciato' })).status, 400);
+  assert.equal((await call('GET', `/api/repairs/${r.id}`)).data.status, 'ready', 'la consegna non è avvenuta');
+  assert.equal((await call('POST', `/api/repairs/${r.id}/deliver`, { method: 'contanti' })).status, 200);
+});

@@ -1,7 +1,7 @@
 // Ordini: cio' che va ordinato al fornitore per un cliente (pellicola per Tizio, case per Caio...) oppure per il negozio.
 // Stati: da_ordinare -> ordinato -> arrivato -> consegnato (oppure annullato). L'acconto e' un incasso normale (tabella payments, kind 'order').
 import { db, tx, nowLocal } from './dbref.mjs';
-import { HttpError, money, localDate } from './logic.mjs';
+import { assertMethod, HttpError, money, localDate } from './logic.mjs';
 
 const NOW = "datetime('now','localtime')";
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -52,6 +52,7 @@ async function checkLinks(b) {
 async function addDeposit(orderId, code, amount, method) {
   const a = money(amount);
   if (!(a > 0)) throw new HttpError(400, 'Importo non valido');
+  assertMethod(method);
   await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('order', orderId, `Acconto ordine ${code}`, a, str(method) || 'contanti');
   await db.prepare('UPDATE orders SET deposit = deposit + ? WHERE id = ?').run(a, orderId);
 }
@@ -105,6 +106,7 @@ export async function setOrderStatus(id, status, { collect, method } = {}) {
     const col = { ordinato: 'ordered_at', arrivato: 'arrived_at', consegnato: 'delivered_at' }[status];
     await db.prepare(`UPDATE orders SET status=?, ${col ? `${col}=${NOW},` : ''} updated_at=${NOW} WHERE id=?`).run(status, id);
     if (status === 'consegnato' && collect && o.balance > 0) {
+      assertMethod(method);
       await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('order', id, `Saldo ordine ${o.code}`, o.balance, str(method) || 'contanti');
     }
     return getOrder(id);
