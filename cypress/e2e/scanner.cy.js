@@ -11,7 +11,7 @@ describe('Lettore codici a barre', () => {
   beforeEach(() => cy.viewport(1280, 800));
 
   it('seriale: la lettura chiude con Invio, passa al campo successivo e verifica l’IMEI', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-serial').type(IMEI_OK, FAST).type('{enter}');
     cy.get('#rf-serial').should('have.value', IMEI_OK);
@@ -23,7 +23,7 @@ describe('Lettore codici a barre', () => {
   });
 
   it('seriale già in archivio: avvisa e permette di aprire la riparazione precedente', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-serial').type('F2LXK1ABCD99', FAST);
     cy.get('#rf-serial-hint').should('contain', 'Già in archivio').and('contain', 'Carla Scanner');
@@ -32,7 +32,7 @@ describe('Lettore codici a barre', () => {
   });
 
   it('la lettura arrivata nella casella cliente (selezionata di default) finisce nel seriale', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-search').should('be.focused').type('SN8877665544', FAST).type('{enter}');
     cy.get('#rf-serial').should('have.value', 'SN8877665544');
@@ -41,7 +41,7 @@ describe('Lettore codici a barre', () => {
   });
 
   it('lettura con la pagina "libera": apre la riparazione che ha quel seriale', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#view').should('contain', 'Carla Scanner');
     cy.get('body').type('F2LXK1ABCD99', FAST).type('{enter}');
     cy.get('.modal-body').should('contain', 'iPhone 14').and('contain', 'Cronologia');
@@ -50,7 +50,7 @@ describe('Lettore codici a barre', () => {
   it('lettura del codice stampato sull’etichetta (R-AAAA-NNNN) apre la riparazione', () => {
     cy.request('/api/repairs?q=Carla').then((r) => {
       const code = r.body[0].code;
-      cy.visit('/');
+      cy.visit('/#/oggi');
       cy.get('#view').should('contain', 'Carla Scanner');
       cy.get('body').type(code, FAST).type('{enter}');
       cy.get('.modal-bg').should('contain', code).and('contain', 'Cronologia');
@@ -58,7 +58,7 @@ describe('Lettore codici a barre', () => {
   });
 
   it('codice sconosciuto: propone di aprire una nuova riparazione con quel seriale', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#view').should('contain', 'Carla Scanner');
     cy.get('body').type('ZZ99887766', FAST).type('{enter}');
     cy.contains('Nessuna riparazione con il codice');
@@ -67,13 +67,13 @@ describe('Lettore codici a barre', () => {
   });
 
   it('nella ricerca in alto: Invio con un solo risultato apre la scheda', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#gsearch').type('F2LXK1ABCD99', FAST).type('{enter}');
     cy.get('.modal-body').should('contain', 'Carla Scanner');
   });
 
   it('le scorciatoie da tastiera funzionano ancora (un tasto solo ≠ lettura)', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#view').should('contain', 'Carla Scanner');
     cy.get('body').type('n');
     cy.get('#rf-name').should('be.visible');

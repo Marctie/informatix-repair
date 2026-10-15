@@ -4,11 +4,11 @@ let token;
 
 describe('Gestionale officina', () => {
   it('mostra la dashboard vuota con il pulsante di accettazione', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.contains('h1', 'Oggi');
     cy.contains('Nessuna riparazione aperta');
     cy.get('#top-new').should('be.visible');
-    cy.get('#nav a').should('have.length', 12); // 8 sezioni + Analisi e Utenti (admin) + Vetrina usati + Manuale
+    cy.get('#nav a').should('have.length', 21); // 20 sezioni (menu a gruppi, amministratore) + Manuale
   });
 
   it('crea un fornitore e un articolo di magazzino', () => {
@@ -33,7 +33,7 @@ describe('Gestionale officina', () => {
   });
 
   it('accettazione veloce: scheda, QR e link di tracciamento', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-name').type('Mario Rossi');
     cy.get('#rf-phone').type('3331234567');
@@ -65,7 +65,7 @@ describe('Gestionale officina', () => {
   });
 
   it('validazione: senza nome, modello e problema non salva', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-save').click();
     cy.get('#toast').should('be.visible').and('contain', 'obbligatorio');
@@ -101,6 +101,17 @@ describe('Gestionale officina', () => {
     cy.visit(`/t/${token}`);
     cy.contains('Serve la tua conferma');
     cy.contains('button', 'Sì, procedi').click();
+    cy.get('#sh-next').click();
+    // la risposta del cliente si firma col dito: si disegna un tratto nel riquadro
+    cy.get('#sg-canvas').then(($c) => {
+      const r = $c[0].getBoundingClientRect();
+      cy.wrap($c).trigger('pointerdown', { pointerId: 1, button: 0, clientX: r.left + 20, clientY: r.top + 60, force: true });
+      for (let i = 1; i <= 8; i++) cy.wrap($c).trigger('pointermove', { pointerId: 1, clientX: r.left + 20 + i * 14, clientY: r.top + 40 + (i % 3) * 25, force: true });
+      cy.wrap($c).trigger('pointerup', { pointerId: 1, force: true });
+    });
+    cy.get('#sh-go').should('not.be.disabled').click();
+    cy.contains('Preventivo confermato');
+    cy.get('#sh-ok').click();
     cy.contains('.status', 'Preventivo approvato');
     cy.get('.ask').should('not.exist');
 
@@ -140,7 +151,7 @@ describe('Gestionale officina', () => {
       cy.contains('button', 'Pronto per il ritiro →').click();
     });
     // pronta: appare tra "Pronte: avvisa il cliente" con WhatsApp
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.contains('section', 'Pronte').within(() => {
       cy.get('a[href*="wa.me"]').should('have.attr', 'href').and('include', 'pronto');
     });
