@@ -3,6 +3,7 @@ import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
 import { retroField, retroVal } from './retro.js';
 import { blackBanner, showBlackAlert } from './blacks.js';
+import { debtorNotice, mountLedgerSettings } from './dareavere.js'; // Agente C
 import { showDeviceAlerts } from './dispositivi.js';
 import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
@@ -116,6 +117,7 @@ export async function salesView(el) {
       box.innerHTML = `<div class="total-box" style="background:#ECFDF5;border:1px solid #A7F3D0"><span>✔ <b>${esc(customer.name)}</b></span><button class="btn btn-ghost btn-sm" id="s-unpick">cambia</button></div>`;
       box.classList.remove('hidden');
       safe(() => api('GET', `/api/blacklist/check?customer_id=${customer.id}`)).then((o) => { if (o?.matches?.length && box.isConnected) box.insertAdjacentHTML('afterend', `<div id="s-black">${blackBanner(o.matches)}</div>`); });
+      debtorNotice(box, customer.id); // Agente C: avviso cattivo pagatore
       return;
     }
     if (e.target.id === 's-unpick') { $('#s-black', el)?.remove(); customer = null; $('#s-cust-pick', el).classList.add('hidden'); $('#s-cust', el).classList.remove('hidden'); $('#s-cust', el).value = ''; return; }
@@ -180,7 +182,7 @@ export async function cashView(el, qs = new URLSearchParams()) {
       for (const p of r.rows) { const k = keyOf(p); const g = m.get(k) || { name: k, total: 0, n: 0 }; g.total += p.amount; g.n += 1; m.set(k, g); }
       return [...m.values()].map((g) => ({ ...g, total: Math.round(g.total * 100) / 100 }));
     };
-    const byKind = group((p) => (p.kind === 'sale' ? 'Vendite' : 'Riparazioni')).sort((x, y) => y.total - x.total);
+    const byKind = group((p) => ({ sale: 'Vendite', fattura: 'Fatture', dareavere: 'Dare/avere' }[p.kind] || 'Riparazioni')).sort((x, y) => y.total - x.total);
     const byHour = group((p) => `${p.created_at.slice(11, 13)}:00`).sort((x, y) => (x.name < y.name ? -1 : 1));
     const byDow = group((p) => DOW[new Date(`${p.created_at.slice(0, 10)}T12:00:00Z`).getUTCDay()]).sort((x, y) => DOW.indexOf(x.name) - DOW.indexOf(y.name));
     const pct = (v) => (r.total > 0 ? ` · ${Math.round((v / r.total) * 100)}%` : '');
@@ -411,6 +413,7 @@ export async function settingsView(el) {
     };
   };
   drawDemo();
+  mountLedgerSettings($('#st-demo', el)); // Agente C: soglie del cattivo pagatore
   // checklist per tipo: tre elenchi modificabili (una voce per riga)
   const ckBox = $('#ck-body', el);
   let ckAll = {};

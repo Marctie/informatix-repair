@@ -26,7 +26,7 @@ const a = async (method, path, body) => {
   const ct = res.headers.get('content-type') || '';
   return { status: res.status, data: ct.includes('json') ? await res.json() : await res.text() };
 };
-const iso = (d) => d.toISOString().slice(0, 10);
+const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); // data locale, come l'app
 const daysAgo = (n) => iso(new Date(Date.now() - n * 86400000));
 
 test('parseEntryDate: formato, futuro e date impossibili', () => {
