@@ -14,9 +14,10 @@ const KINDS = {
   users: { type: 'utente', table: 'users', label: (r) => r.email },
   expenses: { type: 'spesa', table: 'expenses', label: (r) => `${r.description} (${Number(r.amount).toFixed(2)} €)` },
   services: { type: 'servizio', table: 'services', label: (r) => r.name },
+  blacklist: { type: 'segnalazione', table: 'blacklist', label: (r) => `${r.name} · ${r.reason}` },
   sales: { type: 'vendita', table: 'sales', label: (r) => `Vendita n. ${r.id} (${Number(r.total).toFixed(2)} €)` },
 };
-export const AUDIT_TYPES = ['cliente', 'riparazione', 'articolo', 'fornitore', 'utente', 'spesa', 'servizio', 'ricambio', 'vendita', 'pagamento', 'impostazioni', 'acquisto', 'carico', 'dati demo', 'retroattivo'];
+export const AUDIT_TYPES = ['cliente', 'riparazione', 'articolo', 'fornitore', 'utente', 'spesa', 'servizio', 'ricambio', 'vendita', 'pagamento', 'impostazioni', 'acquisto', 'carico', 'dati demo', 'retroattivo', 'segnalazione'];
 
 // sotto-azioni importanti: "METODO ultimo-pezzo" -> [tipo, azione, descrizione]
 const SUB = {
@@ -27,6 +28,8 @@ const SUB = {
   'POST parts': ['ricambio', 'crea', 'ricambio aggiunto alla riparazione'],
   'DELETE parts': ['ricambio', 'elimina', 'ricambio tolto dalla riparazione'],
   'POST move': ['articolo', 'modifica', 'movimento di magazzino'],
+  'POST remove': ['segnalazione', 'elimina', 'segnalazione rimossa dall’elenco Blacks'],
+  'POST restore': ['segnalazione', 'modifica', 'segnalazione ripristinata'],
   'POST load': ['carico', 'crea', 'carico merce'],
 };
 const VERB = { POST: 'crea', PUT: 'modifica', PATCH: 'modifica', DELETE: 'elimina' };

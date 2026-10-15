@@ -19,6 +19,7 @@ import { promemoriaView, mountTodayReminders } from './promemoria.js';
 import { dispositiviView } from './dispositivi.js';
 import { buoniView } from './buoni.js';
 import { credenzialiView } from './credenziali.js';
+import { blacksView } from './blacks.js';
 
 // Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
 const GROUPS = [
@@ -44,6 +45,7 @@ const VIEWS = [
   { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView, group: 'magazzino' },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView, group: 'negozio' },
   { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView, group: 'negozio' },
+  { id: 'blacks', label: 'Blacks', icon: '⛔', render: blacksView, group: 'gestione' },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true, group: 'gestione' },
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true, group: 'gestione' },

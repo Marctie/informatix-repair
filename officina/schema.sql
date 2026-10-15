@@ -237,7 +237,7 @@ CREATE TABLE IF NOT EXISTS quote_signatures (
   kind TEXT NOT NULL,                  -- accept | decline
   image TEXT NOT NULL, signer_name TEXT, text_shown TEXT,
   ip TEXT, user_agent TEXT,
-  signed_at TEXT NOT NULL
+  signed_at TEXT NOT NULL, reason TEXT
 );
 CREATE TABLE IF NOT EXISTS quote_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -345,3 +345,15 @@ CREATE TABLE IF NOT EXISTS supplier_credentials (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_supcred_sup ON supplier_credentials(supplier_id);
+
+CREATE TABLE IF NOT EXISTS blacklist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+  name TEXT NOT NULL, phone TEXT, email TEXT,
+  reason TEXT NOT NULL, note TEXT,
+  reported_on TEXT NOT NULL, reported_by TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  removed_at TEXT, removed_by TEXT, removed_note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_blacklist_active ON blacklist(active);

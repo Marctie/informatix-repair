@@ -66,7 +66,7 @@ function startPad(ready) {
 function ask(action) {
   const yes = action === 'accept';
   const text = yes ? `Accetto il preventivo ${DATA.code} di ${eur(DATA.total)}, valido fino al ${fdate(DATA.valid_until)}, alle condizioni indicate.` : `Non accetto il preventivo ${DATA.code} di ${eur(DATA.total)}.`;
-  openSheet(`<h3>${yes ? 'Conferma e firma' : 'Rifiuta il preventivo'}</h3><div class="legal"><div>${esc(text)}</div>${yes ? `<small>${esc(DATA.terms)}</small>` : ''}</div>${padHtml(DATA.who)}
+  openSheet(`<h3>${yes ? 'Conferma e firma' : 'Rifiuta il preventivo'}</h3><div class="legal"><div>${esc(text)}</div>${yes ? `<small>${esc(DATA.terms)}</small>` : ''}</div>${yes ? '' : '<div><label class="lbl" for="sg-why">Vuoi dirci il motivo? (facoltativo)</label><input class="inp" id="sg-why" maxlength="300" placeholder="es. prezzo troppo alto, ho trovato altrove…"></div>'}${padHtml(DATA.who)}
     <div class="btns"><button class="no" id="sh-back">Annulla</button><button class="yes" id="sh-go" disabled>${yes ? 'Firma e accetta' : 'Firma e rifiuta'}</button></div>`);
   const go = document.getElementById('sh-go');
   startPad(() => { go.disabled = !(pad && !pad.isEmpty()); });
@@ -75,7 +75,7 @@ function ask(action) {
     go.disabled = true;
     go.setAttribute('data-busy', '1');
     try {
-      const res = await fetch(`/api/quote/${encodeURIComponent(token)}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, image: pad.toDataURL(), signer_name: document.getElementById('sg-name').value }) });
+      const res = await fetch(`/api/quote/${encodeURIComponent(token)}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, image: pad.toDataURL(), signer_name: document.getElementById('sg-name').value, reason: document.getElementById('sg-why')?.value || '' }) });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error || 'Operazione non riuscita');
       if (pad) { pad.destroy(); pad = null; }
