@@ -1,6 +1,7 @@
 // Clienti: elenco con ricerca, scheda con storico riparazioni e acquisti.
-import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, statusBadge, waLink, plural } from './util.js';
+import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, statusBadge, waLink, plural } from './util.js';
 import { openRepairForm, openRepairDetail } from './repair.js';
+import { openDocuments } from './documenti.js';
 
 export async function customersView(el) {
   el.innerHTML = `
@@ -52,6 +53,7 @@ export async function openCustomer(id, done) {
       <div class="row tight">
         ${c.phone ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${waLink(c.phone, 'Ciao ' + c.name.split(' ')[0] + ',')}">💬 WhatsApp</a><a class="btn btn-outline btn-sm" href="tel:${esc(c.phone)}">📞 Chiama</a>` : ''}
         <button class="btn btn-primary btn-sm" id="cu-new">＋ Nuova riparazione</button>
+        <button class="btn btn-outline btn-sm" id="cu-docs">🪪 Documenti</button>
         <button class="btn btn-outline btn-sm" id="cu-edit">Modifica</button>
         <button class="btn btn-ghost btn-sm" id="cu-del">Elimina</button>
       </div>
@@ -67,9 +69,10 @@ export async function openCustomer(id, done) {
     { title: c.name, wide: true }
   );
   $('#cu-new', m.el).onclick = () => { m.close(); openRepairForm(done, { name: c.name, phone: c.phone }); };
+  $('#cu-docs', m.el).onclick = () => openDocuments(c);
   $('#cu-edit', m.el).onclick = () => { m.close(); editCustomer(c, done); };
   $('#cu-del', m.el).onclick = async () => {
-    if (!confirm(`Eliminare ${c.name}?`)) return;
+    if (!(await confirmDelete(c.name, { typed: 'ELIMINA', detail: 'Il cliente e le sue riparazioni concluse vengono cancellati (con i loro incassi in cassa).' }))) return;
     const out = await safe(() => api('DELETE', `/api/customers/${c.id}`));
     if (out) { m.close(); toast('Cliente eliminato'); done?.(); }
   };

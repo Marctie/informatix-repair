@@ -1,6 +1,7 @@
 // Dati dimostrativi completi (clienti, magazzino, riparazioni in ogni stato, vendite, incassi).
 // Regola di sicurezza: ogni riga demo ha un id NEGATIVO (i dati veri hanno id positivi), quindi "elimina demo" non può toccare i dati reali.
 import { db, nowLocal } from './dbref.mjs';
+import { demoPurchaseStatements, DEMO_PURCHASE_DELETES } from './purchases.mjs';
 
 const DAY = 86400000;
 /** Data/ora "da negozio" di N giorni fa, con orario scelto. */
@@ -81,7 +82,7 @@ export async function loadDemo() {
     { id: -11, c: -3, type: 'smartphone', model: 'iPhone 12', serial: '354567890123456', problem: 'Sostituzione display', acc: 'Cover', cond: 'Buone', pass: '', status: 'delivered', quote: 139, dep: 40, d: 25, deliv: 21, final: 139, path: ['received', 'diagnosing', 'quote_pending', 'approved', 'repairing', 'ready', 'delivered'], decision: 'accepted', parts: [[-1, 1]] },
     { id: -12, c: -5, type: 'smartphone', model: 'Samsung Galaxy A52', serial: '352345678901234', problem: 'Sostituzione batteria', acc: 'Nessuno', cond: 'Ottime', pass: '', status: 'delivered', quote: 55, dep: 0, d: 18, deliv: 16, final: 55, path: ['received', 'diagnosing', 'quote_pending', 'approved', 'repairing', 'ready', 'delivered'], decision: 'accepted', parts: [[-4, 1]] },
     { id: -13, c: -6, type: 'portatile', model: 'HP Pavilion 15', serial: 'HP-5544', problem: 'Reinstallazione sistema e pulizia', acc: 'Alimentatore', cond: 'Buone', pass: '', status: 'delivered', quote: 60, dep: 20, d: 40, deliv: 36, final: 60, path: ['received', 'diagnosing', 'quote_pending', 'approved', 'repairing', 'ready', 'delivered'], decision: 'accepted', parts: [[-12, 1]] },
-    { id: -14, c: -4, type: 'smartphone', model: 'Xiaomi Redmi Note 10', serial: '865432109876543', problem: 'Danni da liquido', acc: 'Nessuno', cond: 'Ossidazione', pass: '', status: 'cancelled', quote: 110, dep: 0, d: 15, path: ['received', 'diagnosing', 'quote_pending', 'cancelled'], decision: 'declined' },
+    { id: -14, c: -4, type: 'smartphone', model: 'Xiaomi Redmi Note 10', serial: '865432109876543', problem: 'Danni da liquido', acc: 'Nessuno', cond: 'Ossidazione', pass: '', status: 'cancelled', quote: 110, dep: 0, d: 15, path: ['received', 'diagnosing', 'quote_pending', 'cancelled'], decision: 'declined', fate: 'giacenza' },
   ];
   let rc = 0;
   for (const r of R) {
@@ -89,10 +90,10 @@ export async function loadDemo() {
     const last = r.path.length - 1;
     const evDay = (i) => Math.max(0, r.d - Math.round((i * (r.d - (r.deliv ?? Math.max(0, r.d - 5)))) / Math.max(1, last)));
     const updated = ts(r.deliv ?? evDay(last), '17:40');
-    add(`INSERT INTO repairs (id,code,token,customer_id,device_type,brand_model,serial,problem,accessories,condition_notes,passcode,status,urgent,quote,deposit,final_price,eta_date,warranty_days,quote_decision,quote_decided_at,created_at,updated_at,delivered_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    add(`INSERT INTO repairs (id,code,token,customer_id,device_type,brand_model,serial,problem,accessories,condition_notes,passcode,status,urgent,quote,deposit,final_price,eta_date,warranty_days,quote_decision,quote_decided_at,created_at,updated_at,delivered_at,device_fate,fate_since)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     r.id, `DEMO-${String(++rc).padStart(3, '0')}`, `demo-token-${rc}`, r.c, r.type, r.model, r.serial, r.problem, r.acc, r.cond, r.pass || null, r.status, r.urgent || 0,
-    r.quote, r.dep, r.final ?? null, r.eta == null ? null : ymd(r.eta), 90, r.decision || null, r.decision ? ts(Math.max(0, r.d - 2)) : null, created, updated, r.deliv != null ? ts(r.deliv, '16:20') : null);
+    r.quote, r.dep, r.final ?? null, r.eta == null ? null : ymd(r.eta), 90, r.decision || null, r.decision ? ts(Math.max(0, r.d - 2)) : null, created, updated, r.deliv != null ? ts(r.deliv, '16:20') : null, r.fate || null, r.fate ? ts(r.d) : null);
     r.path.forEach((s, i) => add('INSERT INTO repair_events (id,repair_id,status,note,is_public,created_at) VALUES (?,?,?,?,?,?)', --ev, r.id, s, E(s), 1, ts(s === 'delivered' ? r.deliv : evDay(i), `${9 + i}:20`.padStart(5, '0'))));
     for (const [pid, q] of r.parts || []) add('INSERT INTO repair_parts (id,repair_id,product_id,name,qty,unit_price,unit_cost) VALUES (?,?,?,?,?,?,?)', --pt, r.id, pid, prod[pid].name, q, prod[pid].price, prod[pid].cost);
     if (r.dep) add("INSERT INTO payments (id,kind,ref_id,label,amount,method,created_at) VALUES (?,?,?,?,?,?,?)", --pay, 'repair', r.id, `Acconto DEMO-${String(rc).padStart(3, '0')}`, r.dep, rc % 2 ? 'contanti' : 'carta', created);
@@ -104,7 +105,7 @@ export async function loadDemo() {
     [28, -1, 'contanti', 0, [[-6, 2], [-9, 1]]], [26, null, 'carta', 0, [[-8, 1], [-7, 1]]], [24, -2, 'carta', 0, [[-6, 1]]],
     [21, null, 'contanti', 0, [[-9, 1], [-6, 1]]], [19, -3, 'carta', 5, [[-11, 1], [-12, 1], [null, 'Installazione RAM', 1, 15]]],
     [16, null, 'contanti', 0, [[-8, 2]]], [13, -5, 'carta', 0, [[-10, 1], [null, 'Clonazione disco', 1, 25]]], [11, null, 'contanti', 0, [[-7, 1], [-8, 1]]],
-    [9, -7, 'carta', 0, [[-9, 1]]], [6, null, 'non tracciato', 0, [[-6, 1]]], [4, -4, 'carta', 0, [[-13, 1]]], [2, null, 'contanti', 0, [[-8, 1], [-6, 1], [-7, 1]]],
+    [9, -7, 'carta', 0, [[-9, 1]]], [6, null, 'bonifico', 0, [[-6, 1]]], [4, -4, 'carta', 0, [[-13, 1]]], [2, null, 'contanti', 0, [[-8, 1], [-6, 1], [-7, 1]]],
     [1, -8, 'bonifico', 0, [[-11, 2], [-10, 2]]],
     [1, null, 'carta', 0, [[-9, 2], [-8, 1]]], [1, -1, 'contanti', 0, [[-6, 3], [-7, 2]]],
     [0, null, 'contanti', 0, [[-6, 2], [-8, 1]]], [0, -6, 'carta', 0, [[-9, 1], [-6, 1]]],
@@ -142,12 +143,32 @@ export async function loadDemo() {
     add("INSERT INTO expenses (id,spent_on,description,category,vendor,amount,vat,method,doc_type,doc_number,paid_by,reimbursable,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
       --xc, ts(d, '12:00').slice(0, 10), `${desc} (DEMO)`, cat, vendor, amount, vat, method, doc === 'senza' ? 'nessuno' : doc, num, by, reimb, ts(d, '12:00'));
   }
+  S.push(...demoPurchaseStatements(ts)); // acquisti demo con prezzi che variano tra fornitori
   for (let i = 0; i < S.length; i += 80) await db.batch(S.slice(i, i + 80));
   return { ok: true, ...(await demoStatus()) };
 }
 
 export async function deleteDemo() {
+  // Clienti e fornitori demo usati da dati VERI (una riparazione o una vendita vera, un prodotto vero):
+  // invece di bloccare l'eliminazione li "adotta", cioe' li copia come anagrafica vera (id positivo)
+  // e sposta i riferimenti veri sulla copia. Cosi' i dati veri non si perdono e la cancellazione riesce sempre.
+  const adopt = async (table, cols, refs) => {
+    const ids = new Set();
+    for (const [rt, rc] of refs) {
+      for (const r of await db.prepare(`SELECT DISTINCT ${rc} AS id FROM ${rt} WHERE id > 0 AND ${rc} < 0`).all()) ids.add(r.id);
+    }
+    for (const id of ids) {
+      const row = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(id);
+      if (!row) continue;
+      const res = await db.prepare(`INSERT INTO ${table} (${cols.join(',')}) VALUES (${cols.map(() => '?').join(',')})`).run(...cols.map((c) => row[c]));
+      for (const [rt, rc] of refs) await db.prepare(`UPDATE ${rt} SET ${rc} = ? WHERE ${rc} = ? AND id > 0`).run(res.lastInsertRowid, id);
+    }
+    return ids.size;
+  };
+  await adopt('customers', ['name', 'phone', 'email', 'notes', 'created_at'], [['repairs', 'customer_id'], ['sales', 'customer_id']]);
+  await adopt('suppliers', ['name', 'phone', 'email', 'website', 'notes', 'created_at'], [['products', 'supplier_id']]);
   const D = [
+    ...DEMO_PURCHASE_DELETES,
     'DELETE FROM payments WHERE id < 0',
     'DELETE FROM expenses WHERE id < 0',
     'DELETE FROM sale_items WHERE id < 0 OR sale_id < 0',

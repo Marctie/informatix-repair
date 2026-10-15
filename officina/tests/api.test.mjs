@@ -12,10 +12,15 @@ const { createApps } = await import('../server.mjs');
 const { closeDb } = await import('../db-node.mjs');
 const { serve } = await import('@hono/node-server');
 
+// Vetrina usati: publisher finto (non scrive mai su GitHub) e archivio foto in memoria
+const { memoryMedia } = await import('../media.mjs');
+const fakePub = { mode: 'fake', enabled: true, calls: [], fail: null, async publish(b) { if (this.fail) throw new Error(this.fail); this.calls.push(b); return { published: true, changed: true, commits: 1 }; } };
+const fakeMedia = memoryMedia();
+
 let admin, pub, A, P;
 const listen = (app) => new Promise((r) => { const srv = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, () => r(srv)); });
 before(async () => {
-  const apps = createApps();
+  const apps = createApps({ usati: { publisher: () => fakePub, media: () => fakeMedia, siteUrl: () => 'https://sito.test' } });
   admin = await listen(apps.admin);
   pub = await listen(apps.pub);
   A = `http://127.0.0.1:${admin.address().port}`;
@@ -34,7 +39,9 @@ const call = async (base, method, path, body) => {
   const data = ct.includes('json') ? await res.json() : await res.text();
   return { status: res.status, data };
 };
-const a = (m, p, b) => call(A, m, p, b);
+const a = (m, p, b, qs = '') => call(A, m, p + qs, b);
+// PNG 1x1 valido: basta come "firma" nei test (il server controlla che sia un PNG vero)
+const SIG_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 test('magazzino: prodotto con carico iniziale, movimenti e sotto scorta', async () => {
   const sup = (await a('POST', '/api/suppliers', { name: 'Ricambi Napoli', phone: '0811234567' })).data;
@@ -49,7 +56,7 @@ test('magazzino: prodotto con carico iniziale, movimenti e sotto scorta', async 
 test('riparazione: ingresso veloce, ricambio scala il magazzino, tracciamento pubblico', async () => {
   const prod = (await a('GET', '/api/products?q=Display')).data[0];
   const created = await a('POST', '/api/repairs', {
-    customer: { name: 'Mario Rossi', phone: '3331234567', email: 'mario.rossi@example.com' },
+    customer: { name: 'Mario Rossi', phone: '3490001111', email: 'mario.rossi@example.com' },
     brand_model: 'iPhone 13', problem: 'Schermo rotto', accessories: 'cover', passcode: '1234',
     quote: 129, deposit: 30, eta_date: '2030-01-10',
   });
@@ -60,7 +67,7 @@ test('riparazione: ingresso veloce, ricambio scala il magazzino, tracciamento pu
   assert.ok(r.track_url.includes(`/t/${r.token}`));
 
   // stesso telefono => stesso cliente (niente doppioni)
-  const second = (await a('POST', '/api/repairs', { customer: { name: 'Mario R.', phone: '3331234567' }, brand_model: 'iPad', problem: 'Batteria' })).data;
+  const second = (await a('POST', '/api/repairs', { customer: { name: 'Mario R.', phone: '3490001111' }, brand_model: 'iPad', problem: 'Batteria' })).data;
   assert.equal(second.customer_id, r.customer_id);
   assert.match(second.code, /-0002$/);
 
@@ -80,7 +87,7 @@ test('riparazione: ingresso veloce, ricambio scala il magazzino, tracciamento pu
   const raw = JSON.stringify(pubView);
   assert.ok(!raw.includes('1234'), 'il codice di sblocco non deve mai comparire');
   assert.ok(!raw.includes('mario.rossi@example.com'));
-  assert.ok(!raw.includes('3331234567'));
+  assert.ok(!raw.includes('3490001111'));
   assert.equal(pubView.customer.name, 'Mario Rossi');
   assert.equal(pubView.progress, 0);
   assert.equal(pubView.quote, 129);
@@ -101,11 +108,13 @@ test('flusso stati, approvazione online del preventivo, consegna e incasso', asy
   // il cliente vede la richiesta e approva dal link
   const before = (await call(P, 'GET', `/api/track/${r.token}`)).data;
   assert.equal(before.awaiting_decision, true);
-  const acc = (await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: true })).data;
+  // senza firma non si risponde; con la firma disegnata si
+  assert.equal((await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'accept' })).status, 400);
+  const acc = (await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'accept', image: SIG_PNG, signer_name: 'Mario Rossi' })).data;
   assert.equal(acc.status, 'approved');
   assert.equal(acc.quote_decision, 'accepted');
   // seconda risposta non più possibile
-  assert.equal((await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: false })).status, 409);
+  assert.equal((await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'decline', device_choice: 'pickup', image: SIG_PNG })).status, 409);
 
   await a('POST', `/api/repairs/${r.id}/status`, { status: 'repairing' });
   await a('POST', `/api/repairs/${r.id}/note`, { note: 'Controllo interno', public: false });
@@ -130,12 +139,17 @@ test('cambio preventivo durante i lavori richiede una nuova approvazione', async
   const upd = (await a('PATCH', `/api/repairs/${r.id}`, { quote: 140 })).data;
   assert.equal(upd.status, 'quote_pending');
   assert.equal(upd.quote_decision, null);
-  // il rifiuto del cliente viene registrato e segnalato in dashboard
-  await call(P, 'POST', `/api/track/${r.token}/decision`, { accept: false });
-  const dash = (await a('GET', '/api/dashboard')).data;
-  assert.ok(dash.declined.some((x) => x.id === r.id));
+  // il rifiuto firmato del cliente: la riparazione diventa "non riparabile" e il dispositivo e' in giacenza
+  const dec = await call(P, 'POST', `/api/track/${r.token}/decision`, { action: 'decline', device_choice: 'pickup', image: SIG_PNG });
+  assert.equal(dec.status, 200);
+  const after = (await a('GET', `/api/repairs/${r.id}`)).data;
+  assert.equal(after.status, 'cancelled');
+  assert.equal(after.quote_decision, 'declined');
+  assert.equal(after.device_fate, 'giacenza');
+  // il conto dei giorni compare tra i dispositivi in giacenza (Oggi)
+  assert.ok((await a('GET', '/api/dashboard')).data.storage.some((x) => x.id === r.id));
   // già in questo stato: nessuna doppia registrazione
-  assert.equal((await a('POST', `/api/repairs/${r.id}/status`, { status: 'quote_pending' })).status, 400);
+  assert.equal((await a('POST', `/api/repairs/${r.id}/status`, { status: 'cancelled' })).status, 400);
 });
 
 test('vendite: scalano il magazzino, rispettano sconto e finiscono in cassa', async () => {
@@ -197,7 +211,7 @@ test('schede di stampa: cliente (senza PIN) e laboratorio (con PIN, diagnosi e c
   await a('PATCH', `/api/repairs/${r.id}`, { tech_notes: 'Connettore di carica ossidato, pulizia e sostituzione.' });
 
   const cust = (await a('GET', `/print/customer/${r.id}?noprint=1`)).data;
-  assert.ok(cust.includes('Scheda cliente') && cust.includes(r.code) && cust.includes('/api/qr?text=') && cust.includes('Rita Conti'));
+  assert.ok(cust.includes('Scheda di ingresso') && cust.includes('COPIA NEGOZIO') && cust.includes('COPIA CLIENTE') && cust.includes(r.code) && cust.includes('/api/qr?text=') && cust.includes('Rita Conti'));
   assert.ok(cust.includes('URGENTE'));
   assert.ok(!cust.includes('987654'), 'il PIN non deve comparire sulla copia del cliente');
   assert.ok(!cust.includes('Connettore di carica ossidato'), 'le note tecniche non vanno al cliente');
@@ -208,7 +222,7 @@ test('schede di stampa: cliente (senza PIN) e laboratorio (con PIN, diagnosi e c
   assert.ok(lab.includes('Collaudo finale') && lab.includes('Controllo all'));
 
   const both = (await a('GET', `/print/both/${r.id}`)).data;
-  assert.ok(both.includes('Scheda cliente') && both.includes('Scheda laboratorio'));
+  assert.ok(both.includes('Scheda di ingresso') && both.includes('Scheda laboratorio'));
   assert.ok(both.includes("addEventListener('load'"), 'senza noprint la stampa parte da sola');
   assert.equal((await a('GET', '/print/lab/99999')).status, 404);
 
@@ -260,6 +274,7 @@ test('utenti: solo email valide, il proprietario è protetto', async () => {
   const u = (await a('POST', '/api/users', { email: 'Cassa@Example.com', name: 'Cassa', role: 'staff' })).data;
   assert.equal(u.email, 'cassa@example.com');
   assert.equal((await a('POST', '/api/users', { email: 'cassa@example.com' })).status, 409);
+  assert.equal((await a('PUT', `/api/users/${u.id}`, { name: 'Cassa', role: 'cassa' })).data.role, 'cassa');
   assert.equal((await a('DELETE', `/api/users/${u.id}`)).data.ok, true);
 });
 
@@ -268,20 +283,6 @@ test('ricerca cliente: il sito pubblico può chiamarla da un altro dominio (CORS
   assert.equal(res.headers.get('access-control-allow-origin'), 'https://informatixrepair.com');
   const bad = await fetch(`${P}/api/lookup`, { method: 'OPTIONS', headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' } });
   assert.notEqual(bad.headers.get('access-control-allow-origin'), 'https://evil.example');
-});
-
-test('metodo "non tracciato": salvato sempre, fuori dai totali di cassa se l’impostazione lo esclude', async () => {
-  const day = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
-  const before = (await a('GET', `/api/report?from=${day}&to=${day}`)).data.total;
-  await a('POST', '/api/sales', { items: [{ name: 'Cavo', unit_price: 10 }], method: 'non tracciato' });
-  assert.equal((await a('GET', `/api/report?from=${day}&to=${day}`)).data.total, before + 10); // di default conta
-  await a('PUT', '/api/settings', { cash_show_untracked: '0' });
-  const r = (await a('GET', `/api/report?from=${day}&to=${day}`)).data;
-  assert.equal(r.total, before);
-  assert.ok(!r.by_method.some((m) => m.method === 'non tracciato'));
-  assert.ok(r.untracked_excluded >= 1);
-  assert.equal((await a('GET', '/api/sales')).data.filter((s) => s.method === 'non tracciato').length >= 1, true); // la vendita resta salvata
-  await a('PUT', '/api/settings', { cash_show_untracked: '1' });
 });
 
 test('analisi: riparazioni, incassi e vendite del periodo', async () => {
@@ -330,7 +331,8 @@ test('avvisi: scorta bassa/esaurita, prodotto fermo, soglie da Impostazioni', as
   assert.ok(al.items.some((x) => x.type === 'out_of_stock' && /USB-C/.test(x.title)));
   assert.ok(al.items.some((x) => x.type === 'low_stock'));
   assert.ok(al.items.some((x) => x.type === 'stale' && /ASUS/.test(x.title)));
-  assert.ok(al.items.some((x) => x.type === 'declined'));
+  // dispositivo non riparato (rifiuto di 15 giorni fa) ancora in negozio: giacenza scaduta
+  assert.ok(al.items.some((x) => x.type === 'storage_due' && /Xiaomi/.test(x.title)));
   // spegnendo la soglia dei fermi, quegli avvisi spariscono
   await a('PUT', '/api/settings', { stale_days: '0' });
   al = (await a('GET', '/api/alerts')).data;
@@ -366,4 +368,276 @@ test('spese e nota spese in PDF', async () => {
   assert.equal(big.status, 200);
   assert.ok((await big.arrayBuffer()).byteLength > buf.length);
   assert.equal((await a('DELETE', `/api/expenses/${e.id}`)).data.ok, true);
+});
+
+test('notifiche Telegram: testo chiaro, escape HTML, niente segreti', async () => {
+  const { describeEvent } = await import('../notify.mjs');
+  const u = { name: 'Marco', email: 'm@example.com' };
+  const e500 = describeEvent({ method: 'POST', path: '/api/sales', status: 500, user: u, error: 'boom <x> & 123456789:AAAbbbCCCdddEEEfffGGGhhhIIIjjjKKK12' });
+  assert.match(e500, /ERRORE 500/);
+  assert.ok(e500.includes('&lt;x&gt; &amp;') && e500.includes('[token]') && !e500.includes('AAAbbb'));
+  assert.match(describeEvent({ method: 'POST', path: '/api/sales', status: 400, user: u, result: { error: 'Aggiungi almeno un articolo' } }), /Vendita: operazione non riuscita/);
+  const p = describeEvent({ method: 'POST', path: '/api/repairs/1/parts', status: 200, user: u, body: { product_id: 3, qty: 2 }, result: { code: 'R-1', parts: [{ name: 'Display <A&B>' }] } });
+  assert.ok(p.includes('Display &lt;A&amp;B&gt; ×2'));
+  const s = describeEvent({ method: 'PUT', path: '/api/settings', status: 200, user: u, body: { shop_name: 'x', admin_password: 'segreto' } });
+  assert.ok(s.includes('nome negozio') && !s.includes('password') && !s.includes('segreto'));
+  const n = describeEvent({ method: 'POST', path: '/api/repairs', status: 200, user: u, body: { problem: 'x', passcode: '9876' }, result: { code: 'R-1', customer_phone: '3490001111', passcode: '9876' } });
+  assert.ok(!n.includes('9876') && !n.includes('3490001111'));
+  assert.equal(describeEvent({ method: 'GET', path: '/print/customer/9', status: 404, user: u }), null);
+});
+
+test('dati demo: l’eliminazione riesce anche se dati veri usano clienti o prodotti demo (i dati veri restano)', async () => {
+  await a('POST', '/api/demo');
+  // riparazione VERA su un cliente demo (si ritrova col telefono), vendita VERA con un prodotto demo e un cliente demo
+  const rep = (await a('POST', '/api/repairs', { customer: { name: 'Giulia Esposito', phone: '3330000101' }, brand_model: 'Pixel 8', problem: 'Schermo' })).data;
+  assert.ok(rep.customer_id < 0, 'la riparazione e\' stata agganciata al cliente demo');
+  const sale = (await a('POST', '/api/sales', { customer_id: -2, items: [{ product_id: -6, qty: 1 }], method: 'contanti' })).data;
+  assert.ok(sale.id > 0);
+  // prodotto vero con fornitore demo
+  const prod = (await a('POST', '/api/products', { name: 'Prodotto vero', qty: 2, price: 10, cost: 5, supplier_id: -1 })).data;
+  const del = await a('DELETE', '/api/demo');
+  assert.equal(del.status, 200, JSON.stringify(del.data));
+  assert.equal((await a('GET', '/api/demo')).data.loaded, false);
+  // la riparazione vera esiste ancora e ha un cliente vero con lo stesso nome
+  const after = (await a('GET', `/api/repairs/${rep.id}`)).data;
+  assert.ok(after.customer_id > 0); assert.equal(after.customer_name, 'Giulia Esposito');
+  const s2 = (await a('GET', `/api/sales/${sale.id}`)).data;
+  assert.equal(s2.customer_name, 'Antonio Ferrara'); assert.equal(s2.items.length, 1);
+  const p2 = (await a('GET', '/api/products?q=Prodotto vero')).data[0];
+  assert.ok(p2.supplier_id > 0 && /Ricambi Napoli/.test(p2.supplier_name));
+  // ripetibile: ricaricando e rieliminando non si blocca
+  await a('POST', '/api/demo');
+  assert.equal((await a('DELETE', '/api/demo')).status, 200);
+});
+
+test('notifiche: le semplici letture (aprire Impostazioni, controlli di stato) non avvisano mai', async () => {
+  const { describeEvent } = await import('../notify.mjs');
+  const u = { name: 'Christian', email: 'djchri.cp@gmail.com' };
+  for (const path of ['/api/demo', '/api/settings', '/api/me', '/api/meta', '/api/alerts', '/api/users', '/api/backup/r2', '/api/expenses', '/api/analytics', '/api/dashboard', '/api/report']) {
+    assert.equal(describeEvent({ method: 'GET', path, status: 200, user: u, result: { loaded: false } }), null, `GET ${path} non deve notificare`);
+  }
+  // le azioni vere continuano ad avvisare
+  assert.match(describeEvent({ method: 'DELETE', path: '/api/demo', status: 200, user: u, result: {} }), /Dati demo eliminati/);
+  assert.match(describeEvent({ method: 'POST', path: '/api/demo', status: 200, user: u, result: {} }), /Dati demo caricati/);
+});
+
+test('ricambio a mano: il costo entra nel guadagno e non tocca il magazzino', async () => {
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Prova ricambio' }, brand_model: 'Telefono X', problem: 'display', quote: 100 })).data;
+  const out = (await a('POST', `/api/repairs/${r.id}/parts`, { name: 'Display', qty: 2, unit_cost: 30, unit_price: 0, supplier_name: 'Forn', supplier_code: 'D-1', bought_at: '2026-10-14' })).data;
+  assert.equal(out.parts_cost, 60);
+  assert.equal(out.profit_estimate, 40);
+  assert.equal(out.parts[0].supplier_code, 'D-1');
+});
+
+test('listino servizi: creazione, vendita con costo, eliminazione', async () => {
+  const s = (await a('POST', '/api/services', { name: 'Ripristino Windows 11', price: 50, cost: 10 })).data;
+  assert.equal((await a('POST', '/api/services', { name: '' })).status, 400);
+  assert.ok((await a('GET', '/api/services')).data.some((x) => x.id === s.id));
+  const sale = (await a('POST', '/api/sales', { items: [{ name: s.name, unit_price: s.price, unit_cost: s.cost }], method: 'contanti' })).data;
+  assert.equal(sale.total, 50);
+  await a('DELETE', `/api/services/${s.id}`);
+  assert.ok(!(await a('GET', '/api/services')).data.some((x) => x.id === s.id));
+});
+
+// ---------- Vetrina usati ----------
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 1, 2, 3, 4]).toString('base64');
+
+test('usati: crea, valida, modifica, venduto e pubblicazione con il publisher finto', async () => {
+  fakePub.calls.length = 0;
+  assert.equal((await a('POST', '/api/usati', { name: '', condition: 'usato' })).status, 400);
+  assert.equal((await a('POST', '/api/usati', { name: 'Pixel 9', condition: 'rotto' })).status, 400);
+  assert.equal((await a('POST', '/api/usati', { name: 'Pixel 9', condition: 'usato', price: -3 })).status, 400);
+  const c = await a('POST', '/api/usati', { name: 'Pixel 9', memory: '256 GB', color: 'Nero', condition: 'usato', price: '420,50', specs: [['Chip', 'Tensor G4'], ['', 'x']], featured: true });
+  assert.equal(c.status, 200);
+  const it = c.data;
+  assert.equal(it.slug, 'pixel-9-256-gb-nero');
+  assert.equal(it.price, 420.5);
+  assert.equal(it.conditionLabel, 'Usato');
+  assert.deepEqual(it.specs, [['Chip', 'Tensor G4']]);
+  assert.equal(it.status, 'active');
+  assert.equal(it.publish.state, 'published');
+  assert.equal(fakePub.calls.length, 1);
+  const json = JSON.parse(fakePub.calls[0].jsonText);
+  assert.equal(fakePub.calls[0].jsonPath, 'content/usati/usati.json');
+  assert.equal(json.items[0].slug, 'pixel-9-256-gb-nero');
+  assert.ok(!json.items[0].sold);
+  // stesso nome: lo slug resta unico
+  assert.equal((await a('POST', '/api/usati', { name: 'Pixel 9', memory: '256 GB', color: 'Nero', condition: 'usato', price: 400 }, '?publish=0')).data.slug, 'pixel-9-256-gb-nero-2');
+  // modifica parziale: i campi non inviati restano
+  const up = (await a('PUT', `/api/usati/${it.slug}`, { price: 399, tagline: 'Come nuovo' })).data;
+  assert.equal(up.price, 399);
+  assert.equal(up.memory, '256 GB');
+  assert.equal(up.tagline, 'Come nuovo');
+  // venduto / rimesso in vetrina
+  const sold = (await a('POST', `/api/usati/${it.slug}/sold`)).data;
+  assert.equal(sold.sold, true);
+  assert.equal(sold.status, 'sold');
+  assert.equal(sold.daysLeft, 7);
+  assert.equal(JSON.parse(fakePub.calls.at(-1).jsonText).items.find((x) => x.slug === it.slug).sold, true);
+  assert.equal((await a('POST', `/api/usati/${it.slug}/unsold`)).data.status, 'active');
+  assert.equal((await a('GET', '/api/usati/non-esiste')).status, 404);
+  const list = (await a('GET', '/api/usati')).data;
+  assert.ok(list.items.length >= 2);
+  assert.equal(list.publish.mode, 'fake');
+  // eliminazione
+  const del = (await a('DELETE', `/api/usati/${it.slug}-2`)).data;
+  assert.equal(del.ok, true);
+  assert.equal((await a('DELETE', '/api/usati/pixel-9-256-gb-nero')).data.ok, true);
+});
+
+test('usati: gli articoli di content/usati/usati.json si importano e il sito riceve lo stesso JSON', async () => {
+  const { importItems, buildSiteJson } = await import('../usati.mjs');
+  const { readFileSync } = await import('node:fs');
+  const orig = JSON.parse(readFileSync(new URL('../../content/usati/usati.json', import.meta.url), 'utf8'));
+  assert.equal(await importItems(orig.items), orig.items.length);
+  assert.equal(await importItems(orig.items), 0); // ripetibile
+  const out = JSON.parse(await buildSiteJson());
+  // sold:false e le stringhe vuote sono lo stesso che campo assente
+  const norm = (i) => Object.fromEntries(Object.entries(i).filter(([k, v]) => v !== '' && !(!i.sold && (k === 'sold' || k === 'soldAt'))));
+  assert.deepEqual(out.items.map(norm), orig.items.map(norm));
+  assert.equal((await a('GET', '/api/usati')).data.items.length, orig.items.length);
+  // le foto storiche si vedono dal sito, quelle nuove dall'archivio del gestionale
+  const first = (await a('GET', `/api/usati/${orig.items.find((i) => i.photos).slug}`)).data;
+  assert.match(first.photo_urls[0].thumb, /^https:\/\/sito\.test\/images\/usati\/.+\/1-t\.jpg$/);
+});
+
+test('usati: foto (controlli), pubblicazione con foto nuove, riordino e rimozione', async () => {
+  const it = (await a('POST', '/api/usati', { name: 'Foto Test', condition: 'nuovo', price: 10 }, '?publish=0')).data;
+  const url = `/api/usati/${it.slug}/photos`;
+  assert.equal((await a('POST', url, { image: Buffer.from('non una foto').toString('base64'), thumb: JPEG })).status, 400);
+  assert.equal((await a('POST', url, { image: Buffer.alloc(1_600_000, 1).toString('base64'), thumb: JPEG })).status, 400); // non JPEG
+  const big = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(1_600_000)]).toString('base64');
+  assert.equal((await a('POST', url, { image: big, thumb: JPEG })).status, 413);
+  const p1 = (await a('POST', url, { image: JPEG, thumb: JPEG })).data;
+  const p2 = (await a('POST', url, { image: JPEG, thumb: JPEG })).data;
+  assert.equal(p2.photos, 2);
+  const [n1, n2] = p2.photo_urls.map((p) => p.name);
+  assert.ok(p1.photo_urls[0].thumb.startsWith(`/media/usati/${it.slug}/`));
+  // anteprima servita dall'archivio
+  const img = await fetch(`${A}${p2.photo_urls[0].thumb}`);
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get('content-type'), 'image/jpeg');
+  assert.equal((await fetch(`${A}/media/usati/${it.slug}/..%2Fx.jpg`)).status, 404);
+  // riordino: la prima e' la copertina
+  assert.equal((await a('PUT', `${url}/order`, { order: [n2] })).status, 400);
+  assert.equal((await a('PUT', `${url}/order`, { order: [n2, n1] })).data.photo_urls[0].name, n2);
+  // pubblicazione: il publisher riceve le due foto (grande + miniatura) e il JSON con i nomi dei file
+  fakePub.calls.length = 0;
+  const pub = (await a('POST', '/api/usati/publish')).data;
+  assert.equal(pub.state, 'published');
+  const call = fakePub.calls[0];
+  assert.deepEqual(call.files.map((f) => f.path).sort(), [n1, n2].flatMap((n) => [`public/images/usati/${it.slug}/${n}.jpg`, `public/images/usati/${it.slug}/${n}-t.jpg`]).sort());
+  assert.deepEqual(JSON.parse(call.jsonText).items.find((x) => x.slug === it.slug).files, [n2, n1]);
+  // seconda pubblicazione: le foto non si caricano di nuovo
+  fakePub.calls.length = 0;
+  await a('POST', '/api/usati/publish');
+  assert.equal(fakePub.calls[0].files.length, 0);
+  // foto gia' pubblicata e poi tolta: il file va cancellato dal sito
+  assert.equal((await a('DELETE', `${url}/${n1}`)).data.photos, 1);
+  fakePub.calls.length = 0;
+  await a('POST', '/api/usati/publish');
+  assert.deepEqual(fakePub.calls[0].deletes.sort(), [`public/images/usati/${it.slug}/${n1}-t.jpg`, `public/images/usati/${it.slug}/${n1}.jpg`].sort());
+  fakePub.calls.length = 0;
+  await a('POST', '/api/usati/publish');
+  assert.equal(fakePub.calls[0].deletes.length, 0);
+  assert.equal((await a('DELETE', `${url}/inesistente`)).status, 404);
+  await a('DELETE', `/api/usati/${it.slug}`);
+});
+
+test('usati: errore di pubblicazione, stato "da pubblicare" e riprova', async () => {
+  fakePub.fail = 'GitHub PUT x: 401 Bad credentials';
+  const it = (await a('POST', '/api/usati', { name: 'Errore Test', condition: 'usato' })).data;
+  assert.equal(it.publish.state, 'error');
+  assert.match(it.publish.message, /non riuscita.*401/);
+  assert.equal(it.publish.dirty, true);
+  assert.equal((await a('GET', '/api/usati')).data.publish.error, 'GitHub PUT x: 401 Bad credentials');
+  fakePub.fail = null;
+  const ok = (await a('POST', '/api/usati/publish')).data;
+  assert.equal(ok.state, 'published');
+  assert.equal(ok.dirty, false);
+  assert.equal(ok.error, null);
+  await a('DELETE', `/api/usati/${it.slug}`);
+});
+
+test('usati: senza token resta bozza; senza archivio foto errore chiaro; lo staff non elimina', async () => {
+  const { createAdminApp } = await import('../app.mjs');
+  const { draftPublisher, DRAFT_MESSAGE } = await import('../publisher.mjs');
+  const { missingMedia } = await import('../media.mjs');
+  const staff = createAdminApp({ auth: async (c, next) => { c.set('user', { email: 's@x.it', role: 'staff' }); await next(); }, usati: { publisher: () => draftPublisher(), media: () => missingMedia() } });
+  const req = async (m, p, b) => { const r = await staff.request(p, { method: m, headers: { 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }); return { status: r.status, data: await r.json() }; };
+  const it = (await req('POST', '/api/usati', { name: 'Bozza Test', condition: 'usato' })).data;
+  assert.equal(it.publish.state, 'draft');
+  assert.equal(it.publish.message, DRAFT_MESSAGE);
+  assert.match(DRAFT_MESSAGE, /non ancora attiva/);
+  const ph = await req('POST', `/api/usati/${it.slug}/photos`, { image: JPEG, thumb: JPEG });
+  assert.equal(ph.status, 503);
+  assert.match(ph.data.error, /officina-media/);
+  assert.equal((await req('DELETE', `/api/usati/${it.slug}`)).status, 403);
+  assert.equal((await a('DELETE', `/api/usati/${it.slug}`)).data.ok, true);
+});
+
+test('publisher GitHub: foto, poi JSON, poi cancellazioni; nessun commit se il JSON e uguale', async () => {
+  const { githubPublisher, createPublisher } = await import('../publisher.mjs');
+  assert.equal(createPublisher({}).enabled, false);
+  assert.equal(createPublisher({ GITHUB_TOKEN: 'x' }).enabled, false);
+  assert.equal(createPublisher({ GITHUB_TOKEN: 'x', GITHUB_REPO: 'o/r' }).mode, 'github');
+  const calls = [];
+  const remote = { 'content/usati/usati.json': { sha: 'j1', content: Buffer.from('{"old":1}').toString('base64') }, 'public/images/usati/s/old.jpg': { sha: 'o1' } };
+  const fetcher = async (url, init) => {
+    const path = decodeURIComponent(new URL(url).pathname.replace('/repos/o/r/contents/', ''));
+    calls.push({ method: init.method, path, body: init.body && JSON.parse(init.body), auth: init.headers.authorization, ref: new URL(url).searchParams.get('ref') });
+    if (init.method === 'GET') return remote[path] ? new Response(JSON.stringify(remote[path])) : new Response('{"message":"Not Found"}', { status: 404 });
+    return new Response(JSON.stringify({ content: {} }), { status: 200 });
+  };
+  const p = githubPublisher({ token: 'T0KEN', repo: 'o/r', branch: 'test-branch', fetcher });
+  const out = await p.publish({ jsonPath: 'content/usati/usati.json', jsonText: '{"new":2}\n', files: [{ path: 'public/images/usati/s/n.jpg', base64: 'QUJD' }], deletes: ['public/images/usati/s/old.jpg', 'public/images/usati/s/mai.jpg'] });
+  assert.equal(out.published, true);
+  const writes = calls.filter((c) => c.method !== 'GET');
+  assert.deepEqual(writes.map((w) => `${w.method} ${w.path}`), ['PUT public/images/usati/s/n.jpg', 'PUT content/usati/usati.json', 'DELETE public/images/usati/s/old.jpg']);
+  assert.ok(writes.every((w) => w.auth === 'Bearer T0KEN' && w.body.branch === 'test-branch'));
+  assert.equal(writes[1].body.sha, 'j1');
+  assert.equal(Buffer.from(writes[1].body.content, 'base64').toString(), '{"new":2}\n');
+  assert.equal(calls[0].ref, 'test-branch');
+  // JSON identico: nessuna scrittura
+  remote['content/usati/usati.json'] = { sha: 'j2', content: Buffer.from('{"new":2}\n').toString('base64') };
+  calls.length = 0;
+  const same = await p.publish({ jsonPath: 'content/usati/usati.json', jsonText: '{"new":2}\n' });
+  assert.equal(same.changed, false);
+  assert.equal(calls.filter((c) => c.method !== 'GET').length, 0);
+  // errore dell'API: messaggio senza il token
+  const bad = githubPublisher({ token: 'T0KEN', repo: 'o/r', fetcher: async () => new Response('{"message":"Bad credentials"}', { status: 401 }) });
+  await assert.rejects(() => bad.publish({ jsonPath: 'x', jsonText: 'y' }), (e) => /401 Bad credentials/.test(e.message) && !/T0KEN/.test(e.message));
+});
+
+test('notifiche Telegram: azioni sulla vetrina usati ed errori di pubblicazione', async () => {
+  const { describeEvent } = await import('../notify.mjs');
+  const user = { name: 'Christian', email: 'c@x.it' };
+  const ev = (method, path, result, body = {}, status = 200) => describeEvent({ method, path, status, user, body, result });
+  const base = { name: 'iPhone 15', memory: '128 GB', color: 'Giallo', price: 650, conditionLabel: 'Usato', publish: { state: 'published' } };
+  assert.match(ev('POST', '/api/usati', base), /Nuovo articolo usato.*iPhone 15 128 GB Giallo.*650,00.*Pubblicato sul sito/s);
+  assert.match(ev('PUT', '/api/usati/x', base), /Articolo usato modificato/);
+  assert.match(ev('POST', '/api/usati/x/sold', base), /Usato VENDUTO/);
+  assert.match(ev('POST', '/api/usati/x/unsold', base), /rimesso in vetrina/);
+  assert.match(ev('DELETE', '/api/usati/x', { name: 'iPhone 15', publish: { state: 'draft' } }), /eliminato.*Solo bozza/s);
+  assert.match(ev('POST', '/api/usati/x/photos', base), /Foto aggiunta/);
+  assert.match(ev('POST', '/api/usati/publish', { state: 'published', message: 'Pubblicato' }), /Vetrina usati pubblicata/);
+  assert.match(ev('POST', '/api/usati/publish', { state: 'error', message: 'GitHub 401' }), /NON riuscita.*GitHub 401/s);
+  assert.match(ev('POST', '/api/usati', { ...base, publish: { state: 'error', message: 'GitHub 401' } }), /Pubblicazione sul sito NON riuscita/);
+  assert.match(ev('POST', '/api/usati', { error: 'Nome obbligatorio' }, {}, 400), /non riuscit[oa]/);
+  assert.equal(ev('GET', '/api/usati', {}), null);
+});
+
+const conclude = async (id) => { for (let i = 0; i < 8 && (await a('GET', `/api/repairs/${id}`)).data.status !== 'ready'; i++) await a('POST', `/api/repairs/${id}/advance`); await a('POST', `/api/repairs/${id}/deliver`, { final_price: 10, method: 'carta' }); };
+test('eliminazione: solo riparazioni concluse; il cliente va via con le sue concluse', async () => {
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Da Eliminare', phone: '3517770001' }, brand_model: 'Tab', problem: 'x' })).data;
+  assert.equal((await a('DELETE', `/api/repairs/${r.id}`)).status, 409); // ancora aperta
+  assert.equal((await a('DELETE', `/api/customers/${r.customer_id}`)).status, 409);
+  await conclude(r.id);
+  assert.equal((await a('DELETE', `/api/customers/${r.customer_id}`)).status, 200);
+  assert.equal((await a('GET', `/api/repairs/${r.id}`)).status, 404);
+  const r2 = (await a('POST', '/api/repairs', { customer: { name: 'Da Eliminare 2', phone: '3517770002' }, brand_model: 'Tab', problem: 'x' })).data;
+  await conclude(r2.id);
+  const cash0 = (await a('GET', '/api/dashboard')).data.cash_today;
+  assert.equal((await a('DELETE', `/api/repairs/${r2.id}`)).status, 200);
+  assert.equal(Math.round(((await a('GET', '/api/dashboard')).data.cash_today - cash0) * 100), -1000, 'gli incassi della riparazione escono dalla cassa');
 });

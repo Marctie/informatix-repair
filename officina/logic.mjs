@@ -1,5 +1,10 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
+import { priceAlerts } from './purchases.mjs';
+import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
+import { deviceHook, alertText } from './dispositivi.mjs';
+
+import { fillText, isVerified, buildQuoteFlow } from './legal.mjs';
 
 export class HttpError extends Error {
   constructor(status, message) {
@@ -63,8 +68,9 @@ export const newToken = () => {
 async function nextCode(table, prefix) {
   const year = nowLocal().slice(0, 4);
   const like = `${prefix}-${year}-%`;
-  const row = await db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE code LIKE ?`).get(like);
-  return `${prefix}-${year}-${String(row.n + 1).padStart(4, '0')}`;
+  // il numero piu' alto, non il conteggio: dopo un'eliminazione il conteggio ridarebbe un codice gia' in uso (UNIQUE)
+  const row = await db.prepare(`SELECT MAX(CAST(substr(code, ${prefix.length + 7}) AS INTEGER)) AS n FROM ${table} WHERE code LIKE ?`).get(like);
+  return `${prefix}-${year}-${String((row.n || 0) + 1).padStart(4, '0')}`;
 }
 
 export async function logEvent(repairId, status, note, isPublic = 1) {
@@ -81,7 +87,7 @@ export async function moveStock(productId, delta, reason, ref) {
   await db.prepare("INSERT INTO stock_moves (product_id, delta, reason, ref, created_at) VALUES (?,?,?,?,datetime('now','localtime'))").run(productId, delta, reason, ref || null);
 }
 
-async function addPayment(kind, refId, label, amount, method) {
+export async function addPayment(kind, refId, label, amount, method) {
   if (!amount || amount <= 0) return;
   await db.prepare("INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,datetime('now','localtime'))").run(
     kind, refId, label, money(amount), method || 'contanti'
@@ -126,24 +132,27 @@ export async function createRepair(b) {
     const token = newToken();
     const r = await db.prepare(
       `INSERT INTO repairs (code, token, customer_id, device_type, brand_model, serial, problem, accessories,
-        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))`
+        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent, color, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))`
     ).run(
       code, token, customerId, str(b.device_type) || 'smartphone', need(b.brand_model, 'Dispositivo'), str(b.serial),
       need(b.problem, 'Problema segnalato'), str(b.accessories), str(b.condition_notes), str(b.passcode),
       quote, money(deposit), str(b.eta_date), num(b.warranty_days, Number(settings.default_warranty_days) || 90),
       // se il preventivo è già concordato al banco lo consideriamo approvato dal cliente
       b.quote_agreed && quote != null ? 'accepted' : null,
-      b.urgent ? 1 : 0
+      b.urgent ? 1 : 0, str(b.color)
     );
     const id = Number(r.lastInsertRowid);
     await logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
+    // Registro dispositivi: se il seriale e' segnalato (rubato / da verificare) lo scriviamo nella scheda e lo ritorniamo come avviso
+    const deviceAlerts = await deviceHook(b.serial, 'riparazione', `Entrato in riparazione ${code}`);
+    for (const a of deviceAlerts) await logEvent(id, null, alertText(a), 0);
     if (deposit > 0) await addPayment('repair', id, `Acconto ${code}`, deposit, b.deposit_method);
     if (b.quote_agreed && quote != null) {
       await db.prepare("UPDATE repairs SET status='approved', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
       await logEvent(id, 'approved', 'Preventivo concordato al banco.');
     }
-    return await getRepair(id);
+    return { ...(await getRepair(id)), device_alerts: deviceAlerts };
   });
 }
 
@@ -160,6 +169,8 @@ async function decorateRepair(r, full = false) {
   const st = STATUSES[r.status];
   const out = {
     ...r,
+    // nell'elenco i controlli compilati (JSON) non servono: si leggono nel dettaglio
+    ...(full ? {} : { checklist_in: undefined, checklist_pre: undefined, checklist_out: undefined }),
     status_label: st.label,
     progress: progressPct(r.status),
     next_status: NEXT_STATUS[r.status] || null,
@@ -169,6 +180,16 @@ async function decorateRepair(r, full = false) {
   if (full) {
     out.events = await db.prepare('SELECT * FROM repair_events WHERE repair_id = ? ORDER BY id DESC').all(r.id);
     out.parts = await db.prepare('SELECT * FROM repair_parts WHERE repair_id = ? ORDER BY id').all(r.id);
+    for (const p of ['in', 'pre', 'out']) {
+      let c = null;
+      try { c = r[`checklist_${p}`] ? JSON.parse(r[`checklist_${p}`]) : null; } catch { /* JSON rovinato: come se non fosse compilata */ }
+      out[`checklist_${p}`] = Array.isArray(c?.items) ? c : null;
+    }
+    // firme raccolte (senza l'immagine, che si legge a parte): tipo, quando, come
+    out.signatures = await db.prepare('SELECT id, kind, signer_name, choice, option_id, via, ip, by_user, signed_at FROM repair_signatures WHERE repair_id = ? ORDER BY id').all(r.id);
+    out.quote_options = await db.prepare('SELECT id, label, amount, description FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id);
+    out.parts_cost = money(out.parts.reduce((a, p) => a + p.qty * p.unit_cost, 0));
+    out.profit_estimate = (r.final_price ?? r.quote) == null ? null : money((r.final_price ?? r.quote) - out.parts_cost);
     out.paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);
     const warrantyUntil = r.delivered_at ? new Date(new Date(r.delivered_at.replace(' ', 'T')).getTime() + r.warranty_days * 86400000) : null;
     out.warranty_until = warrantyUntil ? localDate(warrantyUntil) : null;
@@ -183,7 +204,7 @@ export async function listRepairs({ status, q, customer_id, open } = {}) {
   if (open) where.push("r.status NOT IN ('delivered','cancelled')");
   if (customer_id) { where.push('r.customer_id = ?'); args.push(Number(customer_id)); }
   if (q) {
-    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ?)');
+    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.color LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ?)');
     const like = `%${q}%`;
     args.push(like, like, like, like, like, like);
   }
@@ -191,7 +212,7 @@ export async function listRepairs({ status, q, customer_id, open } = {}) {
   return Promise.all((await db.prepare(sql).all(...args)).map((r) => decorateRepair(r)));
 }
 
-const EDITABLE = ['device_type', 'brand_model', 'serial', 'problem', 'accessories', 'condition_notes', 'passcode', 'quote', 'eta_date', 'warranty_days', 'tech_notes', 'customer_note', 'final_price'];
+const EDITABLE = ['device_type', 'brand_model', 'color', 'serial', 'problem', 'accessories', 'condition_notes', 'passcode', 'quote', 'eta_date', 'warranty_days', 'tech_notes', 'customer_note', 'final_price'];
 export async function updateRepair(id, b) {
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
@@ -237,7 +258,7 @@ export async function setStatus(id, status, note, isPublic = true) {
     if (r.status === 'delivered') throw new HttpError(409, 'La riparazione è già stata consegnata.');
     if (r.status === status) throw new HttpError(400, 'La riparazione è già in questo stato.');
     if (status === 'delivered') throw new HttpError(400, 'Per consegnare usa "Consegna e incassa".');
-    if (status === 'quote_pending' && r.quote == null) throw new HttpError(400, 'Inserisci prima il preventivo.');
+    if (status === 'quote_pending' && r.quote == null && !(await db.prepare('SELECT 1 AS x FROM quote_options WHERE repair_id = ? LIMIT 1').get(id))) throw new HttpError(400, 'Inserisci prima il preventivo (o le opzioni).');
     await db.prepare("UPDATE repairs SET status = ?, quote_decision = CASE WHEN ?='quote_pending' THEN NULL ELSE quote_decision END WHERE id = ?").run(status, status, id);
     if (status === 'approved' && !r.quote_decision) {
       await db.prepare("UPDATE repairs SET quote_decision='accepted', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
@@ -247,7 +268,7 @@ export async function setStatus(id, status, note, isPublic = true) {
   });
 }
 
-export async function deliverRepair(id, { final_price, method, note } = {}) {
+export async function deliverRepair(id, { final_price, method, note, ...pay } = {}) {
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -255,14 +276,17 @@ export async function deliverRepair(id, { final_price, method, note } = {}) {
     const final = money(num(final_price, r.final_price ?? r.quote ?? 0));
     const paid = (await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(id)).s;
     const due = Math.max(0, money(final - paid));
-    await addPayment('repair', id, `Saldo ${r.code}`, due, method);
-    await db.prepare("UPDATE repairs SET status='delivered', final_price=?, delivered_at=datetime('now','localtime') WHERE id=?").run(final, id);
+    // Buono e/o pagamento diviso (buoni.mjs): il piano controlla tutto prima di scrivere; lo sconto del buono riduce il prezzo finale
+    const plan = await planSettlement({ ...pay, method }, due);
+    await commitSettlement(plan, { kind: 'repair', refId: id, label: `Saldo ${r.code}` }, addPayment);
+    await db.prepare("UPDATE repairs SET status='delivered', final_price=?, delivered_at=datetime('now','localtime') WHERE id=?").run(money(final - plan.discount), id);
+    if (plan.voucher) await logEvent(id, null, `Buono ${plan.voucher.code}: ${money(plan.discount + plan.gift).toFixed(2)} €.`, 0);
     await logEvent(id, 'delivered', note || STATUSES.delivered.hint);
-    return { ...(await getRepair(id)), collected: due };
+    return { ...(await getRepair(id)), collected: money(due - plan.discount - plan.gift) };
   });
 }
 
-export async function addPart(repairId, { product_id, name, qty, unit_price }) {
+export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at }) {
   return tx(async () => {
     const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -276,7 +300,12 @@ export async function addPart(repairId, { product_id, name, qty, unit_price }) {
       await moveStock(p.id, -q, 'riparazione', r.code);
     }
     if (!pName) throw new HttpError(400, 'Nome ricambio obbligatorio');
-    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost));
+    // Ricambio a mano (non a magazzino): il costo d'acquisto inserito entra nel guadagno della riparazione.
+    if (!pid) {
+      cost = num(unit_cost, 0);
+      if (cost < 0 || price < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
+    }
+    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at) VALUES (?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at));
     await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}.`, 0);
     return await getRepair(repairId);
   });
@@ -308,39 +337,55 @@ export async function createSale(b) {
   return tx(async () => {
     const items = Array.isArray(b.items) ? b.items : [];
     if (!items.length) throw new HttpError(400, 'Aggiungi almeno un articolo');
-    const code = await nextCode('sales', 'V');
-    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, created_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))").run(
-      code, b.customer_id || null, 0, money(num(b.discount, 0)), str(b.method) || 'contanti', str(b.notes)
-    );
-    const saleId = Number(sale.lastInsertRowid);
+    // 1) si legge tutto e si controlla (nessuna scrittura): totale, buono e quote del pagamento diviso
+    const lines = [];
     let total = 0;
     for (const it of items) {
       const q = Math.max(1, Math.round(num(it.qty, 1)));
-      let name = str(it.name), price = num(it.unit_price), cost = 0, pid = null;
+      let name = str(it.name), price = num(it.unit_price), cost = Math.max(0, num(it.unit_cost, 0)), pid = null;
       if (it.product_id) {
         const p = await db.prepare('SELECT * FROM products WHERE id = ?').get(it.product_id);
         if (!p) throw new HttpError(404, 'Prodotto non trovato');
         pid = p.id; name = name || p.name; cost = p.cost;
         if (price == null) price = p.price;
-        await moveStock(p.id, -q, 'vendita', code);
       }
       if (!name) throw new HttpError(400, 'Nome articolo obbligatorio');
       if (price == null || price < 0) throw new HttpError(400, `Prezzo mancante per ${name}`);
-      await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(saleId, pid, name, q, money(price), money(cost));
+      lines.push({ pid, name, q, price, cost, serial: str(it.serial) });
       total += q * price;
     }
-    total = money(total - num(b.discount, 0));
+    const baseDiscount = money(num(b.discount, 0));
+    total = money(total - baseDiscount);
     if (total < 0) throw new HttpError(400, 'Lo sconto supera il totale');
-    await db.prepare('UPDATE sales SET total = ? WHERE id = ?').run(total, saleId);
-    await addPayment('sale', saleId, `Vendita ${code}`, total, b.method);
-    return await getSale(saleId);
+    const plan = await planSettlement(b, total);
+    total = money(total - plan.discount);
+    // 2) si scrive
+    const code = await nextCode('sales', 'V');
+    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, created_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))").run(
+      code, b.customer_id || null, total, money(baseDiscount + plan.discount), plan.split || plan.gift ? plan.methodLabel : (str(b.method) || plan.methodLabel), str(b.notes)
+    );
+    const saleId = Number(sale.lastInsertRowid);
+    const deviceAlerts = [];
+    for (const l of lines) {
+      if (l.pid) await moveStock(l.pid, -l.q, 'vendita', code);
+      await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(saleId, l.pid, l.name, l.q, money(l.price), money(l.cost));
+      if (l.serial) deviceAlerts.push(...await deviceHook(l.serial, 'vendita', `Venduto con ${code}`));
+    }
+    await commitSettlement(plan, { kind: 'sale', refId: saleId, label: `Vendita ${code}` }, addPayment);
+    return { ...(await getSale(saleId)), device_alerts: deviceAlerts };
   });
 }
 
 export async function getSale(id) {
   const s = await db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id = s.customer_id WHERE s.id = ?').get(id);
   if (!s) throw new HttpError(404, 'Vendita non trovata');
-  return { ...s, items: await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id) };
+  return {
+    ...s,
+    items: await db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(id),
+    // quote di pagamento (anche diviso) e buono usato: servono alla ricevuta
+    payments: await db.prepare("SELECT label, amount, method FROM payments WHERE kind='sale' AND ref_id = ? ORDER BY id").all(id),
+    vouchers: await db.prepare("SELECT v.code, v.kind, v.balance, u.amount FROM voucher_uses u JOIN vouchers v ON v.id=u.voucher_id WHERE u.kind = 'sale' AND u.ref_id = ?").all(id),
+  };
 }
 
 // ---------- Vista pubblica per il cliente ----------
@@ -359,6 +404,12 @@ export async function publicView(token) {
   const paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);
   const total = r.final_price ?? r.quote;
   const st = STATUSES[r.status];
+  const intakeSig = await db.prepare("SELECT signed_at FROM repair_signatures WHERE repair_id = ? AND kind = 'intake' ORDER BY id DESC LIMIT 1").get(r.id);
+  // preventivo a distanza: opzioni fra cui scegliere, testi da mostrare e, a risposta data, l'esito firmato
+  const options = await db.prepare('SELECT id, label, amount, description FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id);
+  const awaiting = r.status === 'quote_pending' && (r.quote != null || options.length > 0) && r.quote_decision !== 'declined';
+  const qsig = await db.prepare("SELECT kind, choice, option_id, signed_at FROM repair_signatures WHERE repair_id = ? AND kind IN ('quote_accept','quote_decline') ORDER BY id DESC LIMIT 1").get(r.id);
+  const myOpt = qsig?.option_id ? await db.prepare('SELECT label FROM quote_options WHERE id = ?').get(qsig.option_id) : null;
   return {
     code: r.code,
     status: r.status,
@@ -372,6 +423,7 @@ export async function publicView(token) {
       type: r.device_type,
       model: r.brand_model,
       serial_tail: r.serial ? `••••${r.serial.slice(-4)}` : null,
+      color: r.color || null,
       problem: r.problem,
       accessories: r.accessories,
       condition: r.condition_notes,
@@ -384,40 +436,24 @@ export async function publicView(token) {
     balance: total == null ? null : Math.max(0, money(total - paid)),
     eta_date: r.eta_date,
     quote_decision: r.quote_decision,
-    awaiting_decision: r.status === 'quote_pending' && r.quote != null,
+    awaiting_decision: awaiting,
+    quote_flow: awaiting ? buildQuoteFlow(s, r, options) : null,
+    my_decision: qsig && r.quote_decision ? { action: qsig.kind === 'quote_decline' ? 'decline' : qsig.choice === 'option' ? 'option' : 'accept', choice: qsig.kind === 'quote_decline' ? qsig.choice : null, option_label: myOpt?.label || null, signed_at: qsig.signed_at } : null,
     customer_note: r.customer_note,
     received_at: r.created_at,
     delivered_at: r.delivered_at,
     warranty_days: r.warranty_days,
     events,
+    // firma della scheda di ingresso a distanza (solo se il negozio l'ha richiesta e non e' ancora firmata)
+    intake_sign: r.sign_requested && !intakeSig && !['delivered', 'cancelled'].includes(r.status)
+      ? { text: fillText(s.consent_intake, { negozio: s.shop_name, garanzia: r.warranty_days, codice: r.code, dispositivo: r.brand_model }), terms: s.terms, draft: !isVerified(s) } : null,
+    intake_signed_at: intakeSig?.signed_at || null,
     shop: { name: s.shop_name, address: s.shop_address, phone: s.shop_phone },
     updated_at: r.updated_at,
   };
 }
 
-export async function customerDecision(token, accept) {
-  return tx(async () => {
-    const r = await db.prepare('SELECT * FROM repairs WHERE token = ?').get(token);
-    if (!r) throw new HttpError(404, 'Riparazione non trovata');
-    if (r.status !== 'quote_pending') throw new HttpError(409, 'Nessun preventivo in attesa di risposta.');
-    if (accept) {
-      await db.prepare("UPDATE repairs SET status='approved', quote_decision='accepted', quote_decided_at=datetime('now','localtime') WHERE id=?").run(r.id);
-      await logEvent(r.id, 'approved', 'Preventivo approvato dal cliente online.');
-    } else {
-      await db.prepare("UPDATE repairs SET quote_decision='declined', quote_decided_at=datetime('now','localtime') WHERE id=?").run(r.id);
-      await logEvent(r.id, 'quote_pending', 'Il cliente ha rifiutato il preventivo: contattalo.');
-    }
-    return await publicView(token);
-  });
-}
-
 // ---------- Dashboard / report / magazzino ----------
-export const UNTRACKED = 'non tracciato';
-/** Condizione SQL per la cassa: se l'impostazione "cash_show_untracked" e' spenta, i pagamenti "non tracciato" restano salvati ma non entrano nei totali di cassa. */
-async function cashFilter() {
-  const s = await getSettings();
-  return s.cash_show_untracked === '0' ? ` AND method <> '${UNTRACKED}'` : '';
-}
 export async function dashboard() {
   const counts = Object.fromEntries((await db.prepare('SELECT status, COUNT(*) AS n FROM repairs GROUP BY status').all()).map((r) => [r.status, r.n]));
   const today = localDate();
@@ -432,7 +468,7 @@ export async function dashboard() {
     waiting_parts: open.filter((r) => r.status === 'waiting_parts'),
     in_progress: open.filter((r) => ['received', 'diagnosing', 'approved', 'repairing'].includes(r.status)),
     low_stock: await lowStock(),
-    cash_today: money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at)=?${await cashFilter()}`).get(today)).s),
+    cash_today: money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at)=?`).get(today)).s),
     today,
   };
 }
@@ -446,19 +482,17 @@ export async function lowStock() {
 export async function report(from, to) {
   const f = from || localDate();
   const t = to || f;
-  const cf = await cashFilter();
-  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY method`).all(f, t);
-  const byKind = await db.prepare(`SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY kind`).all(f, t);
-  const rows = await db.prepare(`SELECT * FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} ORDER BY id DESC`).all(f, t);
-  const hidden = cf ? await db.prepare(`SELECT COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? AND method = '${UNTRACKED}'`).get(f, t) : { n: 0 };
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method`).all(f, t);
+  const byKind = await db.prepare(`SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY kind`).all(f, t);
+  const rows = await db.prepare(`SELECT * FROM payments WHERE date(created_at) BETWEEN ? AND ? ORDER BY id DESC`).all(f, t);
   const cost = (await db.prepare(`SELECT COALESCE(SUM(si.qty*si.unit_cost),0) AS c FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE date(s.created_at) BETWEEN ? AND ?`).get(f, t)).c
     + (await db.prepare(`SELECT COALESCE(SUM(rp.qty*rp.unit_cost),0) AS c FROM repair_parts rp JOIN repairs r ON r.id=rp.repair_id WHERE r.delivered_at IS NOT NULL AND date(r.delivered_at) BETWEEN ? AND ?`).get(f, t)).c;
   const total = money(rows.reduce((a, r) => a + r.amount, 0));
-  return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows, untracked_excluded: hidden.n };
+  return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows, vouchers: await voucherUsage(f, t) };
 }
 
 export async function reportByDay(from, to) {
-  return await db.prepare(`SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE date(created_at) BETWEEN ? AND ?${await cashFilter()} GROUP BY day ORDER BY day`).all(from, to);
+  return await db.prepare(`SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY day ORDER BY day`).all(from, to);
 }
 
 export async function stockSummary() {
@@ -505,8 +539,7 @@ export async function analytics(from, to) {
   const len = daysBetween(f, t);
   const pf = addDays(f, -len);
   const pt = addDays(f, -1);
-  const cf = await cashFilter();
-  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf}`).get(a, b)).s);
+  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?`).get(a, b)).s);
 
   // Riparazioni entrate nel periodo
   const byStatus = await db.prepare('SELECT status, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY status ORDER BY n DESC').all(f, t);
@@ -521,7 +554,7 @@ export async function analytics(from, to) {
   const total = await sum(f, t);
   const prevTotal = await sum(pf, pt);
   const byDay = await reportByDay(f, t);
-  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ?${cf} GROUP BY method ORDER BY total DESC`).all(f, t);
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method ORDER BY total DESC`).all(f, t);
   const rep = await report(f, t);
 
   // Vendite
@@ -576,6 +609,7 @@ export async function alerts() {
       if (since != null && since >= readyDays) out.push({ type: 'ready_waiting', severity: 'low', title: `${r.brand_model}: pronta da ${since} giorni`, detail: `${r.customer_name} non l’ha ancora ritirata: ricordaglielo.`, link: '#/riparazioni?status=ready', ref: r.id });
     }
   }
+  try { out.push(...(await priceAlerts())); } catch { /* acquisti non ancora migrati: nessun avviso di prezzo */ }
   const rank = { high: 0, medium: 1, low: 2 };
   out.sort((a, b) => rank[a.severity] - rank[b.severity]);
   return { count: out.length, high: out.filter((x) => x.severity === 'high').length, items: out };

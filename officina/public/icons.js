@@ -27,6 +27,9 @@ const P = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   hand: '<path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11V5.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 7-6 7-2.5 0-4-1.2-5.2-3.2L3.5 14a1.5 1.5 0 0 1 2.5-1.6L8 14.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/>',
+  scroll: '<path d="M8 3h11v15a3 3 0 0 1-3 3H6a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3z"/><path d="M12 8h4M12 12h4"/>',
   trend: '<path d="m3 7 6 6 4-4 8 8"/><path d="M21 11v6h-6"/>',
   download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
@@ -34,7 +37,17 @@ const P = {
   note: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
   barcode: '<path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14"/>',
   alert: '<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
   party: '<path d="m4 20 4-12 8 8z"/><path d="M14 4v2M19 7h-2M20 14h-2"/>',
+  inbox: '<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/>',
+  bell: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+  smartphone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
+  ticket: '<path d="M3 8a2 2 0 0 0 0 4v0a2 2 0 0 1 0 4v1a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1v-1a2 2 0 0 1 0-4v0a2 2 0 0 0 0-4V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1z"/><path d="M14 6v12" stroke-dasharray="2 2.5"/>',
+  idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.7 1.8-2.5 3-2.5s2.5.8 3 2.5M14.5 10h4M14.5 13.5h3"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1-3-5-3.5-5-1.2C7 8.5 9 8 12 8zm0 0c1-3 5-3.5 5-1.2 0 1.7-2 1.2-5 1.2z"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+  split: '<path d="M12 4v16M5 12h14"/><circle cx="12" cy="12" r="9"/>',
 };
 
 // carattere/emoji -> icona
@@ -44,7 +57,8 @@ const MAP = {
   '👁️': 'eye', '👁': 'eye', '📋': 'copy', '✏️': 'pencil', '✏': 'pencil', '📞': 'phone', '💬': 'message', '🔥': 'flame', '⏰': 'clock',
   '✋': 'hand', '📉': 'trend', '💾': 'download', '🔒': 'lock', '✉️': 'mail', '✉': 'mail', '📝': 'note', '🔫': 'barcode',
   '✔': 'check', '✓': 'check', '＋': 'plus', '☰': 'menu', '✕': 'x', '⚠': 'alert', '⚠️': 'alert', '🎉': 'party',
-  '👥': 'users',
+  '👥': 'users', '📊': 'chart', '🧭': 'compass', '📮': 'inbox', '🧾': 'receipt', '🔑': 'key', '📜': 'scroll', '🔔': 'bell',
+  '📱': 'smartphone', '🎟️': 'ticket', '🎟': 'ticket', '🪪': 'idcard', '🔐': 'lock', '🎁': 'gift', '🌐': 'globe', '➗': 'split',
 };
 const RE = new RegExp(Object.keys(MAP).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 
