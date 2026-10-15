@@ -44,7 +44,7 @@ describe('Responsive e comodità', () => {
       });
 
       it('navigazione e azione rapida adatte al dispositivo', () => {
-        cy.visit('/');
+        cy.visit('/#/oggi');
         cy.get('#view').should('not.contain', 'Caricamento…');
         if (w < 1024) {
           cy.get('#bottom-nav').should('be.visible');
@@ -60,7 +60,7 @@ describe('Responsive e comodità', () => {
       });
 
       it('accettazione veloce usabile (modulo e QR)', () => {
-        cy.visit('/');
+        cy.visit('/#/oggi');
         (w < 1024 ? cy.get('#nav-new') : cy.get('#top-new')).click();
         cy.get('#rf-name').should('be.visible');
         cy.get('#rf-save').should('be.visible');
@@ -96,7 +96,7 @@ describe('Comodità', () => {
   beforeEach(() => cy.viewport(1280, 800));
 
   it('stampa rapida: "Salva e stampa" apre cliente + laboratorio senza passaggi in più', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-name').type('Fabio Stampa');
     cy.get('#rf-phone').type('3200009999');
@@ -115,7 +115,7 @@ describe('Comodità', () => {
     cy.request('/api/repairs?q=Pixel 8').then((r) => {
       const id = r.body[0].id;
       cy.visit(`/print/customer/${id}?noprint=1`);
-      cy.contains('Scheda cliente');
+      cy.contains('Scheda di ingresso');
       cy.contains('Fabio Stampa');
       cy.get('img[alt="QR"]').should('be.visible');
       cy.get('body').should('not.contain', '2468');
@@ -146,7 +146,7 @@ describe('Comodità', () => {
   });
 
   it('ricerca globale: trova riparazioni e clienti e apre la scheda', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#gsearch').type('Esposito');
     cy.get('#gsearch-res').should('be.visible').and('contain', 'Samsung Galaxy S23').and('contain', 'Giulia Esposito');
     cy.get('#gsearch-res [data-rid]').first().click();
@@ -155,7 +155,7 @@ describe('Comodità', () => {
   });
 
   it('scorciatoie da tastiera: N apre la nuova riparazione, / la ricerca', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.get('#view').should('not.contain', 'Caricamento…');
     cy.get('body').type('n');
     cy.get('#rf-name').should('be.visible');
@@ -178,7 +178,7 @@ describe('Comodità', () => {
   });
 
   it('dashboard: sezioni in ritardo e preventivo da approvare', () => {
-    cy.visit('/');
+    cy.visit('/#/oggi');
     cy.contains('section', 'In ritardo').should('contain', 'MacBook');
     cy.contains('section', 'Preventivo da approvare').should('contain', 'PlayStation 5');
     cy.contains('section', 'In lavorazione');

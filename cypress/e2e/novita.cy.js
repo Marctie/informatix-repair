@@ -56,14 +56,14 @@ describe('Analisi', () => {
     cy.contains('h1', 'Analisi');
     cy.contains('Riparazioni accettate');
     cy.contains('Modelli più riparati');
-    cy.contains('button', 'Incassi').click();
+    cy.get('#view').contains('button', 'Incassi').click();
     cy.contains('Incassato nel periodo');
     cy.contains('Margine');
     cy.contains('Per metodo di pagamento');
-    cy.contains('button', 'Vendite').click();
+    cy.get('#view').contains('button', 'Vendite').click();
     cy.contains('Scontrino medio');
     cy.contains('Prodotti più venduti');
-    cy.contains('button', 'Magazzino').click();
+    cy.get('#view').contains('button', 'Magazzino').click();
     cy.contains('Valore a costo');
     cy.contains('Fermi da troppo tempo');
   });
@@ -91,9 +91,11 @@ describe('Utenti', () => {
     cy.get('#ue-role').select('admin');
     cy.get('#ue-ok').click();
     cy.contains('[data-id]', 'cassa@example.com').should('contain', 'Amministratore');
-    cy.on('window:confirm', () => true);
     cy.contains('[data-id]', 'cassa@example.com').find('[data-edit]').click();
     cy.get('#ue-del').click();
+    cy.get('#cd-go').click();
+    cy.get('#cd-typed').type('ELIMINA');
+    cy.get('#cd-go').click();
     cy.contains('cassa@example.com').should('not.exist');
   });
 
@@ -106,30 +108,25 @@ describe('Utenti', () => {
   });
 });
 
-describe('Pagamento "non tracciato"', () => {
-  it('si sceglie su vendite e consegne; l’impostazione lo esclude dalla cassa', () => {
+describe('Pagamenti sempre tracciati', () => {
+  it('il metodo "non tracciato" non esiste piu\': ne\' nei moduli ne\' via API', () => {
     cy.visit('/#/oggi');
     cy.get('#top-new').click();
-    cy.get('#rf-method').find('option').then((o) => expect([...o].map((x) => x.textContent)).to.include('non tracciato'));
+    cy.get('#rf-method').find('option').then((o) => expect([...o].map((x) => x.textContent)).to.not.include('non tracciato'));
     cy.get('#modal-root [data-close]').first().click({ force: true });
-    api('POST', '/api/sales', { items: [{ name: 'Prova', unit_price: 100 }], method: 'non tracciato' });
-    cy.visit('/#/cassa');
-    cy.contains('non tracciato');
+    api('POST', '/api/sales', { items: [{ name: 'Prova', unit_price: 100 }], method: 'non tracciato' }).its('status').should('eq', 400);
     cy.visit('/#/impostazioni');
-    cy.get('#st-untr').select('0');
-    cy.get('#st-save').click();
-    cy.contains('Impostazioni salvate');
-    cy.visit('/#/cassa');
-    cy.contains('non è conteggiato');
+    cy.get('#st-untr').should('not.exist');
   });
 
-  it('ripristino: i dati demo si eliminano senza toccare i dati veri', () => {
+  it('i dati demo si eliminano senza toccare i dati veri', () => {
     api('POST', '/api/customers', { name: 'Cliente Vero', phone: '3330001234' });
+    api('POST', '/api/demo', {});
     cy.visit('/#/impostazioni');
-    cy.get('#st-untr').select('1');
-    cy.get('#st-save').click();
-    cy.on('window:confirm', () => true);
-    cy.contains('button', 'Elimina i dati demo').click();
+    cy.get('#view').contains('button', 'Elimina i dati demo').click();
+    cy.get('#cd-go').click();
+    cy.get('body').then(($b) => { if ($b.find('#cd-typed').length) cy.get('#cd-typed').type('ELIMINA'); });
+    cy.get('#cd-go').click();
     cy.contains('button', 'Carica i dati demo');
     cy.visit('/#/clienti');
     cy.contains('Cliente Vero');
