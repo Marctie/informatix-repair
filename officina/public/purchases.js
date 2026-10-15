@@ -304,8 +304,8 @@ async function graph(root, pid) {
   const d = await safe(() => api('GET', `/api/purchases/prices?product_id=${pid}`));
   if (!d || !$('#pu-graph', root)) return;
   host.innerHTML = `<h3 class="font-heading font-bold text-lg">${esc(d.product.name)}</h3>
-    <div class="row"><span class="badge" style="background:#FEF3C7;color:#92400E">★ Prezzo più basso: ${eur(d.lowest.price)} · ${esc(d.lowest.supplier_name)} (${fdate(d.lowest.date)})</span>
-    ${d.cheapest_now ? `<span class="badge pu-same">Oggi il più conveniente: ${esc(d.cheapest_now.supplier_name)} ${eur(d.cheapest_now.price)}</span>` : ''}</div>
+    <div class="row"><span class="badge" style="background:#FEF3C7;color:#92400E;white-space:normal;border-radius:.9rem">★ Prezzo più basso: ${eur(d.lowest.price)} · ${esc(d.lowest.supplier_name)} (${fdate(d.lowest.date)})</span>
+    ${d.cheapest_now ? `<span class="badge pu-same" style="white-space:normal;border-radius:.9rem">Oggi il più conveniente: ${esc(d.cheapest_now.supplier_name)} ${eur(d.cheapest_now.price)}</span>` : ''}</div>
     <div id="pu-chart-host"></div>`;
   const chartHost = $('#pu-chart-host', host);
   drawChart(chartHost, d);
