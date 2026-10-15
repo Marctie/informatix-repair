@@ -52,7 +52,7 @@ export async function mountMaterialsSettings(host) {
       <div class="field"><label class="l" for="mt-time">Orario</label><input id="mt-time" type="time" value="${esc(cfg.time)}" /></div>
     </div>
     <div class="field"><span class="l">Giorni</span><div class="row">${DAYS.map(([d, l]) => `<label class="chip ${cfg.days.includes(d) ? 'on' : ''}" style="cursor:pointer"><input type="checkbox" data-day="${d}" ${cfg.days.includes(d) ? 'checked' : ''} hidden />${l}</label>`).join('')}</div>
-      <span class="hint">Predefinito: dal lunedì al venerdì alle 12:00.</span></div>
+      <p class="hint" style="margin-top:.75rem">Predefinito: dal lunedì al venerdì alle 12:00.</p></div>
     <div><button class="btn btn-primary" id="mt-save">Salva promemoria</button></div>`;
   host.after(sec);
   sec.addEventListener('change', (e) => { const cb = e.target.closest('[data-day]'); if (cb) cb.closest('.chip').classList.toggle('on', cb.checked); });
