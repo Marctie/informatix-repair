@@ -78,3 +78,36 @@ Leggi in quest'ordine: 1) `docs/CHATLOG.md` sezione "STATO A FINE GIORNATA 2026-
 10. Prove hardware e risposte di Christian (DOMANDE-APERTE 1-57).
 11. Dopo: import DDT/PDF fornitori, rotazione prodotti, carte NFC, versione vendibile.
 **Bot sul telefono**: `~/informatix-bot` (v2), `.env` con TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_ID, MONITOR_TOKEN. Aggiornamento: `adb push` in `/data/local/tmp/...` + `adb shell run-as com.termux sh script` (lo script imposta PREFIX/HOME/PATH di Termux), riavvio `bash ~/bots/Termux-Launcher/bot_ctl.sh informatix_repair restart`. Prova: `python main.py --anteprima`.
+
+## RIPARTENZA NELLA NUOVA CHAT (aggiornata 2026-10-15, sera) – SOSTITUISCE LE PRECEDENTI
+**Fatto il 15/10** (tutto online, deploy fino a 6a0a017f+; migrazioni 0015 colore, 0016 preventivo online): notifiche Telegram con dati veri, bot Termux v2, /api/monitor, colore del dispositivo, menu a gruppi, preventivo online con firma (`/p/<codice>`), validita' preventivi in Impostazioni, cron al minuto per i promemoria, acconto con metodo e diviso, pagamenti sempre tracciati ovunque, pulizia dei rami `agente-*` e dei worktree, controllo grafico 20 viste x 4 formati, Cypress riallineato. Dettagli: CHATLOG "Sessione 2026-10-15".
+**Cosa resta**:
+1. Prove di Marco e Christian su quanto sopra (colore sulle schede stampate, link preventivo dal telefono, acconto diviso, nuovo menu, Buongiorno 8:30 e riepilogo 21:00 del bot).
+2. Domande per Marco: 62 (BotFather `/setjoingroups` -> Disable), 27 (cancellare i 19 rami `claude/upbeat-fermi-*`?). **25 ottobre**: routine blog `0 8,17 * * *`.
+3. Prova con una fattura XML vera (Acquisti): serve un file reale da Christian.
+4. Da decidere con Christian: rifiuto del preventivo dal link -> "annullata"? (resta cosi'), note libere stile Keep (domanda 44), blacklist "Blacks" (12b), carte NFC/punti, DDT/PDF fornitori, testi legali da far verificare.
+5. Poi: rotazione prodotti, import DDT, versione vendibile.
+**Metodo**: i test E2E si lanciano da `../cy-wt` (`npm run test:e2e`, anche `-- --spec cypress/e2e/<file>.cy.js`), prima `git merge gestionale-officina` li'. Mai Cypress in `main`.
+
+## NUOVO BLOCCO RICHIESTE (2026-10-15, Marco + Christian) – DA SVILUPPARE, in questo ordine
+Stato di partenza verificato: preventivi autonomi con validita' + link online `/p/<codice>` GIA' ESISTONO; `orders` (da_ordinare/ordinato/arrivato) e `reminders` GIA' ESISTONO; `devices` esiste; `customers` ha solo nome/telefono/email/note; `repairs.brand_model` e' testo libero.
+**Lotto E – base dati e anagrafiche**
+1. Clienti azienda: tipo privato/azienda, ragione sociale, P.IVA, CF, indirizzo, SDI/PEC (migrazione 0017).
+2. IVA sui ricambi: prezzo IVA esclusa -> calcolo automatico IVA inclusa; flag "applica IVA realmente" (acquisto estero/reverse charge: IVA da aggiungere; "a nero" = nessun incasso/dato nascosto, vedi decisioni ferme: il flag riguarda solo l'IVA di un acquisto, resta tutto registrato).
+3. Catalogo marche/modelli (`device_models`): ricerca dalla 3a lettera, popolato con i piu' diffusi (analisi di mercato: smartphone, tablet, PC), auto-aggiunta del modello nuovo alla creazione scheda, sezione CRUD nel gestionale.
+**Lotto F – riparazioni**
+4. Storico riparazioni completo (cliente, marca, modello, ecc., filtri, ricerca).
+5. Riparazioni esterne collegate alla riparazione (laboratorio esterno, costo, date, stato).
+6. Dispositivi in prestito / muletto in attesa del proprio (sezione in Dispositivi, legato alla riparazione).
+7. Preventivo inviabile al cliente dalla riparazione (link/WhatsApp/email) con validita' X giorni (il link c'e', va collegato alla riparazione).
+8. Sezione "Materiali da ordinare" (tutte le righe da_ordinare raggruppate per fornitore) + promemoria giornaliero schedulato (es. ore 12) via Telegram.
+**Lotto G – contabilita'**
+9. Inserimento retroattivo di vendite/riparazioni/incassi con data passata (entrate, uscite, debiti, dare/avere).
+10. Archivio chiusure di cassa: data, contanti/POS/altro, fondo cassa, differenza, note, foto facoltativa, ricerca per periodo, totali mensili.
+11. Archivio fatture completo: da pagare/pagate/non pagate/stornate (note di credito), scadenze, filtri.
+12. Dare/avere raggruppato per cliente + alert "cattivo pagatore" (debiti non saldati / credito ricorrente), soglia configurabile.
+**Regole**: una funzionalita' per volta (test + commit + push + manuale.html + CHATLOG), DB temporanei, mai toccare i dati di Christian, Cypress solo su `cypress-tests`.
+
+### Risposte di Marco (15/10, dopo il blocco richieste)
+Prove OK; 62 fatto; 27: NON cancellare i rami `claude/upbeat-fermi-*` (riferimenti); 25/10 routine blog libera; fattura XML vera: ATTESA da Christian (non ancora inviata). Decisioni: rifiuto preventivo -> notifica a Christian; note libere stile Keep: SI; blacklist "Blacks": SI, da fare; carta punti NFC: protetta anti-bypass + SDK lettore generico; DDT/PDF: analisi al momento dell'import (modelli di esempio non ancora disponibili); testi legali: li conferma Claude (essenziale, con ricerca online).
+Sviluppo affidato a 4 agenti (A anagrafiche/IVA/retroattivo/blacklist/notifica rifiuto; B modelli/storico/esterne/muletto/note Keep; C chiusure cassa/fatture/dare-avere; D materiali da ordinare/preventivo da riparazione/NFC/import DDT-PDF/testi legali).

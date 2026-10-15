@@ -129,6 +129,22 @@
   <a href="#dispositivi">22 · Dispositivi e seriali</a>
   <a href="#buoni">23 · Buoni e conto diviso</a>
   <a href="#riservati">24 · Documenti e credenziali</a>
+  <a href="#anagrafiche-iva">30 · IVA, date passate, Blacks</a>
+  <a href="#chiusure">25 · Chiusure di cassa</a>
+  <a href="#fatture">26 · Archivio fatture</a>
+  <a href="#dareavere">27 · Dare/avere e cattivo pagatore</a>
+  <a href="#modelli">30 · Catalogo modelli</a>
+  <a href="#storico">31 · Storico riparazioni</a>
+  <a href="#esterne">32 · Riparazioni esterne</a>
+  <a href="#prestiti">33 · Muletto in prestito</a>
+  <a href="#note">34 · Note</a>
+  <!-- agente D: inizio voci -->
+  <a href="#materiali">25 · Materiali da ordinare</a>
+  <a href="#preventivo-online">26 · Preventivo dalla riparazione</a>
+  <a href="#carte-punti">27 · Carte punti NFC</a>
+  <a href="#import-pdf">28 · DDT e fatture in PDF</a>
+  <a href="#testi-legali">29 · Testi legali controllati</a>
+  <!-- agente D: fine voci -->
 </nav>
 
 <main>
@@ -353,6 +369,7 @@
   <h2><span class="n">9</span>Clienti, fornitori, cassa</h2>
   <h3>Clienti</h3>
   <p>Elenco con ricerca. Aprendo un cliente vedi <b>tutte le sue riparazioni e i suoi acquisti</b> e puoi scrivergli su WhatsApp, chiamarlo o aprirgli una nuova riparazione già con i suoi dati. <b>Eliminare un cliente</b>: si può solo se non ha riparazioni aperte; le sue riparazioni concluse (consegnate o annullate) vengono cancellate con lui. <b>Eliminare una riparazione</b>: dalla sua scheda, solo se conclusa (pulsante «Elimina riparazione», conferma scrivendo ELIMINA). Si perdono storico, firme e anche gli incassi della riparazione in cassa. L’operazione finisce nel registro delle attività.</p>
+  <p><b>Clienti azienda</b>: in «Nuovo cliente» scegli <b>Azienda / professionista</b>: il nome diventa la <b>ragione sociale</b> e compaiono Partita IVA, codice fiscale, indirizzo, CAP, città, provincia, codice SDI e PEC. I dati sono facoltativi ma, se li scrivi, vengono controllati: la <b>P.IVA</b> deve avere 11 cifre con la cifra di controllo giusta (il prefisso IT e gli spazi si tolgono da soli), il codice fiscale deve essere valido, il CAP di 5 cifre, la provincia di 2 lettere. Si possono cercare per ragione sociale, P.IVA, codice fiscale, città o PEC; compaiono sulla scheda cliente stampata e sulla ricevuta di vendita. I clienti già presenti restano «privati».</p>
   <h3>Fornitori</h3>
   <p>Nome, telefono/WhatsApp, email, sito e note (tempi di consegna, minimo d'ordine). Servono per la lista “Da ordinare”.</p>
   <h3>Riparazioni</h3>
@@ -674,6 +691,223 @@
     <li>Parte il conto dei <b>15 giorni</b> (cambiabili in Impostazioni). In <b>Oggi</b> e nella campanella compaiono “giacenza in scadenza” e “giacenza scaduta”: smaltisci oppure sposta in <b>deposito a pagamento</b>; c'è il pulsante per avvisare il cliente su WhatsApp. Non cambia nulla in automatico e nessun incasso viene registrato da solo.</li>
   </ul>
 </section>
+
+<!-- ===== Blocco agente A: IVA, date passate, Blacks, rifiuto preventivo ===== -->
+<section id="anagrafiche-iva">
+  <h2><span class="n">30</span>IVA sui ricambi, date passate, Blacks</h2>
+  <p class="lead">Calcolo dell’IVA sugli acquisti, inserimento di operazioni con data passata, clienti segnalati.</p>
+  <h3>IVA sui ricambi e sugli acquisti</h3>
+  <ul>
+    <li>Nel <b>Carico merce</b> e nel <b>Ricambio non a magazzino</b> (visibili a chi vede i costi) sotto il prezzo d’acquisto trovi il blocco IVA: scegli se il prezzo che scrivi è <b>IVA esclusa</b> o <b>IVA inclusa</b>, l’aliquota (predefinita 22%) e, sotto, la riga con il calcolo: <i>imponibile + IVA = totale</i>.</li>
+    <li><b>Aggiungi l’IVA al costo</b>: spuntalo quando l’IVA è davvero un costo per te (acquisto da un negozio estero, reverse charge, IVA non detraibile). Il costo registrato diventa il prezzo <b>IVA compresa</b>; senza la spunta il costo è l’imponibile.</li>
+    <li>Niente resta nascosto: per ogni riga restano salvati imponibile, aliquota, importo dell’IVA e se è stata aggiunta al costo (si vedono nel dettaglio dell’acquisto); nella cronologia della riparazione compare «IVA 22% aggiunta al costo».</li>
+  </ul>
+  <h3>Operazioni con data passata (inserimento retroattivo)</h3>
+  <ul>
+    <li>Hai un incasso o una riparazione di qualche giorno fa da registrare? Nella <b>vendita al banco</b>, nella <b>nuova riparazione</b>, nel <b>nuovo acconto</b> e nella <b>consegna</b> trovi «📅 Operazione di un giorno passato?»: aprilo, scegli la data e registra come sempre.</li>
+    <li>L’operazione entra nei conti <b>di quel giorno</b>: Cassa, grafici, report per periodo e garanzia (che parte dalla data di consegna scelta) la rispettano. Non si possono scegliere date future. Le <b>spese</b> hanno già la loro data.</li>
+    <li>Ogni inserimento retroattivo è scritto nel <b>Registro</b> (tipo «retroattivo») con chi l’ha fatto, l’ora vera in cui l’ha fatto e la data scelta. Il ruolo Cassa non può usarlo.</li>
+    <li>Sbagliata la data di una vendita, di un incasso o di una riparazione già fatta? L’amministratore la può correggere (resta nel Registro «da … a …»).</li>
+  </ul>
+  <h3>Blacks: clienti segnalati</h3>
+  <ul>
+    <li>Menu <b>Gestione → Blacks</b>: l’elenco interno di chi ha dato problemi (insoluti, dispositivi abbandonati, comportamenti scorretti…). <b>Non lo vede nessun cliente.</b></li>
+    <li><b>Segnalare</b>: dalla scheda di un cliente premi <b>⛔ Segnala</b>, oppure in Blacks <b>＋ Segnala una persona</b> (anche chi non è ancora cliente). Servono il <b>motivo</b> (scegli o scrivi), la data e, se vuoi, una nota con i dettagli. Possono segnalare e correggere tutti.</li>
+    <li><b>Avviso evidente</b>: quando scrivi nome o telefono di una <b>nuova riparazione</b>, o scegli il cliente di una <b>vendita</b>, compare subito un riquadro rosso se la persona è segnalata (stesso cliente, stesso telefono, stessa email o stesso nome). A scheda o vendita salvata si apre anche una finestra «Attenzione: cliente segnalato» e a Christian arriva l’avviso su Telegram. Nell’elenco clienti i segnalati portano il distintivo ⛔.</li>
+    <li><b>Rimuovere</b> una segnalazione (ad esempio ha saldato il debito) può farlo <b>solo l’amministratore</b>, scrivendo il motivo. Non si cancella: resta nello storico (spunta «Mostra anche le rimosse») con chi l’ha tolta e perché, e si può ripristinare. Tutto è nel Registro (tipo «segnalazione»).</li>
+    <li>Per la privacy: scrivi fatti (importi, date), non giudizi, e non condividere l’elenco fuori dal negozio.</li>
+  </ul>
+  <h3>Preventivo rifiutato dal cliente</h3>
+  <ul>
+    <li>Se un cliente preme <b>No, grazie</b> e firma dal link del preventivo, a Christian arriva subito su Telegram (con suono) «PREVENTIVO RIFIUTATO dal cliente»: codice, nome, totale, chi ha firmato e il <b>motivo</b>, se il cliente ha voluto scriverlo (campo facoltativo nella pagina di rifiuto). Il motivo resta anche nel preventivo.</li>
+  </ul>
+</section>
+
+<section id="chiusure">
+  <h2><span class="n">25</span>Chiusure di cassa</h2>
+  <p class="lead">L'archivio delle chiusure di ogni giorno: quanto doveva esserci in cassa, quanto hai contato, la differenza.</p>
+  <ol class="steps">
+    <li>Apri <b>Chiusure cassa</b> → <b>＋ Nuova chiusura</b>. Il giorno è oggi, ma puoi sceglierne uno <b>passato</b> (resta segnata “retroattiva”).</li>
+    <li>Scrivi l'<b>operatore</b> e il <b>fondo cassa</b>. Il gestionale calcola da solo l'<b>atteso</b> dagli incassi del giorno: contanti, POS/carte, altro (bonifici, buoni), meno le spese pagate in contanti dalla cassa.</li>
+    <li>Scrivi cosa hai <b>contato</b>: contanti nel cassetto (fondo compreso), totale POS, altro. Sotto vedi subito la <b>differenza</b> (verde = quadra, giallo fino a 5 €, rosso oltre) e quella per ogni voce.</li>
+    <li>Aggiungi se vuoi una <b>nota</b> e una <b>foto</b> dello scontrino/cassa (facoltative). Una sola chiusura per giorno.</li>
+    <li><b>🔒 Blocca</b> la chiusura quando è definitiva: poi non si cambia più. Solo l'amministratore la sblocca, scrivendo il <b>motivo</b>. L'atteso è una fotografia del momento: se dopo correggi un incasso, usa <b>↻ Ricalcola l'atteso</b>.</li>
+    <li>In alto filtri per <b>periodo</b>, cerchi per operatore/note, vedi i <b>totali per mese</b> e scarichi il <b>CSV</b> (si apre in Excel).</li>
+  </ol>
+  <div class="call tip"><b>Registro</b>Creazione, modifiche (con vecchio e nuovo valore), blocco, sblocco con motivo, foto ed eliminazione finiscono tutti nel Registro.</div>
+</section>
+
+<section id="fatture">
+  <h2><span class="n">26</span>Archivio fatture</h2>
+  <p class="lead">Tutte le fatture <b>emesse</b> ai clienti e <b>ricevute</b> dai fornitori, anche passate, con scadenze e pagamenti.</p>
+  <ol class="steps">
+    <li><b>Archivio fatture</b> → <b>＋ Nuova fattura</b>: scegli emessa o ricevuta, numero, data (anche passata), scadenza (proposta a 30 giorni), cliente o fornitore, totale e IVA. Una <b>nota di credito</b> si fa dalla scheda della fattura (<b>↩ Nota di credito</b>) e la storna per intero o in parte.</li>
+    <li>Lo <b>stato</b> si calcola da solo: <b>Da pagare</b>, <b>Pagata in parte</b>, <b>Non pagata · scaduta</b> (con i giorni di ritardo), <b>Pagata</b>, <b>Stornata</b>. Se una fattura già pagata viene stornata, compare <b>da restituire</b>.</li>
+    <li>Nella scheda registra ogni <b>incasso/pagamento</b> con importo, data (anche passata) e metodo vero (contanti, carta, bonifico…): niente “non tracciato”. L'incasso di una fattura emessa entra anche in <b>Cassa</b> nel giorno indicato; per una fattura ricevuta puoi spuntare <b>Registra anche tra le Spese</b>.</li>
+    <li>Se la fattura è collegata a una <b>vendita o riparazione già incassata</b>, gli incassi vengono solo collegati: nessun doppio incasso. Le fatture dei fornitori già lette dall'import Acquisti compaiono nel riquadro “Acquisti importati non ancora in archivio”: <b>＋ In archivio</b>.</li>
+    <li>Filtri per emesse/ricevute, stato, periodo, ricerca; totali (totale, incassato/pagato, da saldare, scadute) e <b>CSV</b>. Le fatture scadute e in scadenza arrivano nella <b>campanella</b>. Il ruolo Cassa vede solo le emesse.</li>
+  </ol>
+  <div class="call tip"><b>Correggere</b>Un pagamento sbagliato si toglie dalla scheda (solo amministratore): sparisce anche da Cassa/Spese e resta nel Registro. Una fattura con pagamenti non si elimina.</div>
+</section>
+
+<section id="dareavere">
+  <h2><span class="n">27</span>Dare/avere e cattivo pagatore</h2>
+  <p class="lead">Il conto di ogni cliente: cosa ci deve e cosa ha pagato, anche per movimenti passati, per cliente e per riparazione.</p>
+  <ol class="steps">
+    <li><b>Dare/avere</b> → <b>＋ Nuovo movimento</b>. Quattro tipi: <b>Debito del cliente</b> (ci deve, non muove la cassa), <b>Pagamento ricevuto</b> (entra in Cassa nel giorno indicato, metodo obbligatorio), <b>Credito del cliente</b> (noi gli dobbiamo, non muove la cassa), <b>Rimborso al cliente</b> (esce dalle Spese). Si può collegare una riparazione.</li>
+    <li>La data può essere passata: il movimento resta segnato “passato” nel Registro. I pagamenti vengono abbinati ai debiti più vecchi.</li>
+    <li>L'elenco è raggruppato per <b>cliente</b> con il saldo (rosso = ci deve, blu = credito suo); la scheda mostra i debiti aperti da quanti giorni e il riepilogo <b>per riparazione</b>. Anche dalla scheda cliente. CSV scaricabile.</li>
+    <li><b>Cattivo pagatore</b>: il cliente viene segnalato quando ha un debito non saldato da oltre N giorni, un debito aperto di almeno X €, oppure Y debiti pagati in ritardo o ancora aperti. Le soglie si cambiano in <b>Impostazioni → Cattivo pagatore</b> (0 = spento; predefinite 30 giorni, 100 €, 2). Il segnale compare sull'<b>elenco clienti</b>, sulla <b>scheda cliente</b>, quando scegli il cliente in <b>nuova riparazione</b> e in <b>nuova vendita</b>, e nella campanella.</li>
+  </ol>
+  <div class="call tip"><b>Niente nascosto</b>Ogni movimento di denaro finisce in Cassa o nelle Spese e nel Registro. Un cliente con movimenti non si elimina finché non li togli (solo amministratore).</div>
+</section>
+<section id="modelli">
+  <h2><span class="n">30</span>Catalogo modelli</h2>
+  <p class="lead">L'elenco di marche e modelli (smartphone, tablet, portatili, PC, console) che aiuta a compilare la scheda senza scrivere tutto.</p>
+  <ol class="steps">
+    <li>Nella <b>nuova riparazione</b>, nel campo <b>Marca e modello</b>, scrivi le prime <b>3 lettere</b> (es. “sam” o “iph”): compare l'elenco. Scegli con il tocco, oppure con le frecce e Invio. Scegliendo si imposta anche il tipo di dispositivo. Vale anche nella modifica della scheda.</li>
+    <li>Se il modello <b>non c'è</b>, scrivilo normalmente: quando salvi la scheda viene <b>aggiunto da solo</b> al catalogo (compare un avviso). Nella scheda resta il testo che hai scritto.</li>
+    <li>Dal menu <b>Modelli</b> gestisci tutto: cerca, filtra per tipo/marca/provenienza, <b>＋ Nuovo modello</b>, <b>Modifica</b>, <b>Elimina</b> (le schede già fatte non cambiano).</li>
+    <li><b>⬇ Esporta CSV</b> e <b>⬆ Importa CSV</b> (colonne Tipo; Marca; Modello; Parole chiave): i doppioni si saltano. <b>↺ Rimetti i modelli di partenza</b> recupera quelli del catalogo iniziale che hai cancellato.</li>
+  </ol>
+  <div class="call tip"><b>Catalogo di partenza</b>Circa 900 modelli dei più diffusi (Apple, Samsung, Xiaomi, Huawei, Oppo, Realme, Motorola, OnePlus, Google, Honor, Nokia, Sony, tablet, notebook HP/Dell/Lenovo/Asus/Acer/MSI/Mac, console). I modelli più usati salgono in cima ai suggerimenti.</div>
+</section>
+
+<section id="storico">
+  <h2><span class="n">31</span>Storico riparazioni</h2>
+  <p class="lead">Tutte le riparazioni, anche vecchie, con i dettagli e i filtri.</p>
+  <ul>
+    <li>Menu <b>Storico riparazioni</b>: per ogni scheda vedi cliente, dispositivo, seriale, problema, esito, importo e (per chi può) costi e margine.</li>
+    <li>Filtri: ricerca libera, <b>cliente</b>, <b>marca</b>, <b>modello</b>, <b>tipo</b>, <b>stato</b> (aperte/chiuse/uno stato) e <b>periodo</b> (ultimi giorni o date precise, per ingresso o per consegna).</li>
+    <li>Tocca una riga per la <b>scheda riassuntiva</b> (ricambi, riparazioni esterne, muletti, cronologia) e da lì <b>Apri la scheda completa</b>.</li>
+    <li><b>⬇ Esporta CSV</b> scarica esattamente quello che stai vedendo (si apre con Excel). Il ruolo Cassa non vede costi né margini, neanche nel file.</li>
+  </ul>
+</section>
+
+<section id="esterne">
+  <h2><span class="n">32</span>Riparazioni esterne</h2>
+  <p class="lead">Quando un dispositivo (o un pezzo) va a un laboratorio esterno.</p>
+  <ol class="steps">
+    <li>Nella scheda della riparazione, sezione <b>Riparazione esterna</b>, premi <b>＋ Manda a un laboratorio esterno</b>: scegli il laboratorio dall'anagrafica <b>Fornitori</b> o scrivine il nome, la lavorazione, il rientro previsto e il costo.</li>
+    <li>Con <b>Segna inviata</b> parte il conteggio dei giorni fuori; con <b>✔ Rientrata</b> indichi la data e il costo finale.</li>
+    <li>Il menu <b>Riparazioni esterne</b> è l'elenco di tutte: aperte, in ritardo, rientrate. Se non rientra entro la data prevista compare un avviso nella campanella e in “Oggi”.</li>
+    <li>Il costo entra nei costi e nel margine dello <b>Storico</b>. Ogni passaggio è scritto come nota interna nella cronologia della scheda.</li>
+  </ol>
+</section>
+
+<section id="prestiti">
+  <h2><span class="n">33</span>Muletto in prestito</h2>
+  <p class="lead">Un dispositivo del negozio dato al cliente mentre il suo è in riparazione.</p>
+  <ol class="steps">
+    <li>Nella scheda della riparazione, sezione <b>Muletto in prestito</b>, premi <b>＋ Presta un muletto</b> (oppure da <b>Dispositivi → Prestiti / muletto → Nuovo prestito</b>).</li>
+    <li>Scegli il muletto dal registro Dispositivi (non si può prestare due volte) o descrivilo a mano; la <b>scadenza</b>, se vuota, è la consegna stimata della riparazione.</li>
+    <li>Quando torna premi <b>✔ Rientrato</b> e annota com'è tornato; con <b>Riapri</b> si corregge un errore.</li>
+    <li>Se non rientra entro la scadenza, o la riparazione è già chiusa e il muletto è ancora fuori, compare un <b>avviso rosso</b> in campanella e in “Oggi”.</li>
+  </ol>
+</section>
+
+<section id="note">
+  <h2><span class="n">34</span>Note</h2>
+  <p class="lead">Appunti liberi stile Keep, condivisi tra tutti gli utenti del gestionale.</p>
+  <ul>
+    <li>Scrivi nella barra in alto e premi <b>Invio</b> per una nota rapida; <b>＋ Nota completa</b> per titolo, testo, <b>colore</b>, <b>elenco con caselle</b> da spuntare e <b>Fissa in alto</b>.</li>
+    <li>Le caselle si spuntano direttamente sulla nota; le fatte vanno in fondo e barrate. Passando sopra una nota (o sul telefono, sempre) trovi Fissa, Archivia, Elimina.</li>
+    <li>Cerca nel testo e nelle voci, filtra per colore con i pallini, consulta l'<b>Archivio</b>.</li>
+    <li>Per un avviso a una data e ora precisa usa invece i <b>Promemoria</b>.</li>
+  </ul>
+</section>
+<!-- agente D: inizio sezioni -->
+<section id="materiali">
+  <h2><span class="n">25</span>Materiali da ordinare</h2>
+  <p class="lead">Una sola lista con tutto ciò che va ordinato ai fornitori, così non ti dimentichi niente.</p>
+  <ul>
+    <li>Menu <b>Magazzino e acquisti → Da ordinare</b>: raccoglie gli <b>ordini</b> in stato “Da ordinare” (clienti e negozio) e i <b>ricambi delle riparazioni</b> segnati “da ordinare”, divisi per fornitore.</li>
+    <li>Per ogni fornitore: <b>💬 WhatsApp</b> e <b>✉️ Email</b> (messaggio già scritto), <b>Copia testo</b> e <b>Fatto: segna ordinati</b> (segna tutte le righe di quel fornitore in un colpo solo).</li>
+    <li>Nella scheda riparazione, <b>＋ Ricambio non a magazzino</b> ha la casella <b>“Ancora da ordinare al fornitore”</b>. Accanto al ricambio compare un’etichetta (📋 Da ordinare → 📮 Ordinato → ✅ Arrivato): toccala per far avanzare lo stato.</li>
+    <li>I ricambi sono collegati al fornitore dal <b>nome</b> scritto nel ricambio (se coincide con un fornitore in anagrafica compaiono telefono ed email; altrimenti il gruppo ha solo il nome).</li>
+  </ul>
+  <h3>Promemoria giornaliero su Telegram</h3>
+  <ul>
+    <li><b>Impostazioni → Promemoria materiali da ordinare</b>: acceso/spento, <b>orario</b> (predefinito 12:00) e <b>giorni</b> (predefinito lunedì-venerdì).</li>
+    <li>Arriva <b>una volta al giorno</b>, all’orario scelto, <b>solo se c’è qualcosa da ordinare</b>, con l’elenco per fornitore. Se segni tutto come ordinato, il giorno dopo non arriva niente.</li>
+    <li>Parte anche a gestionale chiuso (online, controllo ogni minuto). Se il sistema salta qualche minuto, il messaggio parte comunque entro 2 ore dall’orario; oltre, si aspetta il giorno dopo.</li>
+    <li>In <b>Oggi</b> compare una riga “N materiali da ordinare” finché la lista non è vuota.</li>
+  </ul>
+</section>
+<section id="preventivo-online">
+  <h2><span class="n">26</span>Preventivo al cliente dalla riparazione</h2>
+  <p class="lead">Dalla scheda riparazione mandi al cliente un preventivo che legge e accetta dal telefono, con una data di scadenza.</p>
+  <ul>
+    <li>Nella scheda, riquadro <b>Preventivo e pagamenti</b>: scrivi l’importo (ed eventuali ricambi con prezzo) e premi <b>📨 Invia preventivo al cliente</b>.</li>
+    <li>Le voci si compongono da sole: i ricambi con prezzo e una riga “Intervento di riparazione” con la differenza fino all’importo del preventivo (oppure una voce unica).</li>
+    <li><b>Validità</b>: giorni da oggi. Il numero proposto è quello di <i>Impostazioni → Validità dei preventivi</i>; qui lo puoi cambiare caso per caso (da 1 a 365). Dopo la scadenza il cliente non può più accettare.</li>
+    <li>Tre modi di inviare: <b>💬 WhatsApp</b> (messaggio già scritto), <b>✉️ Email</b> (si apre il programma di posta), <b>🔗 Copia link</b> (per incollarlo dove vuoi). Il pulsante è spento se il cliente non ha telefono/email.</li>
+    <li>Il link è lo stesso dei preventivi della sezione <b>Preventivi</b> (<code>/p/…</code>): il cliente vede voci, totale e scadenza e accetta o rifiuta firmando. Il preventivo compare anche nell’elenco Preventivi, collegato alla riparazione. Ti arriva l’avviso su Telegram.</li>
+    <li>Riaprendo la finestra vedi lo stato (inviato, accettato, rifiutato, scaduto) e quando e come è stato inviato. Se è <b>scaduto</b> scegli una nuova validità e rinvialo: resta lo stesso preventivo. Se il cliente ha già accettato non si cambia più.</li>
+  </ul>
+</section>
+<section id="carte-punti">
+  <h2><span class="n">27</span>Carte punti NFC</h2>
+  <p class="lead">Una tessera NFC per cliente: più acquisti e riparazioni, più punti; i punti si cambiano in un <b>buono regalo</b>. Le regole di protezione stanno sul server, non sulla carta.</p>
+  <h3>Come funziona (e perché non si può truccare)</h3>
+  <ul>
+    <li><b>I punti stanno solo nel gestionale.</b> Sul chip non c’è nessun saldo da modificare: c’è solo un codice firmato che identifica la carta.</li>
+    <li>Il chip ha un <b>UID</b> (si può copiare) e un <b>codice firmato</b> con un segreto che esiste solo sul server. Il codice <b>cambia a ogni passaggio</b>: se qualcuno copia il chip e usa la copia, il codice vecchio viene riconosciuto, la carta si <b>blocca da sola</b> e resta tutto nel registro della carta.</li>
+    <li>Con un lettore USB che legge <b>solo l’UID</b> (non può scrivere sul chip) si vede la carta ma <b>per riscattare serve il PIN</b> (4 cifre, scelto o generato all’emissione e dato al cliente). Dopo 5 errori la carta si blocca.</li>
+    <li>I punti si danno <b>solo da vendite e riparazioni consegnate vere</b>, una volta sola per documento e con l’importo letto dal server: nessuno può digitare “+500 punti”. Una rettifica manuale la fa solo l’amministratore, con un motivo che resta nel registro.</li>
+    <li><b>Limiti</b>: massimo punti per operazione, massimo riscatto al giorno per carta, massimo di operazioni al minuto e di errori in 10 minuti per postazione. Ogni operazione è nel <b>storico della carta</b> (chi, quando, quanto).</li>
+    <li>Il riscatto crea un <b>buono regalo</b> (sezione Buoni): in cassa compare come tutti gli altri buoni, niente è nascosto.</li>
+  </ul>
+  <h3>Uso quotidiano</h3>
+  <ul>
+    <li>Menu <b>Vetrina e buoni → Carte punti</b>. Scegli il <b>lettore</b>, premi <b>Attiva lettore</b> e avvicina la carta: si apre la scheda con saldo e storico.</li>
+    <li><b>＋ Nuova carta</b>: scegli il cliente, avvicina il chip (o scrivi l’UID), <b>Emetti</b>. Si scrive il codice sul chip (se il lettore sa scrivere) e compare il <b>PIN, una volta sola</b>: consegnalo al cliente.</li>
+    <li><b>Accredita punti</b>: dopo il passaggio della carta, l’elenco delle vendite/riparazioni consegnate del cliente non ancora premiate; un tocco e i punti arrivano. <b>Riscatta in buono</b>: a multipli del gradino (predefinito 100 punti = 5 €).</li>
+    <li><b>Blocca</b> (se la carta è smarrita), <b>Sblocca</b> e <b>Rettifica punti</b> (amministratore), <b>Carta persa / sostituisci</b> (amministratore: chiude la vecchia e passa i punti a un chip nuovo), <b>Riscrivi codice</b> (se la scrittura sul chip non è riuscita).</li>
+    <li>Le <b>regole dei punti</b> (punti per euro, gradino, valore del buono, limiti) si cambiano da “Modifica le regole” nella pagina. Sono <b>valori provvisori</b> in attesa del regolamento di Christian.</li>
+  </ul>
+  <h3>Lettori supportati (uno solo nell’interfaccia)</h3>
+  <ul>
+    <li><b>Telefono Android</b> (Chrome, NFC acceso, sito in HTTPS): legge UID e codice e sa scrivere il codice nuovo (riavvicina il chip quando richiesto).</li>
+    <li><b>Lettore USB “tastiera”</b>: scrive l’UID e preme Invio. Metti il cursore nel campo “UID a mano” e passa la carta. Solo UID: il riscatto chiede il PIN. Se il tuo lettore stampa numeri decimali o byte invertiti, scegli “Numero decimale” e/o “Invertito” nelle due caselle che compaiono sotto il lettore (si ricordano su quella postazione).</li>
+    <li><b>Lettore PC/SC</b> (quelli USB “veri”, es. ACR122/ACR1252): serve il <b>programma ponte</b> <code>node officina/tools/nfc-bridge.mjs</code> sul PC del lettore (modulo opzionale <code>npm i nfc-pcsc</code>); con <code>--simulate</code> si prova senza lettore. Il ponte ascolta solo su questo PC.</li>
+    <li><b>A mano</b>: UID digitato o incollato (emergenza e prove).</li>
+  </ul>
+  <div class="call warn"><b>Segreto delle firme</b>Online: <code>wrangler secret put NFC_SECRET</code> (almeno 16 caratteri casuali). In mancanza si usa <code>VAULT_KEY</code>. Sul PC si usa la chiave già creata in <code>officina/data/vault.key</code>. <b>Non cambiarlo e non perderlo</b>: con un segreto diverso tutti i codici scritti sui chip risultano falsi (le carte vanno riscritte da “Riscrivi codice”).</div>
+  <h3>Cosa deve provare Christian (hardware)</h3>
+  <ul>
+    <li><b>1. Telefono Android</b>: apri il gestionale (HTTPS) in Chrome, <i>Carte punti → lettore “Telefono Android” → Attiva</i>. Emetti una carta su un chip NTAG213/215 vergine: deve comparire il PIN e il telefono deve chiedere di riavvicinare il chip per scrivere.</li>
+    <li><b>2. Rotazione</b>: passa la carta due volte. Alla seconda il saldo è lo stesso e il passaggio è “codice verificato”. Il codice sul chip deve cambiare ogni volta (lo storico mostra un “Passaggio” a ogni lettura).</li>
+    <li><b>3. Copia</b>: se hai un secondo chip modificabile, copia il contenuto del primo, usa il <b>primo</b> normalmente e poi prova la <b>copia</b>: deve comparire “Carta BLOCCATA… possibile copia” e la carta risultare bloccata (sblocco dall’amministratore).</li>
+    <li><b>4. Lettore USB tastiera</b> (quello che sceglierai): passa la carta nel campo “UID a mano”; verifica che l’UID compaia e la scheda si apra. Se l’UID è diverso da quello del telefono (decimale o invertito) dimmelo con la lunghezza e un esempio: si imposta il formato.</li>
+    <li><b>5. Lettore PC/SC</b> (se lo userai): avvia il ponte, scegli “Lettore PC”, passa la carta. <b>La lettura reale PC/SC non è stata provata senza il tuo lettore</b>: se non va, scrivimi il messaggio del terminale.</li>
+    <li><b>6. Riscatto</b>: accredita i punti di una vendita, riscatta 100 punti con il solo UID (deve chiedere il PIN), poi controlla che il buono compaia in <i>Buoni</i> e che usandolo in cassa i totali tornino.</li>
+    <li><b>7. Regolamento</b>: dimmi quanti punti per euro, il valore del buono e le scadenze che vuoi (domanda 21): finché non lo fai valgono i valori provvisori.</li>
+  </ul>
+</section>
+<section id="import-pdf">
+  <h2><span class="n">28</span>DDT e fatture in PDF</h2>
+  <p class="lead">In <b>Acquisti → Importa</b>, oltre alla fattura elettronica XML, puoi caricare un <b>DDT o una fattura in PDF</b>: il gestionale legge il testo, ti mostra cosa ha capito e tu correggi prima di confermare.</p>
+  <ul>
+    <li><b>Passo 1</b>: trascina il PDF (o sceglilo). Il testo viene letto <b>nel tuo browser</b> (serve internet la prima volta per il lettore di PDF): il file non parte dal computer.</li>
+    <li><b>Passo 2 · Controlla e correggi</b>: compaiono fornitore, partita IVA, tipo (DDT / fattura / nota di credito), numero, data, totale e la <b>tabella delle righe</b> (codice, descrizione, quantità, UM, prezzo di acquisto, IVA). Le righe dubbie sono in <b>giallo</b> con il motivo (“prezzo mancante”, “qtà × prezzo non torna”…). Correggi, aggiungi o togli righe e premi <b>↻ Applica le correzioni</b>.</li>
+    <li>Sotto c’è l’abbinamento ai prodotti del magazzino, uguale a quello delle fatture XML (per codice fornitore, codice articolo o nome simile); poi <b>Conferma e carica il magazzino</b>. Il carico, lo storico prezzi e gli avvisi sono gli stessi di sempre.</li>
+    <li><b>DDT senza prezzi</b> (non valorizzato): scrivi tu i prezzi di acquisto nella tabella, oppure salta le righe e importa poi la fattura.</li>
+    <li><b>Il sistema impara</b>: dopo ogni conferma ricorda, per quel fornitore, in quale colonna stanno codice, descrizione, quantità e prezzo (da come le hai corrette). Dal documento successivo le righe escono giuste (“formato già imparato”). In fondo alla pagina Importa c’è l’elenco <b>Formati PDF imparati</b> con il tasto <b>Dimentica</b> se uno impara male.</li>
+    <li>Lo stesso documento (stesso fornitore, numero e data) non si importa due volte.</li>
+  </ul>
+  <div class="call warn"><b>Limiti</b>Servono PDF “digitali” (generati da un programma), non foto o scansioni: in quel caso compare un avviso e puoi scrivere le righe a mano. Finora non ho potuto vedere i DDT veri dei tuoi fornitori: il lettore usa regole generali (intestazioni di colonna, numeri, partita IVA con controllo, totali) e migliora con le tue correzioni. <b>Mandami 2-3 PDF di esempio per fornitore</b> per tararlo meglio.</div>
+</section>
+<section id="testi-legali">
+  <h2><span class="n">29</span>Testi legali: cosa è stato controllato</h2>
+  <ul>
+    <li>I testi di consenso, preventivo, rifiuto e giacenza (<i>Impostazioni → Testi di consenso</i>) sono stati riletti e allineati a fonti italiane: garanzia legale di 24 mesi sui beni venduti (Codice del Consumo art. 133), diritto di trattenere il dispositivo fino al pagamento (art. 2756 c.c.), informativa privacy (art. 13 GDPR) e copia del documento d’identità solo se serve e con una durata di conservazione.</li>
+    <li>Novità nei testi: il cliente può <b>sempre ritirare pagando quanto dovuto</b>; prima di smaltire o cedere un dispositivo arriva un <b>ulteriore avviso scritto</b>; in caso di rinuncia a lavori iniziati si pagano solo lavoro svolto e ricambi acquistati.</li>
+    <li>Restano <b>bozze</b> finché non spunti “Testi verificati”: non sono consulenza legale. Il file <code>docs/TESTI-LEGALI-BOZZE.md</code> (sezione “Revisione”) elenca con le fonti cosa è verificato e cosa va <b>fatto confermare a un professionista</b> (vendita/smaltimento del non ritirato, garanzia sulle riparazioni, informativa completa).</li>
+    <li>Le condizioni stampate sulla scheda (campo “Condizioni”) hanno il nuovo testo solo nelle installazioni nuove: per quella in uso, copialo da <code>officina/dbref.mjs</code> o dal file di revisione.</li>
+  </ul>
+</section>
+<!-- agente D: fine sezioni -->
 
 </main>
 </div>

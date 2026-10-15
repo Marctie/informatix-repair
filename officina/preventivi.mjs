@@ -36,7 +36,7 @@ function shape(q) {
 export async function getQuote(id) {
   const q = await db.prepare(`${SELECT} WHERE q.id = ?`).get(id);
   if (!q) throw new HttpError(404, 'Preventivo non trovato');
-  return { ...shape(q), items: await db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY id').all(id), signature: await db.prepare('SELECT kind, signer_name, ip, signed_at FROM quote_signatures WHERE quote_id = ? ORDER BY id DESC LIMIT 1').get(id) || null };
+  return { ...shape(q), items: await db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY id').all(id), signature: await db.prepare('SELECT kind, signer_name, ip, signed_at, reason FROM quote_signatures WHERE quote_id = ? ORDER BY id DESC LIMIT 1').get(id) || null };
 }
 
 function cleanItems(list) {
@@ -174,14 +174,15 @@ export async function quoteDecision(token, b, c) {
   if (!['accept', 'decline'].includes(action)) throw new HttpError(400, 'Scelta non valida');
   const image = cleanImage(b.image);
   const name = String(b.signer_name ?? '').trim().slice(0, 120) || null;
+  const reason = action === 'decline' ? String(b.reason ?? '').trim().slice(0, 300) || null : null;
   const shown = action === 'accept'
     ? `Accetto il preventivo ${q.code} di ${eur(q.total)}, valido fino al ${dIt(q.valid_until)}, alle condizioni indicate.`
     : `Non accetto il preventivo ${q.code} di ${eur(q.total)}.`;
   await tx(async () => {
     const r = await db.prepare(`UPDATE quotes SET status=?, updated_at=${NOW} WHERE id=? AND status='inviato'`).run(action === 'accept' ? 'accettato' : 'rifiutato', q.id);
     if (!r.changes) throw new HttpError(409, 'Questo preventivo non è più in attesa di risposta.');
-    await db.prepare('INSERT INTO quote_signatures (quote_id, kind, image, signer_name, text_shown, ip, user_agent, signed_at) VALUES (?,?,?,?,?,?,?,?)')
-      .run(q.id, action, image, name, shown, clientIp(c) || null, String(c?.req.header('user-agent') || '').slice(0, 200) || null, nowLocal());
+    await db.prepare('INSERT INTO quote_signatures (quote_id, kind, image, signer_name, text_shown, ip, user_agent, signed_at, reason) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(q.id, action, image, name, shown, clientIp(c) || null, String(c?.req.header('user-agent') || '').slice(0, 200) || null, nowLocal(), reason);
   });
   return quoteView(token);
 }

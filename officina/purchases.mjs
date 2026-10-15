@@ -1,8 +1,10 @@
 // Acquisti dai fornitori: import delle fatture elettroniche, carico di magazzino, storico prezzi e avvisi di variazione.
 // Flusso in 2 passi: preview (non scrive nulla) -> confirm (scrive in un unico blocco atomico, senza doppioni).
-import { db, tx } from './dbref.mjs';
+import { db, tx, getSettings } from './dbref.mjs';
+import { computeVat, parseRate, truthy } from './iva.mjs';
 import { HttpError, money, localDate, moveStock } from './logic.mjs';
 import { parseFattura, looksLikeP7m, P7M_MESSAGE } from './fatturapa.mjs';
+import { resolveDdtBody, learnFormat, listFormats, deleteFormat } from './ddt.mjs'; // agente D: DDT e fatture in PDF
 
 const NOW = "datetime('now','localtime')";
 const MAX_XML = 6 * 1024 * 1024;
@@ -10,7 +12,7 @@ const str = (v) => (v == null ? null : String(v).trim() || null);
 const r4 = (x) => Math.round(x * 10000) / 10000;
 
 /** Tabelle da includere nel backup JSON (nell'ordine in cui vanno ripristinate). */
-export const PURCHASE_TABLES = ['supplier_info', 'supplier_codes', 'purchases', 'purchase_lines', 'price_history'];
+export const PURCHASE_TABLES = ['supplier_info', 'supplier_codes', 'purchases', 'purchase_lines', 'price_history', 'supplier_formats'];
 
 // ---------- Interfaccia dei lettori di documenti ----------
 // Ogni lettore: { id, label, supported, detect(testo, nomeFile) -> bool, parse(testo, nomeFile) -> { supplier, doc, lines, warnings, ... } }
@@ -21,13 +23,12 @@ export const parsers = {
     detect: (text) => /<([\w.-]+:)?FatturaElettronica[\s>]/.test(String(text).slice(0, 6000)),
     parse: (text, filename) => parseFattura(text, filename),
   },
-  // SEGNAPOSTO: DDT e fatture in PDF digitale. Non si scrivono lettori "a occhio": ogni fornitore impagina in modo diverso.
-  // Servono campioni reali (vedi docs/DOMANDE-APERTE.md, domande 8-11). Quando arrivano si implementa parse() restituendo
-  // la stessa struttura di parseFattura (supplier, doc, lines[{description, code, qty, unit_price, ...}], warnings).
+  // DDT e fatture in PDF digitale: il testo lo estrae il browser (pdftext.js) e lo legge officina/ddt.mjs (lettore euristico a piu'
+  // passaggi + formati imparati per fornitore + anteprima corretta a mano). Passa da resolveDocument(), che e' asincrono (usa il DB).
   ddt_pdf: {
-    id: 'ddt_pdf', label: 'DDT / PDF digitale', supported: false,
+    id: 'ddt_pdf', label: 'DDT / PDF digitale (testo estratto dal browser)', supported: true,
     detect: (text, filename) => /^\s*%PDF-/.test(String(text).slice(0, 20)) || /\.pdf$/i.test(String(filename || '')),
-    parse: () => { throw new HttpError(400, 'Formato non ancora supportato: servono campioni dei fornitori (DDT e fatture in PDF digitale). Per ora importa la fattura elettronica in formato XML.'); },
+    parse: () => { throw new HttpError(400, 'Il PDF va letto dal browser: scegli il file dalla scheda Importa (il testo viene estratto lì e controllato da te prima di confermare). Con l’API serve il campo pdf_text.'); },
   },
 };
 
@@ -39,6 +40,12 @@ export function parseDocument(body) {
   if (looksLikeP7m(text, filename)) throw new HttpError(400, P7M_MESSAGE);
   const p = Object.values(parsers).find((x) => x.detect(text, filename)) || parsers.fatturapa;
   return { source: p.id, parsed: p.parse(text, filename) };
+}
+
+/** Come parseDocument ma accetta anche i documenti PDF/DDT (`pdf_text` = testo estratto, `parsed` = anteprima corretta a mano). */
+export async function resolveDocument(body) {
+  const ddt = await resolveDdtBody(body);
+  return ddt || parseDocument(body);
 }
 
 // ---------- Somiglianza dei nomi ----------
@@ -248,10 +255,11 @@ async function analyze(parsed, supplierOverrideId) {
 
 /** Passo 1: legge il file e propone abbinamenti. Non scrive nulla. */
 export async function previewPurchase(body) {
-  const { source, parsed } = parseDocument(body);
+  const { source, parsed } = await resolveDocument(body);
   const a = await analyze(parsed, body?.supplier_id ? Number(body.supplier_id) : null);
   return {
     ok: true, source,
+    ...(source === 'ddt_pdf' ? { editable: { supplier: parsed.supplier, doc: parsed.doc, lines: parsed.lines, meta: parsed.meta } } : {}),
     supplier: { parsed: parsed.supplier, match: a.supplier, will_create: !a.supplier },
     doc: parsed.doc, ddt: parsed.ddt, vat_summary: parsed.vat_summary, lines_total: parsed.lines_total,
     duplicate: a.duplicate, warnings: a.warnings, lines: a.lines,
@@ -262,7 +270,7 @@ export async function previewPurchase(body) {
 const nextId = async (table) => ((await db.prepare(`SELECT COALESCE(MAX(id),0) AS m FROM ${table} WHERE id > 0`).get()).m || 0) + 1;
 
 export async function confirmPurchase(body) {
-  const { source, parsed } = parseDocument(body);
+  const { source, parsed } = await resolveDocument(body);
   const a = await analyze(parsed, body?.supplier_id ? Number(body.supplier_id) : null);
   if (a.duplicate) throw new HttpError(409, `Documento già importato il ${String(a.duplicate.imported_at).slice(0, 10)}: non lo importo di nuovo.`);
 
@@ -348,8 +356,11 @@ export async function confirmPurchase(body) {
     if (/UNIQUE|constraint/i.test(String(e.message))) throw new HttpError(409, 'Documento già importato: non lo importo di nuovo.');
     throw e;
   }
+  // PDF/DDT: dopo la conferma il formato di questo fornitore si impara (colonne corrette dall'utente), cosi' la volta dopo e' piu' preciso
+  let learned = false;
+  if (source === 'ddt_pdf') { try { learned = await learnFormat(parsed, supplierId); } catch (e) { console.error('apprendimento formato', e); } }
   return {
-    ok: true, purchase_id: pid0, supplier_id: supplierId, supplier_name: supplierName, supplier_created: !a.supplier,
+    ok: true, learned, purchase_id: pid0, supplier_id: supplierId, supplier_name: supplierName, supplier_created: !a.supplier,
     doc_number: parsed.doc.number, doc_date: parsed.doc.date, total: parsed.doc.total, lines_count: loaded, lines_skipped: decisions.length - loaded,
     new_products: decisions.filter((d) => d.action === 'new' && d.qty > 0 && parsed.doc.type !== 'TD04').length, changes, warnings,
   };
@@ -367,7 +378,10 @@ export async function manualLoad(body) {
   if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'Prezzo d’acquisto non valido');
   const date = str(b.date) || localDate();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Data non valida');
-  const unit = r4(price);
+  // IVA: prezzo scritto IVA esclusa (predefinito) o inclusa; `vat_apply` aggiunge davvero l'IVA al costo (acquisto estero, reverse charge...)
+  const rate = parseRate(b.vat_rate, Number((await getSettings()).vat_rate) || 22);
+  const vat = computeVat({ amount: price, mode: b.price_mode === 'gross' ? 'gross' : 'net', rate, apply: truthy(b.vat_apply) });
+  const unit = vat.cost;
   return tx(async () => {
     let productId = Number(b.product_id) || null;
     let prod = productId ? await db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(productId) : null;
@@ -389,13 +403,14 @@ export async function manualLoad(body) {
     let doc = await db.prepare('SELECT id, source, total FROM purchases WHERE supplier_id = ? AND doc_number = ? AND doc_date = ?').get(supplier.id, docNo, date);
     if (doc && doc.source !== 'manuale') throw new HttpError(409, 'Esiste già un documento importato con questo numero: usa un altro numero o lascia vuoto.');
     const lineTotal = money(qty * unit);
+    const lineVat = money(qty * vat.vat);
     if (!doc) {
       const r = await db.prepare(`INSERT INTO purchases (supplier_id, doc_type, doc_number, doc_date, total, source, notes, imported_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
         .run(supplier.id, 'CARICO', docNo, date, lineTotal, 'manuale', str(b.notes));
       doc = { id: Number(r.lastInsertRowid) };
     } else await db.prepare('UPDATE purchases SET total = total + ? WHERE id = ?').run(lineTotal, doc.id);
-    await db.prepare('INSERT INTO purchase_lines (purchase_id, product_id, supplier_code, description, qty, unit, list_price, unit_price, discount, vat_rate, line_total, loaded) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
-      .run(doc.id, productId, code, prod.name.slice(0, 300), qty, 'pz', unit, unit, 0, 0, lineTotal, 1);
+    await db.prepare('INSERT INTO purchase_lines (purchase_id, product_id, supplier_code, description, qty, unit, list_price, unit_price, discount, vat_rate, line_total, loaded, vat_amount, vat_applied) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(doc.id, productId, code, prod.name.slice(0, 300), qty, 'pz', vat.net, unit, 0, rate, lineTotal, 1, lineVat, vat.applied ? 1 : 0);
     await db.prepare('INSERT INTO price_history (product_id, supplier_id, unit_price, qty, doc_date, purchase_id) VALUES (?,?,?,?,?,?)').run(productId, supplier.id, unit, qty, date, doc.id);
     if (code) await db.prepare('INSERT OR REPLACE INTO supplier_codes (supplier_id, supplier_code, product_id) VALUES (?,?,?)').run(supplier.id, code, productId);
     await moveStock(productId, qty, `carico merce ${docNo}`, `acquisto:${doc.id}`);
@@ -403,7 +418,7 @@ export async function manualLoad(body) {
     await db.prepare('UPDATE products SET cost = ?, supplier_id = COALESCE(supplier_id, ?) WHERE id = ?').run(unit, supplier.id, productId);
     const out = await db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
     const prices = await productPrices(productId);
-    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier.name, doc_number: docNo, purchase_id: doc.id, avg_cost: prices.avg_cost, new_product: !b.product_id } };
+    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier.name, doc_number: docNo, purchase_id: doc.id, avg_cost: prices.avg_cost, new_product: !b.product_id, vat: { ...vat, line_vat: lineVat } } };
   });
 }
 
@@ -464,6 +479,8 @@ export function registerPurchaseRoutes(app, h) {
   }));
   app.post('/api/products/load', loadRoute);
   app.post('/api/products/:id/load', loadRoute);
+  app.get('/api/purchases/formats', h(() => listFormats())); // formati imparati per fornitore (agente D)
+  app.delete('/api/purchases/formats/:id', h((req) => deleteFormat(req.params.id)));
   app.post('/api/purchases/preview', h((req) => previewPurchase(req.body)));
   app.post('/api/purchases/confirm', h((req) => confirmPurchase(req.body)));
   app.get('/api/purchases/prices', h((req) => productPrices(Number(req.query.product_id))));

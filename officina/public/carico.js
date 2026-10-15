@@ -1,10 +1,12 @@
 // Carico merce: arrivo di un articolo (esistente o nuovo) con quantità, fornitore, prezzo d'acquisto, data e documento.
 // Aggiorna giacenza, ultimo costo e storico prezzi di Acquisti (grafico e avvisi).
 import { $, esc, eur, api, toast, safe, debounce, openModal, today } from './util.js';
+import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 
 /** product = articolo già scelto (da Magazzino); senza: si cerca o si crea un articolo nuovo. */
 export async function loadStockDialog({ product = null, done } = {}) {
   const suppliers = (await safe(() => api('GET', '/api/suppliers'))) || [];
+  await ensureVatDefault();
   let prod = product;
   const supOpts = (sel) => `<option value="">— scegli —</option>${suppliers.map((s) => `<option value="${s.id}" ${Number(sel) === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}`;
   const m = openModal(
@@ -25,11 +27,13 @@ export async function loadStockDialog({ product = null, done } = {}) {
         <div class="field"><label class="l" for="cl-code">Codice del fornitore</label><input id="cl-code" /></div>
         <div class="field"><label class="l" for="cl-doc">N. documento (DDT / fattura)</label><input id="cl-doc" /></div>
       </div>
+      ${vatBlock('cl')}
       <p class="hint">Aggiorna la giacenza e l’ultimo costo, e scrive il prezzo nello storico di Acquisti. Con lo stesso n. documento più articoli finiscono nello stesso documento.</p>
     </section>`,
     { title: 'Carico merce', wide: true, footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cl-ok">Registra carico</button>' }
   );
   const r = m.el;
+  const vatVals = bindVat(r, 'cl', '#cl-cost');
   const pick = $('#cl-pick', r);
 
   const hint = async () => {
@@ -80,7 +84,7 @@ export async function loadStockDialog({ product = null, done } = {}) {
   $('#cl-ok', r).onclick = async () => {
     const v = (id) => $(`#${id}`, r).value;
     const isNew = !prod;
-    const body = { qty: v('cl-qty'), supplier_id: v('cl-sup') || null, unit_price: v('cl-cost').replace(',', '.'), date: v('cl-date'), supplier_code: v('cl-code'), doc_number: v('cl-doc') };
+    const body = { qty: v('cl-qty'), supplier_id: v('cl-sup') || null, unit_price: v('cl-cost').replace(',', '.'), date: v('cl-date'), supplier_code: v('cl-code'), doc_number: v('cl-doc'), ...vatVals() };
     if (isNew) Object.assign(body, { name: v('cl-name'), sku: v('cl-sku'), price: v('cl-price').replace(',', '.') });
     const out = await safe(() => api('POST', isNew ? '/api/products/load' : `/api/products/${prod.id}/load`, body));
     if (out) { m.close(); toast(`Caricati ${out.loaded.qty} pz · ora ${out.qty} in magazzino`); done?.(out); }

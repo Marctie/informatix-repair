@@ -16,24 +16,41 @@ import { registerOrderRoutes, orderAlerts } from './ordini.mjs';
 import { registerQuoteRoutes, quoteAlerts, registerPublicQuoteRoutes } from './preventivi.mjs';
 import { registerReminderRoutes, reminderAlertsNotify } from './promemoria.mjs';
 
+// --- Agente C: chiusure di cassa, archivio fatture, dare/avere ---
+import { registerClosingRoutes, CLOSING_TABLES } from './closings.mjs';
+import { registerInvoiceRoutes, invoiceAlerts, INVOICE_TABLES } from './invoices.mjs';
+import { registerLedgerRoutes, ledgerAlerts, assertNoLedger, LEDGER_TABLES } from './dareavere.mjs';
+// --- fine Agente C ---
+
 import { registerDeviceRoutes, DEVICE_TABLES } from './dispositivi.mjs';
 import { registerVoucherRoutes, VOUCHER_TABLES } from './buoni.mjs';
 import { registerDocumentRoutes, DOCUMENT_TABLES } from './documenti.mjs';
 import { registerCredentialRoutes, CREDENTIAL_TABLES } from './credenziali.mjs';
+import { registerLottoB, lottoBAlerts, LOTTO_B_TABLES } from './lottoB.mjs'; // Agente B
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
+import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
+import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 
 import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
 import * as SG from './signatures.mjs';
 import * as R from './remote.mjs';
+import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
-const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
+// --- Agente D: materiali da ordinare, preventivo da riparazione, carta punti NFC, import DDT (blocchi separati) ---
+import { registerMaterialsRoutes, materialsAlerts, MATERIALS_SETTING_KEYS, validateReminderSettings } from './materiali.mjs';
+import { registerRepairQuoteRoutes } from './preventivo-riparazione.mjs';
+import { registerLoyaltyRoutes, LOYALTY_SETTING_KEYS, validateLoyaltySettings, LOYALTY_TABLES } from './carte.mjs';
+// --- fine import agente D ---
+
+const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, materialsAlerts, invoiceAlerts, ledgerAlerts];
+EXTRA_ALERTS.push(lottoBAlerts); // Agente B
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -84,6 +101,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   if (auth) app.use('*', auth);
   app.use('*', cassaMiddleware); // ruolo cassa: niente costi/margini nelle risposte
   app.use('/api/*', auditMiddleware); // registro eliminazioni/modifiche (dopo l'accesso: sa chi è)
+  app.use('/api/*', retroMiddleware); // inserimento retroattivo (entry_date), sempre registrato
 
   const trackBase = async () => {
     const s = await getSettings();
@@ -96,13 +114,17 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   };
 
   registerAuditRoutes(app, h, adminOnly);
+  registerRetroRoutes(app, h, adminOnly);
+  registerBlackRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', ...Object.keys(LEGAL_DEFAULTS)];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', 'vat_rate', ...MATERIALS_SETTING_KEYS, ...LOYALTY_SETTING_KEYS, ...Object.keys(LEGAL_DEFAULTS)];
+    validateReminderSettings(req.body);
+    validateLoyaltySettings(req.body);
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }
@@ -198,27 +220,30 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const q = str(req.query.q);
     const base = `SELECT c.*, (SELECT COUNT(*) FROM repairs r WHERE r.customer_id=c.id) AS repairs_count,
       (SELECT COUNT(*) FROM repairs r WHERE r.customer_id=c.id AND r.status NOT IN ('delivered','cancelled')) AS open_repairs FROM customers c`;
-    if (!q) return db.prepare(`${base} ORDER BY c.created_at DESC LIMIT 300`).all();
+    // chi e' nell'elenco Blacks (segnalazione attiva) porta il distintivo anche in elenco
+    const flag = async (rows) => { const ids = new Set((await db.prepare('SELECT customer_id FROM blacklist WHERE active = 1 AND customer_id IS NOT NULL').all()).map((r) => r.customer_id)); return rows.map((r) => ({ ...r, blacklisted: ids.has(r.id) ? 1 : 0 })); };
+    if (!q) return flag(await db.prepare(`${base} ORDER BY c.created_at DESC LIMIT 300`).all());
     const like = `%${q}%`;
-    return db.prepare(`${base} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? ORDER BY c.name LIMIT 100`).all(like, like, like);
+    return flag(await db.prepare(`${base} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? OR c.company_name LIKE ? OR c.vat_number LIKE ? OR c.fiscal_code LIKE ? OR c.city LIKE ? OR c.pec LIKE ? ORDER BY c.name LIMIT 100`).all(like, like, like, like, like, like, like, like));
   }));
   app.get('/api/customers/:id', h(async (req) => {
     const c = await db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
     if (!c) throw new L.HttpError(404, 'Cliente non trovato');
-    return { ...c, repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare('SELECT * FROM sales WHERE customer_id = ? ORDER BY id DESC').all(c.id) };
+    return { ...c, blacklist: await findBlacks({ customer_id: c.id }), repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare('SELECT * FROM sales WHERE customer_id = ? ORDER BY id DESC').all(c.id) };
   }));
   app.post('/api/customers', h(async (req) => {
-    const id = await L.upsertCustomer({ name: req.body.name, phone: req.body.phone, email: req.body.email, notes: req.body.notes });
+    const id = await L.upsertCustomer({ ...req.body, id: undefined });
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
   }));
   app.put('/api/customers/:id', h(async (req) => {
-    const b = req.body;
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
-    const r = await db.prepare('UPDATE customers SET name=?, phone=?, email=?, notes=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.notes), req.params.id);
-    if (!r.changes) throw new L.HttpError(404, 'Cliente non trovato');
+    const cur = await db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+    if (!cur) throw new L.HttpError(404, 'Cliente non trovato');
+    const f = cleanCustomer(req.body, cur);
+    await db.prepare(`UPDATE customers SET ${CUSTOMER_COLS.map((k) => `${k}=?`).join(', ')} WHERE id=?`).run(...CUSTOMER_COLS.map((k) => f[k]), req.params.id);
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
   }));
   app.delete('/api/customers/:id', h(async (req) => {
+    await assertNoLedger(req.params.id); // Agente C: niente eliminazione con dare/avere
     // si eliminano solo clienti senza lavori in corso; le riparazioni concluse (consegnate/annullate) se ne vanno con lui
     const open = (await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE customer_id = ? AND status NOT IN ('delivered','cancelled')").get(req.params.id)).n;
     if (open) throw new L.HttpError(409, 'Il cliente ha riparazioni ancora aperte: concludile prima di eliminarlo.');
@@ -282,11 +307,26 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   // Promemoria con data/ora e avviso Telegram (officina/promemoria.mjs)
   registerReminderRoutes(app, h);
 
+  // --- Agente D: routes (blocco separato) ---
+  registerMaterialsRoutes(app, h); // officina/materiali.mjs
+  registerRepairQuoteRoutes(app, h, { trackBase }); // officina/preventivo-riparazione.mjs
+  registerLoyaltyRoutes(app, h); // officina/carte.mjs (carta punti NFC)
+  // --- fine routes agente D ---
+
   // Dispositivi, buoni/pagamento diviso, documenti d'identita' e credenziali fornitori (dati sensibili cifrati)
   registerDeviceRoutes(app, h);
   registerVoucherRoutes(app, h, { page, getSettings });
   registerDocumentRoutes(app, h);
   registerCredentialRoutes(app, h);
+
+  // --- Agente C: chiusure di cassa (closings.mjs), archivio fatture (invoices.mjs), dare/avere (dareavere.mjs) ---
+  registerClosingRoutes(app, h, { adminOnly, media: usati.media || (() => missingMedia()) });
+  registerInvoiceRoutes(app, h, { adminOnly });
+  registerLedgerRoutes(app, h, { adminOnly });
+  // --- fine Agente C ---
+  // ===== Agente B: catalogo modelli, storico, riparazioni esterne, prestiti, note (officina/lottoB.mjs) =====
+  registerLottoB(app, h);
+  // ===== fine blocco Agente B =====
 
   // Magazzino
   const checkProduct = (b) => {
@@ -346,7 +386,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/repairs', h((req) => L.listRepairs({ status: str(req.query.status), q: str(req.query.q), open: req.query.open === '1', customer_id: req.query.customer_id })));
   app.post('/api/repairs', h(async (req) => {
     const r = await L.createRepair(req.body);
-    return { ...r, track_url: await trackUrl(r.token) };
+    return { ...r, track_url: await trackUrl(r.token), blacklist_alert: await findBlacks({ customer_id: r.customer_id }) };
   }));
   app.get('/api/repairs/:id', h(async (req) => {
     const r = await L.getRepair(req.params.id);
@@ -438,7 +478,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
         it.unit_cost = sv ? sv.cost : 0;
       }
     }
-    return L.createSale(req.body);
+    const sale = await L.createSale(req.body);
+    return { ...sale, blacklist_alert: req.body.customer_id ? await findBlacks({ customer_id: req.body.customer_id }) : [] };
   }));
   app.get('/api/sales/:id', h((req) => L.getSale(req.params.id)));
   app.get('/api/report', h(async (req) => {
@@ -485,10 +526,11 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders', 'checklist_templates', 'repair_signatures', 'quote_options'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders', 'blacklist', 'checklist_templates', 'repair_signatures', 'quote_options'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of LOTTO_B_TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all(); // Agente B
   return dump;
 }
