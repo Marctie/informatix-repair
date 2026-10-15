@@ -1,10 +1,16 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
-import { $, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal } from './util.js';
+import { createSettlement } from './buoni.js';
+import { showDeviceAlerts } from './dispositivi.js';
+import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
 export async function salesView(el) {
   const cart = [];
   let customer = null;
+  const discNow = () => Number(String($('#s-disc', el)?.value ?? '0').replace(',', '.')) || 0;
+  const dueNow = () => Math.max(0, cart.reduce((a, i) => a + i.qty * i.unit_price, 0) - discNow());
+  // Pagamento: metodo singolo, conto diviso e codice buono (buoni.js)
+  const settle = createSettlement({ methodId: 's-method', getDue: dueNow });
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Vendite</h1></div>
     <div class="grid lg:grid-cols-5 gap-5 items-start">
@@ -13,6 +19,10 @@ export async function salesView(el) {
         <div class="field">
           <label class="l" for="s-q">Cerca un articolo</label>
           <div class="relative"><input id="s-q" type="search" placeholder="Nome o codice dell'articolo" autocomplete="off" /><div id="s-sugg" class="suggest card hidden"></div></div>
+        </div>
+        <div class="field">
+          <label class="l">Servizi <button class="btn btn-ghost btn-sm" id="s-svc-edit" type="button">Gestisci listino</button></label>
+          <div id="s-svc" class="row tight" style="flex-wrap:wrap"></div>
         </div>
         <div class="field">
           <label class="l" for="s-free">Oppure aggiungi una voce libera</label>
@@ -30,9 +40,16 @@ export async function salesView(el) {
       </section>
     </div>`;
   const sugg = $('#s-sugg', el);
+  let services = [];
+  async function loadServices() {
+    services = (await safe(() => api('GET', '/api/services'))) || [];
+    if (!$('#s-svc', el)) return;
+    $('#s-svc', el).innerHTML = services.map((x) => `<button class="chip" type="button" data-svc="${x.id}">${esc(x.name)} · ${eur(x.price)}</button>`).join('') || '<span class="hint">Nessun servizio nel listino: aggiungili da “Gestisci listino”.</span>';
+  }
 
   function renderCart() {
     const subtotal = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
+    const keepDisc = discNow(); // lo sconto digitato non si perde quando cambia il carrello
     $('#s-cart', el).innerHTML = cart.length
       ? `<div class="sec" style="gap:0"><h3 class="sec-t" style="margin-bottom:.9rem">Carrello</h3>${cart.map((i, idx) => `<div class="cart-item">
           <span class="name">${esc(i.name)}</span><button class="xbtn" data-rm="${idx}" aria-label="Rimuovi ${esc(i.name)}">✕</button>
@@ -40,16 +57,20 @@ export async function salesView(el) {
             <span class="qty"><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="-1" aria-label="Meno">−</button><b>${i.qty}</b><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="1" aria-label="Più">+</button></span>
             <span class="hint">×</span><input style="width:6.5rem" inputmode="decimal" data-p="${idx}" value="${i.unit_price}" aria-label="Prezzo unitario" />
             <span class="sub-total">${eur(i.qty * i.unit_price)}</span>
-          </div></div>`).join('')}</div>
-        <div class="fgrid c3" style="align-items:end">
-          <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="0" /></div>
-          <div class="field"><label class="l" for="s-method">Pagamento</label><select id="s-method"><option>contanti</option><option>carta</option><option>bonifico</option><option>non tracciato</option></select></div>
-          <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(subtotal)}</b></div>
+          </div><input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
+        <div class="fgrid c2" style="align-items:end">
+          <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="${esc(String(keepDisc))}" /></div>
+          <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc))}</b></div>
         </div>
+        <div class="sec" id="s-settle"></div>
+        <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${wantPrint() ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
     const disc = $('#s-disc', el);
-    if (disc) disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - (Number(String(disc.value).replace(',', '.')) || 0))); };
+    if (disc) {
+      settle.mount($('#s-settle', el));
+      disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - discNow())); settle.update(); };
+    }
   }
 
   async function recent() {
@@ -98,27 +119,37 @@ export async function salesView(el) {
     if (q) { const i = cart[Number(q.dataset.q)]; i.qty = Math.max(1, i.qty + Number(q.dataset.d)); return renderCart(); }
     const rm = e.target.closest('[data-rm]');
     if (rm) { cart.splice(Number(rm.dataset.rm), 1); return renderCart(); }
+    const sv = e.target.closest('[data-svc]');
+    if (sv) { const x = services.find((y) => y.id === Number(sv.dataset.svc)); cart.push({ name: x.name, qty: 1, unit_price: x.price, unit_cost: x.cost }); return renderCart(); }
+    if (e.target.id === 's-svc-edit') return servicesDialog(loadServices);
     if (e.target.id === 's-free-add') {
       const name = $('#s-free', el).value.trim(); const price = Number(String($('#s-free-p', el).value).replace(',', '.'));
       if (!name || !(price >= 0) || $('#s-free-p', el).value === '') return toast('Inserisci descrizione e importo', false);
       cart.push({ name, qty: 1, unit_price: price }); $('#s-free', el).value = ''; $('#s-free-p', el).value = ''; return renderCart();
     }
     if (e.target.id === 's-pay') {
+      const printNow = $('#s-print', el).checked;
+      try { localStorage.setItem('sale_print', printNow ? '1' : '0'); } catch { /* memoria non disponibile */ }
+      const bad = settle.validate();
+      if (bad) return toast(bad, false);
       e.target.disabled = true;
-      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, method: $('#s-method', el).value, customer_id: customer?.id || null }));
+      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload() }));
       e.target.disabled = false;
       if (!out) return;
-      cart.length = 0; renderCart(); recent();
+      cart.length = 0; settle.reset(); renderCart(); recent();
+      showDeviceAlerts(out.device_alerts);
       toast(`Venduto: ${eur(out.total)}`);
-      window.open(`/print/sale/${out.id}`, '_blank');
+      if (printNow) window.open(`/print/sale/${out.id}`, '_blank');
     }
   });
   el.addEventListener('change', (e) => {
+    const sn = e.target.closest('[data-sn]');
+    if (sn) { cart[Number(sn.dataset.sn)].serial = sn.value.trim(); return; }
     const p = e.target.closest('[data-p]');
     if (p) { cart[Number(p.dataset.p)].unit_price = Number(String(p.value).replace(',', '.')) || 0; renderCart(); }
   });
   renderCart();
-  await recent();
+  await Promise.all([recent(), loadServices()]);
 }
 
 export async function cashView(el, qs = new URLSearchParams()) {
@@ -153,11 +184,13 @@ export async function cashView(el, qs = new URLSearchParams()) {
         ${kpi(eur(r.total), 'Incassato nel periodo', 'text-secondary')}
         ${kpi(r.rows.length, r.rows.length === 1 ? 'Operazione' : 'Operazioni')}
         ${kpi(eur(r.total / days), 'Media al giorno')}
-        ${kpi(eur(r.parts_cost), 'Costo ricambi e merce venduta', 'text-gray-600')}
+        ${canSeeCosts() ? kpi(eur(r.parts_cost), 'Costo ricambi e merce venduta', 'text-gray-600') : ''}
         ${kpi(eur(ex.total), 'Spese nel periodo', 'text-amber-600')}
         ${kpi(eur(r.total - ex.total), 'Incassi meno spese', r.total - ex.total >= 0 ? 'text-emerald-600' : 'text-red-600')}
       </div>
-      ${r.untracked_excluded ? `<p class="hint">${r.untracked_excluded} ${r.untracked_excluded === 1 ? 'pagamento “non tracciato” non è conteggiato' : 'pagamenti “non tracciato” non sono conteggiati'} (impostazione in Impostazioni → Cassa).</p>` : ''}
+      ${r.vouchers?.n ? `<section class="card panel sec"><h3 class="sec-t">Buoni usati nel periodo (${r.vouchers.n})</h3>
+        <div class="plist"><div><span>Buoni regalo incassati come credito <span class="hint" style="display:block">compaiono sopra come metodo “buono”</span></span><b>${eur(r.vouchers.credit)}</b></div>
+        <div><span>Sconti dei buoni <span class="hint" style="display:block">già tolti dai totali delle vendite</span></span><b>${eur(r.vouchers.discount)}</b></div></div></section>` : ''}
       ${r.rows.length ? `<div class="an-cols">
         <section class="card panel sec"><h3 class="sec-t">Per metodo di pagamento</h3>${hbars([...r.by_method].sort((x, y) => y.total - x.total), { value: (m) => m.total, label: (m) => `${m.method} (${m.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
         <section class="card panel sec"><h3 class="sec-t">Riparazioni e vendite</h3>${hbars(byKind, { value: (g) => g.total, label: (g) => `${g.name} (${g.n})`, fmt: (v) => eur(v) + pct(v) })}</section>
@@ -196,7 +229,36 @@ export async function cashView(el, qs = new URLSearchParams()) {
   await load();
 }
 
-const METHODS = ['contanti', 'carta', 'bonifico', 'non tracciato'];
+/** Ultima scelta di stampa (per postazione): di default la ricevuta si stampa. */
+const wantPrint = () => { try { return localStorage.getItem('sale_print') !== '0'; } catch { return true; } };
+/** Gestione del listino servizi: elenco, modifica rapida, nuovo, elimina (con doppia conferma). */
+async function servicesDialog(done) {
+  const m = openModal('', { title: 'Listino servizi', footer: '<button class="btn btn-outline" data-close>Chiudi</button>' });
+  const body = $('.modal-body', m.el);
+  const draw = async () => {
+    const rows = (await safe(() => api('GET', '/api/services'))) || [];
+    body.innerHTML = `<div class="plist">${rows.map((x) => `<div data-id="${x.id}"><span>${esc(x.name)}${canSeeCosts() ? `<span class="hint" style="display:block">costo ${eur(x.cost)}</span>` : ''}</span><span><b>${eur(x.price)}</b> <button class="xbtn" data-edit="${x.id}" aria-label="Modifica ${esc(x.name)}">✎</button><button class="xbtn" data-del="${x.id}" aria-label="Elimina ${esc(x.name)}">✕</button></span></div>`).join('') || '<p class="hint">Nessun servizio.</p>'}</div>
+      <h3 class="sec-t" style="margin-top:1rem" id="sv-t">Nuovo servizio</h3>
+      <div class="fgrid c3"><div class="field"><label class="l" for="sv-n">Nome</label><input id="sv-n" placeholder="es. Ripristino Windows 11" /></div>
+        <div class="field"><label class="l" for="sv-p">Prezzo €</label><input id="sv-p" inputmode="decimal" /></div>
+        ${canSeeCosts() ? '<div class="field"><label class="l" for="sv-c">Costo € (facoltativo)</label><input id="sv-c" inputmode="decimal" /></div>' : ''}</div>
+      <button class="btn btn-primary" id="sv-ok">Salva servizio</button>`;
+    let editing = null;
+    const n = (id) => $(id, body);
+    body.onclick = async (e) => {
+      const ed = e.target.closest('[data-edit]'); const dl = e.target.closest('[data-del]');
+      if (ed) { editing = rows.find((x) => x.id === Number(ed.dataset.edit)); n('#sv-n').value = editing.name; n('#sv-p').value = editing.price; if (n('#sv-c')) n('#sv-c').value = editing.cost; n('#sv-t').textContent = 'Modifica servizio'; n('#sv-n').focus(); }
+      if (dl) { const x = rows.find((y) => y.id === Number(dl.dataset.del)); if (await confirmDelete(x.name)) { await safe(() => api('DELETE', `/api/services/${x.id}`)); await draw(); done(); } }
+      if (e.target.id === 'sv-ok') {
+        const b = { name: n('#sv-n').value, price: n('#sv-p').value.replace(',', '.') || 0, cost: (n('#sv-c')?.value || '').replace(',', '.') || 0 };
+        const out = await safe(() => (editing ? api('PUT', `/api/services/${editing.id}`, b) : api('POST', '/api/services', b)));
+        if (out) { toast('Servizio salvato'); await draw(); done(); }
+      }
+    };
+  };
+  await draw();
+}
+const METHODS = ['contanti', 'carta', 'bonifico'];
 const DOC_LABEL = { scontrino: 'Scontrino', fattura: 'Fattura', ricevuta: 'Ricevuta', nessuno: 'Senza giustificativo' };
 const opt = (list, sel, label = (v) => v) => list.map((v) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(label(v))}</option>`).join('');
 
@@ -235,7 +297,7 @@ async function expenseForm(x, done) {
     if (out) { try { localStorage.setItem('ex-by', body.paid_by || ''); } catch { /* facoltativo */ } m.close(); toast('Spesa salvata'); done?.(); }
   };
   if (x) $('#ex-del', m.el).onclick = async () => {
-    if (!confirm('Eliminare questa spesa?')) return;
+    if (!(await confirmDelete('questa spesa'))) return;
     if (await safe(() => api('DELETE', `/api/expenses/${x.id}`))) { m.close(); toast('Spesa eliminata'); done?.(); }
   };
 }
@@ -278,10 +340,6 @@ export async function settingsView(el) {
         <h2 class="sec-t" style="margin-top:.6rem">Tracciamento per i clienti</h2>
         <div class="field"><label class="l" for="st-url">Indirizzo pubblico</label><input id="st-url" data-k="public_base_url" value="${esc(s.public_base_url)}" placeholder="vuoto = rete locale (${esc(META.track_base)})" />
           <span class="hint">Quando il tracciamento sarà online (es. https://riparazioni.informatixrepair.com) scrivilo qui: i QR e i link useranno questo indirizzo.</span></div>
-        <h2 class="sec-t" style="margin-top:.6rem">Cassa</h2>
-        <div class="field"><label class="l" for="st-untr">Pagamenti “non tracciato”</label>
-          <select id="st-untr" data-k="cash_show_untracked"><option value="1" ${s.cash_show_untracked !== '0' ? 'selected' : ''}>Conteggiali nella cassa</option><option value="0" ${s.cash_show_untracked === '0' ? 'selected' : ''}>Non mostrarli nella cassa</option></select>
-          <span class="hint">Il metodo “non tracciato” si sceglie su vendite e riparazioni. Con “non mostrarli” restano salvati nel gestionale ma non entrano nei totali, nel grafico e nell’incasso di oggi.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Avvisi</h2>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="st-lsd">Scorta minima generale (pezzi)</label><input id="st-lsd" data-k="low_stock_default" type="number" min="0" inputmode="numeric" value="${esc(s.low_stock_default ?? '0')}" />
@@ -291,9 +349,26 @@ export async function settingsView(el) {
         </div>
         <div class="field"><label class="l" for="st-rd">Riparazione pronta non ritirata dopo (giorni)</label><input id="st-rd" data-k="ready_days" type="number" min="0" inputmode="numeric" value="${esc(s.ready_days ?? '7')}" />
           <span class="hint">Ti ricorda di avvisare il cliente. 0 = spento.</span></div>
+        <div class="field"><label class="l" for="st-qv">Validità dei preventivi (giorni)</label><input id="st-qv" data-k="quote_valid_days" type="number" min="1" max="365" inputmode="numeric" value="${esc(s.quote_valid_days ?? '15')}" />
+          <span class="hint">Scadenza proposta quando crei un preventivo nella sezione Preventivi.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Scheda di ingresso</h2>
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
+        <h2 class="sec-t" style="margin-top:.6rem">Dispositivi non riparati</h2>
+        <div class="fgrid c2">
+          <div class="field"><label class="l" for="st-sdays">Giorni di giacenza prima dell’avviso</label><input id="st-sdays" data-k="storage_days" type="number" min="1" inputmode="numeric" value="${esc(s.storage_days ?? '15')}" />
+            <span class="hint">Passati questi giorni dal rifiuto (o dall’annullamento) compare l’avviso: smaltire o spostare in deposito a pagamento.</span></div>
+          <div class="field"><label class="l" for="st-sfee">Tariffa del deposito a pagamento</label><input id="st-sfee" data-k="storage_fee" value="${esc(s.storage_fee || '')}" placeholder="es. 3 € a settimana" />
+            <span class="hint">Compare nei messaggi e nei testi al cliente. Il pagamento non viene registrato in automatico.</span></div>
+        </div>
         <div><button class="btn btn-primary" id="st-save">Salva impostazioni</button></div>
+      </section>
+      <section class="card panel sec lg:col-span-2 lg:col-start-1 lg:row-start-2" id="st-legal">
+        <h2 class="sec-t">Testi di consenso e di conferma (bozze)</h2>
+        <p class="hint">Sono bozze scritte per far funzionare il gestionale: <b>non sono consulenza legale</b> e vanno riviste da Christian e da un professionista. Finché non spunti “testi verificati”, ogni scheda e schermata li segna come “bozza da far verificare”. Segnaposto: {negozio} {garanzia} {codice} {importo} {dispositivo} {consegna} {giorni} {tariffa}.</p>
+        <div class="field"><label class="l" for="st-lv">Stato dei testi</label><select id="st-lv" data-k="legal_verified"><option value="0" ${String(s.legal_verified) !== '1' ? 'selected' : ''}>Bozza da far verificare</option><option value="1" ${String(s.legal_verified) === '1' ? 'selected' : ''}>Testi verificati</option></select></div>
+        ${[['consent_intake', 'Consenso sulla scheda di ingresso'], ['quote_accept_text', 'Conferma del preventivo (pulsante SÌ)'], ['quote_decline_text', 'Rifiuto del preventivo (introduzione)'], ['quote_decline_pickup', 'Rifiuto: “passerò a ritirarlo”'], ['quote_decline_cede', 'Rifiuto: “cedo il dispositivo al negozio”'], ['quote_sign_text', 'Frase sopra la firma']]
+          .map(([k, l]) => `<div class="field"><label class="l" for="st-${k}">${l}</label><textarea id="st-${k}" data-k="${k}" rows="4">${esc(s[k] || '')}</textarea></div>`).join('')}
+        <div><button class="btn btn-primary" id="st-save2">Salva impostazioni</button></div>
       </section>
       <div class="grid gap-5">
       <section class="card panel sec">
@@ -301,6 +376,12 @@ export async function settingsView(el) {
         <p style="font-size:.92rem">${ONLINE ? 'Ogni notte il sistema salva da solo una copia di tutti i dati (si conservano le ultime 30). Puoi anche scaricarne una tu o salvarne una subito.' : 'Scarica una copia completa di clienti, riparazioni, magazzino e vendite. Conservala su una chiavetta o nel cloud, almeno una volta a settimana.'}</p>
         <div class="row tight"><a class="btn btn-dark" href="/api/backup" download>Scarica backup</a>${ONLINE ? '<button class="btn btn-outline" id="st-r2">Salva ora nel cloud</button>' : ''}</div>
         <p class="hint">${ONLINE ? 'Per ripristinare una copia serve l’assistenza: scrivici prima di cancellare qualcosa di importante.' : 'Per ripristinarlo: chiudi il gestionale e sostituisci <code>officina/data/officina.db</code> con il file scaricato.'}</p>
+      </section>
+      <section class="card panel sec" id="st-ck">
+        <h2 class="sec-t">Checklist per tipo di dispositivo</h2>
+        <p class="hint">Le voci dei controlli (ingresso, ritiro, collaudo) cambiano con il tipo di dispositivo. Una voce per riga; le modifiche valgono per le riparazioni nuove e per quelle ancora da compilare.</p>
+        <div class="field"><label class="l" for="ck-type">Tipo di dispositivo</label><select id="ck-type">${Object.entries(META.device_types || {}).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('')}</select></div>
+        <div id="ck-body" class="sec"></div>
       </section>
       <section class="card panel sec" id="st-demo">
         <h2 class="sec-t">Dati demo</h2>
@@ -320,18 +401,45 @@ export async function settingsView(el) {
       if (await safe(() => api('POST', '/api/demo', {}))) { toast('Dati demo caricati: esplora il gestionale'); drawDemo(); }
     };
     if ($('#st-demo-del', box)) $('#st-demo-del', box).onclick = async () => {
-      if (!confirm('Eliminare tutti i dati demo? I dati veri non vengono toccati.')) return;
+      if (!(await confirmDelete('tutti i dati demo', { detail: 'I dati veri non vengono toccati.' }))) return;
       if (await safe(() => api('DELETE', '/api/demo'))) { toast('Dati demo eliminati'); drawDemo(); }
     };
   };
   drawDemo();
+  // checklist per tipo: tre elenchi modificabili (una voce per riga)
+  const ckBox = $('#ck-body', el);
+  let ckAll = {};
+  const drawCk = () => {
+    const t = $('#ck-type', el).value;
+    const c = ckAll[t];
+    if (!c) return;
+    const ta = (p, title) => `<div class="field"><label class="l" for="ck-${p}">${title}</label><textarea id="ck-${p}" rows="7" data-ph="${p}">${esc((c[p] || []).join('\n'))}</textarea></div>`;
+    ckBox.innerHTML = `${ta('in', 'Controllo all’ingresso')}${ta('pre', 'Al ritiro in laboratorio')}${ta('out', 'Collaudo finale')}
+      <div class="row tight"><button class="btn btn-outline" id="ck-save">Salva checklist</button>${c.custom ? '<button class="btn btn-ghost" id="ck-reset">Ripristina le voci predefinite</button>' : '<span class="hint">Voci predefinite in uso.</span>'}</div>`;
+    $('#ck-save', ckBox).onclick = async () => {
+      const body = {};
+      $$('[data-ph]', ckBox).forEach((x) => { body[x.dataset.ph] = x.value.split('\n').map((l) => l.trim()).filter(Boolean); });
+      const out = await safe(() => api('PUT', `/api/checklists/${t}`, body));
+      if (out) { ckAll[t] = out; toast('Checklist salvata'); drawCk(); }
+    };
+    const rs = $('#ck-reset', ckBox);
+    if (rs) rs.onclick = async () => {
+      if (!(await confirmDelete(`le voci personalizzate di ${META.device_types[t].label}`, { verb: 'Ripristinare', detail: 'Tornano le voci predefinite. Le riparazioni già compilate non cambiano.' }))) return;
+      const out = await safe(() => api('DELETE', `/api/checklists/${t}`));
+      if (out) { ckAll[t] = out; toast('Voci predefinite ripristinate'); drawCk(); }
+    };
+  };
+  $('#ck-type', el).onchange = drawCk;
+  safe(() => api('GET', '/api/checklists')).then((r) => { ckAll = r || {}; drawCk(); });
   if ($('#st-r2', el)) $('#st-r2', el).onclick = async () => {
     const out = await safe(() => api('POST', '/api/backup/r2', {}));
     if (out?.ok) toast('Copia salvata nel cloud');
   };
-  $('#st-save', el).onclick = async () => {
+  const saveSettings = async () => {
     const body = {};
     el.querySelectorAll('[data-k]').forEach((i) => { body[i.dataset.k] = i.value; });
     if (await safe(() => api('PUT', '/api/settings', body))) { await loadMeta(); toast('Impostazioni salvate'); }
   };
+  $('#st-save', el).onclick = saveSettings;
+  $('#st-save2', el).onclick = saveSettings;
 }

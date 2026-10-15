@@ -36,10 +36,11 @@ export const debounce = (fn, ms = 250) => { let h; return (...a) => { clearTimeo
 
 let modalStack = [];
 /** Apre un modale; ritorna { el, close }. html = contenuto del corpo. */
-export function openModal(html, { title = '', wide = false, footer = '' } = {}) {
+// full = a schermo intero sui telefoni (moduli lunghi)
+export function openModal(html, { title = '', wide = false, footer = '', full = false } = {}) {
   const root = $('#modal-root');
   const wrap = document.createElement('div');
-  wrap.className = 'modal-bg fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4';
+  wrap.className = `modal-bg fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4${full ? ' modal-full' : ''}`;
   wrap.setAttribute('role', 'dialog');
   wrap.setAttribute('aria-modal', 'true');
   wrap.setAttribute('role', 'dialog');
@@ -56,6 +57,39 @@ export function openModal(html, { title = '', wide = false, footer = '' } = {}) 
   modalStack.push(api2);
   return api2;
 }
+/**
+ * Doppia conferma per ogni eliminazione: 1) "Eliminare X?"  2) conferma finale "non si può annullare".
+ * Con `typed` (es. 'ELIMINA') il secondo passaggio richiede di scrivere la parola: per clienti, riparazioni, utenti.
+ * Ritorna una Promise<boolean>.
+ */
+export function confirmDelete(what, { verb = 'Eliminare', detail = '', typed = '' } = {}) {
+  return new Promise((resolve) => {
+    let step = 1;
+    let result = false;
+    const m = openModal('', { title: `${verb}?`, footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cd-go"></button>' });
+    const body = $('.modal-body', m.el);
+    const go = $('#cd-go', m.el);
+    const closeOrig = m.close;
+    m.close = () => { closeOrig(); resolve(result); };
+    const draw = () => {
+      if (step === 1) {
+        body.innerHTML = `<p class="text-base">${esc(verb)} <b>${esc(what)}</b>?</p>${detail ? `<p class="text-sm text-muted mt-2">${esc(detail)}</p>` : ''}`;
+        go.textContent = 'Continua';
+        go.disabled = false;
+      } else {
+        body.innerHTML = `<p class="text-base"><b>Conferma finale:</b> ${esc(what)} verrà eliminato e <b>non si può annullare</b>.</p>${typed ? `<label class="field mt-3"><span>Scrivi <b>${esc(typed)}</b> per confermare</span><input id="cd-typed" autocomplete="off" autocapitalize="characters"></label>` : ''}`;
+        go.textContent = 'Confermo l’eliminazione';
+        go.disabled = !!typed;
+        if (typed) { const i = $('#cd-typed', m.el); i.focus(); i.oninput = () => { go.disabled = i.value.trim().toUpperCase() !== typed.toUpperCase(); }; }
+      }
+    };
+    go.onclick = () => { if (step === 1) { step = 2; draw(); } else { result = true; m.close(); } };
+    // il pulsante Annulla e la X chiudono il modale originale: li colleghiamo alla nostra close
+    m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) m.close(); }, true);
+    draw();
+  });
+}
+
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalStack.length) modalStack[modalStack.length - 1].close(); });
 
 // ---------- WhatsApp / contatti ----------
@@ -82,13 +116,17 @@ export const STATUS_STYLE = {
 export const statusBadge = (r) => `<span class="badge ${STATUS_STYLE[r.status]}">${esc(r.status_label)}</span>`;
 export const progressBar = (r) => `<div class="bar ${r.status === 'ready' || r.status === 'delivered' ? 'green' : ''}" title="${r.progress}%"><i style="width:${r.progress}%"></i></div>`;
 
-export const META = { statuses: {}, settings: {}, track_base: '' };
+export const META = { statuses: {}, settings: {}, track_base: '', role: 'admin' };
+/** Il ruolo Cassa non vede costi d'acquisto, margini e guadagni (il server non glieli manda nemmeno). */
+export const canSeeCosts = () => META.role !== 'cassa';
 export const trackUrl = (token) => `${META.track_base}/t/${token}`;
 export async function loadMeta() {
   const m = await api('GET', '/api/meta');
   META.statuses = m.statuses;
   META.settings = m.settings;
   META.track_base = m.track_base;
+  META.device_types = m.device_types || {};
+  META.phases = m.phases || {};
 }
 
 /** Messaggi WhatsApp precompilati. */
@@ -99,6 +137,8 @@ export function waMessage(kind, r) {
   switch (kind) {
     case 'ready': return `Ciao ${first}, il tuo ${r.brand_model} è pronto per il ritiro! ${r.quote != null ? `Importo da saldare: ${eur((r.final_price ?? r.quote) - (r.paid ?? r.deposit ?? 0))}. ` : ''}Ti aspettiamo da ${shop}.${link}`;
     case 'quote': return `Ciao ${first}, per il tuo ${r.brand_model} il preventivo è di ${eur(r.quote)}${r.eta_date ? `, consegna stimata ${fdate(r.eta_date)}` : ''}. Puoi approvarlo direttamente dal link, oppure rispondi a questo messaggio.${link}`;
+    case 'sign': return `Ciao ${first}, per completare l’ingresso del tuo ${r.brand_model} da ${shop} puoi leggere le condizioni e firmare la scheda direttamente dal telefono, senza scaricare nulla.${link}`;
+    case 'storage': return `Ciao ${first}, il tuo ${r.brand_model} (rif. ${r.code}) non è stato riparato e ti aspetta in negozio${r.fate_since ? ` dal ${fdate(r.fate_since.slice(0, 10))}` : ''}. Dopo ${META.settings.storage_days || 15} giorni sarà custodito in deposito a pagamento (${META.settings.storage_fee || 'tariffa da definire'}) oppure potrà essere smaltito/ceduto secondo le condizioni che hai firmato. Passa a ritirarlo o scrivici per accordarci: ${META.settings.shop_phone || ''}.`;
     case 'late': return `Ciao ${first}, ti scriviamo da ${shop}: la riparazione del tuo ${r.brand_model} richiede qualche giorno in più del previsto. Ti aggiorniamo appena possibile, grazie per la pazienza.${link}`;
     default: return `Ciao ${first}, ti scriviamo da ${shop} riguardo al tuo ${r.brand_model}.${link}`;
   }

@@ -19,3 +19,6 @@ __pycache__/
 /cypress/videos
 
 .wrangler/
+
+.claude/worktrees/
+.claude/

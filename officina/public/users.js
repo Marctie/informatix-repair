@@ -1,7 +1,7 @@
 // Utenti: elenco di chi può entrare nel gestionale. Lo vede e lo modifica solo l'amministratore.
-import { $, esc, api, toast, safe, openModal } from './util.js';
+import { $, esc, api, toast, safe, openModal, confirmDelete } from './util.js';
 
-const ROLE = { admin: 'Amministratore', staff: 'Postazione / collaboratore' };
+const ROLE = { admin: 'Amministratore', staff: 'Postazione / collaboratore', cassa: 'Cassa (permessi limitati)' };
 
 export async function usersView(el) {
   el.innerHTML = `
@@ -36,7 +36,7 @@ function editUser(u, done) {
       <div class="fgrid c2">
         <div class="field"><label class="l" for="ue-name">Nome</label><input id="ue-name" value="${esc(u?.name || '')}" placeholder="Es. Cassa, Christian" /></div>
         <div class="field"><label class="l" for="ue-role">Ruolo</label>
-          <select id="ue-role"><option value="staff" ${u?.role !== 'admin' ? 'selected' : ''}>${ROLE.staff}</option><option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>${ROLE.admin}</option></select></div>
+          <select id="ue-role"><option value="staff" ${u?.role !== 'admin' ? 'selected' : ''}>${ROLE.staff}</option><option value="cassa" ${u?.role === 'cassa' ? 'selected' : ''}>${ROLE.cassa}</option><option value="admin" ${u?.role === 'admin' ? 'selected' : ''}>${ROLE.admin}</option></select></div>
       </div>
       ${u ? `<label class="row tight" style="cursor:pointer"><input type="checkbox" id="ue-active" ${u.active ? 'checked' : ''} /> Può accedere</label>` : ''}
     </div>`,
@@ -48,7 +48,7 @@ function editUser(u, done) {
     if (out) { m.close(); toast('Utente salvato'); done?.(); }
   };
   if (u) $('#ue-del', m.el).onclick = async () => {
-    if (!confirm(`Togliere l’accesso a ${u.email}?`)) return;
+    if (!(await confirmDelete(u.email, { verb: 'Togliere l’accesso a', typed: 'ELIMINA' }))) return;
     const out = await safe(() => api('DELETE', `/api/users/${u.id}`));
     if (out) { m.close(); toast('Utente eliminato'); done?.(); }
   };

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FatturaElettronica versione="FPR12" xmlns="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2">
+  <FatturaElettronicaHeader>
+    <CedentePrestatore>
+      <DatiAnagrafici>
+        <IdFiscaleIVA><IdPaese>IT</IdPaese><IdCodice>05678901234</IdCodice></IdFiscaleIVA>
+        <Anagrafica><Denominazione>Ricambi Napoli Srl</Denominazione></Anagrafica>
+      </DatiAnagrafici>
+      <Sede><Indirizzo>Via Toledo 100</Indirizzo><CAP>80134</CAP><Comune>Napoli</Comune><Provincia>NA</Provincia><Nazione>IT</Nazione></Sede>
+    </CedentePrestatore>
+  </FatturaElettronicaHeader>
+  <FatturaElettronicaBody>
+    <DatiGenerali>
+      <DatiGeneraliDocumento><TipoDocumento>TD01</TipoDocumento><Divisa>EUR</Divisa><Data>2026-09-22</Data><Numero>2026/774</Numero><ImportoTotaleDocumento>145.91</ImportoTotaleDocumento></DatiGeneraliDocumento>
+      <DatiDDT><NumeroDDT>DDT-5521</NumeroDDT><DataDDT>2026-09-21</DataDDT></DatiDDT>
+    </DatiGenerali>
+    <DatiBeniServizi>
+      <DettaglioLinee><NumeroLinea>1</NumeroLinea><Descrizione>Display iPhone 13 qualità originale</Descrizione><Quantita>1.00</Quantita><PrezzoUnitario>64.00</PrezzoUnitario><PrezzoTotale>64.00</PrezzoTotale><AliquotaIVA>22.00</AliquotaIVA></DettaglioLinee>
+      <DettaglioLinee><NumeroLinea>2</NumeroLinea><Descrizione>Batteria iPhone 11</Descrizione><Quantita>3.00</Quantita><UnitaMisura>PZ</UnitaMisura><PrezzoUnitario>14.20</PrezzoUnitario><PrezzoTotale>42.60</PrezzoTotale><AliquotaIVA>22.00</AliquotaIVA></DettaglioLinee>
+      <DettaglioLinee><NumeroLinea>3</NumeroLinea><Descrizione>Spese di trasporto</Descrizione><Quantita>1.00</Quantita><PrezzoUnitario>8.00</PrezzoUnitario><PrezzoTotale>8.00</PrezzoTotale><AliquotaIVA>22.00</AliquotaIVA></DettaglioLinee>
+      <DettaglioLinee><NumeroLinea>4</NumeroLinea><Descrizione><![CDATA[Cavo "Lightning" <MFi> 1 m]]></Descrizione><Quantita>1.00</Quantita><PrezzoUnitario>5.00</PrezzoUnitario><PrezzoTotale>5.00</PrezzoTotale><AliquotaIVA>22.00</AliquotaIVA></DettaglioLinee>
+      <DatiRiepilogo><AliquotaIVA>22.00</AliquotaIVA><ImponibileImporto>119.60</ImponibileImporto><Imposta>26.31</Imposta><EsigibilitaIVA>I</EsigibilitaIVA></DatiRiepilogo>
+    </DatiBeniServizi>
+  </FatturaElettronicaBody>
+</FatturaElettronica>

@@ -1,10 +1,20 @@
 // Accettazione veloce di una riparazione e scheda di dettaglio.
 import { scanWithCamera } from './scan.js';
-import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl } from './util.js';
+import { showDeviceAlerts } from './dispositivi.js';
+import { createSettlement } from './buoni.js';
+import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 
-const DEVICE_TYPES = [['smartphone', 'Smartphone'], ['tablet', 'Tablet'], ['portatile', 'Portatile'], ['pc', 'PC fisso'], ['console', 'Console'], ['altro', 'Altro']];
+import { signIntakeAtDesk, signDialog } from './sign.js';
+import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
+
+// Tipi di dispositivo, etichette e suggerimenti arrivano dal server (/api/meta): cambiano con il tipo scelto.
+const FALLBACK_TYPES = { smartphone: { label: 'Smartphone', serial: 'IMEI / seriale', passcode: 'PIN / schema di sblocco', accessories: ['Caricatore', 'Cover', 'SIM', 'Scheda SD', 'Cavo'] }, altro: { label: 'Altro', serial: 'Numero di serie', passcode: 'Codice di sblocco', accessories: ['Caricatore', 'Cavo'] } };
+const typesMeta = () => (META.device_types && Object.keys(META.device_types).length ? META.device_types : FALLBACK_TYPES);
+const COLORS = ['nero', 'bianco', 'argento', 'grigio', 'oro', 'blu', 'rosso', 'verde', 'rosa', 'viola', 'giallo', 'titanio', 'grafite', 'trasparente']; // suggerimenti: si puo' scrivere anche altro
+const typeInfo = (t) => typesMeta()[t] || typesMeta().altro || FALLBACK_TYPES.altro;
+let CHECKLISTS = {}; // elenchi di controllo per tipo (si ricaricano a ogni apertura)
+const loadChecklists = async () => { CHECKLISTS = (await safe(() => api('GET', '/api/checklists'))) || CHECKLISTS; return CHECKLISTS; };
 const PROBLEMS = ['Schermo rotto', 'Batteria', 'Non si accende', 'Non carica', 'Lento / software', 'Acqua / liquido', 'Audio / microfono', 'Fotocamera'];
-const ACCESSORIES = ['Caricatore', 'Cover', 'SIM', 'Scheda SD', 'Borsa', 'Cavo'];
 const CONDITIONS = ['Graffi', 'Display crepato', 'Ammaccature', 'Ottime condizioni'];
 
 const toggleChips = (root, sel) => root.addEventListener('click', (e) => { const c = e.target.closest(`${sel} .chip`); if (c) c.classList.toggle('on'); });
@@ -30,10 +40,11 @@ export function openRepairForm(onDone, preset = {}) {
 
       <section class="sec">
         <h3 class="sec-t">Dispositivo</h3>
-        <div class="field"><label class="l">Tipo di dispositivo</label><div class="row tight" id="rf-types">${DEVICE_TYPES.map(([k, l], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${l}</span>`).join('')}</div></div>
+        <div class="field"><label class="l">Tipo di dispositivo</label><div class="row tight" id="rf-types">${Object.entries(typesMeta()).map(([k, v], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${esc(v.label)}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-model">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
-          <div class="field"><label class="l" for="rf-serial">Seriale / IMEI</label>
+          <div class="field"><label class="l" for="rf-color">Colore</label><input id="rf-color" list="rf-colors" autocomplete="off" placeholder="es. nero, argento, blu" /><datalist id="rf-colors">${COLORS.map((c) => `<option value="${c}"></option>`).join('')}</datalist></div>
+          <div class="field"><label class="l" for="rf-serial">${esc(typeInfo(Object.keys(typesMeta())[0]).serial)}</label>
             <div class="row nowrap"><input id="rf-serial" autocomplete="off" placeholder="Spara col lettore o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline btn-icon" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
             <div id="rf-serial-hint" class="hint"></div></div>
         </div>
@@ -47,12 +58,19 @@ export function openRepairForm(onDone, preset = {}) {
 
       <section class="sec">
         <h3 class="sec-t">Cosa lascia e in che stato</h3>
-        <div class="field"><label class="l">Accessori lasciati</label><div class="row tight" id="rf-acc">${ACCESSORIES.map((p) => `<span class="chip">${p}</span>`).join('')}</div></div>
+        <div class="field"><label class="l">Accessori lasciati</label><div class="row tight" id="rf-acc">${typeInfo(Object.keys(typesMeta())[0]).accessories.map((p) => `<span class="chip">${esc(p)}</span>`).join('')}</div></div>
         <div class="field"><label class="l">Stato estetico</label><div class="row tight" id="rf-cond">${CONDITIONS.map((p) => `<span class="chip">${p}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-accnote">Altri accessori o note sullo stato</label><input id="rf-accnote" placeholder="Facoltativo" /></div>
-          <div class="field"><label class="l" for="rf-pass">PIN / schema di sblocco</label><input id="rf-pass" placeholder="Facoltativo" /><span class="hint">Solo uso interno: il cliente non lo vede mai.</span></div>
+          <div class="field"><label class="l" for="rf-pass">${esc(typeInfo(Object.keys(typesMeta())[0]).passcode)}</label><input id="rf-pass" placeholder="Facoltativo" /><span class="hint">Solo uso interno: il cliente non lo vede mai.</span></div>
         </div>
+      </section>
+
+      <section class="sec">
+        <h3 class="sec-t">Controllo all’ingresso</h3>
+        <p class="sec-sub">Facoltativo: cosa funziona e cosa no quando il dispositivo arriva. Le voci cambiano con il tipo di dispositivo; resta salvato nella riparazione.</p>
+        <div id="rf-ck"></div>
+        ${checklistLegend()}
       </section>
 
       <section class="sec">
@@ -60,7 +78,7 @@ export function openRepairForm(onDone, preset = {}) {
         <div class="fgrid c4 m2">
           <div class="field"><label class="l" for="rf-quote">Preventivo €</label><input id="rf-quote" inputmode="decimal" placeholder="da definire" /></div>
           <div class="field"><label class="l" for="rf-deposit">Acconto €</label><input id="rf-deposit" inputmode="decimal" placeholder="0" /></div>
-          <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option><option>non tracciato</option></select></div>
+          <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
         </div>
         <div class="field">
@@ -79,7 +97,24 @@ export function openRepairForm(onDone, preset = {}) {
   let customerId = null;
 
   // scelte rapide
-  $('#rf-types', root).onclick = (e) => { const c = e.target.closest('.chip'); if (!c) return; $$('#rf-types .chip', root).forEach((x) => x.classList.remove('on')); c.classList.add('on'); };
+  // il tipo di dispositivo cambia etichette (seriale/IMEI, PIN/password), accessori suggeriti e controlli d'ingresso
+  const curType = () => $('#rf-types .chip.on', root)?.dataset.v || 'smartphone';
+  const drawChecklist = () => {
+    const t = curType();
+    $('#rf-ck', root).innerHTML = checklistGrid(toItems((CHECKLISTS[t] || CHECKLISTS.altro || {}).in));
+    const g = $('#rf-ck .ckgrid', root);
+    if (g) bindChecklist(g);
+  };
+  const applyType = () => {
+    const info = typeInfo(curType());
+    $('label[for="rf-serial"]', root).textContent = info.serial;
+    $('label[for="rf-pass"]', root).textContent = info.passcode;
+    const on = new Set(selected(root, '#rf-acc'));
+    $('#rf-acc', root).innerHTML = info.accessories.map((p) => `<span class="chip ${on.has(p) ? 'on' : ''}">${esc(p)}</span>`).join('');
+    drawChecklist();
+  };
+  $('#rf-types', root).onclick = (e) => { const c = e.target.closest('.chip'); if (!c) return; $$('#rf-types .chip', root).forEach((x) => x.classList.remove('on')); c.classList.add('on'); applyType(); };
+  loadChecklists().then(() => { if (root.isConnected) drawChecklist(); });
   toggleChips(root, '#rf-acc');
   toggleChips(root, '#rf-cond');
   $('#rf-problems', root).onclick = (e) => {
@@ -108,6 +143,9 @@ export function openRepairForm(onDone, preset = {}) {
     if (!root.isConnected) return;
     const same = (list || []).filter((r) => r.serial && r.serial.toLowerCase() === v.toLowerCase());
     if (same.length) parts.push(`<button type="button" class="underline text-secondary text-left" data-prev="${same[0].id}">⚠ Già in archivio: ${esc(same[0].code)} · ${esc(same[0].customer_name)} (${esc(same[0].status_label)}): apri</button>`);
+    const dv = await safe(() => api('GET', `/api/dispositivi/check?serial=${encodeURIComponent(v)}`));
+    if (dv?.alert) parts.unshift(`<b class="text-red-600">⚠ DISPOSITIVO SEGNALATO: ${esc(dv.known.find((x) => x.flag !== 'ok')?.flag_label || '')} — verifica prima di procedere</b>`);
+    if (!root.isConnected) return;
     hint.innerHTML = parts.join(' · ');
   }, 250);
   serial.addEventListener('input', checkSerial);
@@ -163,6 +201,7 @@ export function openRepairForm(onDone, preset = {}) {
       customer: customerId ? { id: customerId } : { name: $('#rf-name', root).value, phone: $('#rf-phone', root).value, email: $('#rf-email', root).value },
       device_type: $('#rf-types .chip.on', root)?.dataset.v || 'smartphone',
       brand_model: $('#rf-model', root).value,
+      color: $('#rf-color', root).value,
       serial: $('#rf-serial', root).value,
       problem: $('#rf-problem', root).value,
       accessories: accessories.join(', ') || (note ? '' : 'nessuno'),
@@ -176,15 +215,19 @@ export function openRepairForm(onDone, preset = {}) {
       urgent: $('#rf-urgent', root).checked,
     };
     btn.disabled = true;
+    const entry = $('#rf-ck .ckgrid', root) ? readChecklist($('#rf-ck .ckgrid', root)) : [];
     const r = await safe(() => api('POST', '/api/repairs', body));
     btn.disabled = false;
     if (!r) { pw?.close(); return; }
+    // controllo d'ingresso compilato al banco: si salva subito nella riparazione appena creata
+    if (hasAny(entry)) await safe(() => api('PUT', `/api/repairs/${r.id}/checklist`, { phase: 'in', items: entry }));
     m.close();
     if (print) {
       if (pw) pw.location.href = `/print/both/${r.id}`;
       else toast('Il browser ha bloccato la stampa: usa il pulsante nella schermata successiva', false);
     }
     showCreated(r, onDone);
+    showDeviceAlerts(r.device_alerts);
   };
   $('#rf-save', root).onclick = (ev) => doSave(ev.currentTarget, false);
   $('#rf-save-print', root).onclick = (ev) => doSave(ev.currentTarget, true);
@@ -207,6 +250,8 @@ function showCreated(r, onDone) {
         <a class="btn btn-outline btn-wrap" target="_blank" href="/print/customer/${r.id}">👤 Solo scheda cliente</a>
         <a class="btn btn-outline btn-wrap" target="_blank" href="/print/lab/${r.id}">🔧 Solo scheda laboratorio</a>
         <a class="btn btn-outline btn-wrap" target="_blank" href="/print/label/${r.id}">🏷️ Etichetta dispositivo</a>
+        <button class="btn btn-outline btn-wrap" id="cp-sign">✍️ Firma sul tablet</button>
+        <button class="btn btn-outline btn-wrap" id="cp-signr">📲 Firma a distanza</button>
         <button class="btn btn-outline" id="cp-link">📋 Copia link</button>
         ${wa ? `<a class="btn btn-green col-span-2" target="_blank" rel="noopener" href="${wa}">💬 Invia link su WhatsApp</a>` : ''}
       </div>
@@ -214,6 +259,8 @@ function showCreated(r, onDone) {
     </div>`,
     { title: 'Scheda creata', footer: `<button class="btn btn-dark" data-close>Fatto</button>` }
   );
+  $('#cp-sign', m.el).onclick = async () => { if (await signIntakeAtDesk(r.id)) { $('#cp-sign', m.el).textContent = '✔ Firmata'; $('#cp-sign', m.el).disabled = true; $('#cp-signr', m.el).disabled = true; } };
+  $('#cp-signr', m.el).onclick = () => requestRemoteSignature(r.id, () => { $('#cp-signr', m.el).textContent = '✔ Richiesta inviata'; $('#cp-signr', m.el).disabled = true; });
   $('#cp-link', m.el).onclick = async () => { await navigator.clipboard?.writeText(r.track_url); toast('Link copiato'); };
   m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) onDone?.(); });
 }
@@ -227,7 +274,7 @@ export async function openRepairDetail(id, onChange) {
   m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === m.el) setTimeout(() => changed && onChange?.(), 0); });
 
   async function render() {
-    const r = await safe(() => api('GET', `/api/repairs/${id}`));
+    const [r] = await Promise.all([safe(() => api('GET', `/api/repairs/${id}`)), loadChecklists()]);
     if (!r) return m.close();
     $('h2', m.el).textContent = `${r.code} · ${r.brand_model}`;
     const done = ['delivered', 'cancelled'].includes(r.status);
@@ -250,7 +297,7 @@ export async function openRepairDetail(id, onChange) {
           ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
           <select id="d-status" style="width:auto;min-width:11rem" aria-label="Cambia stato"><option value="">Cambia stato…</option>${statusOptions}</select>
           ${['ready', 'repairing', 'approved'].includes(r.status) ? '<button class="btn btn-green" data-act="deliver">✔ Consegna e incassa</button>' : ''}
-        </div>` : ''}
+        </div>` : `<div class="row"><button class="btn btn-outline" data-act="delrepair" style="color:#B91C1C">🗑 Elimina riparazione</button></div>`}
       </div>
 
       <div class="cols">
@@ -268,13 +315,27 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Dispositivo</h3>
             <dl class="kv">
-              <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b> <span class="hint">(${esc(r.device_type)})</span></dd>
-              <dt>Seriale / IMEI</dt><dd>${esc(r.serial || '—')}</dd>
+              <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b> <span class="hint">(${esc(typeInfo(r.device_type).label)})</span></dd>
+              <dt>Colore</dt><dd>${esc(r.color || '—')}</dd>
+              <dt>${esc(typeInfo(r.device_type).serial)}</dt><dd>${esc(r.serial || '—')}</dd>
               <dt>Problema</dt><dd>${esc(r.problem)}</dd>
               <dt>Accessori</dt><dd>${esc(r.accessories || '—')}</dd>
               <dt>Stato estetico</dt><dd>${esc(r.condition_notes || '—')}</dd>
               ${r.passcode ? `<dt>🔒 Sblocco</dt><dd><span class="font-mono" style="background:var(--bg);padding:.1rem .5rem;border-radius:.4rem">${esc(r.passcode)}</span> <span class="hint">solo interno</span></dd>` : ''}
             </dl>
+          </section>
+
+          <section class="sec">
+            <h3 class="sec-t">Firma della scheda di ingresso</h3>
+            ${(() => {
+              const sg = (r.signatures || []).filter((x) => x.kind === 'intake').at(-1);
+              if (sg) return `<p>✔ Firmata da <b>${esc(sg.signer_name || r.customer_name)}</b> il ${fdt(sg.signed_at)} ${sg.via === 'link' ? `da link <span class="hint">(IP ${esc(sg.ip || 'non rilevato')})</span>` : 'al banco'}.</p><img class="sigimg" alt="Firma del cliente" src="/api/repairs/${r.id}/signatures/${sg.id}/image" />`;
+              return r.sign_requested ? '<p class="hint">Firma a distanza richiesta: il cliente la trova aprendo il suo link.</p>' : '<p class="hint">Non ancora firmata. Compare sulla scheda stampata.</p>';
+            })()}
+            <div class="row tight">
+              <button class="btn btn-outline btn-sm" data-act="signdesk">✍️ Firma qui (tablet)</button>
+              ${(r.signatures || []).some((x) => x.kind === 'intake') ? '' : '<button class="btn btn-outline btn-sm" data-act="signremote">📲 Chiedi firma a distanza</button>'}
+            </div>
           </section>
 
           <section class="sec">
@@ -306,16 +367,29 @@ export async function openRepairDetail(id, onChange) {
             </div>
             ${!done ? `
               <div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><button class="btn btn-outline" data-act="deposit">Registra acconto</button></div>
-              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${r.quote != null && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
+
+          ${!done || r.quote_options.length ? `<section class="sec">
+            <h3 class="sec-t">Soluzioni fra cui il cliente sceglie</h3>
+            <p class="sec-sub">Facoltativo: se ci sono più strade (es. display compatibile o originale) il cliente le vede dal suo link, ne sceglie una e firma.</p>
+            <div class="plist">${r.quote_options.map((o) => `<div><span>${esc(o.label)}${o.description ? ` <span class="hint">· ${esc(o.description)}</span>` : ''}${r.quote_option_id === o.id ? ' <span class="badge bg-emerald-100 text-emerald-700">scelta</span>' : ''}</span><span>${eur(o.amount)} ${!done ? `<button class="xbtn" data-rmopt="${o.id}" title="Togli" aria-label="Togli ${esc(o.label)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessuna soluzione: il cliente vede solo il preventivo.</p>'}</div>
+            ${!done ? `<div class="fgrid c2"><div class="field"><label class="l" for="qo-label">Soluzione</label><input id="qo-label" placeholder="es. Display originale, garanzia 12 mesi" /></div>
+              <div class="field"><label class="l" for="qo-amount">Importo €</label><input id="qo-amount" inputmode="decimal" /></div></div>
+              <div class="row tight"><button class="btn btn-outline btn-sm" data-act="addopt">＋ Aggiungi soluzione</button></div>` : ''}
+          </section>` : ''}
+
+          ${r.status === 'cancelled' ? fateSection(r) : ''}
 
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
             <div class="plist">
-              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}</span></span><span>${eur(p.unit_price * p.qty)} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
-            ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>` : ''}
+            ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>
+            <div class="row tight"><button class="btn btn-outline btn-sm" data-act="manualpart">＋ Ricambio non a magazzino</button></div>` : ''}
+            ${canSeeCosts() ? `<div class="total-box"><span>Costo ricambi <b>${eur(r.parts_cost)}</b></span><span>Guadagno stimato <b>${r.profit_estimate == null ? '—' : eur(r.profit_estimate)}</b></span></div>` : ''}
           </section>
         </div>
       </div>
@@ -325,6 +399,8 @@ export async function openRepairDetail(id, onChange) {
         <p class="sec-sub">Interne: finiscono sulla scheda laboratorio, il cliente non le vede.</p>
         <div class="row" style="align-items:flex-start;flex-wrap:nowrap"><textarea id="d-tech" rows="2" placeholder="Diagnosi, prove fatte, cosa manca…">${esc(r.tech_notes || '')}</textarea><button class="btn btn-outline" data-act="savetech">Salva</button></div>
       </section>
+
+      ${checklistSections(r, CHECKLISTS, r.status === 'delivered' || r.status === 'cancelled')}
 
       <section class="sec">
         <h3 class="sec-t">Messaggio visibile al cliente</h3>
@@ -346,6 +422,7 @@ export async function openRepairDetail(id, onChange) {
         <ul class="tl">${r.events.map((e) => `<li><time>${fdt(e.created_at)}</time><span>${esc(e.note || '')} ${e.is_public ? '' : '<span class="badge bg-gray-100 text-gray-500">interna</span>'}</span></li>`).join('')}</ul>
       </section>`;
 
+    bindChecklistGrids(body);
     // ricerca ricambi
     const ps = $('#d-part', body);
     if (ps) ps.oninput = debounce(async (e) => {
@@ -362,13 +439,23 @@ export async function openRepairDetail(id, onChange) {
 
   const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
   body.addEventListener('click', async (e) => {
+    const ts = e.target.closest('[data-tostock]');
+    if (ts) return act(() => api('POST', `/api/repairs/${id}/parts/${ts.dataset.tostock}/stock`), 'Ricambio caricato a magazzino: ora è un articolo a catalogo');
+
+    if (await checklistClick(e, body, id, () => { reloadList(); render(); })) return;
     const rm = e.target.closest('[data-rmpart]');
-    if (rm) return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)');
+    if (rm) { if (!(await confirmDelete('questo ricambio', { verb: 'Rimuovere', detail: 'Il magazzino viene ripristinato.' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)'); }
+    const ro = e.target.closest('[data-rmopt]');
+    if (ro) { if (!(await confirmDelete('questa soluzione', { verb: 'Togliere' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/quote-options/${ro.dataset.rmopt}`), 'Soluzione tolta'); }
+    const fb = e.target.closest('[data-fate]');
+    if (fb) return act(() => api('POST', `/api/repairs/${id}/fate`, { fate: fb.dataset.fate, restart: fb.dataset.fate === 'giacenza' }), 'Destino aggiornato');
     const pid = e.target.closest('[data-pid]');
     if (pid) return act(() => api('POST', `/api/repairs/${id}/parts`, { product_id: Number(pid.dataset.pid), qty: 1 }), 'Ricambio aggiunto (scalato dal magazzino)');
     const b = e.target.closest('[data-act]');
     if (!b) return;
     switch (b.dataset.act) {
+      case 'delrepair': { if (!(await confirmDelete(`la riparazione ${$('h2', m.el).textContent}`, { typed: 'ELIMINA', detail: 'Storico e firme vengono cancellati. Anche gli incassi in cassa vengono tolti.' }))) return; const out = await safe(() => api('DELETE', `/api/repairs/${id}`)); if (out) { toast('Riparazione eliminata'); m.close(); onChange?.(); } return; }
+      case 'manualpart': return manualPartDialog(id, () => { reloadList(); render(); });
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
@@ -378,14 +465,97 @@ export async function openRepairDetail(id, onChange) {
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
       case 'savecnote': return act(() => api('PATCH', `/api/repairs/${id}`, { customer_note: $('#d-cnote', body).value }), 'Messaggio aggiornato');
       case 'note': { const t = $('#d-note', body).value; if (!t.trim()) return; return act(() => api('POST', `/api/repairs/${id}/note`, { note: t, public: $('#d-notepub', body).checked }), 'Nota aggiunta'); }
+      case 'addopt': return act(() => api('POST', `/api/repairs/${id}/quote-options`, { label: $('#qo-label', body).value, amount: $('#qo-amount', body).value }), 'Soluzione aggiunta');
+      case 'signdisposal': return signDisposal(id, () => { reloadList(); render(); });
+      case 'restartfate': return act(() => api('POST', `/api/repairs/${id}/fate`, { fate: 'giacenza', restart: true }), 'Conteggio ripartito da oggi');
+      case 'waStorage': { const rep = await api('GET', `/api/repairs/${id}`); const l = waLink(rep.customer_phone, waMessage('storage', rep)); if (l) window.open(l, '_blank', 'noopener'); return; }
+      case 'signdesk': return signIntakeAtDesk(id, () => { reloadList(); render(); });
+      case 'signremote': return requestRemoteSignature(id, () => { reloadList(); render(); });
       case 'edit': return editDialog(id, () => { reloadList(); render(); });
       case 'copylink': { await navigator.clipboard?.writeText(trackUrl((await api('GET', `/api/repairs/${id}`)).token)); return toast('Link copiato'); }
     }
   });
   body.addEventListener('change', (e) => {
+    if (e.target.id === 'd-status' && e.target.value === 'cancelled') { e.target.value = ''; return cancelDialog(id, () => { reloadList(); render(); }); }
     if (e.target.id === 'd-status' && e.target.value) act(() => api('POST', `/api/repairs/${id}/status`, { status: e.target.value }), 'Stato aggiornato');
   });
   await render();
+}
+
+// ---------- Non riparabile: dove sta il dispositivo e i giorni di giacenza ----------
+const FATES = { giacenza: 'In giacenza (attende il ritiro)', ritirato: 'Ritirato dal cliente', ceduto: 'Lasciato da smaltire / per pezzi di ricambio', deposito: 'In deposito a pagamento', smaltito: 'Smaltito / recuperato' };
+const dayDiff = (ts) => Math.round((new Date(`${today()}T00:00:00`) - new Date(`${String(ts).slice(0, 10)}T00:00:00`)) / 86400000);
+const storageTotal = () => Number(META.settings.storage_days) || 15;
+
+function fateSection(r) {
+  const fate = r.device_fate;
+  const el = r.fate_since ? dayDiff(r.fate_since) : null;
+  const total = storageTotal();
+  const left = fate === 'giacenza' && el != null ? total - el : null;
+  const state = !fate ? '<p class="hint">Non ancora registrato: scegli sotto cosa è successo al dispositivo.</p>'
+    : `<p><b>${esc(FATES[fate] || fate)}</b>${r.fate_note ? ` <span class="hint">· ${esc(r.fate_note)}</span>` : ''}</p>
+       ${fate === 'giacenza' && el != null ? `<div class="total-box"><span>In negozio da <b>${el}</b> ${el === 1 ? 'giorno' : 'giorni'} (dal ${fdate(r.fate_since)})</span><span>${left > 0 ? `Mancano <b>${left}</b> ${left === 1 ? 'giorno' : 'giorni'} ai ${total}` : `<b style="color:var(--red-d)">Scaduta da ${-left} ${-left === 1 ? 'giorno' : 'giorni'}</b>`}</span></div>
+       ${left <= 0 ? `<p class="hint">Passati i ${total} giorni: smaltisci il dispositivo oppure spostalo in deposito a pagamento (${esc(META.settings.storage_fee || 'tariffa da definire')}). Avvisa il cliente.</p>` : ''}` : ''}`;
+  const signed = (r.signatures || []).some((x) => x.kind === 'disposal' || (x.kind === 'quote_decline' && x.choice === 'cede'));
+  const btn = (k, l) => (fate === k ? '' : `<button class="btn btn-outline btn-sm" data-fate="${k}">${l}</button>`);
+  return `<section class="sec">
+    <h3 class="sec-t">Dispositivo non riparato</h3>
+    ${state}
+    <div class="row tight">
+      ${btn('giacenza', '📦 In giacenza')}${btn('ritirato', '✔ Ritirato dal cliente')}${btn('deposito', '🏷️ In deposito a pagamento')}${btn('smaltito', '♻️ Smaltito / recuperato')}
+      ${fate === 'ceduto' || signed ? '' : '<button class="btn btn-outline btn-sm" data-act="signdisposal">✍️ Cessione: firma qui</button>'}
+      ${fate === 'giacenza' && r.customer_phone ? '<button class="btn btn-outline btn-sm" data-act="waStorage">💬 Avvisa del termine</button>' : ''}
+      ${fate === 'giacenza' ? '<button class="btn btn-ghost btn-sm" data-act="restartfate">Riavvia il conteggio</button>' : ''}
+    </div>
+    ${signed ? '<p class="hint">✔ Cessione del dispositivo firmata dal cliente.</p>' : ''}
+  </section>`;
+}
+
+/** "Annullato / non riparabile": prima si registra dove si trova il dispositivo (parte il conteggio dei giorni). */
+function cancelDialog(id, done) {
+  const total = storageTotal();
+  const m = openModal(`<section class="sec">
+      <p>Cosa è successo al dispositivo?</p>
+      <div class="stack">
+        <label class="check box"><input type="radio" name="cx" value="giacenza" checked /> Resta in negozio: il cliente lo ritira entro ${total} giorni</label>
+        <label class="check box"><input type="radio" name="cx" value="ritirato" /> Il cliente l’ha già ripreso</label>
+        <label class="check box"><input type="radio" name="cx" value="ceduto" /> Lasciato da smaltire / per pezzi di ricambio (cessione firmata)</label>
+      </div>
+      <div class="field"><label class="l" for="cx-note">Nota (facoltativa)</label><input id="cx-note" placeholder="es. scheda madre bruciata" /></div>
+      <p class="hint">Passati i ${total} giorni compare un avviso: smaltire il dispositivo o spostarlo in deposito a pagamento.</p>
+    </section>`,
+    { title: 'Annullato / non riparabile', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cx-ok">Conferma</button>' });
+  $('#cx-ok', m.el).onclick = async () => {
+    const fate = $('input[name="cx"]:checked', m.el).value;
+    const out = await safe(() => api('POST', `/api/repairs/${id}/status`, { status: 'cancelled', device_fate: fate, fate_note: $('#cx-note', m.el).value }));
+    if (!out) return;
+    m.close();
+    toast('Registrato');
+    if (fate === 'ceduto') await signDisposal(id);
+    done();
+  };
+}
+
+/** Cessione del dispositivo firmata al banco (liberatoria allo smaltimento / pezzi di ricambio). */
+async function signDisposal(id, done) {
+  const s = await safe(() => api('GET', '/api/settings'));
+  const r = await safe(() => api('GET', `/api/repairs/${id}`));
+  if (!s || !r) return;
+  const text = String(s.quote_decline_cede || '').replace(/\{(\w+)\}/g, (x, k) => ({ negozio: s.shop_name, codice: r.code, dispositivo: r.brand_model, giorni: s.storage_days }[k] ?? x));
+  const ok = await signDialog({ title: `Cessione ${r.code}`, intro: `<b>${esc(r.customer_name)}</b> · ${esc(r.brand_model)}`, text, draft: String(s.legal_verified) !== '1', name: r.customer_name, onSign: (b) => api('POST', `/api/repairs/${id}/signature`, { ...b, kind: 'disposal' }) });
+  if (ok) { toast('Cessione firmata e registrata'); done?.(); }
+}
+
+/** Chiede al cliente di firmare da casa: la pagina del suo link mostra condizioni e riquadro firma; qui si apre WhatsApp col messaggio. */
+async function requestRemoteSignature(id, done) {
+  const r = await safe(() => api('POST', `/api/repairs/${id}/request-signature`));
+  if (!r) return;
+  const rep = await safe(() => api('GET', `/api/repairs/${id}`));
+  const link = rep && waLink(rep.customer_phone, waMessage('sign', rep));
+  if (link) window.open(link, '_blank', 'noopener');
+  else { await navigator.clipboard?.writeText(rep?.track_url || ''); toast('Nessun telefono: link copiato, mandalo al cliente'); }
+  toast('Firma a distanza richiesta');
+  done?.();
 }
 
 export function deliverDialog(id, done) {
@@ -396,14 +566,21 @@ export function deliverDialog(id, done) {
         <p>Già versato: <b>${eur(r.paid)}</b>. Controlla il totale finale e scegli come ha pagato il saldo.</p>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="dl-final">Totale finale €</label><input id="dl-final" inputmode="decimal" value="${total}" /></div>
-          <div class="field"><label class="l" for="dl-method">Incassato con</label><select id="dl-method"><option>contanti</option><option>carta</option><option>bonifico</option><option>non tracciato</option></select></div>
+          <div class="field"><span class="l">Saldo da incassare</span><b class="font-heading" style="font-size:1.4rem" id="dl-due">${eur(Math.max(0, total - r.paid))}</b></div>
         </div>
+        <div class="sec" id="dl-settle"></div>
         <p class="hint">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>
       </section>`,
       { title: 'Consegna e incasso', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-green btn-lg" id="dl-ok">Conferma consegna</button>` }
     );
+    const dueNow = () => Math.max(0, (Number(String($('#dl-final', m.el).value).replace(',', '.')) || 0) - r.paid);
+    const settle = createSettlement({ methodId: 'dl-method', getDue: dueNow });
+    settle.mount($('#dl-settle', m.el));
+    $('#dl-final', m.el).oninput = () => { $('#dl-due', m.el).textContent = eur(dueNow()); settle.update(); };
     $('#dl-ok', m.el).onclick = async () => {
-      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, method: $('#dl-method', m.el).value }));
+      const bad = settle.validate();
+      if (bad) return toast(bad, false);
+      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload() }));
       if (!out) return;
       m.close();
       toast(`Consegnata. Incassati ${eur(out.collected)}`);
@@ -424,9 +601,10 @@ async function editDialog(id, done) {
     </section>
     <section class="sec">
       <h3 class="sec-t">Dispositivo</h3>
-      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', 'Seriale / IMEI', r.serial)}
+      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('color', 'Colore', r.color)}${f('serial', typeInfo(r.device_type).serial, r.serial)}
         ${f('accessories', 'Accessori lasciati', r.accessories)}${f('condition_notes', 'Stato del dispositivo', r.condition_notes)}
-        ${f('passcode', 'PIN / schema (solo interno)', r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
+        <div class="field"><label class="l">Tipo di dispositivo</label><select data-k="device_type">${Object.entries(typesMeta()).map(([k, v]) => `<option value="${k}" ${k === r.device_type ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
+        ${f('passcode', `${typeInfo(r.device_type).passcode} (solo interno)`, r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
     </section>
     <section class="sec">
       <h3 class="sec-t">Problema segnalato</h3>
@@ -437,10 +615,33 @@ async function editDialog(id, done) {
   $('#ed-ok', m.el).onclick = async () => {
     const v = (k) => $(`[data-k="${k}"]`, m.el).value;
     const out = await safe(() => api('PATCH', `/api/repairs/${id}`, {
-      brand_model: v('brand_model'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
+      brand_model: v('brand_model'), color: v('color'), device_type: v('device_type'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
       passcode: v('passcode'), warranty_days: v('warranty_days'), problem: v('problem'),
       customer: { name: v('c_name'), phone: v('c_phone'), email: v('c_email') },
     }));
     if (out) { m.close(); toast('Dati aggiornati'); done(); }
   };
+}
+
+/** Ricambio non caricato a magazzino: descrizione, quantità, costo d'acquisto e prezzo al cliente (non tocca le giacenze). */
+function manualPartDialog(repairId, done) {
+  const m = openModal(`<div class="fgrid c2">
+      <div class="field" style="grid-column:1/-1"><label class="l" for="mp-name">Descrizione</label><input id="mp-name" placeholder="es. Display iPhone 12" /></div>
+      <div class="field"><label class="l" for="mp-qty">Quantità</label><input id="mp-qty" inputmode="numeric" value="1" /></div>
+      <div class="field"><label class="l" for="mp-code">Codice fornitore</label><input id="mp-code" /></div>
+      ${canSeeCosts() ? `<div class="field"><label class="l" for="mp-cost">Prezzo d’acquisto € (cad.)</label><input id="mp-cost" inputmode="decimal" /></div>` : ""}
+      <div class="field"><label class="l" for="mp-price">Prezzo al cliente € (cad.)</label><input id="mp-price" inputmode="decimal" placeholder="0 = incluso nel preventivo" /></div>
+      <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" /></div>
+      <div class="field"><label class="l" for="mp-date">Data d’acquisto</label><input id="mp-date" type="date" value="${today()}" /></div>
+    </div><p class="hint">Non scala nessuna giacenza. Il costo entra nel guadagno della riparazione.</p>`,
+    { title: 'Ricambio non a magazzino', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="mp-ok">Aggiungi</button>' });
+  $('#mp-ok', m.el).onclick = async () => {
+    const v = (id) => $(`#${id}`, m.el).value;
+    const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, {
+      name: v('mp-name'), qty: v('mp-qty'), unit_cost: ($('#mp-cost', m.el) ? v('mp-cost') : '').replace(',', '.'), unit_price: v('mp-price').replace(',', '.') || 0,
+      supplier_code: v('mp-code'), supplier_name: v('mp-sup'), bought_at: v('mp-date'),
+    }));
+    if (out) { m.close(); toast('Ricambio aggiunto'); done(); }
+  };
+  $('#mp-name', m.el).focus();
 }

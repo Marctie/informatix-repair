@@ -8,8 +8,12 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "officina", "database_id": "77a96da4-ca9b-4262-b16c-2f9233186ffd", "migrations_dir": "migrations" }
   ],
-  "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "officina-backups" }],
-  "triggers": { "crons": ["30 2 * * *"] },
+  "r2_buckets": [
+    { "binding": "BACKUPS", "bucket_name": "officina-backups" },
+    // Foto della Vetrina Usati, separate dai backup.
+    { "binding": "MEDIA", "bucket_name": "officina-media" }
+  ],
+  "triggers": { "crons": ["30 2 * * *", "* * * * *"] },
   "routes": [
     { "pattern": "gestionale.informatixrepair.com", "custom_domain": true },
     { "pattern": "riparazioni.informatixrepair.com", "custom_domain": true }
@@ -17,6 +21,9 @@
   "vars": {
     "PUBLIC_HOST": "riparazioni.informatixrepair.com",
     "PUBLIC_BASE_URL": "https://riparazioni.informatixrepair.com",
+    "SITE_URL": "https://informatixrepair.com",
+    "GITHUB_REPO": "Marctie/informatix-repair",
+    "GITHUB_BRANCH": "main",
     "OWNER_EMAIL": "marcopeluso99@gmail.com",
     "ACCESS_TEAM_DOMAIN": "team-informatix.cloudflareaccess.com",
     "ACCESS_AUD": "70f87bbf5f546580502cd6a7d71863e911bdb7b7f7fe41c6a20fd5a9d208970b"
