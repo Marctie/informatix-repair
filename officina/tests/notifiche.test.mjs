@@ -219,3 +219,36 @@ test('preventivo online: scaduto, rifiutato e convertito non si possono più inv
   assert.equal((await call('POST', `/api/quote/${t2}/decision`, { action: 'accept', image: SIG_PNG }, pub)).status, 409);
   assert.equal((await call('POST', `/api/quotes/${q2.id}/link`, {})).status, 409, 'scaduto: niente invio');
 });
+
+test('acconto: metodo scelto, diviso su più metodi, ogni quota in cassa e nell’avviso', async () => {
+  const r = await newRepair({ quote: 300 });
+  const before = (await call('GET', '/api/report')).data;
+  const one = await call('POST', `/api/repairs/${r.id}/deposit`, { amount: '20,00', method: 'carta' });
+  assert.equal(one.status, 200);
+  assert.match(text(one), /Acconto 20,00 € \(carta\)/);
+  const split = await call('POST', `/api/repairs/${r.id}/deposit`, { payments: [{ method: 'contanti', amount: 50 }, { method: 'carta', amount: '30,50' }] });
+  assert.equal(split.status, 200);
+  assert.equal(split.data.deposit, 100.5);
+  assert.match(text(split), /Acconto 80,50 € \(contanti 50,00 € \+ carta 30,50 €\)/);
+  const rep = (await call('GET', '/api/report')).data;
+  const by = (rows, m) => rows.find((x) => x.method === m)?.total || 0;
+  assert.equal(Math.round((by(rep.by_method, 'carta') - by(before.by_method, 'carta')) * 100), 5050);
+  assert.equal(Math.round((by(rep.by_method, 'contanti') - by(before.by_method, 'contanti')) * 100), 5000);
+  for (const bad of [{ payments: [{ method: 'carta', amount: 10 }, { method: 'non tracciato', amount: 5 }] }, { payments: [{ method: 'buono', amount: 5 }] }, { payments: [{ method: 'carta', amount: 0 }] }, { amount: -5 }]) {
+    assert.equal((await call('POST', `/api/repairs/${r.id}/deposit`, bad)).status, 400, JSON.stringify(bad));
+  }
+  assert.equal((await call('GET', `/api/repairs/${r.id}`)).data.deposit, 100.5, 'le richieste rifiutate non registrano nulla');
+});
+
+test('pagamenti sempre tracciati: "non tracciato" rifiutato su vendite, acconti, consegne e ordini (non solo nel conto diviso)', async () => {
+  const sales0 = (await call('GET', '/api/sales')).data.length;
+  assert.equal((await call('POST', '/api/sales', { items: [{ name: 'Prova', unit_price: 100 }], method: 'non tracciato' })).status, 400);
+  assert.equal((await call('POST', '/api/sales', { items: [{ name: 'Prova', unit_price: 100 }], method: 'Non Tracciato' })).status, 400);
+  assert.equal((await call('GET', '/api/sales')).data.length, sales0, 'nessuna vendita a metà');
+  assert.equal((await call('POST', '/api/repairs', { customer: { name: 'X', phone: '3330000001' }, brand_model: 'Tel', problem: 'x', deposit: 10, deposit_method: 'non tracciato' })).status, 400);
+  const r = await newRepair({ quote: 50 });
+  await toReady(r.id);
+  assert.equal((await call('POST', `/api/repairs/${r.id}/deliver`, { method: 'non tracciato' })).status, 400);
+  assert.equal((await call('GET', `/api/repairs/${r.id}`)).data.status, 'ready', 'la consegna non è avvenuta');
+  assert.equal((await call('POST', `/api/repairs/${r.id}/deliver`, { method: 'contanti' })).status, 200);
+});
