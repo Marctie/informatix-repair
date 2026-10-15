@@ -1,5 +1,6 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
+import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
 import { deviceHook, alertText } from './dispositivi.mjs';
@@ -110,15 +111,16 @@ const phoneKey = (p) => {
   const d = String(p || '').replace(/\D/g, '');
   return d.length >= 7 ? d.slice(-9) : d;
 };
-export async function upsertCustomer({ id, name, phone, email, notes }) {
+export async function upsertCustomer(input) {
+  const { id } = input;
   if (id) {
     const c = await db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
     if (!c) throw new HttpError(404, 'Cliente non trovato');
     return c.id;
   }
-  const n = need(name, 'Nome cliente');
+  const f = cleanCustomer(input);
   // evita doppioni: stesso telefono => stesso cliente
-  const ph = str(phone);
+  const ph = f.phone;
   if (ph) {
     const key = phoneKey(ph);
     if (key) {
@@ -126,7 +128,7 @@ export async function upsertCustomer({ id, name, phone, email, notes }) {
       if (same) return same.id;
     }
   }
-  const r = await db.prepare("INSERT INTO customers (name, phone, email, notes, created_at) VALUES (?,?,?,?,datetime('now','localtime'))").run(n, ph, str(email), str(notes));
+  const r = await db.prepare(`INSERT INTO customers (${CUSTOMER_COLS.join(', ')}, created_at) VALUES (${CUSTOMER_COLS.map(() => '?').join(',')},datetime('now','localtime'))`).run(...CUSTOMER_COLS.map((k) => f[k]));
   return Number(r.lastInsertRowid);
 }
 
@@ -167,7 +169,10 @@ export async function createRepair(b) {
   });
 }
 
-const REPAIR_SELECT = `SELECT r.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email
+const REPAIR_SELECT = `SELECT r.*, c.name AS customer_name, c.phone AS customer_phone, c.email AS customer_email,
+  c.kind AS customer_kind, c.company_name AS customer_company, c.vat_number AS customer_vat, c.fiscal_code AS customer_cf,
+  c.address AS customer_address, c.zip AS customer_zip, c.city AS customer_city, c.province AS customer_province,
+  c.sdi_code AS customer_sdi, c.pec AS customer_pec
   FROM repairs r JOIN customers c ON c.id = r.customer_id`;
 
 export async function getRepair(id) {
@@ -215,9 +220,9 @@ export async function listRepairs({ status, q, customer_id, open } = {}) {
   if (open) where.push("r.status NOT IN ('delivered','cancelled')");
   if (customer_id) { where.push('r.customer_id = ?'); args.push(Number(customer_id)); }
   if (q) {
-    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.color LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ?)');
+    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.color LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ? OR c.company_name LIKE ? OR c.vat_number LIKE ?)');
     const like = `%${q}%`;
-    args.push(like, like, like, like, like, like);
+    args.push(like, like, like, like, like, like, like, like, like);
   }
   const sql = `${REPAIR_SELECT} ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY r.urgent DESC, r.updated_at DESC, r.id DESC LIMIT 500`;
   return Promise.all((await db.prepare(sql).all(...args)).map((r) => decorateRepair(r)));
@@ -388,7 +393,7 @@ export async function createSale(b) {
 }
 
 export async function getSale(id) {
-  const s = await db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id = s.customer_id WHERE s.id = ?').get(id);
+  const s = await db.prepare('SELECT s.*, c.name AS customer_name, c.kind AS customer_kind, c.company_name AS customer_company, c.vat_number AS customer_vat, c.fiscal_code AS customer_cf, c.address AS customer_address, c.zip AS customer_zip, c.city AS customer_city, c.province AS customer_province, c.sdi_code AS customer_sdi, c.pec AS customer_pec FROM sales s LEFT JOIN customers c ON c.id = s.customer_id WHERE s.id = ?').get(id);
   if (!s) throw new HttpError(404, 'Vendita non trovata');
   return {
     ...s,

@@ -10,6 +10,7 @@ const d = (s) => (s ? new Date(s + 'T00:00:00').toLocaleDateString('it-IT') : '�
 const qr = (text, size = 130) => `<img src="/api/qr?text=${encodeURIComponent(text)}" width="${size}" height="${size}" alt="QR" />`;
 const barcode = (text, w = 150, h = 34) => `<img src="/api/barcode?text=${encodeURIComponent(text)}" style="width:${w}px;height:${h}px;display:block" alt="codice a barre ${esc(text)}" />`;
 import { DEVICE_TYPES, typeInfo } from './checklists.mjs';
+import { fiscalLines } from './clienti.mjs';
 import { isVerified, LEGAL_NOTE } from './legal.mjs';
 const TYPES = Object.fromEntries(Object.entries(DEVICE_TYPES).map(([k, v]) => [k, v.label]));
 
@@ -77,7 +78,8 @@ const header = (s, kind, r) => `
 
 const customerBlock = (r, withEmail = true) => `
   <table><tr><td><b style="font-size:14px">${esc(r.customer_name)}</b></td></tr>
-  <tr><td>Tel. ${esc(r.customer_phone) || '—'}${withEmail && r.customer_email ? ' · ' + esc(r.customer_email) : ''}</td></tr></table>`;
+  <tr><td>Tel. ${esc(r.customer_phone) || '—'}${withEmail && r.customer_email ? ' · ' + esc(r.customer_email) : ''}</td></tr>
+  ${fiscalLines(r).map((l) => `<tr><td style="font-size:10px">${esc(l)}</td></tr>`).join('')}</table>`;
 
 // colonne a larghezza fissa: etichette e valori restano allineati su tutte le righe
 const deviceBlock = (r) => `
@@ -120,6 +122,7 @@ function customerHalf(r, trackUrl, s, copy) {
       <h2>Cliente</h2>
       <div class="cname">${esc(r.customer_name)}</div>
       <div>Tel. ${esc(r.customer_phone) || '—'}${r.customer_email ? ` · ${esc(r.customer_email)}` : ''}</div>
+      ${fiscalLines(r).map((l) => `<div style="font-size:10px">${esc(l)}</div>`).join('')}
       <h2>Dispositivo consegnato</h2>
       ${kv('Modello', `<span style="font-size:11px">${esc(cut(r.brand_model, 60))}</span>`)}
       ${r.color ? kv('Colore', esc(cut(r.color, 30))) : ''}
@@ -232,6 +235,7 @@ export function printSale(sale, s, req) {
   const body = `
   <div class="row"><div><h1>${esc(s.shop_name)}</h1><div class="muted">${esc(s.shop_address)}<br>Tel. ${esc(s.shop_phone)}</div></div>
   <div style="text-align:right"><div class="muted">Ricevuta di vendita</div><div class="big">${esc(sale.code)}</div><div class="muted">${dt(sale.created_at)}</div></div></div>
+  ${sale.customer_name ? `<p><b>Cliente: ${esc(sale.customer_name)}</b>${fiscalLines(sale).map((l) => `<br><span style="font-size:11px">${esc(l)}</span>`).join('')}</p>` : ''}
   <table style="margin-top:14px"><tr><th>Articolo</th><th>Q.tà</th><th style="text-align:right">Prezzo</th><th style="text-align:right">Totale</th></tr>${rows}</table>
   ${sale.discount ? `<p style="text-align:right">Sconto: -${eur(sale.discount)}</p>` : ''}
   <p style="text-align:right" class="big">Totale ${eur(sale.total)}</p>${payLines(sale)}

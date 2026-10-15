@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS customers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL, phone TEXT, email TEXT, notes TEXT,
+  kind TEXT NOT NULL DEFAULT 'privato', company_name TEXT, vat_number TEXT, fiscal_code TEXT,
+  address TEXT, zip TEXT, city TEXT, province TEXT, sdi_code TEXT, pec TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS suppliers (

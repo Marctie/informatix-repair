@@ -31,6 +31,7 @@ import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
 import * as SG from './signatures.mjs';
 import * as R from './remote.mjs';
+import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
@@ -200,7 +201,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
       (SELECT COUNT(*) FROM repairs r WHERE r.customer_id=c.id AND r.status NOT IN ('delivered','cancelled')) AS open_repairs FROM customers c`;
     if (!q) return db.prepare(`${base} ORDER BY c.created_at DESC LIMIT 300`).all();
     const like = `%${q}%`;
-    return db.prepare(`${base} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? ORDER BY c.name LIMIT 100`).all(like, like, like);
+    return db.prepare(`${base} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? OR c.company_name LIKE ? OR c.vat_number LIKE ? OR c.fiscal_code LIKE ? OR c.city LIKE ? OR c.pec LIKE ? ORDER BY c.name LIMIT 100`).all(like, like, like, like, like, like, like, like);
   }));
   app.get('/api/customers/:id', h(async (req) => {
     const c = await db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
@@ -208,14 +209,14 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return { ...c, repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare('SELECT * FROM sales WHERE customer_id = ? ORDER BY id DESC').all(c.id) };
   }));
   app.post('/api/customers', h(async (req) => {
-    const id = await L.upsertCustomer({ name: req.body.name, phone: req.body.phone, email: req.body.email, notes: req.body.notes });
+    const id = await L.upsertCustomer({ ...req.body, id: undefined });
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(id);
   }));
   app.put('/api/customers/:id', h(async (req) => {
-    const b = req.body;
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
-    const r = await db.prepare('UPDATE customers SET name=?, phone=?, email=?, notes=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.notes), req.params.id);
-    if (!r.changes) throw new L.HttpError(404, 'Cliente non trovato');
+    const cur = await db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+    if (!cur) throw new L.HttpError(404, 'Cliente non trovato');
+    const f = cleanCustomer(req.body, cur);
+    await db.prepare(`UPDATE customers SET ${CUSTOMER_COLS.map((k) => `${k}=?`).join(', ')} WHERE id=?`).run(...CUSTOMER_COLS.map((k) => f[k]), req.params.id);
     return db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
   }));
   app.delete('/api/customers/:id', h(async (req) => {
