@@ -7,6 +7,7 @@ import { ensureDefaults, ensureOwner } from './dbref.mjs';
 import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
+import { notifyDueReminders } from './promemoria.mjs';
 import { createPublisher } from './publisher.mjs';
 import { r2Media } from './media.mjs';
 import { storageDigest } from './remote.mjs';
@@ -52,12 +53,14 @@ app.use('*', async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (path.startsWith('/api/')) return publicApp.fetch(c.req.raw, c.env, c.executionCtx);
   if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track');
-  if (path === '/track.js' || path === '/sigpad.js') return serveAsset(c.env, c.req.raw, path);
+  if (path.startsWith('/p/')) return serveAsset(c.env, c.req.raw, '/preventivo');
+  if (path === '/track.js' || path === '/sigpad.js' || path === '/preventivo.js') return serveAsset(c.env, c.req.raw, path);
   return c.text('Non trovato', 404);
 });
 
 // Host gestionale (e qualunque altro): dietro Access
-app.get('/t/:token', (c) => serveAsset(c.env, c.req.raw, '/track')); // pagina vuota del tracciamento: i dati arrivano da /api/track (pubblico)
+app.get('/t/:token', (c) => serveAsset(c.env, c.req.raw, '/track'));
+app.get('/p/:token', (c) => serveAsset(c.env, c.req.raw, '/preventivo')); // pagina vuota del tracciamento: i dati arrivano da /api/track (pubblico)
 app.route('/', publicApp);
 app.post('/api/backup/r2', async (c) => {
   // passa dal controllo Access/utenti come tutte le rotte admin
@@ -91,6 +94,11 @@ export default {
   // Backup giornaliero (cron) nel bucket R2
   async scheduled(event, env) {
     await init(env);
+    // ogni minuto: solo i promemoria scaduti (arrivano su Telegram anche a gestionale chiuso); il resto e' del cron notturno
+    if (event.cron === '* * * * *') {
+      try { await notifyDueReminders(env); } catch (e) { console.error('promemoria', e); }
+      return;
+    }
     try {
       const key = await saveBackup(env);
       // dispositivi non riparati con la giacenza scaduta: un promemoria al giorno finche' non si decide (smaltire o deposito)

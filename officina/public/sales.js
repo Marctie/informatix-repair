@@ -349,6 +349,8 @@ export async function settingsView(el) {
         </div>
         <div class="field"><label class="l" for="st-rd">Riparazione pronta non ritirata dopo (giorni)</label><input id="st-rd" data-k="ready_days" type="number" min="0" inputmode="numeric" value="${esc(s.ready_days ?? '7')}" />
           <span class="hint">Ti ricorda di avvisare il cliente. 0 = spento.</span></div>
+        <div class="field"><label class="l" for="st-qv">Validità dei preventivi (giorni)</label><input id="st-qv" data-k="quote_valid_days" type="number" min="1" max="365" inputmode="numeric" value="${esc(s.quote_valid_days ?? '15')}" />
+          <span class="hint">Scadenza proposta quando crei un preventivo nella sezione Preventivi.</span></div>
         <h2 class="sec-t" style="margin-top:.6rem">Scheda di ingresso</h2>
         <div class="field"><label class="l" for="st-terms">Condizioni stampate sulla scheda</label><textarea id="st-terms" data-k="terms" rows="5">${esc(s.terms)}</textarea></div>
         <h2 class="sec-t" style="margin-top:.6rem">Dispositivi non riparati</h2>

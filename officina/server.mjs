@@ -39,6 +39,7 @@ export function lanIp() {
 
 const noCache = (c, next) => next().then(() => { c.res.headers.set('Cache-Control', 'no-cache'); });
 const trackPage = (c) => c.html(readFileSync(join(HERE, 'public', 'track.html'), 'utf8'));
+const quotePage = (c) => c.html(readFileSync(join(HERE, 'public', 'preventivo.html'), 'utf8'));
 
 // `usati` permette ai test di iniettare un publisher finto e un archivio foto in memoria.
 // Sul PC la Vetrina Usati resta in bozza: pubblica sul sito solo con OFFICINA_USATI_PUBLISH=github (e GITHUB_TOKEN/GITHUB_REPO).
@@ -68,10 +69,13 @@ export function createApps({ usati, auth } = {}) {
   admin.route('/', adminApi);
   admin.route('/', pubApi); // anteprima dello stesso tracciamento
   admin.get('/t/:token', trackPage);
+  admin.get('/p/:token', quotePage);
   admin.use('*', serveStatic({ root: relative(process.cwd(), join(HERE, 'public')) || '.' }));
 
   const pub = new Hono();
   pub.get('/t/:token', trackPage);
+  pub.get('/p/:token', quotePage);
+  pub.get('/preventivo.js', (c) => c.body(readFileSync(join(HERE, 'public', 'preventivo.js')), 200, { 'content-type': 'text/javascript; charset=utf-8' }));
   pub.get('/track.js', (c) => c.body(readFileSync(join(HERE, 'public', 'track.js')), 200, { 'content-type': 'text/javascript; charset=utf-8' }));
   pub.get('/sigpad.js', (c) => c.body(readFileSync(join(HERE, 'public', 'sigpad.js')), 200, { 'content-type': 'text/javascript; charset=utf-8' }));
   pub.route('/', pubApi);
