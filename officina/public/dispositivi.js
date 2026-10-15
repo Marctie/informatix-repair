@@ -2,12 +2,25 @@
 import { $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, imeiCheck, isScanEnter, today } from './util.js';
 import { scanWithCamera } from './scan.js';
 import { openRepairDetail } from './repair.js';
+import { prestitiPanel } from './prestiti.js';
 
 let META = null;
 const FLAG_BADGE = { ok: 'bg-emerald-100 text-emerald-700', stolen: 'bg-red-100 text-red-700', check: 'bg-amber-100 text-amber-800' };
 const flagBadge = (d) => (d.flag === 'ok' ? '' : `<span class="badge ${FLAG_BADGE[d.flag]}">⚠ ${esc(META.flags[d.flag])}</span>`);
 
-export async function dispositiviView(el) {
+// Due schede: Registro (seriali/IMEI) e Prestiti (muletti dati ai clienti: officina/public/prestiti.js)
+export async function dispositiviView(el, params) {
+  const tab = params?.get('tab') === 'prestiti' ? 'prestiti' : 'registro';
+  const loans = await safe(() => api('GET', '/api/prestiti?stato=fuori'));
+  el.innerHTML = `<div class="row tight chips-scroll" id="dv-tabs"><span class="chip ${tab === 'registro' ? 'on' : ''}" data-tab="registro">Registro dispositivi</span>
+    <span class="chip ${tab === 'prestiti' ? 'on' : ''}" data-tab="prestiti">Prestiti / muletto${loans?.out ? `<small>${loans.out}</small>` : ''}${loans?.late ? ' ⏰' : ''}</span></div>
+    <div id="dv-body" style="display:flex;flex-direction:column;gap:1.25rem"></div>`;
+  $('#dv-tabs', el).onclick = (e) => { const c = e.target.closest('[data-tab]'); if (c && c.dataset.tab !== tab) location.hash = c.dataset.tab === 'prestiti' ? '#/dispositivi?tab=prestiti' : '#/dispositivi'; };
+  const body = $('#dv-body', el);
+  return tab === 'prestiti' ? prestitiPanel(body) : registroView(body);
+}
+
+async function registroView(el) {
   META = META || (await safe(() => api('GET', '/api/dispositivi/meta')));
   if (!META) return;
   let cat = '';

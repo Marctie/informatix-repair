@@ -166,7 +166,7 @@ export function registerModelRoutes(app, h) {
   app.get('/api/modelli', h(async (req) => {
     await ensureSeed();
     const { where, args } = listWhere(req.query);
-    const rows = await db.prepare(`SELECT * FROM device_models WHERE ${where.join(' AND ')} ORDER BY kind, brand, model LIMIT 1500`).all(...args);
+    const rows = await db.prepare(`SELECT * FROM device_models WHERE ${where.join(' AND ')} ORDER BY CASE kind WHEN 'smartphone' THEN 0 WHEN 'tablet' THEN 1 WHEN 'portatile' THEN 2 WHEN 'pc' THEN 3 WHEN 'console' THEN 4 ELSE 5 END, brand, model LIMIT 1500`).all(...args);
     const counts = await db.prepare('SELECT kind, COUNT(*) AS n FROM device_models GROUP BY kind').all();
     const auto = (await db.prepare("SELECT COUNT(*) AS n FROM device_models WHERE source = 'auto'").get()).n;
     return { rows: rows.map(shape), counts: Object.fromEntries(counts.map((c) => [c.kind, c.n])), auto };
@@ -175,7 +175,7 @@ export function registerModelRoutes(app, h) {
     try {
       await ensureSeed();
       const { where, args } = listWhere(c.req.query());
-      const rows = await db.prepare(`SELECT * FROM device_models WHERE ${where.join(' AND ')} ORDER BY kind, brand, model`).all(...args);
+      const rows = await db.prepare(`SELECT * FROM device_models WHERE ${where.join(' AND ')} ORDER BY CASE kind WHEN 'smartphone' THEN 0 WHEN 'tablet' THEN 1 WHEN 'portatile' THEN 2 WHEN 'pc' THEN 3 WHEN 'console' THEN 4 ELSE 5 END, brand, model`).all(...args);
       const lines = [['Tipo', 'Marca', 'Modello', 'Parole chiave'].map(csvCell).join(';')];
       for (const m of rows) lines.push([m.kind, m.brand, m.model, m.keywords].map(csvCell).join(';'));
       return c.body('﻿' + lines.join('\r\n'), 200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="catalogo-modelli.csv"', 'cache-control': 'no-store' });

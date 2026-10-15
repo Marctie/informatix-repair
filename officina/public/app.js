@@ -19,6 +19,11 @@ import { promemoriaView, mountTodayReminders } from './promemoria.js';
 import { dispositiviView } from './dispositivi.js';
 import { buoniView } from './buoni.js';
 import { credenzialiView } from './credenziali.js';
+// --- Agente B: catalogo modelli, storico, riparazioni esterne, note ---
+import { modelliView } from './modelli.js';
+import { storicoView } from './storico.js';
+import { esterneView } from './esterne.js';
+import { noteView } from './note.js';
 
 // Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
 const GROUPS = [
@@ -46,6 +51,12 @@ const VIEWS = [
   { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView, group: 'negozio' },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true, group: 'gestione' },
+  // --- Agente B (voci del menu: storico, esterne, note, modelli) ---
+  { id: 'storico', label: 'Storico riparazioni', icon: '📋', render: storicoView, group: 'banco' },
+  { id: 'esterne', label: 'Riparazioni esterne', icon: '🚚', render: esterneView, group: 'banco' },
+  { id: 'note', label: 'Note', icon: '📝', render: noteView, group: 'banco' },
+  { id: 'modelli', label: 'Modelli', icon: '🏷️', render: modelliView, group: 'magazzino' },
+  // --- fine voci Agente B ---
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true, group: 'gestione' },
   { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true, group: 'gestione' },
   { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true, group: 'gestione' },
