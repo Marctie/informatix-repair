@@ -8,7 +8,7 @@ describe('Gestionale officina', () => {
     cy.contains('h1', 'Oggi');
     cy.contains('Nessuna riparazione aperta');
     cy.get('#top-new').should('be.visible');
-    cy.get('#nav a').should('have.length', 21); // 20 sezioni (menu a gruppi, amministratore) + Manuale
+    cy.get('#nav a').should('have.length', 31); // 30 sezioni (menu a gruppi, amministratore) + Manuale
   });
 
   it('crea un fornitore e un articolo di magazzino', () => {
