@@ -7,7 +7,7 @@ Ogni 5 minuti:
   - legge i numeri veri dal gestionale (/api/monitor, con la chiave MONITOR_TOKEN) e controlla che
     la Vetrina Usati sul sito sia allineata, che il backup notturno ci sia e che i dati siano leggibili.
     La lettura fa partire anche i promemoria scaduti del gestionale (arrivano anche a gestionale chiuso).
-Ogni mattina (lun-sab, 8:30) manda il "Buongiorno" con le cose da fare; ogni sera alle 21:00 il riepilogo
+Ogni mattina (tutti i giorni, 8:30) manda il "Buongiorno" con le cose da fare; ogni sera alle 21:00 il riepilogo
 dettagliato della giornata (incassi per metodo, vendite, riparazioni, mese, vetrina, blog, backup)."""
 import json
 import logging
@@ -33,7 +33,7 @@ SLOW_SECONDS = 8           # risposta piu' lenta di cosi' = "lento"
 SLOW_BEFORE_ALERT = 3      # 3 controlli lenti di fila (15 minuti)
 SUMMARY_HOUR = 21          # riepilogo serale
 MORNING = (8, 30)          # buongiorno
-MORNING_DAYS = (0, 1, 2, 3, 4, 5)  # lunedi'..sabato (domenica il negozio e' chiuso)
+MORNING_DAYS = (0, 1, 2, 3, 4, 5, 6)  # tutti i giorni (scelta di Marco, 15/10); 0 = lunedi'
 BACKUP_DEADLINE = 6        # dopo le 6:00 il backup della notte deve esserci
 VETRINA_CHECKS = 3         # vetrina disallineata per 3 controlli di fila (15 min) prima di avvisare
 

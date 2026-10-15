@@ -66,7 +66,7 @@ Leggi in quest'ordine: 1) `docs/CHATLOG.md` sezione "STATO A FINE GIORNATA 2026-
 ## RIPARTENZA NELLA NUOVA CHAT (aggiornata 2026-10-15) – SOSTITUISCE LE PRECEDENTI
 **Stato**: tutto il lavoro del 14/10 e' online; il 15/10 mattina: notifiche Telegram riscritte con i dati veri, bug della numerazione dopo un'eliminazione corretto, `/api/monitor` + segreto `MONITOR_TOKEN`, bot Termux v2 installato sul Samsung (buongiorno 8:30, riepilogo 21:00, controlli Vetrina/backup/lentezza). Test 88 + 31 verdi. Dettagli: CHATLOG "Sessione 2026-10-15 (mattina)".
 **Cosa resta (in ordine)**:
-1. Domande per Marco (DOMANDE-APERTE 58-63): VAULT_KEY "da chiarire", incasso di prova da 34 €, utente di prova amministratore, incassi cancellati con l'eliminazione delle riparazioni, BotFather `/setjoingroups`, orari del buongiorno.
+1. Domande 58-63: tutte risolte il 15/10 tranne la 62 (BotFather `/setjoingroups`, la fa Marco).
 2. **25 ottobre**: routine del blog all'ora solare `0 8,17 * * *`.
 3. Raggruppare il menu (21 voci).
 4. Controllo grafico a 4 formati (320/390/768/1280) di tutte le viste nuove + `ui-review`.

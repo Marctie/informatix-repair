@@ -64,11 +64,11 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 
 ### Aggiunte 2026-10-15 (bot e notifiche)
 58. ~~VAULT_KEY~~ → risolta (vedi Risolte).
-59. **Incasso di prova da 34 €** ("Saldo R-2026-0001" del 14/10) rimasto in cassa dopo l'eliminazione della riparazione di prova: lo togliamo? (Non c'e' un pulsante: si fa con una correzione sul database, registrata nel CHATLOG.)
-60. **Utente "Utente di prova"** `utente.archivio@libero.it` e' ancora **amministratore attivo**: disattivarlo o eliminarlo dalla pagina Utenti?
-61. **Eliminando una riparazione conclusa si cancellano anche i suoi incassi** (scelta del 14/10 pomeriggio): va bene cosi' o preferisci che gli incassi restino in cassa (o diventino uno "storno" visibile)? Ora almeno l'avviso Telegram dice quanti incassi e per quanto.
+59. ~~risolta~~ (vedi Risolte).
+60. ~~risolta~~ (vedi Risolte).
+61. ~~risolta~~ (vedi Risolte).
 62. **BotFather**: il bot puo' ancora essere aggiunto ai gruppi. Per chiuderlo: BotFather → `/setjoingroups` → @informatix_repair_bot → Disable (solo tu puoi farlo).
-63. Buongiorno del bot: va bene **lun-sab alle 8:30**? Il riepilogo resta ogni sera alle 21:00.
+63. ~~risolta~~ (vedi Risolte).
 
 ## Default scelti dall'agente B (da confermare con Christian)
 - Giacenza: 15 giorni dal rifiuto del cliente (o dall'annullamento); alla scadenza solo avviso, nessun cambio di stato automatico; deposito a pagamento = solo tariffa testuale, nessun incasso registrato.
@@ -79,6 +79,10 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 - Testi legali: bozze marcate "da far verificare"; validita' del preventivo e condizioni di recesso ancora "da definire".
 
 ## Risolte
+- (2026-10-15) 59: incasso di prova da 34 € ("Saldo R-2026-0001") TOLTO dal database su richiesta di Marco, con riga nel Registro (alle 10:19).
+- (2026-10-15) 60: "Utente di prova" `utente.archivio@libero.it` DISATTIVATO (non cancellato), con riga nel Registro.
+- (2026-10-15) 61: eliminando una riparazione conclusa i suoi incassi si cancellano: Marco conferma che va bene cosi'. L'avviso Telegram riporta quanti incassi e l'importo.
+- (2026-10-15) 63: Buongiorno del bot TUTTI i giorni alle 8:30 (anche la domenica).
 - (2026-10-15) VAULT_KEY: Marco l'aveva creata con il comando dato da Claude il 14/10. Online non c'erano dati cifrati, quindi nel Worker e' stato ricaricato esattamente il valore salvato in Mega (`Informatix-Chiavi/VAULT_KEY.txt`, 44 caratteri casuali): copia e chiave attiva ora coincidono con certezza. Il valore scritto in chat il 15/10 NON e' in uso.
 - (2026-10-13) Email di Christian: `djchri.cp@gmail.com`, amministratore.
 - (2026-10-13) Policy Cloudflare Access: "Everyone"; chi entra lo decide la pagina Utenti.
