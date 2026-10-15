@@ -366,7 +366,9 @@ export async function openRepairDetail(id, onChange) {
               <span>${done ? 'Totale' : 'Da saldare'} <b style="font-size:1.1rem">${eur(done ? total : due)}</b></span>
             </div>
             ${!done ? `
-              <div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><button class="btn btn-outline" data-act="deposit">Registra acconto</button></div>
+              <div class="stack" style="gap:.5rem"><div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><select id="d-depm" aria-label="Pagato con" style="width:auto"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
+                <div class="row" style="flex-wrap:nowrap;display:none" id="d-dep2"><input id="d-dep2a" inputmode="decimal" placeholder="Seconda quota €" aria-label="Seconda quota" /><select id="d-dep2m" aria-label="Seconda quota pagata con" style="width:auto"><option>carta</option><option>contanti</option><option>bonifico</option></select></div>
+                <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
               <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
@@ -460,7 +462,12 @@ export async function openRepairDetail(id, onChange) {
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
       case 'askquote': return act(() => api('POST', `/api/repairs/${id}/status`, { status: 'quote_pending' }), 'Il cliente può ora approvare dal link');
-      case 'deposit': return act(() => api('POST', `/api/repairs/${id}/deposit`, { amount: $('#d-dep', body).value }), 'Acconto registrato');
+      case 'depsplit': { const r2 = $('#d-dep2', body); r2.style.display = r2.style.display === 'none' ? '' : 'none'; return; }
+      case 'deposit': {
+        const second = $('#d-dep2', body).style.display !== 'none' && $('#d-dep2a', body).value.trim();
+        const payments = [{ method: $('#d-depm', body).value, amount: $('#d-dep', body).value }, ...(second ? [{ method: $('#d-dep2m', body).value, amount: $('#d-dep2a', body).value }] : [])];
+        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments }), 'Acconto registrato');
+      }
       case 'savetech': return act(() => api('PATCH', `/api/repairs/${id}`, { tech_notes: $('#d-tech', body).value }), 'Note del tecnico salvate');
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
       case 'savecnote': return act(() => api('PATCH', `/api/repairs/${id}`, { customer_note: $('#d-cnote', body).value }), 'Messaggio aggiornato');
