@@ -2,6 +2,7 @@
 import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
 import { retroField, retroVal } from './retro.js';
+import { blackBanner, showBlackAlert } from './blacks.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
@@ -114,9 +115,10 @@ export async function salesView(el) {
       const box = $('#s-cust-pick', el);
       box.innerHTML = `<div class="total-box" style="background:#ECFDF5;border:1px solid #A7F3D0"><span>✔ <b>${esc(customer.name)}</b></span><button class="btn btn-ghost btn-sm" id="s-unpick">cambia</button></div>`;
       box.classList.remove('hidden');
+      safe(() => api('GET', `/api/blacklist/check?customer_id=${customer.id}`)).then((o) => { if (o?.matches?.length && box.isConnected) box.insertAdjacentHTML('afterend', `<div id="s-black">${blackBanner(o.matches)}</div>`); });
       return;
     }
-    if (e.target.id === 's-unpick') { customer = null; $('#s-cust-pick', el).classList.add('hidden'); $('#s-cust', el).classList.remove('hidden'); $('#s-cust', el).value = ''; return; }
+    if (e.target.id === 's-unpick') { $('#s-black', el)?.remove(); customer = null; $('#s-cust-pick', el).classList.add('hidden'); $('#s-cust', el).classList.remove('hidden'); $('#s-cust', el).value = ''; return; }
     const q = e.target.closest('[data-q]');
     if (q) { const i = cart[Number(q.dataset.q)]; i.qty = Math.max(1, i.qty + Number(q.dataset.d)); return renderCart(); }
     const rm = e.target.closest('[data-rm]');
@@ -140,6 +142,7 @@ export async function salesView(el) {
       if (!out) return;
       cart.length = 0; settle.reset(); renderCart(); recent();
       showDeviceAlerts(out.device_alerts);
+      showBlackAlert(out.blacklist_alert);
       toast(`Venduto: ${eur(out.total)}`);
       if (printNow) window.open(`/print/sale/${out.id}`, '_blank');
     }

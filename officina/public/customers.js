@@ -2,6 +2,7 @@
 import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, statusBadge, waLink, plural } from './util.js';
 import { openRepairForm, openRepairDetail } from './repair.js';
 import { openDocuments } from './documenti.js';
+import { blackBanner, reportDialog } from './blacks.js';
 
 export async function customersView(el) {
   el.innerHTML = `
@@ -14,7 +15,7 @@ export async function customersView(el) {
     const rows = await safe(() => api('GET', `/api/customers?q=${encodeURIComponent(q)}`));
     list.innerHTML = (rows || []).map((c) => `<div class="row-h flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-id="${c.id}">
       <div class="w-9 h-9 rounded-full bg-secondary-light text-secondary-dark flex items-center justify-center font-bold">${esc(c.name.charAt(0).toUpperCase())}</div>
-      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(c.name)}${c.kind === 'azienda' ? ' <span class="badge" style="background:#E0E7FF;color:#3730A3">Azienda</span>' : ''}</p><p class="text-xs text-gray-500">${esc(c.phone || 'nessun telefono')} ${c.email ? '· ' + esc(c.email) : ''}${c.vat_number ? ' · P.IVA ' + esc(c.vat_number) : ''}</p></div>
+      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(c.name)}${c.blacklisted ? ' <span class="badge" style="background:#FEE2E2;color:#991B1B">⛔ Segnalato</span>' : ''}${c.kind === 'azienda' ? ' <span class="badge" style="background:#E0E7FF;color:#3730A3">Azienda</span>' : ''}</p><p class="text-xs text-gray-500">${esc(c.phone || 'nessun telefono')} ${c.email ? '· ' + esc(c.email) : ''}${c.vat_number ? ' · P.IVA ' + esc(c.vat_number) : ''}</p></div>
       <div class="text-xs text-gray-500 text-right">${plural(c.repairs_count, 'riparazione', 'riparazioni')}${c.open_repairs ? `<br><b class="text-secondary">${c.open_repairs} ${c.open_repairs === 1 ? 'aperta' : 'aperte'}</b>` : ''}</div></div>`).join('') || '<p class="empty">Nessun cliente.</p>';
   }
   $('#c-q', el).oninput = debounce((e) => load(e.target.value.trim()));
@@ -77,13 +78,14 @@ export async function openCustomer(id, done) {
   const c = await safe(() => api('GET', `/api/customers/${id}`));
   if (!c) return;
   const m = openModal(
-    `<section class="sec">
+    `${c.blacklist?.length ? `<section class="sec">${blackBanner(c.blacklist)}</section>` : ''}<section class="sec">
       <dl class="kv">${c.kind === 'azienda' ? '<dt>Tipo</dt><dd>Azienda</dd>' : ''}<dt>Telefono</dt><dd>${esc(c.phone || '—')}</dd><dt>Email</dt><dd>${esc(c.email || '—')}</dd>${c.vat_number ? `<dt>P.IVA</dt><dd>${esc(c.vat_number)}</dd>` : ''}${c.fiscal_code ? `<dt>Codice fiscale</dt><dd>${esc(c.fiscal_code)}</dd>` : ''}${c.address || c.city ? `<dt>Indirizzo</dt><dd>${esc([c.address, [c.zip, c.city].filter(Boolean).join(' '), c.province && '(' + c.province + ')'].filter(Boolean).join(', '))}</dd>` : ''}${c.sdi_code ? `<dt>SDI</dt><dd>${esc(c.sdi_code)}</dd>` : ''}${c.pec ? `<dt>PEC</dt><dd>${esc(c.pec)}</dd>` : ''}${c.notes ? `<dt>Note</dt><dd>${esc(c.notes)}</dd>` : ''}</dl>
       <div class="row tight">
         ${c.phone ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${waLink(c.phone, 'Ciao ' + c.name.split(' ')[0] + ',')}">💬 WhatsApp</a><a class="btn btn-outline btn-sm" href="tel:${esc(c.phone)}">📞 Chiama</a>` : ''}
         <button class="btn btn-primary btn-sm" id="cu-new">＋ Nuova riparazione</button>
         <button class="btn btn-outline btn-sm" id="cu-docs">🪪 Documenti</button>
         <button class="btn btn-outline btn-sm" id="cu-edit">Modifica</button>
+        ${c.blacklist?.some((b) => b.match === 'cliente') ? '' : '<button class="btn btn-ghost btn-sm" id="cu-black">⛔ Segnala</button>'}
         <button class="btn btn-ghost btn-sm" id="cu-del">Elimina</button>
       </div>
     </section>
@@ -99,6 +101,8 @@ export async function openCustomer(id, done) {
   );
   $('#cu-new', m.el).onclick = () => { m.close(); openRepairForm(done, { name: c.name, phone: c.phone }); };
   $('#cu-docs', m.el).onclick = () => openDocuments(c);
+  const bk = $('#cu-black', m.el);
+  if (bk) bk.onclick = () => { m.close(); reportDialog({ customer: c, done: () => { done?.(); openCustomer(c.id, done); } }); };
   $('#cu-edit', m.el).onclick = () => { m.close(); editCustomer(c, done); };
   $('#cu-del', m.el).onclick = async () => {
     if (!(await confirmDelete(c.name, { typed: 'ELIMINA', detail: 'Il cliente e le sue riparazioni concluse vengono cancellati (con i loro incassi in cassa).' }))) return;

@@ -5,6 +5,7 @@ import { createSettlement } from './buoni.js';
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 import { retroField, retroVal } from './retro.js';
+import { showBlackAlert, watchBlack } from './blacks.js';
 
 import { signIntakeAtDesk, signDialog } from './sign.js';
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
@@ -33,6 +34,7 @@ export function openRepairForm(onDone, preset = {}) {
           <div id="rf-sugg" class="suggest card hidden"></div>
         </div>
         <div id="rf-picked" class="hidden"></div>
+        <div id="rf-black" aria-live="polite"></div>
         <div id="rf-new" class="fgrid c3">
           <div class="field"><label class="l" for="rf-name">Nome e cognome *</label><input id="rf-name" value="${esc(preset.name || '')}" /></div>
           <div class="field"><label class="l" for="rf-phone">Telefono</label><input id="rf-phone" inputmode="tel" value="${esc(preset.phone || '')}" /></div>
@@ -183,15 +185,18 @@ export function openRepairForm(onDone, preset = {}) {
     sugg.innerHTML = (list || []).map((c) => `<div data-id="${c.id}" data-name="${esc(c.name)}" data-phone="${esc(c.phone || '')}" data-email="${esc(c.email || '')}"><b>${esc(c.name)}</b> <span class="text-gray-500">${esc(c.phone || '')}</span>${c.repairs_count ? `<span class="text-xs text-gray-400"> · ${c.repairs_count} riparazioni</span>` : ''}</div>`).join('') || '<div style="color:#9CA3AF;cursor:default">Nessun cliente trovato: compila i campi sotto per crearne uno nuovo.</div>';
     sugg.classList.remove('hidden');
   }, 200);
+  const checkBlack = watchBlack($('#rf-black', root), () => ({ customer_id: customerId || '', name: customerId ? '' : $('#rf-name', root).value.trim(), phone: customerId ? '' : $('#rf-phone', root).value.trim(), email: customerId ? '' : $('#rf-email', root).value.trim() }));
+  for (const id of ['#rf-name', '#rf-phone', '#rf-email']) $(id, root).addEventListener('input', checkBlack);
   sugg.onclick = (e) => {
     const r = e.target.closest('[data-id]'); if (!r) return;
     customerId = Number(r.dataset.id);
+    checkBlack();
     $('#rf-picked', root).innerHTML = `<div class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 mt-2 text-sm"><span>✔ <b>${esc(r.dataset.name)}</b> ${esc(r.dataset.phone)}</span><button type="button" class="btn btn-ghost btn-sm" id="rf-unpick">cambia</button></div>`;
     $('#rf-picked', root).classList.remove('hidden');
     $('#rf-new', root).classList.add('hidden');
     $('#rf-search', root).classList.add('hidden');
     sugg.classList.add('hidden');
-    $('#rf-unpick', root).onclick = () => { customerId = null; $('#rf-picked', root).classList.add('hidden'); $('#rf-new', root).classList.remove('hidden'); $('#rf-search', root).classList.remove('hidden'); };
+    $('#rf-unpick', root).onclick = () => { customerId = null; checkBlack(); $('#rf-picked', root).classList.add('hidden'); $('#rf-new', root).classList.remove('hidden'); $('#rf-search', root).classList.remove('hidden'); };
   };
 
   const doSave = async (btn, print) => {
@@ -232,6 +237,7 @@ export function openRepairForm(onDone, preset = {}) {
     }
     showCreated(r, onDone);
     showDeviceAlerts(r.device_alerts);
+    showBlackAlert(r.blacklist_alert);
   };
   $('#rf-save', root).onclick = (ev) => doSave(ev.currentTarget, false);
   $('#rf-save-print', root).onclick = (ev) => doSave(ev.currentTarget, true);

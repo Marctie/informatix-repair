@@ -27,6 +27,7 @@ import { missingMedia } from './media.mjs';
 import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
+import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 
 import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
@@ -100,6 +101,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   registerAuditRoutes(app, h, adminOnly);
   registerRetroRoutes(app, h, adminOnly);
+  registerBlackRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
@@ -202,14 +204,16 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const q = str(req.query.q);
     const base = `SELECT c.*, (SELECT COUNT(*) FROM repairs r WHERE r.customer_id=c.id) AS repairs_count,
       (SELECT COUNT(*) FROM repairs r WHERE r.customer_id=c.id AND r.status NOT IN ('delivered','cancelled')) AS open_repairs FROM customers c`;
-    if (!q) return db.prepare(`${base} ORDER BY c.created_at DESC LIMIT 300`).all();
+    // chi e' nell'elenco Blacks (segnalazione attiva) porta il distintivo anche in elenco
+    const flag = async (rows) => { const ids = new Set((await db.prepare('SELECT customer_id FROM blacklist WHERE active = 1 AND customer_id IS NOT NULL').all()).map((r) => r.customer_id)); return rows.map((r) => ({ ...r, blacklisted: ids.has(r.id) ? 1 : 0 })); };
+    if (!q) return flag(await db.prepare(`${base} ORDER BY c.created_at DESC LIMIT 300`).all());
     const like = `%${q}%`;
-    return db.prepare(`${base} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? OR c.company_name LIKE ? OR c.vat_number LIKE ? OR c.fiscal_code LIKE ? OR c.city LIKE ? OR c.pec LIKE ? ORDER BY c.name LIMIT 100`).all(like, like, like, like, like, like, like, like);
+    return flag(await db.prepare(`${base} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ? OR c.company_name LIKE ? OR c.vat_number LIKE ? OR c.fiscal_code LIKE ? OR c.city LIKE ? OR c.pec LIKE ? ORDER BY c.name LIMIT 100`).all(like, like, like, like, like, like, like, like));
   }));
   app.get('/api/customers/:id', h(async (req) => {
     const c = await db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
     if (!c) throw new L.HttpError(404, 'Cliente non trovato');
-    return { ...c, repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare('SELECT * FROM sales WHERE customer_id = ? ORDER BY id DESC').all(c.id) };
+    return { ...c, blacklist: await findBlacks({ customer_id: c.id }), repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare('SELECT * FROM sales WHERE customer_id = ? ORDER BY id DESC').all(c.id) };
   }));
   app.post('/api/customers', h(async (req) => {
     const id = await L.upsertCustomer({ ...req.body, id: undefined });
@@ -350,7 +354,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/repairs', h((req) => L.listRepairs({ status: str(req.query.status), q: str(req.query.q), open: req.query.open === '1', customer_id: req.query.customer_id })));
   app.post('/api/repairs', h(async (req) => {
     const r = await L.createRepair(req.body);
-    return { ...r, track_url: await trackUrl(r.token) };
+    return { ...r, track_url: await trackUrl(r.token), blacklist_alert: await findBlacks({ customer_id: r.customer_id }) };
   }));
   app.get('/api/repairs/:id', h(async (req) => {
     const r = await L.getRepair(req.params.id);
@@ -442,7 +446,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
         it.unit_cost = sv ? sv.cost : 0;
       }
     }
-    return L.createSale(req.body);
+    const sale = await L.createSale(req.body);
+    return { ...sale, blacklist_alert: req.body.customer_id ? await findBlacks({ customer_id: req.body.customer_id }) : [] };
   }));
   app.get('/api/sales/:id', h((req) => L.getSale(req.params.id)));
   app.get('/api/report', h(async (req) => {
@@ -489,7 +494,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   return app;
 }
 
-const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders', 'checklist_templates', 'repair_signatures', 'quote_options'];
+const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stock_moves', 'repairs', 'repair_events', 'repair_parts', 'sales', 'sale_items', 'services', 'payments', 'expenses', 'purchases', 'purchase_lines', 'price_history', 'supplier_codes', 'supplier_info', 'usati_items', 'usati_trash', 'audit_log', 'orders', 'order_items', 'quotes', 'quote_items', 'reminders', 'blacklist', 'checklist_templates', 'repair_signatures', 'quote_options'];
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
