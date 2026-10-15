@@ -20,33 +20,68 @@ import { dispositiviView } from './dispositivi.js';
 import { buoniView } from './buoni.js';
 import { credenzialiView } from './credenziali.js';
 
+// Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
+const GROUPS = [
+  { id: 'base', label: '' },
+  { id: 'banco', label: 'Banco' },
+  { id: 'magazzino', label: 'Magazzino e acquisti' },
+  { id: 'negozio', label: 'Vetrina e buoni' },
+  { id: 'gestione', label: 'Gestione' },
+];
 const VIEWS = [
-  { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView },
-  { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true },
-  { id: 'riparazioni', label: 'Riparazioni', icon: '🛠️', render: repairsView, bottom: true },
-  { id: 'clienti', label: 'Clienti', icon: '👤', render: customersView, bottom: true },
-  { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true },
-  { id: 'vendite', label: 'Vendite', icon: '🛒', render: salesView },
-  { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView },
-  { id: 'ordini', label: 'Ordini', icon: '📮', render: ordiniView },
-  { id: 'preventivi', label: 'Preventivi', icon: '📝', render: preventiviView },
-  { id: 'promemoria', label: 'Promemoria', icon: '🔔', render: promemoriaView },
-  { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView },
-  { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView },
-  { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView },
-  { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView },
-  { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView },
-  { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true },
-  { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true },
-  { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true },
-  { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true },
-  { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true },
+  { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView, group: 'base' },
+  { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true, group: 'base' },
+  { id: 'riparazioni', label: 'Riparazioni', icon: '🛠️', render: repairsView, bottom: true, group: 'banco' },
+  { id: 'clienti', label: 'Clienti', icon: '👤', render: customersView, bottom: true, group: 'banco' },
+  { id: 'vendite', label: 'Vendite', icon: '🛒', render: salesView, group: 'banco' },
+  { id: 'cassa', label: 'Cassa', icon: '💶', render: cashView, group: 'banco' },
+  { id: 'preventivi', label: 'Preventivi', icon: '📝', render: preventiviView, group: 'banco' },
+  { id: 'promemoria', label: 'Promemoria', icon: '🔔', render: promemoriaView, group: 'banco' },
+  { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true, group: 'magazzino' },
+  { id: 'ordini', label: 'Ordini', icon: '📮', render: ordiniView, group: 'magazzino' },
+  { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView, group: 'magazzino' },
+  { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView, group: 'magazzino' },
+  { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView, group: 'magazzino' },
+  { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView, group: 'negozio' },
+  { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView, group: 'negozio' },
+  { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },
+  { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true, group: 'gestione' },
+  { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true, group: 'gestione' },
+  { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true, group: 'gestione' },
+  { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true, group: 'gestione' },
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
 let ME = null;
 const visible = () => VIEWS.filter((x) => (!x.admin || ME?.role === 'admin') && !(x.notCassa && ME?.role === 'cassa'));
 const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
-const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖' };
+const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖', group: 'gestione', external: true };
+
+// Gruppi chiusi nella barra laterale: comodita' della singola postazione (il browser puo' non salvarli: nessun problema)
+const NAV_KEY = 'ix-nav-chiusi';
+const closedGroups = () => { try { return new Set(JSON.parse(localStorage.getItem(NAV_KEY) || '[]')); } catch { return new Set(); } };
+const saveClosed = (set) => { try { localStorage.setItem(NAV_KEY, JSON.stringify([...set])); } catch { /* memoria del browser non disponibile */ } };
+/** Voci visibili divise per gruppo (solo i gruppi con almeno una voce); `filter` toglie per esempio quelle della barra in basso. */
+const grouped = (filter = () => true) => GROUPS.map((g) => ({ ...g, items: [...visible(), MANUAL].filter((x) => x.group === g.id && filter(x)) })).filter((g) => g.items.length);
+const navLink = (x, cur, cls = '') => `<a href="${x.external ? x.href : `#/${x.id}`}" class="${cls}${x.id === cur ? ' on' : ''}"${x.id === cur ? ' aria-current="page"' : ''}${x.external ? ' target="_blank" rel="noopener"' : ''}><span class="ico">${x.icon}</span>${x.label}</a>`;
+function sideNav(cur) {
+  const closed = closedGroups();
+  return grouped().map((g) => {
+    if (!g.label) return g.items.map((x) => navLink(x, cur)).join('');
+    const open = !closed.has(g.id) || g.items.some((x) => x.id === cur); // il gruppo della pagina aperta resta sempre visibile
+    return `<div class="nav-grp"><button type="button" class="nav-grp-h" data-grp="${g.id}" aria-expanded="${open}" aria-controls="grp-${g.id}">${g.label}<span class="chev" aria-hidden="true">›</span></button>
+      <div class="nav-grp-items" id="grp-${g.id}"${open ? '' : ' hidden'}>${g.items.map((x) => navLink(x, cur)).join('')}</div></div>`;
+  }).join('');
+}
+document.addEventListener('click', (e) => {
+  const h = e.target.closest('.nav-grp-h');
+  if (!h) return;
+  const open = h.getAttribute('aria-expanded') !== 'true';
+  h.setAttribute('aria-expanded', String(open));
+  $(`#grp-${h.dataset.grp}`).hidden = !open;
+  const closed = closedGroups();
+  if (open) closed.delete(h.dataset.grp); else closed.add(h.dataset.grp);
+  saveClosed(closed);
+});
 
 const view = $('#view');
 
@@ -75,32 +110,37 @@ export const refresh = () => route();
 async function route() {
   const [, id = 'portale', qs = ''] = location.hash.match(/^#\/([a-z]+)(?:\?(.*))?$/) || [];
   const v = visible().find((x) => x.id === id) || VIEWS[0];
-  $('#nav').innerHTML =
-    visible().map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`).join('') +
-    `<a href="${MANUAL.href}" target="_blank" rel="noopener"><span class="ico">${MANUAL.icon}</span>${MANUAL.label}</a>`;
+  $('#nav').innerHTML = sideNav(v.id);
   const inMore = !v.bottom;
-  const bottomItems = VIEWS.filter((x) => x.bottom).map((x) => `<a href="#/${x.id}" class="${x.id === v.id ? 'on' : ''}"><span class="ico">${x.icon}</span>${x.label}</a>`);
+  const bottomItems = VIEWS.filter((x) => x.bottom).map((x) => navLink(x, v.id));
   // il pulsante "Nuova" sta al centro della barra: sempre a portata di pollice e mai sopra i contenuti
   bottomItems.splice(2, 0, `<button id="nav-new" class="nav-new" aria-label="Nuova riparazione"><span class="plus">＋</span>Nuova</button>`);
   $('#bottom-nav').innerHTML = bottomItems.join('') +
-    `<button id="more-btn" class="${inMore ? 'on' : ''}" style="${inMore ? 'color:#fff;background:rgba(220,38,38,.9)' : ''}"><span class="ico">☰</span>Altro</button>`;
-  $('#more-menu').classList.add('hidden');
+    `<button id="more-btn" class="${inMore ? 'on' : ''}" aria-expanded="false" aria-controls="more-menu"><span class="ico">☰</span>Altro</button>`;
+  closeMore();
   view.innerHTML = '<p class="text-gray-400 text-sm">Caricamento…</p>';
   window.scrollTo(0, 0);
   await safe(() => v.render(view, new URLSearchParams(qs), ME));
   refreshBell();
 }
 
-// menu "Altro" (mobile) e chiusura dei popup cliccando fuori
+// menu "Altro" (telefono e tablet): pannello dal basso con le voci a gruppi, a griglia; si chiude cliccando fuori o con Esc
+function closeMore() {
+  $('#more-menu').classList.add('hidden');
+  $('#more-btn')?.setAttribute('aria-expanded', 'false');
+}
 document.addEventListener('click', (e) => {
   const menu = $('#more-menu');
   if (e.target.closest('#more-btn')) {
-    const item = (href, icon, label, extra = '') => `<a href="${href}" ${extra} class="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-lightbg font-semibold text-sm">${icon} ${label}</a>`;
-    menu.innerHTML = visible().filter((x) => !x.bottom).map((x) => item(`#/${x.id}`, x.icon, x.label)).join('') + item(MANUAL.href, MANUAL.icon, MANUAL.label, 'target="_blank" rel="noopener"');
-    menu.classList.toggle('hidden');
-  } else if (!e.target.closest('#more-menu')) menu.classList.add('hidden');
+    if (!menu.classList.contains('hidden')) { closeMore(); return; }
+    const cur = (location.hash.match(/^#\/([a-z]+)/) || [])[1];
+    menu.innerHTML = grouped((x) => !x.bottom).map((g) => `<section class="more-grp">${g.label ? `<h2>${g.label}</h2>` : ''}<div class="more-grid">${g.items.map((x) => navLink(x, cur, 'more-tile')).join('')}</div></section>`).join('');
+    menu.classList.remove('hidden');
+    $('#more-btn').setAttribute('aria-expanded', 'true');
+  } else if (!e.target.closest('#more-menu') || e.target.closest('a')) closeMore();
   if (!e.target.closest('#gsearch') && !e.target.closest('#gsearch-res')) $('#gsearch-res').classList.add('hidden');
 });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#more-menu').classList.contains('hidden')) { closeMore(); $('#more-btn')?.focus(); } });
 
 // ---------- Azioni rapide ----------
 const newRepair = (preset) => openRepairForm(() => refresh(), preset);

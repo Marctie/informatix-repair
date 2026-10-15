@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS repairs (
   customer_id INTEGER NOT NULL REFERENCES customers(id),
   device_type TEXT NOT NULL DEFAULT 'smartphone', brand_model TEXT NOT NULL, serial TEXT,
   problem TEXT NOT NULL, accessories TEXT, condition_notes TEXT, passcode TEXT,
-  status TEXT NOT NULL DEFAULT 'received', urgent INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'received', urgent INTEGER NOT NULL DEFAULT 0, color TEXT,
   quote REAL, deposit REAL NOT NULL DEFAULT 0, final_price REAL,
   eta_date TEXT, warranty_days INTEGER NOT NULL DEFAULT 90,
   quote_decision TEXT, quote_decided_at TEXT,

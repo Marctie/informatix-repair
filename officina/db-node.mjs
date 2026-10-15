@@ -28,6 +28,7 @@ addColumn('repairs', 'checklist_out', 'TEXT');
 addColumn('repairs', 'sign_requested', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('repairs', 'quote_option_id', 'INTEGER');
 addColumn('repairs', 'device_fate', 'TEXT');
+addColumn('repairs', 'color', 'TEXT');
 addColumn('repairs', 'fate_since', 'TEXT');
 addColumn('repairs', 'fate_note', 'TEXT');
 

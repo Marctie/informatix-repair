@@ -57,7 +57,7 @@ function render(d) {
       : d.intake_signed_at ? `<div class="note done-note"><span>✔ Scheda di ingresso firmata il <b>${esc(fdt(d.intake_signed_at))}</b>.</span></div>` : ''}
     <div class="card"><h2>Il tuo dispositivo</h2>
       <dl>
-        <dt>Dispositivo</dt><dd>${esc(d.device.model)}</dd>
+        <dt>Dispositivo</dt><dd>${esc(d.device.model)}${d.device.color ? ` · ${esc(d.device.color)}` : ''}</dd>
         ${d.device.serial_tail ? `<dt>Seriale</dt><dd>${esc(d.device.serial_tail)}</dd>` : ''}
         <dt>Problema</dt><dd>${esc(d.device.problem)}</dd>
         ${d.device.accessories ? `<dt>Accessori lasciati</dt><dd>${esc(d.device.accessories)}</dd>` : ''}

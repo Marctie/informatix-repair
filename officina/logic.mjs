@@ -132,15 +132,15 @@ export async function createRepair(b) {
     const token = newToken();
     const r = await db.prepare(
       `INSERT INTO repairs (code, token, customer_id, device_type, brand_model, serial, problem, accessories,
-        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))`
+        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent, color, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))`
     ).run(
       code, token, customerId, str(b.device_type) || 'smartphone', need(b.brand_model, 'Dispositivo'), str(b.serial),
       need(b.problem, 'Problema segnalato'), str(b.accessories), str(b.condition_notes), str(b.passcode),
       quote, money(deposit), str(b.eta_date), num(b.warranty_days, Number(settings.default_warranty_days) || 90),
       // se il preventivo è già concordato al banco lo consideriamo approvato dal cliente
       b.quote_agreed && quote != null ? 'accepted' : null,
-      b.urgent ? 1 : 0
+      b.urgent ? 1 : 0, str(b.color)
     );
     const id = Number(r.lastInsertRowid);
     await logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
@@ -204,7 +204,7 @@ export async function listRepairs({ status, q, customer_id, open } = {}) {
   if (open) where.push("r.status NOT IN ('delivered','cancelled')");
   if (customer_id) { where.push('r.customer_id = ?'); args.push(Number(customer_id)); }
   if (q) {
-    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ?)');
+    where.push('(r.code LIKE ? OR r.brand_model LIKE ? OR r.color LIKE ? OR r.serial LIKE ? OR c.name LIKE ? OR c.phone LIKE ? OR r.problem LIKE ?)');
     const like = `%${q}%`;
     args.push(like, like, like, like, like, like);
   }
@@ -212,7 +212,7 @@ export async function listRepairs({ status, q, customer_id, open } = {}) {
   return Promise.all((await db.prepare(sql).all(...args)).map((r) => decorateRepair(r)));
 }
 
-const EDITABLE = ['device_type', 'brand_model', 'serial', 'problem', 'accessories', 'condition_notes', 'passcode', 'quote', 'eta_date', 'warranty_days', 'tech_notes', 'customer_note', 'final_price'];
+const EDITABLE = ['device_type', 'brand_model', 'color', 'serial', 'problem', 'accessories', 'condition_notes', 'passcode', 'quote', 'eta_date', 'warranty_days', 'tech_notes', 'customer_note', 'final_price'];
 export async function updateRepair(id, b) {
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
@@ -423,6 +423,7 @@ export async function publicView(token) {
       type: r.device_type,
       model: r.brand_model,
       serial_tail: r.serial ? `••••${r.serial.slice(-4)}` : null,
+      color: r.color || null,
       problem: r.problem,
       accessories: r.accessories,
       condition: r.condition_notes,
