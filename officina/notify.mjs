@@ -22,6 +22,7 @@ const SETTING = {
   shop_name: 'nome negozio', shop_address: 'indirizzo', shop_phone: 'telefono negozio', public_base_url: 'indirizzo pubblico', default_warranty_days: 'garanzia (giorni)',
   terms: 'condizioni sulla scheda', low_stock_default: 'scorta minima generale', stale_days: 'giorni prodotto fermo', ready_days: 'giorni pronta non ritirata',
   storage_days: 'giorni di giacenza', storage_fee: 'tariffa del deposito', legal_verified: 'stato dei testi legali', quote_valid_days: 'validità preventivi (giorni)',
+  materials_reminder_enabled: 'promemoria materiali da ordinare', materials_reminder_time: 'orario promemoria materiali', materials_reminder_days: 'giorni promemoria materiali',
   consent_intake: 'testo consenso all’ingresso', quote_accept_title: 'titolo accettazione preventivo', quote_accept_text: 'testo accettazione preventivo',
   quote_decline_title: 'titolo rifiuto preventivo', quote_decline_text: 'testo rifiuto preventivo', quote_decline_pickup: 'testo ritiro dopo il rifiuto',
   quote_decline_cede: 'testo cessione dopo il rifiuto', quote_sign_text: 'testo firma del preventivo', storage_notice: 'avviso di giacenza',

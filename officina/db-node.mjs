@@ -32,6 +32,10 @@ addColumn('repairs', 'color', 'TEXT');
 addColumn('quotes', 'token', 'TEXT');
 addColumn('repairs', 'fate_since', 'TEXT');
 addColumn('repairs', 'fate_note', 'TEXT');
+addColumn('repair_parts', 'order_state', 'TEXT');
+addColumn('repair_parts', 'ordered_at', 'TEXT');
+addColumn('quotes', 'sent_at', 'TEXT');
+addColumn('quotes', 'sent_via', 'TEXT');
 
 let depth = 0;
 setDb({

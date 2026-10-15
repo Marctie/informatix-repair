@@ -297,7 +297,7 @@ export async function deliverRepair(id, { final_price, method, note, ...pay } = 
   });
 }
 
-export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at }) {
+export async function addPart(repairId, { product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at, to_order }) {
   return tx(async () => {
     const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -316,7 +316,7 @@ export async function addPart(repairId, { product_id, name, qty, unit_price, uni
       cost = num(unit_cost, 0);
       if (cost < 0 || price < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
     }
-    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at) VALUES (?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at));
+    await db.prepare('INSERT INTO repair_parts (repair_id, product_id, name, qty, unit_price, unit_cost, supplier_code, supplier_name, bought_at, order_state) VALUES (?,?,?,?,?,?,?,?,?,?)').run(repairId, pid, pName, q, money(price), money(cost), pid ? null : str(supplier_code), pid ? null : str(supplier_name), pid ? null : str(bought_at), !pid && to_order ? 'da_ordinare' : null);
     await logEvent(repairId, null, `Ricambio usato: ${pName}${q > 1 ? ` ×${q}` : ''}.`, 0);
     return await getRepair(repairId);
   });

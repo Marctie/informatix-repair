@@ -2,6 +2,7 @@
 import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
 import { showDeviceAlerts } from './dispositivi.js';
+import { mountMaterialsSettings } from './materiali.js'; // agente D
 import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
 export async function salesView(el) {
@@ -406,6 +407,7 @@ export async function settingsView(el) {
     };
   };
   drawDemo();
+  mountMaterialsSettings($('#st-legal', el)); // agente D: promemoria materiali da ordinare
   // checklist per tipo: tre elenchi modificabili (una voce per riga)
   const ckBox = $('#ck-body', el);
   let ckAll = {};

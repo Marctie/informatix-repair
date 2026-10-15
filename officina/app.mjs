@@ -33,7 +33,11 @@ import * as SG from './signatures.mjs';
 import * as R from './remote.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
-const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify];
+// --- Agente D: materiali da ordinare, preventivo da riparazione, carta punti NFC, import DDT (blocchi separati) ---
+import { registerMaterialsRoutes, materialsAlerts, MATERIALS_SETTING_KEYS, validateReminderSettings } from './materiali.mjs';
+// --- fine import agente D ---
+
+const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, materialsAlerts];
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -102,7 +106,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', ...Object.keys(LEGAL_DEFAULTS)];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', ...MATERIALS_SETTING_KEYS, ...Object.keys(LEGAL_DEFAULTS)];
+    validateReminderSettings(req.body);
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }
@@ -281,6 +286,10 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerQuoteRoutes(app, h);
   // Promemoria con data/ora e avviso Telegram (officina/promemoria.mjs)
   registerReminderRoutes(app, h);
+
+  // --- Agente D: routes (blocco separato) ---
+  registerMaterialsRoutes(app, h); // officina/materiali.mjs
+  // --- fine routes agente D ---
 
   // Dispositivi, buoni/pagamento diviso, documenti d'identita' e credenziali fornitori (dati sensibili cifrati)
   registerDeviceRoutes(app, h);
