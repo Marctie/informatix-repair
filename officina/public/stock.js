@@ -12,7 +12,7 @@ export async function stockView(el, params) {
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
       <span class="row tight">${canSeeCosts() ? '<button class="btn btn-outline" id="p-load">📥 Carico merce</button>' : ''}<button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></span></div>
     <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
-    <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><select id="p-area" class="chip" aria-label="Area del magazzino" style="min-height:44px"></select><span class="chip" data-t="reorder">📉 Da ordinare</span>
+    <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><select id="p-area" class="chip" aria-label="Area del magazzino" style="min-height:44px;font-size:.95rem"></select><span class="chip" data-t="reorder">📉 Da ordinare</span>
       <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
     <div class="card overflow-hidden" id="p-list"></div>`;
   const list = $('#p-list', el);
@@ -113,7 +113,7 @@ async function productForm(id, done) {
     </section>
     ${id ? `<section class="sec"><h3 class="sec-t">Carico merce</h3>
       ${canSeeCosts()
-        ? '<div class="row"><button class="btn btn-outline" id="pf-loadfull">📥 Carico merce con fornitore e prezzo…</button></div><p class="hint">Quantità, fornitore, prezzo d’acquisto, data e documento: aggiorna giacenza, ultimo costo e storico prezzi.</p>'
+        ? '<div class="row"><button class="btn btn-outline" id="pf-loadfull" style="max-width:100%;height:auto;white-space:normal;text-align:left;line-height:1.3;padding-block:.6rem">📥 Carico merce con fornitore e prezzo…</button></div><p class="hint">Quantità, fornitore, prezzo d’acquisto, data e documento: aggiorna giacenza, ultimo costo e storico prezzi.</p>'
         : '<div class="row" style="flex-wrap:nowrap"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" style="max-width:12rem" /><button class="btn btn-outline" id="pf-load">Registra carico</button></div>'}</section>
     <section class="sec"><h3 class="sec-t">Ultimi movimenti</h3>
       <ul class="tl">${moves.slice(0, 8).map((x) => `<li><time>${fdt(x.created_at)}</time><span><b class="${x.delta > 0 ? 'text-emerald-600' : 'text-secondary'}">${x.delta > 0 ? '+' : ''}${x.delta}</b> · ${esc(x.reason)} ${esc(x.ref || '')}</span></li>`).join('') || '<li><span class="hint">Nessun movimento.</span></li>'}</ul></section>` : ''}`,
