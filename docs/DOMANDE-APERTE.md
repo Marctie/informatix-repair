@@ -63,7 +63,7 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 33. Quanti clienti ipotizzi nel primo anno? (serve per scegliere il login e i piani Cloudflare)
 
 ### Aggiunte 2026-10-15 (bot e notifiche)
-58. **VAULT_KEY: richiesta del 15/10 con un valore scritto in chat (non trascritto qui)**: cosa vuoi fare esattamente? Se e' un nome con cui salvarla, ok. Se e' il **valore** della chiave: e' troppo facile da indovinare (e ora e' scritto in chat) e cambiarla renderebbe **illeggibili** documenti d'identita' e credenziali gia' salvati (andrebbero rifatti). La chiave attuale e' casuale, copia in Mega `Informatix-Chiavi`.
+58. ~~VAULT_KEY~~ → risolta (vedi Risolte).
 59. **Incasso di prova da 34 €** ("Saldo R-2026-0001" del 14/10) rimasto in cassa dopo l'eliminazione della riparazione di prova: lo togliamo? (Non c'e' un pulsante: si fa con una correzione sul database, registrata nel CHATLOG.)
 60. **Utente "Utente di prova"** `utente.archivio@libero.it` e' ancora **amministratore attivo**: disattivarlo o eliminarlo dalla pagina Utenti?
 61. **Eliminando una riparazione conclusa si cancellano anche i suoi incassi** (scelta del 14/10 pomeriggio): va bene cosi' o preferisci che gli incassi restino in cassa (o diventino uno "storno" visibile)? Ora almeno l'avviso Telegram dice quanti incassi e per quanto.
@@ -79,6 +79,7 @@ Qui si raccolgono tutte le domande in sospeso, divise per chi deve rispondere. Q
 - Testi legali: bozze marcate "da far verificare"; validita' del preventivo e condizioni di recesso ancora "da definire".
 
 ## Risolte
+- (2026-10-15) VAULT_KEY: Marco l'aveva creata con il comando dato da Claude il 14/10. Online non c'erano dati cifrati, quindi nel Worker e' stato ricaricato esattamente il valore salvato in Mega (`Informatix-Chiavi/VAULT_KEY.txt`, 44 caratteri casuali): copia e chiave attiva ora coincidono con certezza. Il valore scritto in chat il 15/10 NON e' in uso.
 - (2026-10-13) Email di Christian: `djchri.cp@gmail.com`, amministratore.
 - (2026-10-13) Policy Cloudflare Access: "Everyone"; chi entra lo decide la pagina Utenti.
 - (2026-10-13) R2 attivato per il backup automatico.
