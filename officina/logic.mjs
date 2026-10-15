@@ -5,6 +5,7 @@ import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
 import { deviceHook, alertText } from './dispositivi.mjs';
+import { ensureModel } from './modelli.mjs';
 
 import { fillText, isVerified, buildQuoteFlow } from './legal.mjs';
 
@@ -158,6 +159,8 @@ export async function createRepair(b) {
     );
     const id = Number(r.lastInsertRowid);
     await logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
+    // Catalogo modelli: se il modello scritto non c'e' lo aggiunge (il catalogo e' un aiuto: non blocca mai la scheda)
+    const modelAdded = await ensureModel(str(b.device_type) || 'smartphone', b.brand_model);
     // Registro dispositivi: se il seriale e' segnalato (rubato / da verificare) lo scriviamo nella scheda e lo ritorniamo come avviso
     const deviceAlerts = await deviceHook(b.serial, 'riparazione', `Entrato in riparazione ${code}`);
     for (const a of deviceAlerts) await logEvent(id, null, alertText(a), 0);
@@ -166,7 +169,7 @@ export async function createRepair(b) {
       await db.prepare("UPDATE repairs SET status='approved', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
       await logEvent(id, 'approved', 'Preventivo concordato al banco.');
     }
-    return { ...(await getRepair(id)), device_alerts: deviceAlerts };
+    return { ...(await getRepair(id)), device_alerts: deviceAlerts, model_added: modelAdded.added ? modelAdded.model : null };
   });
 }
 

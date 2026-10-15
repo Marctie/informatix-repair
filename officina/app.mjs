@@ -26,6 +26,7 @@ import { registerDeviceRoutes, DEVICE_TABLES } from './dispositivi.mjs';
 import { registerVoucherRoutes, VOUCHER_TABLES } from './buoni.mjs';
 import { registerDocumentRoutes, DOCUMENT_TABLES } from './documenti.mjs';
 import { registerCredentialRoutes, CREDENTIAL_TABLES } from './credenziali.mjs';
+import { registerLottoB, lottoBAlerts, LOTTO_B_TABLES } from './lottoB.mjs'; // Agente B
 import { demoStatus, loadDemo, deleteDemo } from './demo.mjs';
 import { mountUsati } from './usati.mjs';
 import { draftPublisher } from './publisher.mjs';
@@ -43,6 +44,7 @@ import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
 const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, invoiceAlerts, ledgerAlerts];
+EXTRA_ALERTS.push(lottoBAlerts); // Agente B
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -308,6 +310,9 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerInvoiceRoutes(app, h, { adminOnly });
   registerLedgerRoutes(app, h, { adminOnly });
   // --- fine Agente C ---
+  // ===== Agente B: catalogo modelli, storico, riparazioni esterne, prestiti, note (officina/lottoB.mjs) =====
+  registerLottoB(app, h);
+  // ===== fine blocco Agente B =====
 
   // Magazzino
   const checkProduct = (b) => {
@@ -512,5 +517,6 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
   for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of LOTTO_B_TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all(); // Agente B
   return dump;
 }
