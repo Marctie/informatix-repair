@@ -1,0 +1,57 @@
+/* Lotto B: catalogo modelli, storico, riparazioni esterne, prestiti, note.
+   Stessa scala di spaziature del resto del gestionale (.5 / .85 / 1.25 / 1.6 rem). */
+
+/* barra filtri condivisa (Storico, Modelli, Esterne) */
+.fbar{display:grid;gap:.85rem 1rem;grid-template-columns:minmax(0,1fr)}
+@media (min-width:560px){ .fbar{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (min-width:960px){ .fbar.c4{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.fbar .span2{grid-column:1 / -1}
+.stat-row{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;font-size:.85rem;color:var(--muted)}
+.stat-row b{color:var(--ink)}
+
+/* suggerimenti dei modelli (sotto il campo, dalla terza lettera) */
+.msug{position:absolute;z-index:30;left:0;right:0;top:calc(100% + .3rem);max-height:16rem;overflow-y:auto;box-shadow:0 12px 28px -10px rgb(16 24 40/.3)}
+.msug > div{display:flex;justify-content:space-between;align-items:center;gap:.75rem;padding:.6rem .85rem;border-bottom:1px solid var(--line);cursor:pointer;font-size:.9rem}
+.msug > div:last-child{border-bottom:0}
+.msug > div:hover,.msug > div.act{background:var(--bg)}
+.msug small{color:var(--muted);font-size:.72rem;white-space:nowrap}
+.msug .new{cursor:default;color:var(--muted);font-size:.82rem}
+.msug mark{background:#FEF3C7;color:inherit;border-radius:.2rem;padding:0 .1rem}
+
+/* righe di stato / scadenza */
+.late-t{color:var(--red-d);font-weight:700}
+.b-ok{background:#DCFCE7;color:#166534}.b-warn{background:#FEF3C7;color:#92400E}.b-bad{background:#FEE2E2;color:#B91C1C}.b-idle{background:#F3F4F6;color:#374151}.b-info{background:#DBEAFE;color:#1E40AF}
+.rowact{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end}
+
+/* sezioni dentro la scheda riparazione */
+.xsec-list{display:flex;flex-direction:column;gap:.5rem}
+.xitem{display:flex;flex-direction:column;gap:.5rem;padding:.85rem 1rem;border:1px solid var(--line);border-radius:.85rem;background:#fff}
+.xitem .top{display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;flex-wrap:wrap}
+.xitem .ttl{font-weight:700;font-size:.92rem;overflow-wrap:anywhere}
+
+/* note stile Keep */
+.notes-grid{columns:1;column-gap:1rem}
+@media (min-width:560px){ .notes-grid{columns:2} }
+@media (min-width:960px){ .notes-grid{columns:3} }
+.note{break-inside:avoid;margin:0 0 1rem;padding:.85rem 1rem;border-radius:.85rem;border:1px solid rgb(0 0 0/.08);display:flex;flex-direction:column;gap:.5rem;background:var(--nc,#FEF9C3);cursor:pointer;transition:box-shadow .15s}
+.note:hover{box-shadow:0 8px 20px -10px rgb(16 24 40/.35)}
+.note h3{font-weight:700;font-size:.95rem;margin:0;overflow-wrap:anywhere;line-height:1.3}
+.note .nb{font-size:.88rem;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;max-height:14rem;overflow:hidden}
+.note .nitems{display:flex;flex-direction:column;gap:.25rem}
+.note .nitems label{display:flex;gap:.5rem;align-items:flex-start;font-size:.88rem;cursor:pointer;line-height:1.4}
+.note .nitems label.d span{text-decoration:line-through;opacity:.55}
+.note .nitems input{margin-top:.2rem;flex:none;width:1rem;height:1rem}
+.note .nfoot{display:flex;justify-content:space-between;align-items:center;gap:.5rem;font-size:.72rem;color:rgb(0 0 0/.5)}
+.note .nact{display:flex;gap:.25rem;opacity:.0;transition:opacity .15s}
+.note:hover .nact,.note:focus-within .nact{opacity:1}
+@media (hover:none){ .note .nact{opacity:1} }
+.note .nact button{border:0;background:transparent;border-radius:.5rem;padding:.3rem .4rem;cursor:pointer;color:rgb(0 0 0/.65);font-size:.8rem;line-height:1}
+.note .nact button:hover{background:rgb(0 0 0/.08)}
+.note.pin{box-shadow:inset 0 0 0 2px rgb(0 0 0/.18)}
+.nc-giallo{--nc:#FEF9C3}.nc-rosa{--nc:#FCE7F3}.nc-verde{--nc:#DCFCE7}.nc-azzurro{--nc:#DBEAFE}.nc-viola{--nc:#EDE9FE}.nc-arancio{--nc:#FFEDD5}.nc-grigio{--nc:#E5E7EB}.nc-bianco{--nc:#FFFFFF}
+.cdots{display:flex;gap:.5rem;flex-wrap:wrap}
+.cdot{width:1.75rem;height:1.75rem;border-radius:50%;border:2px solid rgb(0 0 0/.15);background:var(--nc);cursor:pointer;padding:0}
+.cdot.on{border-color:var(--ink);box-shadow:0 0 0 2px #fff inset}
+.ed-item{display:flex;gap:.5rem;align-items:center}
+.ed-item input[type=text]{flex:1 1 auto;min-width:0}
+.ed-item input[type=checkbox]{flex:none;width:1.1rem;height:1.1rem}

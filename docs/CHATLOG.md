@@ -872,3 +872,12 @@ Marco e' via per una visita: lavoro portato avanti da solo, tutto pubblicato; **
 - **Trovato dai test E2E e corretto**: l'API accettava `method: 'non tracciato'` su vendite singole, acconti, consegne e ordini (il blocco c'era solo nei pagamenti divisi). Ora `assertMethod` (logic.mjs) lo rifiuta ovunque, prima di scrivere qualsiasi cosa. Test dedicato.
 - **Trovati dalla rassegna grafica e corretti**: campo Area del magazzino con testo da 13,6 px, pulsante "Carico merce con fornitore" fuori schermo a 320 px, buco di 222 px tra le sezioni di Impostazioni (griglia a 3 colonne).
 - **Test**: `npm run test:officina` 94 verdi; Cypress su `cypress-tests`: 221 test verdi (novita 10, officina 13, responsive 43, scanner 10, spese 11, ui-review 134).
+
+## Agente B (15-16/10): catalogo modelli, storico, esterne, muletto, note
+- **Migrazioni 0020-0022** (anche in `officina/schema.sql`): `device_models`; `external_repairs` + `loans`; `notes`. Solo tabelle nuove, nessun dato esistente toccato.
+- **Catalogo modelli**: ~900 modelli (seed in `officina/seed/modelli.mjs`, caricato da solo al primo uso e mai ricaricato se cancellati; "Rimetti i modelli di partenza" li recupera). Suggerimenti dalla 3a lettera nella nuova riparazione e nella modifica; alla creazione scheda un modello sconosciuto viene aggiunto (`source=auto`), uno noto aumenta l'uso. `repairs.brand_model` resta testo. Sezione "Modelli" con CRUD, filtri, import/export CSV.
+- **Storico** (`/api/storico`, vista Storico riparazioni): filtri cliente/marca/modello/tipo/stato/periodo, totali, CSV, scheda riassuntiva. Cassa senza costi/margini (anche nel CSV).
+- **Riparazioni esterne** (`esterne.mjs`): collegate alla scheda, laboratorio da anagrafica o a mano, invio/rientro, costo, avviso rientro in ritardo, eventi interni nella cronologia.
+- **Muletto** (`prestiti.mjs`, scheda "Prestiti / muletto" in Dispositivi + sezione nella scheda): scadenza = consegna stimata, no doppio prestito dello stesso dispositivo, avvisi (scaduto, riparazione chiusa col muletto fuori).
+- **Note stile Keep** (`note.mjs`): rapide, colori, fissate, elenchi con caselle, archivio, ricerca.
+- Aggancio unico in `app.mjs` tramite `officina/lottoB.mjs`; frontend in file nuovi + `lottob.css`. Manuale sezioni 30-34. Test: `officina/tests/lottoB.test.mjs`. Controllo grafico con Edge headless a 360/768/1280: nessuno scorrimento orizzontale, nessun errore JS.

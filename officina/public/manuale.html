@@ -129,6 +129,11 @@
   <a href="#dispositivi">22 · Dispositivi e seriali</a>
   <a href="#buoni">23 · Buoni e conto diviso</a>
   <a href="#riservati">24 · Documenti e credenziali</a>
+  <a href="#modelli">30 · Catalogo modelli</a>
+  <a href="#storico">31 · Storico riparazioni</a>
+  <a href="#esterne">32 · Riparazioni esterne</a>
+  <a href="#prestiti">33 · Muletto in prestito</a>
+  <a href="#note">34 · Note</a>
 </nav>
 
 <main>
@@ -672,6 +677,62 @@
   <ul>
     <li>Cambiando lo stato in “Annullato / non riparabile” scegli: resta in negozio, ritirato, oppure lasciato da smaltire/pezzi di ricambio (cessione firmata).</li>
     <li>Parte il conto dei <b>15 giorni</b> (cambiabili in Impostazioni). In <b>Oggi</b> e nella campanella compaiono “giacenza in scadenza” e “giacenza scaduta”: smaltisci oppure sposta in <b>deposito a pagamento</b>; c'è il pulsante per avvisare il cliente su WhatsApp. Non cambia nulla in automatico e nessun incasso viene registrato da solo.</li>
+  </ul>
+</section>
+
+<section id="modelli">
+  <h2><span class="n">30</span>Catalogo modelli</h2>
+  <p class="lead">L'elenco di marche e modelli (smartphone, tablet, portatili, PC, console) che aiuta a compilare la scheda senza scrivere tutto.</p>
+  <ol class="steps">
+    <li>Nella <b>nuova riparazione</b>, nel campo <b>Marca e modello</b>, scrivi le prime <b>3 lettere</b> (es. “sam” o “iph”): compare l'elenco. Scegli con il tocco, oppure con le frecce e Invio. Scegliendo si imposta anche il tipo di dispositivo. Vale anche nella modifica della scheda.</li>
+    <li>Se il modello <b>non c'è</b>, scrivilo normalmente: quando salvi la scheda viene <b>aggiunto da solo</b> al catalogo (compare un avviso). Nella scheda resta il testo che hai scritto.</li>
+    <li>Dal menu <b>Modelli</b> gestisci tutto: cerca, filtra per tipo/marca/provenienza, <b>＋ Nuovo modello</b>, <b>Modifica</b>, <b>Elimina</b> (le schede già fatte non cambiano).</li>
+    <li><b>⬇ Esporta CSV</b> e <b>⬆ Importa CSV</b> (colonne Tipo; Marca; Modello; Parole chiave): i doppioni si saltano. <b>↺ Rimetti i modelli di partenza</b> recupera quelli del catalogo iniziale che hai cancellato.</li>
+  </ol>
+  <div class="call tip"><b>Catalogo di partenza</b>Circa 900 modelli dei più diffusi (Apple, Samsung, Xiaomi, Huawei, Oppo, Realme, Motorola, OnePlus, Google, Honor, Nokia, Sony, tablet, notebook HP/Dell/Lenovo/Asus/Acer/MSI/Mac, console). I modelli più usati salgono in cima ai suggerimenti.</div>
+</section>
+
+<section id="storico">
+  <h2><span class="n">31</span>Storico riparazioni</h2>
+  <p class="lead">Tutte le riparazioni, anche vecchie, con i dettagli e i filtri.</p>
+  <ul>
+    <li>Menu <b>Storico riparazioni</b>: per ogni scheda vedi cliente, dispositivo, seriale, problema, esito, importo e (per chi può) costi e margine.</li>
+    <li>Filtri: ricerca libera, <b>cliente</b>, <b>marca</b>, <b>modello</b>, <b>tipo</b>, <b>stato</b> (aperte/chiuse/uno stato) e <b>periodo</b> (ultimi giorni o date precise, per ingresso o per consegna).</li>
+    <li>Tocca una riga per la <b>scheda riassuntiva</b> (ricambi, riparazioni esterne, muletti, cronologia) e da lì <b>Apri la scheda completa</b>.</li>
+    <li><b>⬇ Esporta CSV</b> scarica esattamente quello che stai vedendo (si apre con Excel). Il ruolo Cassa non vede costi né margini, neanche nel file.</li>
+  </ul>
+</section>
+
+<section id="esterne">
+  <h2><span class="n">32</span>Riparazioni esterne</h2>
+  <p class="lead">Quando un dispositivo (o un pezzo) va a un laboratorio esterno.</p>
+  <ol class="steps">
+    <li>Nella scheda della riparazione, sezione <b>Riparazione esterna</b>, premi <b>＋ Manda a un laboratorio esterno</b>: scegli il laboratorio dall'anagrafica <b>Fornitori</b> o scrivine il nome, la lavorazione, il rientro previsto e il costo.</li>
+    <li>Con <b>Segna inviata</b> parte il conteggio dei giorni fuori; con <b>✔ Rientrata</b> indichi la data e il costo finale.</li>
+    <li>Il menu <b>Riparazioni esterne</b> è l'elenco di tutte: aperte, in ritardo, rientrate. Se non rientra entro la data prevista compare un avviso nella campanella e in “Oggi”.</li>
+    <li>Il costo entra nei costi e nel margine dello <b>Storico</b>. Ogni passaggio è scritto come nota interna nella cronologia della scheda.</li>
+  </ol>
+</section>
+
+<section id="prestiti">
+  <h2><span class="n">33</span>Muletto in prestito</h2>
+  <p class="lead">Un dispositivo del negozio dato al cliente mentre il suo è in riparazione.</p>
+  <ol class="steps">
+    <li>Nella scheda della riparazione, sezione <b>Muletto in prestito</b>, premi <b>＋ Presta un muletto</b> (oppure da <b>Dispositivi → Prestiti / muletto → Nuovo prestito</b>).</li>
+    <li>Scegli il muletto dal registro Dispositivi (non si può prestare due volte) o descrivilo a mano; la <b>scadenza</b>, se vuota, è la consegna stimata della riparazione.</li>
+    <li>Quando torna premi <b>✔ Rientrato</b> e annota com'è tornato; con <b>Riapri</b> si corregge un errore.</li>
+    <li>Se non rientra entro la scadenza, o la riparazione è già chiusa e il muletto è ancora fuori, compare un <b>avviso rosso</b> in campanella e in “Oggi”.</li>
+  </ol>
+</section>
+
+<section id="note">
+  <h2><span class="n">34</span>Note</h2>
+  <p class="lead">Appunti liberi stile Keep, condivisi tra tutti gli utenti del gestionale.</p>
+  <ul>
+    <li>Scrivi nella barra in alto e premi <b>Invio</b> per una nota rapida; <b>＋ Nota completa</b> per titolo, testo, <b>colore</b>, <b>elenco con caselle</b> da spuntare e <b>Fissa in alto</b>.</li>
+    <li>Le caselle si spuntano direttamente sulla nota; le fatte vanno in fondo e barrate. Passando sopra una nota (o sul telefono, sempre) trovi Fissa, Archivia, Elimina.</li>
+    <li>Cerca nel testo e nelle voci, filtra per colore con i pallini, consulta l'<b>Archivio</b>.</li>
+    <li>Per un avviso a una data e ora precisa usa invece i <b>Promemoria</b>.</li>
   </ul>
 </section>
 
