@@ -83,7 +83,7 @@ const customerBlock = (r, withEmail = true) => `
 const deviceBlock = (r) => `
   <table class="dev"><colgroup><col style="width:19%"><col style="width:31%"><col style="width:17%"><col style="width:33%"></colgroup>
     <tr><th>Tipo</th><td>${esc(TYPES[r.device_type] || r.device_type)}</td><th>${esc(typeInfo(r.device_type).serial)}</th><td>${esc(r.serial) || '—'}</td></tr>
-    <tr><th>Modello</th><td colspan="3"><b style="font-size:13px">${esc(r.brand_model)}</b></td></tr>
+    <tr><th>Modello</th><td><b style="font-size:13px">${esc(r.brand_model)}</b></td><th>Colore</th><td>${esc(r.color) || '—'}</td></tr>
     <tr><th>Accessori lasciati</th><td colspan="3">${esc(r.accessories) || 'nessuno'}</td></tr>
     <tr><th>Stato estetico</th><td colspan="3">${esc(r.condition_notes) || '—'}</td></tr>
   </table>`;
@@ -122,6 +122,7 @@ function customerHalf(r, trackUrl, s, copy) {
       <div>Tel. ${esc(r.customer_phone) || '—'}${r.customer_email ? ` · ${esc(r.customer_email)}` : ''}</div>
       <h2>Dispositivo consegnato</h2>
       ${kv('Modello', `<span style="font-size:11px">${esc(cut(r.brand_model, 60))}</span>`)}
+      ${r.color ? kv('Colore', esc(cut(r.color, 30))) : ''}
       ${kv('Tipo', esc(TYPES[r.device_type] || r.device_type))}
       ${kv(esc(info.serial), esc(cut(r.serial, 40)) || '—')}
       ${kv('Accessori', esc(cut(r.accessories, 70)) || 'nessuno')}

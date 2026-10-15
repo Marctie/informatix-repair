@@ -27,6 +27,9 @@ const P = {
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   hand: '<path d="M8 12V5.5a1.5 1.5 0 0 1 3 0V11M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11V5.5a1.5 1.5 0 0 1 3 0V14c0 4-2.5 7-6 7-2.5 0-4-1.2-5.2-3.2L3.5 14a1.5 1.5 0 0 1 2.5-1.6L8 14.5"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3M14 9l2 2"/>',
+  scroll: '<path d="M8 3h11v15a3 3 0 0 1-3 3H6a3 3 0 0 0 3-3V6a3 3 0 0 0-3-3z"/><path d="M12 8h4M12 12h4"/>',
   trend: '<path d="m3 7 6 6 4-4 8 8"/><path d="M21 11v6h-6"/>',
   download: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
@@ -54,7 +57,7 @@ const MAP = {
   '👁️': 'eye', '👁': 'eye', '📋': 'copy', '✏️': 'pencil', '✏': 'pencil', '📞': 'phone', '💬': 'message', '🔥': 'flame', '⏰': 'clock',
   '✋': 'hand', '📉': 'trend', '💾': 'download', '🔒': 'lock', '✉️': 'mail', '✉': 'mail', '📝': 'note', '🔫': 'barcode',
   '✔': 'check', '✓': 'check', '＋': 'plus', '☰': 'menu', '✕': 'x', '⚠': 'alert', '⚠️': 'alert', '🎉': 'party',
-  '👥': 'users', '📊': 'chart', '🧭': 'compass', '📮': 'inbox', '🔔': 'bell',
+  '👥': 'users', '📊': 'chart', '🧭': 'compass', '📮': 'inbox', '🧾': 'receipt', '🔑': 'key', '📜': 'scroll', '🔔': 'bell',
   '📱': 'smartphone', '🎟️': 'ticket', '🎟': 'ticket', '🪪': 'idcard', '🔐': 'lock', '🎁': 'gift', '🌐': 'globe', '➗': 'split',
 };
 const RE = new RegExp(Object.keys(MAP).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');

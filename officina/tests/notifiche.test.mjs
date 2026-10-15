@@ -155,3 +155,14 @@ test('/api/monitor: senza la chiave giusta non esiste; con la chiave dà i numer
   const json = JSON.stringify(m);
   assert.doesNotMatch(json, /3331112222|passcode|password/i, 'niente telefoni né segreti');
 });
+
+test('colore del dispositivo: salvato, modificabile, visibile al cliente e sulle schede', async () => {
+  const r = await newRepair({ color: ' Nero siderale ' });
+  assert.equal(r.color, 'Nero siderale');
+  const up = (await call('PATCH', `/api/repairs/${r.id}`, { color: 'Argento' })).data;
+  assert.equal(up.color, 'Argento');
+  assert.equal((await call('GET', `/api/track/${r.token}`, null, pub)).data.device.color, 'Argento');
+  assert.match((await call('GET', `/print/customer/${r.id}?noprint=1`)).data, /Colore<\/span><b>Argento/);
+  assert.ok((await call('GET', '/api/repairs?q=argento')).data.some((x) => x.id === r.id), 'si trova anche cercando il colore');
+  assert.equal((await newRepair()).color, null, 'senza colore resta vuoto');
+});

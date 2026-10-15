@@ -10,6 +10,7 @@ import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindC
 // Tipi di dispositivo, etichette e suggerimenti arrivano dal server (/api/meta): cambiano con il tipo scelto.
 const FALLBACK_TYPES = { smartphone: { label: 'Smartphone', serial: 'IMEI / seriale', passcode: 'PIN / schema di sblocco', accessories: ['Caricatore', 'Cover', 'SIM', 'Scheda SD', 'Cavo'] }, altro: { label: 'Altro', serial: 'Numero di serie', passcode: 'Codice di sblocco', accessories: ['Caricatore', 'Cavo'] } };
 const typesMeta = () => (META.device_types && Object.keys(META.device_types).length ? META.device_types : FALLBACK_TYPES);
+const COLORS = ['nero', 'bianco', 'argento', 'grigio', 'oro', 'blu', 'rosso', 'verde', 'rosa', 'viola', 'giallo', 'titanio', 'grafite', 'trasparente']; // suggerimenti: si puo' scrivere anche altro
 const typeInfo = (t) => typesMeta()[t] || typesMeta().altro || FALLBACK_TYPES.altro;
 let CHECKLISTS = {}; // elenchi di controllo per tipo (si ricaricano a ogni apertura)
 const loadChecklists = async () => { CHECKLISTS = (await safe(() => api('GET', '/api/checklists'))) || CHECKLISTS; return CHECKLISTS; };
@@ -42,6 +43,7 @@ export function openRepairForm(onDone, preset = {}) {
         <div class="field"><label class="l">Tipo di dispositivo</label><div class="row tight" id="rf-types">${Object.entries(typesMeta()).map(([k, v], i) => `<span class="chip ${i === 0 ? 'on' : ''}" data-v="${k}">${esc(v.label)}</span>`).join('')}</div></div>
         <div class="fgrid c2">
           <div class="field"><label class="l" for="rf-model">Marca e modello *</label><input id="rf-model" placeholder="es. iPhone 13, Samsung A54, HP 250 G8" /></div>
+          <div class="field"><label class="l" for="rf-color">Colore</label><input id="rf-color" list="rf-colors" autocomplete="off" placeholder="es. nero, argento, blu" /><datalist id="rf-colors">${COLORS.map((c) => `<option value="${c}"></option>`).join('')}</datalist></div>
           <div class="field"><label class="l" for="rf-serial">${esc(typeInfo(Object.keys(typesMeta())[0]).serial)}</label>
             <div class="row nowrap"><input id="rf-serial" autocomplete="off" placeholder="Spara col lettore o scrivi" value="${esc(preset.serial || '')}" /><button type="button" class="btn btn-outline btn-icon" id="rf-cam" aria-label="Scansiona con la fotocamera" title="Scansiona con la fotocamera">📷</button></div>
             <div id="rf-serial-hint" class="hint"></div></div>
@@ -199,6 +201,7 @@ export function openRepairForm(onDone, preset = {}) {
       customer: customerId ? { id: customerId } : { name: $('#rf-name', root).value, phone: $('#rf-phone', root).value, email: $('#rf-email', root).value },
       device_type: $('#rf-types .chip.on', root)?.dataset.v || 'smartphone',
       brand_model: $('#rf-model', root).value,
+      color: $('#rf-color', root).value,
       serial: $('#rf-serial', root).value,
       problem: $('#rf-problem', root).value,
       accessories: accessories.join(', ') || (note ? '' : 'nessuno'),
@@ -313,6 +316,7 @@ export async function openRepairDetail(id, onChange) {
             <h3 class="sec-t">Dispositivo</h3>
             <dl class="kv">
               <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b> <span class="hint">(${esc(typeInfo(r.device_type).label)})</span></dd>
+              <dt>Colore</dt><dd>${esc(r.color || '—')}</dd>
               <dt>${esc(typeInfo(r.device_type).serial)}</dt><dd>${esc(r.serial || '—')}</dd>
               <dt>Problema</dt><dd>${esc(r.problem)}</dd>
               <dt>Accessori</dt><dd>${esc(r.accessories || '—')}</dd>
@@ -597,7 +601,7 @@ async function editDialog(id, done) {
     </section>
     <section class="sec">
       <h3 class="sec-t">Dispositivo</h3>
-      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('serial', typeInfo(r.device_type).serial, r.serial)}
+      <div class="fgrid c2">${f('brand_model', 'Marca e modello', r.brand_model)}${f('color', 'Colore', r.color)}${f('serial', typeInfo(r.device_type).serial, r.serial)}
         ${f('accessories', 'Accessori lasciati', r.accessories)}${f('condition_notes', 'Stato del dispositivo', r.condition_notes)}
         <div class="field"><label class="l">Tipo di dispositivo</label><select data-k="device_type">${Object.entries(typesMeta()).map(([k, v]) => `<option value="${k}" ${k === r.device_type ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
         ${f('passcode', `${typeInfo(r.device_type).passcode} (solo interno)`, r.passcode)}${f('warranty_days', 'Giorni di garanzia', r.warranty_days, 'inputmode="numeric"')}</div>
@@ -611,7 +615,7 @@ async function editDialog(id, done) {
   $('#ed-ok', m.el).onclick = async () => {
     const v = (k) => $(`[data-k="${k}"]`, m.el).value;
     const out = await safe(() => api('PATCH', `/api/repairs/${id}`, {
-      brand_model: v('brand_model'), device_type: v('device_type'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
+      brand_model: v('brand_model'), color: v('color'), device_type: v('device_type'), serial: v('serial'), accessories: v('accessories'), condition_notes: v('condition_notes'),
       passcode: v('passcode'), warranty_days: v('warranty_days'), problem: v('problem'),
       customer: { name: v('c_name'), phone: v('c_phone'), email: v('c_email') },
     }));
