@@ -130,6 +130,9 @@
   <a href="#buoni">23 · Buoni e conto diviso</a>
   <a href="#riservati">24 · Documenti e credenziali</a>
   <a href="#anagrafiche-iva">30 · IVA, date passate, Blacks</a>
+  <a href="#chiusure">25 · Chiusure di cassa</a>
+  <a href="#fatture">26 · Archivio fatture</a>
+  <a href="#dareavere">27 · Dare/avere e cattivo pagatore</a>
 </nav>
 
 <main>
@@ -708,6 +711,44 @@
   </ul>
 </section>
 
+<section id="chiusure">
+  <h2><span class="n">25</span>Chiusure di cassa</h2>
+  <p class="lead">L'archivio delle chiusure di ogni giorno: quanto doveva esserci in cassa, quanto hai contato, la differenza.</p>
+  <ol class="steps">
+    <li>Apri <b>Chiusure cassa</b> → <b>＋ Nuova chiusura</b>. Il giorno è oggi, ma puoi sceglierne uno <b>passato</b> (resta segnata “retroattiva”).</li>
+    <li>Scrivi l'<b>operatore</b> e il <b>fondo cassa</b>. Il gestionale calcola da solo l'<b>atteso</b> dagli incassi del giorno: contanti, POS/carte, altro (bonifici, buoni), meno le spese pagate in contanti dalla cassa.</li>
+    <li>Scrivi cosa hai <b>contato</b>: contanti nel cassetto (fondo compreso), totale POS, altro. Sotto vedi subito la <b>differenza</b> (verde = quadra, giallo fino a 5 €, rosso oltre) e quella per ogni voce.</li>
+    <li>Aggiungi se vuoi una <b>nota</b> e una <b>foto</b> dello scontrino/cassa (facoltative). Una sola chiusura per giorno.</li>
+    <li><b>🔒 Blocca</b> la chiusura quando è definitiva: poi non si cambia più. Solo l'amministratore la sblocca, scrivendo il <b>motivo</b>. L'atteso è una fotografia del momento: se dopo correggi un incasso, usa <b>↻ Ricalcola l'atteso</b>.</li>
+    <li>In alto filtri per <b>periodo</b>, cerchi per operatore/note, vedi i <b>totali per mese</b> e scarichi il <b>CSV</b> (si apre in Excel).</li>
+  </ol>
+  <div class="call tip"><b>Registro</b>Creazione, modifiche (con vecchio e nuovo valore), blocco, sblocco con motivo, foto ed eliminazione finiscono tutti nel Registro.</div>
+</section>
+
+<section id="fatture">
+  <h2><span class="n">26</span>Archivio fatture</h2>
+  <p class="lead">Tutte le fatture <b>emesse</b> ai clienti e <b>ricevute</b> dai fornitori, anche passate, con scadenze e pagamenti.</p>
+  <ol class="steps">
+    <li><b>Archivio fatture</b> → <b>＋ Nuova fattura</b>: scegli emessa o ricevuta, numero, data (anche passata), scadenza (proposta a 30 giorni), cliente o fornitore, totale e IVA. Una <b>nota di credito</b> si fa dalla scheda della fattura (<b>↩ Nota di credito</b>) e la storna per intero o in parte.</li>
+    <li>Lo <b>stato</b> si calcola da solo: <b>Da pagare</b>, <b>Pagata in parte</b>, <b>Non pagata · scaduta</b> (con i giorni di ritardo), <b>Pagata</b>, <b>Stornata</b>. Se una fattura già pagata viene stornata, compare <b>da restituire</b>.</li>
+    <li>Nella scheda registra ogni <b>incasso/pagamento</b> con importo, data (anche passata) e metodo vero (contanti, carta, bonifico…): niente “non tracciato”. L'incasso di una fattura emessa entra anche in <b>Cassa</b> nel giorno indicato; per una fattura ricevuta puoi spuntare <b>Registra anche tra le Spese</b>.</li>
+    <li>Se la fattura è collegata a una <b>vendita o riparazione già incassata</b>, gli incassi vengono solo collegati: nessun doppio incasso. Le fatture dei fornitori già lette dall'import Acquisti compaiono nel riquadro “Acquisti importati non ancora in archivio”: <b>＋ In archivio</b>.</li>
+    <li>Filtri per emesse/ricevute, stato, periodo, ricerca; totali (totale, incassato/pagato, da saldare, scadute) e <b>CSV</b>. Le fatture scadute e in scadenza arrivano nella <b>campanella</b>. Il ruolo Cassa vede solo le emesse.</li>
+  </ol>
+  <div class="call tip"><b>Correggere</b>Un pagamento sbagliato si toglie dalla scheda (solo amministratore): sparisce anche da Cassa/Spese e resta nel Registro. Una fattura con pagamenti non si elimina.</div>
+</section>
+
+<section id="dareavere">
+  <h2><span class="n">27</span>Dare/avere e cattivo pagatore</h2>
+  <p class="lead">Il conto di ogni cliente: cosa ci deve e cosa ha pagato, anche per movimenti passati, per cliente e per riparazione.</p>
+  <ol class="steps">
+    <li><b>Dare/avere</b> → <b>＋ Nuovo movimento</b>. Quattro tipi: <b>Debito del cliente</b> (ci deve, non muove la cassa), <b>Pagamento ricevuto</b> (entra in Cassa nel giorno indicato, metodo obbligatorio), <b>Credito del cliente</b> (noi gli dobbiamo, non muove la cassa), <b>Rimborso al cliente</b> (esce dalle Spese). Si può collegare una riparazione.</li>
+    <li>La data può essere passata: il movimento resta segnato “passato” nel Registro. I pagamenti vengono abbinati ai debiti più vecchi.</li>
+    <li>L'elenco è raggruppato per <b>cliente</b> con il saldo (rosso = ci deve, blu = credito suo); la scheda mostra i debiti aperti da quanti giorni e il riepilogo <b>per riparazione</b>. Anche dalla scheda cliente. CSV scaricabile.</li>
+    <li><b>Cattivo pagatore</b>: il cliente viene segnalato quando ha un debito non saldato da oltre N giorni, un debito aperto di almeno X €, oppure Y debiti pagati in ritardo o ancora aperti. Le soglie si cambiano in <b>Impostazioni → Cattivo pagatore</b> (0 = spento; predefinite 30 giorni, 100 €, 2). Il segnale compare sull'<b>elenco clienti</b>, sulla <b>scheda cliente</b>, quando scegli il cliente in <b>nuova riparazione</b> e in <b>nuova vendita</b>, e nella campanella.</li>
+  </ol>
+  <div class="call tip"><b>Niente nascosto</b>Ogni movimento di denaro finisce in Cassa o nelle Spese e nel Registro. Un cliente con movimenti non si elimina finché non li togli (solo amministratore).</div>
+</section>
 </main>
 </div>
 </body>
