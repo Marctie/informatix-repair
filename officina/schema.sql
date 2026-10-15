@@ -341,3 +341,68 @@ CREATE TABLE IF NOT EXISTS supplier_credentials (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_supcred_sup ON supplier_credentials(supplier_id);
+
+-- 0023 Chiusure di cassa, 0024 Archivio fatture, 0025 Dare/avere (agente C)
+-- Archivio chiusure di cassa (una per giorno). Gli "attesi" sono una fotografia degli incassi del giorno al momento del salvataggio.
+-- La foto (facoltativa) sta nell'archivio media (R2 / cartella), qui solo la chiave. Le modifiche sono nel Registro (audit_log).
+CREATE TABLE IF NOT EXISTS cash_closings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  day TEXT NOT NULL UNIQUE,
+  operator TEXT NOT NULL,
+  float_amount REAL NOT NULL DEFAULT 0,
+  exp_cash REAL NOT NULL DEFAULT 0, exp_pos REAL NOT NULL DEFAULT 0, exp_other REAL NOT NULL DEFAULT 0,
+  cash_out REAL NOT NULL DEFAULT 0,
+  cnt_cash REAL NOT NULL DEFAULT 0, cnt_pos REAL NOT NULL DEFAULT 0, cnt_other REAL NOT NULL DEFAULT 0,
+  expected_total REAL NOT NULL DEFAULT 0, counted_total REAL NOT NULL DEFAULT 0, difference REAL NOT NULL DEFAULT 0,
+  notes TEXT, photo_key TEXT,
+  retro INTEGER NOT NULL DEFAULT 0,
+  locked INTEGER NOT NULL DEFAULT 0, locked_at TEXT, locked_by TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), created_by TEXT,
+  updated_at TEXT, updated_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_cash_closings_day ON cash_closings(day);
+-- Archivio fatture emesse e ricevute (anche passate), con pagamenti parziali, scadenze e note di credito.
+CREATE TABLE IF NOT EXISTS invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  direction TEXT NOT NULL,                  -- emessa | ricevuta
+  doc_type TEXT NOT NULL DEFAULT 'fattura', -- fattura | nota_credito
+  number TEXT NOT NULL, issue_date TEXT NOT NULL, due_date TEXT,
+  customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+  supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+  party_name TEXT,
+  total REAL NOT NULL, vat REAL NOT NULL DEFAULT 0,
+  credit_for_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+  sale_id INTEGER, repair_id INTEGER, purchase_id INTEGER,
+  notes TEXT, retro INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), created_by TEXT,
+  updated_at TEXT, updated_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invoices_dir_date ON invoices(direction, issue_date);
+CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_supplier ON invoices(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_credit ON invoices(credit_for_id);
+CREATE TABLE IF NOT EXISTS invoice_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  paid_on TEXT NOT NULL, amount REAL NOT NULL, method TEXT NOT NULL, note TEXT,
+  payment_id INTEGER,  -- riga in cassa (payments) quando e' un incasso di fattura emessa
+  expense_id INTEGER,  -- riga tra le spese quando una fattura ricevuta pagata viene registrata anche come spesa
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), created_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_invoice_payments_inv ON invoice_payments(invoice_id);
+-- Dare/avere: movimenti per cliente (anche passati), collegabili a una riparazione o a una vendita.
+--  entry_type: debito (il cliente ci deve) | incasso (il cliente paga: entra in cassa) | credito (noi dobbiamo al cliente) | rimborso (noi paghiamo il cliente: esce tra le spese)
+--  direction:  dare (aumenta quanto il cliente ci deve) | avere (lo riduce)
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  entry_date TEXT NOT NULL,
+  entry_type TEXT NOT NULL, direction TEXT NOT NULL,
+  amount REAL NOT NULL, method TEXT, description TEXT NOT NULL,
+  repair_id INTEGER, sale_id INTEGER,
+  payment_id INTEGER, expense_id INTEGER,
+  retro INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), created_by TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ledger_customer ON ledger_entries(customer_id, entry_date);
+CREATE INDEX IF NOT EXISTS idx_ledger_repair ON ledger_entries(repair_id);
