@@ -45,6 +45,10 @@ const section = (path) => SECTIONS.find(([re]) => re.test(path))?.[1] || path;
 const scrub = (t) => String(t ?? '').replace(/\d{6,}:[A-Za-z0-9_-]{30,}/g, '[token]');
 /** Elenca i campi inviati (senza i valori sensibili). */
 const fields = (body, map = FIELD) => Object.keys(body || {}).filter((k) => !SECRET_KEYS.test(k)).map((k) => map[k] || k).join(', ');
+/** Importo e metodi di un acconto (singolo oppure diviso in piu' quote). */
+const depositList = (b) => (Array.isArray(b?.payments) && b.payments.length ? b.payments : [{ amount: b?.amount, method: b?.method }]);
+const depositTotal = (b) => depositList(b).reduce((a, p) => a + (Number(String(p.amount ?? 0).replace(',', '.')) || 0), 0);
+const depositHow = (b) => depositList(b).map((p) => `${esc(p.method || 'contanti')}${depositList(b).length > 1 ? ` ${eur(String(p.amount).replace(',', '.'))}` : ''}`).join(' + ');
 /** Riga "codice · dispositivo · cliente" di una riparazione (dalla risposta o, se manca, dal database). */
 const repLine = (r, p) => join(esc(r.code || p.code), esc(r.brand_model || p.brand_model), esc(r.customer_name || p.customer_name));
 const payList = (rows) => rows.map((p) => `${esc(p.method)} ${eur(p.amount)}${/\((.+)\)$/.test(p.label || '') ? ` (${esc(p.label.match(/\((.+)\)$/)[1])})` : ''}`).join(' + ');
@@ -101,7 +105,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     const paidNow = cash.length ? `💶 Incassato ora ${eur(r.collected)}: ${payList(cash)}` : `💶 Incassato ora ${eur(r.collected)}${r.collected > 0 && body.method ? ` (${esc(body.method)})` : ''}`;
     return `📦 <b>Consegnata ${esc(r.code)}</b>\n${join(esc(r.brand_model), esc(r.customer_name))}\nTotale ${eur(r.final_price)}${prev > 0 ? ` · già versati ${eur(prev)} di acconto` : ''}\n${paidNow}${vouchers}${foot}`;
   }
-  if ((x = path.match(/^\/api\/repairs\/(\d+)\/deposit$/)) && m === 'POST') return isOk ? `💶 <b>Acconto ${eur(body.amount)}</b> (${esc(body.method || 'contanti')}) su ${esc(r.code)}\n${join(esc(r.brand_model), esc(r.customer_name))}\nVersato finora: ${eur(r.paid)}${foot}` : fail('Acconto');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/deposit$/)) && m === 'POST') return isOk ? `💶 <b>Acconto ${eur(depositTotal(body))}</b> (${depositHow(body)}) su ${esc(r.code)}\n${join(esc(r.brand_model), esc(r.customer_name))}\nVersato finora: ${eur(r.paid)}${foot}` : fail('Acconto');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/note$/)) && m === 'POST') return isOk ? `📝 <b>Nota su ${esc(r.code)}</b> (${body.public === false ? 'interna' : 'visibile al cliente'})\n${esc(short(body.note, 250))}${foot}` : fail('Nota');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/parts\/(\d+)\/stock$/)) && m === 'POST') return isOk ? `📦 <b>Ricambio caricato a magazzino</b>: ${esc(short(r.name, 80))}${r.created ? ' (nuovo articolo)' : ''}\nDa ${repLine({}, p)}${foot}` : fail('Carico del ricambio a magazzino');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/parts(\/\d+)?$/))) {

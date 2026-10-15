@@ -401,14 +401,28 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return c.body(bytes, 200, { 'content-type': 'image/png', 'cache-control': 'private, no-store' });
   });
   app.post('/api/repairs/:id/deposit', h(async (req) => {
-    const amount = num(req.body.amount);
-    if (!(amount > 0)) throw new L.HttpError(400, 'Importo non valido');
+    // un solo importo (amount + method) oppure piu' quote su metodi diversi (payments), ognuna tracciata in cassa
+    const list = Array.isArray(req.body.payments) && req.body.payments.length ? req.body.payments : [{ method: req.body.method, amount: req.body.amount }];
+    if (list.length > 6) throw new L.HttpError(400, 'Al massimo 6 quote di pagamento.');
+    const rows = list.map((p, i) => {
+      const amount = L.money(num(p.amount));
+      const method = str(p.method) || 'contanti';
+      if (!(amount > 0)) throw new L.HttpError(400, list.length > 1 ? `Quota ${i + 1}: importo non valido` : 'Importo non valido');
+      if (/^buono$/i.test(method)) throw new L.HttpError(400, 'Il buono si usa alla consegna, non per l’acconto.');
+      if (/non\s*tracciat/i.test(method) || method.length > 30) throw new L.HttpError(400, 'Ogni quota deve avere un metodo di pagamento registrato (contanti, carta, bonifico…).');
+      return { amount, method };
+    });
+    const total = L.money(rows.reduce((a, p) => a + p.amount, 0));
     await tx(async () => {
       const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(req.params.id);
       if (!r) throw new L.HttpError(404, 'Riparazione non trovata');
-      await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('repair', req.params.id, `Acconto ${r.code}`, L.money(amount), str(req.body.method) || 'contanti');
-      await db.prepare('UPDATE repairs SET deposit = deposit + ? WHERE id = ?').run(L.money(amount), req.params.id);
-      await L.logEvent(Number(req.params.id), null, `Acconto ricevuto: ${amount.toFixed(2)} €.`, 1);
+      let i = 0;
+      for (const p of rows) {
+        i += 1;
+        await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('repair', req.params.id, rows.length > 1 ? `Acconto ${r.code} · quota ${i}/${rows.length}` : `Acconto ${r.code}`, p.amount, p.method);
+      }
+      await db.prepare('UPDATE repairs SET deposit = deposit + ? WHERE id = ?').run(total, req.params.id);
+      await L.logEvent(Number(req.params.id), null, `Acconto ricevuto: ${total.toFixed(2)} €.`, 1);
     });
     return L.getRepair(req.params.id);
   }));
