@@ -13,6 +13,8 @@ import { usatiView } from './usati.js';
 import { portaleView } from './portale.js';
 import { purchasesView } from './purchases.js';
 import { ordiniView } from './ordini.js';
+import { materialiView } from './materiali.js'; // agente D
+import { carteView } from './carte.js'; // agente D
 import { preventiviView } from './preventivi.js';
 import { promemoriaView, mountTodayReminders } from './promemoria.js';
 
@@ -50,10 +52,12 @@ const VIEWS = [
   { id: 'promemoria', label: 'Promemoria', icon: '🔔', render: promemoriaView, group: 'banco' },
   { id: 'magazzino', label: 'Magazzino', icon: '📦', render: stockView, bottom: true, group: 'magazzino' },
   { id: 'ordini', label: 'Ordini', icon: '📮', render: ordiniView, group: 'magazzino' },
+  { id: 'materiali', label: 'Da ordinare', icon: '📋', render: materialiView, group: 'magazzino' }, // agente D
   { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView, group: 'magazzino' },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView, group: 'magazzino' },
   { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView, group: 'magazzino' },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView, group: 'negozio' },
+  { id: 'carte', label: 'Carte punti', icon: '💳', render: carteView, group: 'negozio' }, // agente D
   { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView, group: 'negozio' },
   { id: 'blacks', label: 'Blacks', icon: '⛔', render: blacksView, group: 'gestione' },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },

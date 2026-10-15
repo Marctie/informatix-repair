@@ -43,7 +43,13 @@ import * as R from './remote.mjs';
 import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
-const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, invoiceAlerts, ledgerAlerts];
+// --- Agente D: materiali da ordinare, preventivo da riparazione, carta punti NFC, import DDT (blocchi separati) ---
+import { registerMaterialsRoutes, materialsAlerts, MATERIALS_SETTING_KEYS, validateReminderSettings } from './materiali.mjs';
+import { registerRepairQuoteRoutes } from './preventivo-riparazione.mjs';
+import { registerLoyaltyRoutes, LOYALTY_SETTING_KEYS, validateLoyaltySettings, LOYALTY_TABLES } from './carte.mjs';
+// --- fine import agente D ---
+
+const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, materialsAlerts, invoiceAlerts, ledgerAlerts];
 EXTRA_ALERTS.push(lottoBAlerts); // Agente B
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
@@ -116,7 +122,9 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/settings', h(() => getSettings()));
   app.put('/api/settings', h(async (req) => {
     adminOnly(req);
-    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', 'vat_rate', ...Object.keys(LEGAL_DEFAULTS)];
+    const allowed = ['shop_name', 'shop_address', 'shop_phone', 'public_base_url', 'default_warranty_days', 'terms', 'low_stock_default', 'stale_days', 'ready_days', 'quote_valid_days', 'vat_rate', ...MATERIALS_SETTING_KEYS, ...LOYALTY_SETTING_KEYS, ...Object.keys(LEGAL_DEFAULTS)];
+    validateReminderSettings(req.body);
+    validateLoyaltySettings(req.body);
     for (const k of allowed) {
       if (k in req.body) await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(req.body[k] ?? ''));
     }
@@ -298,6 +306,12 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerQuoteRoutes(app, h);
   // Promemoria con data/ora e avviso Telegram (officina/promemoria.mjs)
   registerReminderRoutes(app, h);
+
+  // --- Agente D: routes (blocco separato) ---
+  registerMaterialsRoutes(app, h); // officina/materiali.mjs
+  registerRepairQuoteRoutes(app, h, { trackBase }); // officina/preventivo-riparazione.mjs
+  registerLoyaltyRoutes(app, h); // officina/carte.mjs (carta punti NFC)
+  // --- fine routes agente D ---
 
   // Dispositivi, buoni/pagamento diviso, documenti d'identita' e credenziali fornitori (dati sensibili cifrati)
   registerDeviceRoutes(app, h);
@@ -516,7 +530,7 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   for (const t of LOTTO_B_TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all(); // Agente B
   return dump;
 }

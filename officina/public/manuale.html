@@ -138,6 +138,13 @@
   <a href="#esterne">32 · Riparazioni esterne</a>
   <a href="#prestiti">33 · Muletto in prestito</a>
   <a href="#note">34 · Note</a>
+  <!-- agente D: inizio voci -->
+  <a href="#materiali">25 · Materiali da ordinare</a>
+  <a href="#preventivo-online">26 · Preventivo dalla riparazione</a>
+  <a href="#carte-punti">27 · Carte punti NFC</a>
+  <a href="#import-pdf">28 · DDT e fatture in PDF</a>
+  <a href="#testi-legali">29 · Testi legali controllati</a>
+  <!-- agente D: fine voci -->
 </nav>
 
 <main>
@@ -809,6 +816,98 @@
     <li>Per un avviso a una data e ora precisa usa invece i <b>Promemoria</b>.</li>
   </ul>
 </section>
+<!-- agente D: inizio sezioni -->
+<section id="materiali">
+  <h2><span class="n">25</span>Materiali da ordinare</h2>
+  <p class="lead">Una sola lista con tutto ciò che va ordinato ai fornitori, così non ti dimentichi niente.</p>
+  <ul>
+    <li>Menu <b>Magazzino e acquisti → Da ordinare</b>: raccoglie gli <b>ordini</b> in stato “Da ordinare” (clienti e negozio) e i <b>ricambi delle riparazioni</b> segnati “da ordinare”, divisi per fornitore.</li>
+    <li>Per ogni fornitore: <b>💬 WhatsApp</b> e <b>✉️ Email</b> (messaggio già scritto), <b>Copia testo</b> e <b>Fatto: segna ordinati</b> (segna tutte le righe di quel fornitore in un colpo solo).</li>
+    <li>Nella scheda riparazione, <b>＋ Ricambio non a magazzino</b> ha la casella <b>“Ancora da ordinare al fornitore”</b>. Accanto al ricambio compare un’etichetta (📋 Da ordinare → 📮 Ordinato → ✅ Arrivato): toccala per far avanzare lo stato.</li>
+    <li>I ricambi sono collegati al fornitore dal <b>nome</b> scritto nel ricambio (se coincide con un fornitore in anagrafica compaiono telefono ed email; altrimenti il gruppo ha solo il nome).</li>
+  </ul>
+  <h3>Promemoria giornaliero su Telegram</h3>
+  <ul>
+    <li><b>Impostazioni → Promemoria materiali da ordinare</b>: acceso/spento, <b>orario</b> (predefinito 12:00) e <b>giorni</b> (predefinito lunedì-venerdì).</li>
+    <li>Arriva <b>una volta al giorno</b>, all’orario scelto, <b>solo se c’è qualcosa da ordinare</b>, con l’elenco per fornitore. Se segni tutto come ordinato, il giorno dopo non arriva niente.</li>
+    <li>Parte anche a gestionale chiuso (online, controllo ogni minuto). Se il sistema salta qualche minuto, il messaggio parte comunque entro 2 ore dall’orario; oltre, si aspetta il giorno dopo.</li>
+    <li>In <b>Oggi</b> compare una riga “N materiali da ordinare” finché la lista non è vuota.</li>
+  </ul>
+</section>
+<section id="preventivo-online">
+  <h2><span class="n">26</span>Preventivo al cliente dalla riparazione</h2>
+  <p class="lead">Dalla scheda riparazione mandi al cliente un preventivo che legge e accetta dal telefono, con una data di scadenza.</p>
+  <ul>
+    <li>Nella scheda, riquadro <b>Preventivo e pagamenti</b>: scrivi l’importo (ed eventuali ricambi con prezzo) e premi <b>📨 Invia preventivo al cliente</b>.</li>
+    <li>Le voci si compongono da sole: i ricambi con prezzo e una riga “Intervento di riparazione” con la differenza fino all’importo del preventivo (oppure una voce unica).</li>
+    <li><b>Validità</b>: giorni da oggi. Il numero proposto è quello di <i>Impostazioni → Validità dei preventivi</i>; qui lo puoi cambiare caso per caso (da 1 a 365). Dopo la scadenza il cliente non può più accettare.</li>
+    <li>Tre modi di inviare: <b>💬 WhatsApp</b> (messaggio già scritto), <b>✉️ Email</b> (si apre il programma di posta), <b>🔗 Copia link</b> (per incollarlo dove vuoi). Il pulsante è spento se il cliente non ha telefono/email.</li>
+    <li>Il link è lo stesso dei preventivi della sezione <b>Preventivi</b> (<code>/p/…</code>): il cliente vede voci, totale e scadenza e accetta o rifiuta firmando. Il preventivo compare anche nell’elenco Preventivi, collegato alla riparazione. Ti arriva l’avviso su Telegram.</li>
+    <li>Riaprendo la finestra vedi lo stato (inviato, accettato, rifiutato, scaduto) e quando e come è stato inviato. Se è <b>scaduto</b> scegli una nuova validità e rinvialo: resta lo stesso preventivo. Se il cliente ha già accettato non si cambia più.</li>
+  </ul>
+</section>
+<section id="carte-punti">
+  <h2><span class="n">27</span>Carte punti NFC</h2>
+  <p class="lead">Una tessera NFC per cliente: più acquisti e riparazioni, più punti; i punti si cambiano in un <b>buono regalo</b>. Le regole di protezione stanno sul server, non sulla carta.</p>
+  <h3>Come funziona (e perché non si può truccare)</h3>
+  <ul>
+    <li><b>I punti stanno solo nel gestionale.</b> Sul chip non c’è nessun saldo da modificare: c’è solo un codice firmato che identifica la carta.</li>
+    <li>Il chip ha un <b>UID</b> (si può copiare) e un <b>codice firmato</b> con un segreto che esiste solo sul server. Il codice <b>cambia a ogni passaggio</b>: se qualcuno copia il chip e usa la copia, il codice vecchio viene riconosciuto, la carta si <b>blocca da sola</b> e resta tutto nel registro della carta.</li>
+    <li>Con un lettore USB che legge <b>solo l’UID</b> (non può scrivere sul chip) si vede la carta ma <b>per riscattare serve il PIN</b> (4 cifre, scelto o generato all’emissione e dato al cliente). Dopo 5 errori la carta si blocca.</li>
+    <li>I punti si danno <b>solo da vendite e riparazioni consegnate vere</b>, una volta sola per documento e con l’importo letto dal server: nessuno può digitare “+500 punti”. Una rettifica manuale la fa solo l’amministratore, con un motivo che resta nel registro.</li>
+    <li><b>Limiti</b>: massimo punti per operazione, massimo riscatto al giorno per carta, massimo di operazioni al minuto e di errori in 10 minuti per postazione. Ogni operazione è nel <b>storico della carta</b> (chi, quando, quanto).</li>
+    <li>Il riscatto crea un <b>buono regalo</b> (sezione Buoni): in cassa compare come tutti gli altri buoni, niente è nascosto.</li>
+  </ul>
+  <h3>Uso quotidiano</h3>
+  <ul>
+    <li>Menu <b>Vetrina e buoni → Carte punti</b>. Scegli il <b>lettore</b>, premi <b>Attiva lettore</b> e avvicina la carta: si apre la scheda con saldo e storico.</li>
+    <li><b>＋ Nuova carta</b>: scegli il cliente, avvicina il chip (o scrivi l’UID), <b>Emetti</b>. Si scrive il codice sul chip (se il lettore sa scrivere) e compare il <b>PIN, una volta sola</b>: consegnalo al cliente.</li>
+    <li><b>Accredita punti</b>: dopo il passaggio della carta, l’elenco delle vendite/riparazioni consegnate del cliente non ancora premiate; un tocco e i punti arrivano. <b>Riscatta in buono</b>: a multipli del gradino (predefinito 100 punti = 5 €).</li>
+    <li><b>Blocca</b> (se la carta è smarrita), <b>Sblocca</b> e <b>Rettifica punti</b> (amministratore), <b>Carta persa / sostituisci</b> (amministratore: chiude la vecchia e passa i punti a un chip nuovo), <b>Riscrivi codice</b> (se la scrittura sul chip non è riuscita).</li>
+    <li>Le <b>regole dei punti</b> (punti per euro, gradino, valore del buono, limiti) si cambiano da “Modifica le regole” nella pagina. Sono <b>valori provvisori</b> in attesa del regolamento di Christian.</li>
+  </ul>
+  <h3>Lettori supportati (uno solo nell’interfaccia)</h3>
+  <ul>
+    <li><b>Telefono Android</b> (Chrome, NFC acceso, sito in HTTPS): legge UID e codice e sa scrivere il codice nuovo (riavvicina il chip quando richiesto).</li>
+    <li><b>Lettore USB “tastiera”</b>: scrive l’UID e preme Invio. Metti il cursore nel campo “UID a mano” e passa la carta. Solo UID: il riscatto chiede il PIN. Se il tuo lettore stampa numeri decimali o byte invertiti, scegli “Numero decimale” e/o “Invertito” nelle due caselle che compaiono sotto il lettore (si ricordano su quella postazione).</li>
+    <li><b>Lettore PC/SC</b> (quelli USB “veri”, es. ACR122/ACR1252): serve il <b>programma ponte</b> <code>node officina/tools/nfc-bridge.mjs</code> sul PC del lettore (modulo opzionale <code>npm i nfc-pcsc</code>); con <code>--simulate</code> si prova senza lettore. Il ponte ascolta solo su questo PC.</li>
+    <li><b>A mano</b>: UID digitato o incollato (emergenza e prove).</li>
+  </ul>
+  <div class="call warn"><b>Segreto delle firme</b>Online: <code>wrangler secret put NFC_SECRET</code> (almeno 16 caratteri casuali). In mancanza si usa <code>VAULT_KEY</code>. Sul PC si usa la chiave già creata in <code>officina/data/vault.key</code>. <b>Non cambiarlo e non perderlo</b>: con un segreto diverso tutti i codici scritti sui chip risultano falsi (le carte vanno riscritte da “Riscrivi codice”).</div>
+  <h3>Cosa deve provare Christian (hardware)</h3>
+  <ul>
+    <li><b>1. Telefono Android</b>: apri il gestionale (HTTPS) in Chrome, <i>Carte punti → lettore “Telefono Android” → Attiva</i>. Emetti una carta su un chip NTAG213/215 vergine: deve comparire il PIN e il telefono deve chiedere di riavvicinare il chip per scrivere.</li>
+    <li><b>2. Rotazione</b>: passa la carta due volte. Alla seconda il saldo è lo stesso e il passaggio è “codice verificato”. Il codice sul chip deve cambiare ogni volta (lo storico mostra un “Passaggio” a ogni lettura).</li>
+    <li><b>3. Copia</b>: se hai un secondo chip modificabile, copia il contenuto del primo, usa il <b>primo</b> normalmente e poi prova la <b>copia</b>: deve comparire “Carta BLOCCATA… possibile copia” e la carta risultare bloccata (sblocco dall’amministratore).</li>
+    <li><b>4. Lettore USB tastiera</b> (quello che sceglierai): passa la carta nel campo “UID a mano”; verifica che l’UID compaia e la scheda si apra. Se l’UID è diverso da quello del telefono (decimale o invertito) dimmelo con la lunghezza e un esempio: si imposta il formato.</li>
+    <li><b>5. Lettore PC/SC</b> (se lo userai): avvia il ponte, scegli “Lettore PC”, passa la carta. <b>La lettura reale PC/SC non è stata provata senza il tuo lettore</b>: se non va, scrivimi il messaggio del terminale.</li>
+    <li><b>6. Riscatto</b>: accredita i punti di una vendita, riscatta 100 punti con il solo UID (deve chiedere il PIN), poi controlla che il buono compaia in <i>Buoni</i> e che usandolo in cassa i totali tornino.</li>
+    <li><b>7. Regolamento</b>: dimmi quanti punti per euro, il valore del buono e le scadenze che vuoi (domanda 21): finché non lo fai valgono i valori provvisori.</li>
+  </ul>
+</section>
+<section id="import-pdf">
+  <h2><span class="n">28</span>DDT e fatture in PDF</h2>
+  <p class="lead">In <b>Acquisti → Importa</b>, oltre alla fattura elettronica XML, puoi caricare un <b>DDT o una fattura in PDF</b>: il gestionale legge il testo, ti mostra cosa ha capito e tu correggi prima di confermare.</p>
+  <ul>
+    <li><b>Passo 1</b>: trascina il PDF (o sceglilo). Il testo viene letto <b>nel tuo browser</b> (serve internet la prima volta per il lettore di PDF): il file non parte dal computer.</li>
+    <li><b>Passo 2 · Controlla e correggi</b>: compaiono fornitore, partita IVA, tipo (DDT / fattura / nota di credito), numero, data, totale e la <b>tabella delle righe</b> (codice, descrizione, quantità, UM, prezzo di acquisto, IVA). Le righe dubbie sono in <b>giallo</b> con il motivo (“prezzo mancante”, “qtà × prezzo non torna”…). Correggi, aggiungi o togli righe e premi <b>↻ Applica le correzioni</b>.</li>
+    <li>Sotto c’è l’abbinamento ai prodotti del magazzino, uguale a quello delle fatture XML (per codice fornitore, codice articolo o nome simile); poi <b>Conferma e carica il magazzino</b>. Il carico, lo storico prezzi e gli avvisi sono gli stessi di sempre.</li>
+    <li><b>DDT senza prezzi</b> (non valorizzato): scrivi tu i prezzi di acquisto nella tabella, oppure salta le righe e importa poi la fattura.</li>
+    <li><b>Il sistema impara</b>: dopo ogni conferma ricorda, per quel fornitore, in quale colonna stanno codice, descrizione, quantità e prezzo (da come le hai corrette). Dal documento successivo le righe escono giuste (“formato già imparato”). In fondo alla pagina Importa c’è l’elenco <b>Formati PDF imparati</b> con il tasto <b>Dimentica</b> se uno impara male.</li>
+    <li>Lo stesso documento (stesso fornitore, numero e data) non si importa due volte.</li>
+  </ul>
+  <div class="call warn"><b>Limiti</b>Servono PDF “digitali” (generati da un programma), non foto o scansioni: in quel caso compare un avviso e puoi scrivere le righe a mano. Finora non ho potuto vedere i DDT veri dei tuoi fornitori: il lettore usa regole generali (intestazioni di colonna, numeri, partita IVA con controllo, totali) e migliora con le tue correzioni. <b>Mandami 2-3 PDF di esempio per fornitore</b> per tararlo meglio.</div>
+</section>
+<section id="testi-legali">
+  <h2><span class="n">29</span>Testi legali: cosa è stato controllato</h2>
+  <ul>
+    <li>I testi di consenso, preventivo, rifiuto e giacenza (<i>Impostazioni → Testi di consenso</i>) sono stati riletti e allineati a fonti italiane: garanzia legale di 24 mesi sui beni venduti (Codice del Consumo art. 133), diritto di trattenere il dispositivo fino al pagamento (art. 2756 c.c.), informativa privacy (art. 13 GDPR) e copia del documento d’identità solo se serve e con una durata di conservazione.</li>
+    <li>Novità nei testi: il cliente può <b>sempre ritirare pagando quanto dovuto</b>; prima di smaltire o cedere un dispositivo arriva un <b>ulteriore avviso scritto</b>; in caso di rinuncia a lavori iniziati si pagano solo lavoro svolto e ricambi acquistati.</li>
+    <li>Restano <b>bozze</b> finché non spunti “Testi verificati”: non sono consulenza legale. Il file <code>docs/TESTI-LEGALI-BOZZE.md</code> (sezione “Revisione”) elenca con le fonti cosa è verificato e cosa va <b>fatto confermare a un professionista</b> (vendita/smaltimento del non ritirato, garanzia sulle riparazioni, informativa completa).</li>
+    <li>Le condizioni stampate sulla scheda (campo “Condizioni”) hanno il nuovo testo solo nelle installazioni nuove: per quella in uso, copialo da <code>officina/dbref.mjs</code> o dal file di revisione.</li>
+  </ul>
+</section>
+<!-- agente D: fine sezioni -->
 
 </main>
 </div>

@@ -5,6 +5,7 @@ import { retroField, retroVal } from './retro.js';
 import { blackBanner, showBlackAlert } from './blacks.js';
 import { debtorNotice, mountLedgerSettings } from './dareavere.js'; // Agente C
 import { showDeviceAlerts } from './dispositivi.js';
+import { mountMaterialsSettings } from './materiali.js'; // agente D
 import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
 
 export async function salesView(el) {
@@ -414,6 +415,7 @@ export async function settingsView(el) {
   };
   drawDemo();
   mountLedgerSettings($('#st-demo', el)); // Agente C: soglie del cattivo pagatore
+  mountMaterialsSettings($('#st-legal', el)); // agente D: promemoria materiali da ordinare
   // checklist per tipo: tre elenchi modificabili (una voce per riga)
   const ckBox = $('#ck-body', el);
   let ckAll = {};

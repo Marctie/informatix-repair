@@ -1,5 +1,6 @@
 // Acquisti dai fornitori: import della fattura elettronica XML, elenco acquisti, variazioni di prezzo e grafico a punti per prodotto.
 import { $, $$, esc, eur, fdate, api, toast, safe, debounce, openModal } from './util.js';
+import { isPdf, previewPdf, editorHtml, bindEditor, formatsBox } from './ddt-editor.js'; // agente D: DDT e fatture in PDF
 
 const CSS = `<style>
   .pu-tabs{display:flex;gap:.5rem;flex-wrap:wrap}
@@ -336,10 +337,11 @@ async function listTab(body) {
 async function importTab(body, show) {
   const draw = () => {
     body.innerHTML = `<section class="card panel sec"><h2 class="sec-t">1 · Scegli la fattura</h2>
-      <label class="pu-drop" id="pu-drop"><span class="big" aria-hidden="true">📄</span><b>Trascina qui la fattura elettronica (XML)</b><span class="hint">oppure tocca per scegliere il file dal computer o dal telefono</span>
+      <label class="pu-drop" id="pu-drop"><span class="big" aria-hidden="true">📄</span><b>Trascina qui la fattura elettronica (XML) o un DDT/fattura in PDF</b><span class="hint">oppure tocca per scegliere il file dal computer o dal telefono</span>
         <input class="pu-sr" type="file" id="pu-file" accept=".xml,.p7m,.pdf,text/xml,application/xml,application/pdf" /></label>
       <div id="pu-msg" role="alert"></div>
-      <p class="hint">Serve il file <b>.xml</b> (non quello firmato .p7m). Non viene scritto nulla finché non confermi al passo 3. DDT e PDF: formato non ancora supportato.</p></section><div id="pu-review"></div>`;
+      <p class="hint">Fattura elettronica: serve il file <b>.xml</b> (non quello firmato .p7m). <b>DDT e fatture in PDF digitale</b>: il testo viene letto qui nel browser, lo controlli e lo correggi prima di confermare (le scansioni-foto non si leggono). Non viene scritto nulla finché non confermi al passo 3.</p></section><div id="pu-review"></div><div id="pu-formats"></div>`;
+    formatsBox($('#pu-formats', body));
     const drop = $('#pu-drop', body);
     const input = $('#pu-file', body);
     ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
@@ -353,6 +355,15 @@ async function importTab(body, show) {
     $('#pu-review', body).innerHTML = '';
     if (/\.p7m$/i.test(file.name)) return msg(esc(P7M));
     if (file.size > 6 * 1024 * 1024) return msg('File troppo grande (massimo 6 MB).');
+    if (isPdf(file)) { // PDF: testo estratto nel browser, anteprima modificabile
+      msg(`Leggo il PDF ${esc(file.name)}…`, 'ok');
+      try {
+        const { pdf_text, pv } = await previewPdf(file);
+        msg('');
+        review(body, { text: null, filename: file.name, pv, parsed: pv.editable }, show);
+      } catch (e) { msg(esc(e.message)); }
+      return;
+    }
     const text = await readFileText(file);
     msg(`Leggo ${esc(file.name)}…`, 'ok');
     try {
@@ -386,11 +397,14 @@ async function review(body, ctx, show) {
       ${dup ? `<div class="pu-box err">Questo documento è già stato importato il ${fdate(dup.imported_at)}: non si può importare due volte.</div>` : ''}
       ${pv.warnings.filter((w) => !/già stato importato/.test(w)).length ? `<div class="pu-box warn"><ul>${pv.warnings.filter((w) => !/già stato importato/.test(w)).map((w) => `<li>${esc(w)}</li>`).join('')}</ul></div>` : ''}
     </section>
+    ${ctx.parsed ? editorHtml(ctx.parsed) : ''}
     <section class="card overflow-hidden" aria-label="Righe della fattura"><div class="pu-lh" aria-hidden="true"><span>Riga della fattura</span><span>Prodotto in magazzino</span><span>Quantità</span><span>Prezzo di acquisto</span></div>
       <div class="pu-lines" id="pu-lines">${pv.lines.map(lineHtml).join('')}</div></section>
     <section class="card panel sec"><div class="pu-actions"><span class="grow" id="pu-sum" aria-live="polite"></span>
       <button class="btn btn-outline" id="pu-cancel">Annulla</button><button class="btn btn-primary btn-lg" id="pu-ok" ${dup ? 'disabled' : ''}>✔ Conferma e carica il magazzino</button></div></section>`;
     bind();
+    ctx.dirty = false;
+    if (ctx.parsed) bindEditor(host, ctx.parsed, { onRecalc: () => recalc(), onChange: () => { ctx.dirty = true; } });
     summary();
   };
   const lineHtml = (l) => {
@@ -423,7 +437,14 @@ async function review(body, ctx, show) {
     if (v === 'new') return { ...base, action: 'new', name: $('[data-f=name]', row).value.trim(), price: $('[data-f=sale]', row).value };
     return { ...base, action: 'match', product_id: Number(v.slice(2)) };
   });
-  const body2 = () => ({ xml: text, filename, lines: choices(), ...(ctx.supChoice === 'new' ? { new_supplier: true } : ctx.supChoice && ctx.supChoice !== 'auto' ? { supplier_id: Number(ctx.supChoice) } : {}) });
+  // PDF/DDT: si manda il documento corretto a mano (parsed); fatture XML: il file com'e'
+  const docBody = () => (ctx.parsed ? { parsed: ctx.parsed } : { xml: text, filename });
+  const supBody = () => (ctx.supChoice === 'new' ? { new_supplier: true } : ctx.supChoice && ctx.supChoice !== 'auto' ? { supplier_id: Number(ctx.supChoice) } : {});
+  const body2 = () => ({ ...docBody(), lines: choices(), ...supBody() });
+  const recalc = async () => {
+    const np = await safe(() => api('POST', '/api/purchases/preview', { ...docBody(), ...supBody() }));
+    if (np) { pv = np; if (np.editable) ctx.parsed = np.editable; draw(); toast('Correzioni applicate'); }
+  };
   const summary = () => {
     const c = choices();
     const load = c.filter((x) => x.action !== 'skip' && Number(String(x.qty).replace(',', '.')) > 0);
@@ -449,12 +470,12 @@ async function review(body, ctx, show) {
     $('#pu-lines', host).oninput = (e) => { if (e.target.dataset.f === 'qty') summary(); };
     $('#pu-sup', host).onchange = async (e) => {
       ctx.supChoice = e.target.value;
-      const b = { xml: text, filename, ...(ctx.supChoice === 'new' ? { new_supplier: true } : ctx.supChoice !== 'auto' ? { supplier_id: Number(ctx.supChoice) } : {}) };
-      const np = await safe(() => api('POST', '/api/purchases/preview', b));
+      const np = await safe(() => api('POST', '/api/purchases/preview', { ...docBody(), ...supBody() }));
       if (np) { pv = np; draw(); }
     };
     $('#pu-cancel', host).onclick = () => show('importa');
     $('#pu-ok', host).onclick = async (e) => {
+      if (ctx.dirty) { ctx.dirty = false; await recalc(); toast('Ho applicato le tue correzioni: controlla le righe e conferma di nuovo', false); return; }
       const btn = e.currentTarget;
       btn.disabled = true;
       btn.textContent = 'Importo…';
