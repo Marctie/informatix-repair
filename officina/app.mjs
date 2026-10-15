@@ -35,6 +35,7 @@ import { printCustomer, printLab, printBoth, printLabel, printSale } from './pri
 
 // --- Agente D: materiali da ordinare, preventivo da riparazione, carta punti NFC, import DDT (blocchi separati) ---
 import { registerMaterialsRoutes, materialsAlerts, MATERIALS_SETTING_KEYS, validateReminderSettings } from './materiali.mjs';
+import { registerRepairQuoteRoutes } from './preventivo-riparazione.mjs';
 // --- fine import agente D ---
 
 const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, materialsAlerts];
@@ -289,6 +290,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   // --- Agente D: routes (blocco separato) ---
   registerMaterialsRoutes(app, h); // officina/materiali.mjs
+  registerRepairQuoteRoutes(app, h, { trackBase }); // officina/preventivo-riparazione.mjs
   // --- fine routes agente D ---
 
   // Dispositivi, buoni/pagamento diviso, documenti d'identita' e credenziali fornitori (dati sensibili cifrati)

@@ -2,6 +2,7 @@
 import { scanWithCamera } from './scan.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
+import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
 
 import { signIntakeAtDesk, signDialog } from './sign.js';
@@ -369,7 +370,7 @@ export async function openRepairDetail(id, onChange) {
               <div class="stack" style="gap:.5rem"><div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><select id="d-depm" aria-label="Pagato con" style="width:auto"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
                 <div class="row" style="flex-wrap:nowrap;display:none" id="d-dep2"><input id="d-dep2a" inputmode="decimal" placeholder="Seconda quota €" aria-label="Seconda quota" /><select id="d-dep2m" aria-label="Seconda quota pagata con" style="width:auto"><option>carta</option><option>contanti</option><option>bonifico</option></select></div>
                 <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
-              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+              <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button><button class="btn btn-outline btn-sm" data-act="sendquote">📨 Invia preventivo al cliente</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
 
@@ -463,6 +464,7 @@ export async function openRepairDetail(id, onChange) {
       case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
+      case 'sendquote': return sendQuoteDialog(id, () => { reloadList(); render(); });
       case 'askquote': return act(() => api('POST', `/api/repairs/${id}/status`, { status: 'quote_pending' }), 'Il cliente può ora approvare dal link');
       case 'depsplit': { const r2 = $('#d-dep2', body); r2.style.display = r2.style.display === 'none' ? '' : 'none'; return; }
       case 'deposit': {

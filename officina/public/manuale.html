@@ -131,6 +131,7 @@
   <a href="#riservati">24 · Documenti e credenziali</a>
   <!-- agente D: inizio voci -->
   <a href="#materiali">25 · Materiali da ordinare</a>
+  <a href="#preventivo-online">26 · Preventivo dalla riparazione</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -694,6 +695,18 @@
     <li>Arriva <b>una volta al giorno</b>, all’orario scelto, <b>solo se c’è qualcosa da ordinare</b>, con l’elenco per fornitore. Se segni tutto come ordinato, il giorno dopo non arriva niente.</li>
     <li>Parte anche a gestionale chiuso (online, controllo ogni minuto). Se il sistema salta qualche minuto, il messaggio parte comunque entro 2 ore dall’orario; oltre, si aspetta il giorno dopo.</li>
     <li>In <b>Oggi</b> compare una riga “N materiali da ordinare” finché la lista non è vuota.</li>
+  </ul>
+</section>
+<section id="preventivo-online">
+  <h2><span class="n">26</span>Preventivo al cliente dalla riparazione</h2>
+  <p class="lead">Dalla scheda riparazione mandi al cliente un preventivo che legge e accetta dal telefono, con una data di scadenza.</p>
+  <ul>
+    <li>Nella scheda, riquadro <b>Preventivo e pagamenti</b>: scrivi l’importo (ed eventuali ricambi con prezzo) e premi <b>📨 Invia preventivo al cliente</b>.</li>
+    <li>Le voci si compongono da sole: i ricambi con prezzo e una riga “Intervento di riparazione” con la differenza fino all’importo del preventivo (oppure una voce unica).</li>
+    <li><b>Validità</b>: giorni da oggi. Il numero proposto è quello di <i>Impostazioni → Validità dei preventivi</i>; qui lo puoi cambiare caso per caso (da 1 a 365). Dopo la scadenza il cliente non può più accettare.</li>
+    <li>Tre modi di inviare: <b>💬 WhatsApp</b> (messaggio già scritto), <b>✉️ Email</b> (si apre il programma di posta), <b>🔗 Copia link</b> (per incollarlo dove vuoi). Il pulsante è spento se il cliente non ha telefono/email.</li>
+    <li>Il link è lo stesso dei preventivi della sezione <b>Preventivi</b> (<code>/p/…</code>): il cliente vede voci, totale e scadenza e accetta o rifiuta firmando. Il preventivo compare anche nell’elenco Preventivi, collegato alla riparazione. Ti arriva l’avviso su Telegram.</li>
+    <li>Riaprendo la finestra vedi lo stato (inviato, accettato, rifiutato, scaduto) e quando e come è stato inviato. Se è <b>scaduto</b> scegli una nuova validità e rinvialo: resta lo stesso preventivo. Se il cliente ha già accettato non si cambia più.</li>
   </ul>
 </section>
 <!-- agente D: fine sezioni -->
