@@ -8,6 +8,9 @@ import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 import { retroField, retroVal } from './retro.js';
 import { showBlackAlert, watchBlack } from './blacks.js';
 
+import { attachModelSuggest } from './modelli.js'; // suggerimenti marca/modello dalla terza lettera
+import { repairExternals } from './esterne.js'; // sezione "Riparazione esterna" nella scheda
+import { repairLoans } from './prestiti.js'; // sezione "Muletto in prestito" nella scheda
 import { signIntakeAtDesk, signDialog } from './sign.js';
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
 
@@ -101,6 +104,11 @@ export function openRepairForm(onDone, preset = {}) {
   );
   const root = m.el;
   let customerId = null;
+  // marca e modello: dalla terza lettera i suggerimenti del catalogo; scegliendo si imposta anche il tipo di dispositivo
+  attachModelSuggest($('#rf-model', root), {
+    getKind: () => curType(),
+    onPick: (md) => { const chip = $(`#rf-types .chip[data-v="${md.kind}"]`, root); if (chip && !chip.classList.contains('on')) chip.click(); },
+  });
 
   // scelte rapide
   // il tipo di dispositivo cambia etichette (seriale/IMEI, PIN/password), accessori suggeriti e controlli d'ingresso
@@ -240,6 +248,7 @@ export function openRepairForm(onDone, preset = {}) {
     showCreated(r, onDone);
     showDeviceAlerts(r.device_alerts);
     showBlackAlert(r.blacklist_alert);
+    if (r.model_added) toast(`Modello nuovo aggiunto al catalogo: ${r.model_added.brand} ${r.model_added.model}`);
   };
   $('#rf-save', root).onclick = (ev) => doSave(ev.currentTarget, false);
   $('#rf-save-print', root).onclick = (ev) => doSave(ev.currentTarget, true);
@@ -409,6 +418,8 @@ export async function openRepairDetail(id, onChange) {
         </div>
       </div>
 
+      <div id="d-extras" class="sec" style="gap:1.6rem"></div>
+
       <section class="sec">
         <h3 class="sec-t">Note del tecnico</h3>
         <p class="sec-sub">Interne: finiscono sulla scheda laboratorio, il cliente non le vede.</p>
@@ -438,6 +449,11 @@ export async function openRepairDetail(id, onChange) {
       </section>`;
 
     bindChecklistGrids(body);
+    // riparazione esterna e muletto collegati a questa scheda (lotto B)
+    const extras = $('#d-extras', body);
+    extras.innerHTML = '<div id="d-ext" class="sec"></div><div id="d-loan" class="sec"></div>';
+    repairExternals($('#d-ext', extras), r, () => { reloadList(); render(); });
+    repairLoans($('#d-loan', extras), r, () => { reloadList(); render(); });
     // ricerca ricambi
     const ps = $('#d-part', body);
     if (ps) ps.oninput = debounce(async (e) => {
@@ -633,6 +649,7 @@ async function editDialog(id, done) {
     </section>`,
     { title: `Modifica ${r.code}`, wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ed-ok">Salva modifiche</button>` }
   );
+  attachModelSuggest($('[data-k="brand_model"]', m.el), { getKind: () => $('[data-k="device_type"]', m.el).value });
   $('#ed-ok', m.el).onclick = async () => {
     const v = (k) => $(`[data-k="${k}"]`, m.el).value;
     const out = await safe(() => api('PATCH', `/api/repairs/${id}`, {
