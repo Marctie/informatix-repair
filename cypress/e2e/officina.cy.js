@@ -8,7 +8,7 @@ describe('Gestionale officina', () => {
     cy.contains('h1', 'Oggi');
     cy.contains('Nessuna riparazione aperta');
     cy.get('#top-new').should('be.visible');
-    cy.get('#nav a').should('have.length', 31); // 30 sezioni (menu a gruppi, amministratore) + Manuale
+    cy.get('#nav a').should('have.length', 32); // 31 sezioni (menu a gruppi, amministratore) + Manuale
   });
 
   it('crea un fornitore e un articolo di magazzino', () => {
@@ -68,7 +68,7 @@ describe('Gestionale officina', () => {
     cy.visit('/#/oggi');
     cy.get('#top-new').click();
     cy.get('#rf-save').click();
-    cy.get('#toast').should('be.visible').and('contain', 'obbligatorio');
+    cy.get('#toast').should('be.visible').and('contain', 'manca il nome');
     cy.get('.modal-bg [data-close]').first().click();
   });
 
@@ -84,7 +84,7 @@ describe('Gestionale officina', () => {
     cy.get('body').should('not.contain', '4321').and('not.contain', '3331234567');
     cy.contains('Aggiornamento automatico');
     cy.visit('/t/codice-finto');
-    cy.contains('Codice non valido');
+    cy.contains('Link non valido');
   });
 
   it('flusso: avanza, il cliente approva il preventivo dal link', () => {
