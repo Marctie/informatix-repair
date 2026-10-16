@@ -39,11 +39,11 @@ export async function verifyAccessJwt(token, { team, aud }) {
 /** Middleware Hono: fallisce SEMPRE in chiusura (nessun accesso se Access non è configurato). */
 export const accessAuth = async (c, next) => {
   const { ACCESS_TEAM_DOMAIN: team, ACCESS_AUD: aud } = c.env;
-  if (!team || !aud) return c.json({ ok: false, error: 'Accesso non ancora configurato.' }, 503);
+  if (!team || !aud) return c.json({ ok: false, error: 'L’accesso protetto non è ancora configurato su questo servizio: non posso verificare chi sei.', code: 'ACCESSO_NON_CONFIGURATO', hint: 'Avvisa Marco: mancano le impostazioni di Cloudflare Access.' }, 503);
   const payload = await verifyAccessJwt(c.req.header('Cf-Access-Jwt-Assertion'), { team, aud });
-  if (!payload?.email) return c.json({ ok: false, error: 'Accesso non autorizzato.' }, 401);
+  if (!payload?.email) return c.json({ ok: false, error: 'La sessione non è valida o è scaduta: non risulta nessun accesso effettuato.', code: 'SESSIONE_NON_VALIDA', hint: 'Ricarica la pagina e accedi di nuovo con la tua email.' }, 401);
   const user = await db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(String(payload.email).toLowerCase());
-  if (!user) { c.set('denied_email', String(payload.email).toLowerCase()); return c.json({ ok: false, error: 'Questo indirizzo email non è abilitato. Chiedi a Christian.' }, 403); }
+  if (!user) { c.set('denied_email', String(payload.email).toLowerCase()); return c.json({ ok: false, error: 'Questo indirizzo email non è abilitato all’uso del gestionale.', code: 'UTENTE_NON_ABILITATO', hint: 'Chiedi a Christian di aggiungerti in Impostazioni > Utenti.' }, 403); }
   c.set('user', user);
   // nuovo accesso: primo uso dopo 6 ore di inattività
   const last = user.last_seen_at ? Date.parse(String(user.last_seen_at).replace(' ', 'T') + 'Z') : 0;
