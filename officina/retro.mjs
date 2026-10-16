@@ -14,13 +14,13 @@ const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/;
 export function parseEntryDate(v, now = nowLocal()) {
   const s = String(v ?? '').trim();
   const m = DATE_RE.exec(s);
-  if (!m) throw new HttpError(400, 'Data non valida (usa AAAA-MM-GG).');
+  if (!m) throw new HttpError(400, 'Data non valida: il formato non è riconosciuto.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato AAAA-MM-GG (es. 2026-03-15).' });
   const [, y, mo, d, hh = '12', mm = '00'] = m;
   const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
-  if (dt.getUTCFullYear() !== Number(y) || dt.getUTCMonth() !== Number(mo) - 1 || dt.getUTCDate() !== Number(d) || Number(hh) > 23 || Number(mm) > 59) throw new HttpError(400, 'Data non valida.');
-  if (Number(y) < 2000) throw new HttpError(400, 'Data troppo vecchia.');
+  if (dt.getUTCFullYear() !== Number(y) || dt.getUTCMonth() !== Number(mo) - 1 || dt.getUTCDate() !== Number(d) || Number(hh) > 23 || Number(mm) > 59) throw new HttpError(400, 'Data non valida: il giorno indicato non esiste nel calendario.', { code: 'DATA_NON_VALIDA', hint: 'Controlla giorno, mese e ora.' });
+  if (Number(y) < 2000) throw new HttpError(400, 'La data inserita è precedente al 2000: non è ammessa.', { code: 'DATA_TROPPO_VECCHIA', hint: 'Scegli una data dal 2000 in poi.' });
   const out = `${y}-${mo}-${d} ${hh}:${mm}:00`;
-  if (out > now) throw new HttpError(400, 'La data non può essere nel futuro.');
+  if (out > now) throw new HttpError(400, 'La data inserita è nel futuro: l’inserimento retroattivo accetta solo date passate.', { code: 'DATA_FUTURA', hint: 'Scegli la data di oggi o una precedente.' });
   return out;
 }
 
@@ -95,11 +95,11 @@ const KINDS = {
 /** POST /api/retro/date { type: sale|repair|delivery|payment, id, date } (solo amministratore). */
 export async function changeDate({ type, id, date }, user) {
   const k = KINDS[type];
-  if (!k) throw new HttpError(400, 'Tipo non valido (sale, repair, delivery, payment).');
+  if (!k) throw new HttpError(400, 'Il tipo di registrazione da correggere non è valido.', { code: 'TIPO_REGISTRAZIONE_NON_VALIDO', hint: 'I tipi ammessi sono: sale, repair, delivery, payment.' });
   const when = parseEntryDate(date);
   const row = await db.prepare(`SELECT ${k.col} AS d FROM ${k.table} WHERE id = ?`).get(id);
-  if (!row) throw new HttpError(404, 'Registrazione non trovata');
-  if (type === 'delivery' && !row.d) throw new HttpError(409, 'La riparazione non è stata consegnata.');
+  if (!row) throw new HttpError(404, 'Registrazione non trovata', { code: 'REGISTRAZIONE_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
+  if (type === 'delivery' && !row.d) throw new HttpError(409, 'Non si può correggere la data di consegna: la riparazione non risulta ancora consegnata.', { code: 'RIPARAZIONE_NON_CONSEGNATA', hint: 'Consegna prima la riparazione.' });
   await db.prepare(`UPDATE ${k.table} SET ${k.col} = ? WHERE id = ?`).run(when, id);
   if (type === 'sale') await db.prepare("UPDATE payments SET created_at = ? WHERE kind = 'sale' AND ref_id = ?").run(when, id);
   await writeAudit({ user, action: 'modifica', type: 'retroattivo', id, label: `Data cambiata: ${k.label} n. ${id}`, detail: `da ${row.d} a ${when.slice(0, 16)}` });

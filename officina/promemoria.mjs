@@ -16,7 +16,7 @@ const SELECT = `SELECT r.*, c.name AS customer_name, c.phone AS customer_phone, 
 /** Accetta "2026-10-15T10:30" o "2026-10-15 10:30" e restituisce "2026-10-15 10:30". */
 export function normDue(v) {
   const s = String(v ?? '').trim().replace('T', ' ').slice(0, 16);
-  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s) || Number.isNaN(new Date(s.replace(' ', 'T')).getTime())) throw new HttpError(400, 'Data e ora non valide');
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(s) || Number.isNaN(new Date(s.replace(' ', 'T')).getTime())) throw new HttpError(400, 'Il promemoria ha data e ora non valide.', { code: 'DATA_ORA_NON_VALIDA', hint: 'Usa il formato AAAA-MM-GG HH:MM con una data che esiste.' });
   return s;
 }
 const nowMin = () => nowLocal().slice(0, 16);
@@ -28,19 +28,19 @@ const shape = (r) => {
 
 async function checkLinks(b) {
   for (const [k, t, msg] of [['customer_id', 'customers', 'Cliente non trovato'], ['repair_id', 'repairs', 'Riparazione non trovata'], ['order_id', 'orders', 'Ordine non trovato']]) {
-    if (b[k] && !(await db.prepare(`SELECT id FROM ${t} WHERE id = ?`).get(b[k]))) throw new HttpError(404, msg);
+    if (b[k] && !(await db.prepare(`SELECT id FROM ${t} WHERE id = ?`).get(b[k]))) throw new HttpError(404, `${msg}: il record collegato al promemoria non esiste più`, { code: 'COLLEGAMENTO_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo cliente o riparazione.' });
   }
 }
 
 export async function getReminder(id) {
   const r = await db.prepare(`${SELECT} WHERE r.id = ?`).get(id);
-  if (!r) throw new HttpError(404, 'Promemoria non trovato');
+  if (!r) throw new HttpError(404, 'Promemoria non trovato', { code: 'PROMEMORIA_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
   return shape(r);
 }
 
 export async function createReminder(b, user) {
   const title = str(b.title);
-  if (!title) throw new HttpError(400, 'Scrivi cosa ricordare');
+  if (!title) throw new HttpError(400, 'Promemoria non salvato: manca il testo.', { code: 'TESTO_MANCANTE', hint: 'Scrivi cosa ricordare.' });
   const due = normDue(b.due_at);
   await checkLinks(b);
   const r = await db.prepare(`INSERT INTO reminders (title, body, due_at, customer_id, repair_id, order_id, created_by, created_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
@@ -52,7 +52,7 @@ export async function updateReminder(id, b) {
   const cur = await getReminder(id);
   const due = 'due_at' in b ? normDue(b.due_at) : cur.due_at;
   const title = 'title' in b ? str(b.title) : cur.title;
-  if (!title) throw new HttpError(400, 'Scrivi cosa ricordare');
+  if (!title) throw new HttpError(400, 'Promemoria non salvato: manca il testo.', { code: 'TESTO_MANCANTE', hint: 'Scrivi cosa ricordare.' });
   const link = (k) => ('customer_id repair_id order_id'.includes(k) && k in b ? b[k] || null : cur[k]);
   await checkLinks({ customer_id: link('customer_id'), repair_id: link('repair_id'), order_id: link('order_id') });
   // se cambia l'orario il promemoria puo' suonare di nuovo
