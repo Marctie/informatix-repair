@@ -33,6 +33,7 @@ import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
+import { registerErrorRoutes } from './errori.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
 import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 
@@ -114,6 +115,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   };
 
   registerAuditRoutes(app, h, adminOnly);
+  registerErrorRoutes(app, h, adminOnly);
   registerRetroRoutes(app, h, adminOnly);
   registerBlackRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
