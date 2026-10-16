@@ -146,6 +146,7 @@
   <a href="#testi-legali">38 · Testi legali controllati</a>
   <a href="#s30">39 · Quando qualcosa non va: gli avvisi</a>
   <a href="#errori-parlanti">40 · Messaggi e codice errore</a>
+  <a href="#errori-vista">41 · Errori: pagine del cliente e registro</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -926,6 +927,14 @@
     <li>Un errore imprevisto non mostra dettagli tecnici ma un <b>codice di riferimento</b> (es. <code>E-3F2AK9QD</code>): comunicalo a Marco, che lo ritrova nel registro del servizio.</li>
     <li>Il database non lascia più salvare doppioni o collegamenti rotti senza spiegare perché (“Esiste già un cliente con lo stesso telefono…”).</li>
     <li>Corretto: non si può più registrare un <b>acconto</b> su una riparazione già consegnata o annullata (falsava saldo e cassa).</li>
+  </ul>
+</section>
+<section id="errori-vista">
+  <h2><span class="n">41</span>Errori: pagine del cliente e registro</h2>
+  <ul>
+    <li><b>Il cliente</b> (link del preventivo e pagina di tracciamento): se cade internet mentre firma, la firma resta sul riquadro e compare “Connessione assente” con <i>Riprova</i>, senza rifarla. Link sbagliato o già usato = messaggio chiaro, mai codici o termini tecnici. Non compaiono più finestre di avviso del browser.</li>
+    <li><b>Registro errori</b> (menu Gestione, solo amministratore): per ogni riga vedi quando, chi, cosa stava facendo, su quale scheda, il motivo, cosa fare e quante volte si è ripetuto. Filtri per gravità (avviso / sicurezza / errore), utente, stato, periodo; la ricerca trova anche il codice <code>E-XXXXX</code> che il personale ti comunica. Si svuota da solo dopo 90 giorni. Se è vuoto, va tutto bene.</li>
+    <li>Nella scheda riparazione la data “giorno passato” (acconto, consegna) non si azzera più quando un’altra azione ridisegna la scheda. Carte punti: il PIN della nuova carta compare in una finestra del gestionale. Lettore NFC e lettore PDF dicono cosa controllare se non rispondono.</li>
   </ul>
 </section>
 <!-- agente D: fine sezioni -->
