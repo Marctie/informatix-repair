@@ -15,7 +15,7 @@ BK="main.py.bak-$(date +%Y%m%d-%H%M%S)"
 cp main.py "$BK" || { echo "ERRORE: backup non riuscito"; exit 1; }
 echo "1/5 Backup: $BK"
 
-restart() { if [ -x "$CTL" ] || [ -f "$CTL" ]; then sh "$CTL" informatix_repair restart; else sh ./restart.sh; fi; }
+restart() { if [ -x "$CTL" ] || [ -f "$CTL" ]; then bash "$CTL" informatix_repair restart; else sh ./restart.sh; fi; }
 rollback() {
     echo "!!! $1 -> RIPRISTINO il backup $BK"
     cp "$BK" main.py && restart
@@ -46,4 +46,4 @@ head -n 8 "$HOME/anteprima.tmp"; rm -f "$HOME/anteprima.tmp"
 [ "$RC" -eq 1 ] && echo "ATTENZIONE: dati del gestionale non leggibili ora (vedi riga sopra): controlla rete o MONITOR_TOKEN."
 echo "FATTO: bot aggiornato. Ultime righe del log:"
 tail -n 5 "$LOG"
-echo "Per tornare indietro: cp $BK main.py && sh $CTL informatix_repair restart"
+echo "Per tornare indietro: cp $BK main.py && bash $CTL informatix_repair restart"
