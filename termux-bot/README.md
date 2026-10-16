@@ -50,5 +50,18 @@ Lo script usa `termux-wake-lock` e lancia il bot in background con `nohup`. Inst
 - Nessun file fuori da `~/informatix-bot`.
 - `status.sh`: `RUNNING pid=<n> uptime=<hh:mm:ss> ultimo_log="..."` (exit 0) oppure `STOPPED` (exit 1).
 
+## Errori parlanti (dal 2026-10-16)
+- Ogni avviso dice cosa non va, da quando, cosa succede nel frattempo e, a problema risolto, "ripristinato dopo X minuti". Un solo avviso per episodio.
+- Errori passeggeri (timeout, DNS, 5xx, telefono senza internet): ritentativi con pausa; i messaggi che Telegram non accetta restano in coda e partono al giro dopo ("messaggio ritardato"). Se TUTTO tace e anche internet e' irraggiungibile, il guasto e' del telefono: controlli sospesi, nessun falso "giu'", un avviso quando torna la connessione.
+- Errori veri (token errato, chiave `MONITOR_TOKEN` non accettata, bot bloccato): avviso subito, niente ritentativi, con cosa controllare nel `.env`.
+- Eccezione inattesa nel giro: log con traceback (senza segreti), il bot resta vivo, avviso dal 2o giro di fila e messaggio quando torna normale. L'heartbeat si aggiorna anche durante i controlli lenti.
+
+## Aggiornare il telefono (script pronto)
+1. Copia `main.py` e `aggiorna-telefono.sh` in `~/informatix-bot` sul telefono; rinomina il nuovo main in `main.py.new`.
+2. In Termux: `cd ~/informatix-bot && sh aggiorna-telefono.sh`
+3. Lo script fa il backup datato `main.py.bak-AAAAMMGG-HHMMSS`, copia, controlla la sintassi e riavvia con `bot_ctl.sh informatix_repair restart`.
+4. Poi verifica: "Bot avviato" nel log, heartbeat e `python main.py --anteprima`.
+5. Se un passo fallisce rimette da solo il backup e riavvia; per tornare indietro a mano: `cp main.py.bak-... main.py` e riavvio.
+
 ## Test
-`python -m unittest discover -s tests` (rete simulata).
+`python -m unittest discover -s tests` (rete simulata; `test_bot.py` + `test_errori.py`).
