@@ -16,19 +16,16 @@ let modalOpen = false; // mentre il cliente sta firmando non si ridisegna la pag
 let pad = null;
 
 async function load() {
-  try {
-    const res = await fetch(`/api/track/${encodeURIComponent(token)}`, { cache: 'no-store' });
-    if (res.status === 404) {
-      app.innerHTML = '<div class="err"><h2>Codice non valido</h2><p>Controlla di aver inquadrato il QR della tua ricevuta, oppure chiama il negozio.</p></div>';
-      return;
-    }
-    const d = await res.json();
-    DATA = d;
-    const sig = JSON.stringify(d);
-    if (sig !== last && !modalOpen) { last = sig; render(d); }
-  } catch {
-    /* offline: riprova al prossimo giro, la schermata resta com'è */
+  const r = await window.ClientErr.call(`/api/track/${encodeURIComponent(token)}`, { cache: 'no-store' });
+  if (!r.ok) {
+    // un errore di rete non cancella cio' che il cliente sta gia' vedendo: lo mostriamo solo se la pagina e' ancora vuota
+    if (!DATA) { app.innerHTML = '<div class="err"><div id="ld-err"></div></div>'; window.ClientErr.show(document.getElementById('ld-err'), r.error, load); }
+    return;
   }
+  const d = r.data;
+  DATA = d;
+  const sig = JSON.stringify(d);
+  if (sig !== last && !modalOpen) { last = sig; render(d); }
 }
 
 function render(d) {
@@ -146,17 +143,15 @@ function startPad(ready) {
 async function send(path, body, btn) {
   btn.disabled = true;
   btn.setAttribute('data-busy', '1');
-  try {
-    const res = await fetch(`/api/track/${encodeURIComponent(token)}/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const out = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(out.error || 'Operazione non riuscita');
-    return out;
-  } catch (e) {
-    alert(e.message || 'Operazione non riuscita: riprova o chiama il negozio.');
-    btn.disabled = false;
-    btn.removeAttribute('data-busy');
-    return null;
-  }
+  const hostErr = document.getElementById('sh-err');
+  if (hostErr) hostErr.innerHTML = '';
+  const r = await window.ClientErr.call(`/api/track/${encodeURIComponent(token)}/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (r.ok) return r.data;
+  // la firma resta sul riquadro: il cliente non deve rifarla
+  window.ClientErr.show(hostErr, r.error, r.error.retry ? () => btn.click() : null);
+  btn.disabled = false;
+  btn.removeAttribute('data-busy');
+  return null;
 }
 
 function doneSheet(title, text) {
@@ -170,7 +165,7 @@ function askIntake(d) {
   openSheet(`<h3>Firma la scheda di ingresso</h3>${legalBox(s.text, `<small><b>Condizioni:</b> ${esc(s.terms)}</small>`)}
     <label class="chk"><input type="checkbox" id="sg-acc"><span>Ho letto le condizioni e le accetto.</span></label>
     ${padHtml(d.customer.name)}
-    <div class="btns"><button class="no" id="sh-back">Annulla</button><button class="yes" id="sh-go" disabled>Firma e conferma</button></div>`);
+    <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back">Annulla</button><button class="yes" id="sh-go" disabled>Firma e conferma</button></div>`);
   const go = document.getElementById('sh-go');
   const ready = () => { go.disabled = !(pad && !pad.isEmpty() && document.getElementById('sg-acc').checked); };
   document.getElementById('sg-acc').onchange = ready;
@@ -189,11 +184,11 @@ function askAccept(d, optionId) {
   const amount = opt ? opt.amount : d.quote;
   const text = f.accept.text.replace('{importo}', eur(amount)) + (opt ? `\n\nSoluzione scelta: ${opt.label}.` : '');
   openSheet(`<h3>${esc(f.accept.title)}</h3>${legalBox(text)}
-    <div class="btns"><button class="no" id="sh-back">Torna indietro</button><button class="yes" id="sh-next">Conferma</button></div>`);
+    <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back">Torna indietro</button><button class="yes" id="sh-next">Conferma</button></div>`);
   document.getElementById('sh-back').onclick = closeSheet;
   document.getElementById('sh-next').onclick = () => {
     openSheet(`<h3>Firma per confermare</h3>${legalBox(f.sign_text)}${padHtml(d.customer.name)}
-      <div class="btns"><button class="no" id="sh-back2">Indietro</button><button class="yes" id="sh-go" disabled>Firma e conferma</button></div>`);
+      <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back2">Indietro</button><button class="yes" id="sh-go" disabled>Firma e conferma</button></div>`);
     const go = document.getElementById('sh-go');
     startPad(() => { go.disabled = !(pad && !pad.isEmpty()); });
     document.getElementById('sh-back2').onclick = () => { pad.destroy(); pad = null; askAccept(d, optionId); };
@@ -212,12 +207,12 @@ function askDecline(d) {
       <label class="opt"><input type="radio" name="dev" value="pickup" checked><span>${esc(f.decline.pickup)}</span></label>
       <label class="opt"><input type="radio" name="dev" value="cede"><span>${esc(f.decline.cede)}</span></label>
     </div>
-    <div class="btns"><button class="no" id="sh-back">Torna indietro</button><button class="yes" id="sh-next">Conferma la scelta</button></div>`);
+    <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back">Torna indietro</button><button class="yes" id="sh-next">Conferma la scelta</button></div>`);
   document.getElementById('sh-back').onclick = closeSheet;
   document.getElementById('sh-next').onclick = () => {
     const choice = document.querySelector('input[name="dev"]:checked').value;
     openSheet(`<h3>Firma per confermare</h3>${legalBox(choice === 'cede' ? f.decline.cede : f.decline.pickup, `<small>${esc(f.sign_text)}</small>`)}${padHtml(d.customer.name)}
-      <div class="btns"><button class="no" id="sh-back2">Indietro</button><button class="yes" id="sh-go" disabled>Firma e conferma</button></div>`);
+      <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back2">Indietro</button><button class="yes" id="sh-go" disabled>Firma e conferma</button></div>`);
     const go = document.getElementById('sh-go');
     startPad(() => { go.disabled = !(pad && !pad.isEmpty()); });
     document.getElementById('sh-back2').onclick = () => { pad.destroy(); pad = null; askDecline(d); };

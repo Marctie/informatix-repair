@@ -13,14 +13,10 @@ let DATA = null;
 let pad = null;
 
 async function load() {
-  try {
-    const res = await fetch(`/api/quote/${encodeURIComponent(token)}`, { cache: 'no-store' });
-    if (res.status === 404) { app.innerHTML = '<div class="err"><h2>Link non valido</h2><p>Controlla di aver aperto il link completo che ti ha mandato il negozio, oppure chiamaci.</p></div>'; return; }
-    DATA = await res.json();
-    render(DATA);
-  } catch {
-    app.innerHTML = '<div class="err"><h2>Connessione assente</h2><p>Riprova tra un attimo.</p></div>';
-  }
+  const r = await window.ClientErr.call(`/api/quote/${encodeURIComponent(token)}`, { cache: 'no-store' });
+  if (!r.ok) { app.innerHTML = '<div class="err"><div id="ld-err"></div></div>'; window.ClientErr.show(document.getElementById('ld-err'), r.error, load); return; }
+  DATA = r.data;
+  render(DATA);
 }
 
 function render(d) {
@@ -67,24 +63,27 @@ function ask(action) {
   const yes = action === 'accept';
   const text = yes ? `Accetto il preventivo ${DATA.code} di ${eur(DATA.total)}, valido fino al ${fdate(DATA.valid_until)}, alle condizioni indicate.` : `Non accetto il preventivo ${DATA.code} di ${eur(DATA.total)}.`;
   openSheet(`<h3>${yes ? 'Conferma e firma' : 'Rifiuta il preventivo'}</h3><div class="legal"><div>${esc(text)}</div>${yes ? `<small>${esc(DATA.terms)}</small>` : ''}</div>${yes ? '' : '<div><label class="lbl" for="sg-why">Vuoi dirci il motivo? (facoltativo)</label><input class="inp" id="sg-why" maxlength="300" placeholder="es. prezzo troppo alto, ho trovato altrove…"></div>'}${padHtml(DATA.who)}
-    <div class="btns"><button class="no" id="sh-back">Annulla</button><button class="yes" id="sh-go" disabled>${yes ? 'Firma e accetta' : 'Firma e rifiuta'}</button></div>`);
+    <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back">Annulla</button><button class="yes" id="sh-go" disabled>${yes ? 'Firma e accetta' : 'Firma e rifiuta'}</button></div>`);
   const go = document.getElementById('sh-go');
   startPad(() => { go.disabled = !(pad && !pad.isEmpty()); });
   document.getElementById('sh-back').onclick = closeSheet;
   go.onclick = async () => {
     go.disabled = true;
     go.setAttribute('data-busy', '1');
-    try {
-      const res = await fetch(`/api/quote/${encodeURIComponent(token)}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, image: pad.toDataURL(), signer_name: document.getElementById('sg-name').value, reason: document.getElementById('sg-why')?.value || '' }) });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(out.error || 'Operazione non riuscita');
+    const hostErr = document.getElementById('sh-err');
+    if (hostErr) hostErr.innerHTML = '';
+    const r = await window.ClientErr.call(`/api/quote/${encodeURIComponent(token)}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action, image: pad.toDataURL(), signer_name: document.getElementById('sg-name').value, reason: document.getElementById('sg-why')?.value || '' }) });
+    if (!r.ok) {
+      // la firma resta sul riquadro: il cliente non deve rifarla
+      window.ClientErr.show(hostErr, r.error, r.error.retry ? () => go.click() : null);
+      go.disabled = false;
+      go.removeAttribute('data-busy');
+      return;
+    }
+    {
       if (pad) { pad.destroy(); pad = null; }
       openSheet(`<h3>${yes ? 'Preventivo accettato' : 'Risposta registrata'}</h3><div class="legal"><div>${yes ? 'Grazie! Abbiamo registrato la tua accettazione e la tua firma con data e ora. Ti contatteremo a breve.' : 'Abbiamo registrato il tuo rifiuto. Per qualsiasi dubbio chiamaci.'}</div></div><div class="btns"><button class="yes" id="sh-ok">Chiudi</button></div>`);
       document.getElementById('sh-ok').onclick = closeSheet;
-    } catch (e) {
-      alert(e.message || 'Operazione non riuscita: riprova o chiama il negozio.');
-      go.disabled = false;
-      go.removeAttribute('data-busy');
     }
   };
 }
