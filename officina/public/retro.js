@@ -30,7 +30,7 @@ export function entryDateField(id) {
   const min = cassa ? ` min="${fmtInput(new Date(new Date().setHours(0, 0, 0, 0) - CASSA_DAYS * 86400000))}"` : '';
   return `<div class="field entry-date">
     <label class="l" for="${id}-auto">Data di inserimento</label>
-    <div class="row tight" style="align-items:center">
+    <div class="row" style="align-items:center">
       <label class="check box"><input type="checkbox" id="${id}-auto" checked /> Automatica (adesso)</label>
       <input type="datetime-local" id="${id}" max="${nowInput()}"${min} style="width:auto;display:none" aria-label="Data e ora di inserimento" />
     </div>
