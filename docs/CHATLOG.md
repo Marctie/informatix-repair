@@ -927,3 +927,5 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - Test officina: 154/154. Corretti: test retroattivo con data locale (falliva dopo mezzanotte), virgola mancante in schema.sql dopo il merge A+D, riquadro Promemoria materiali in Impostazioni (spazio irregolare, giorni troppo vicini), `drawAreas` in stock.js se la pagina cambia.
 - E2E su `cypress-tests`: menu ora 31 voci; officina e scanner verdi (il "tailwind is not defined" era il CDN lento); ui-review rilanciato.
 - DA FARE: applicare le migrazioni D1 0017-0028 e `wrangler deploy` (bloccato dai permessi della sessione: serve il via libera di Marco). Poi: prove di Christian (elenco nelle relazioni degli agenti), fattura XML vera (attesa), PDF/DDT veri, regolamento punti (domanda 21), conferma testi legali da un professionista.
+
+- **PUBBLICATO 2026-10-16**: migrazioni D1 0017-0028 applicate (dopo un errore 7403 passeggero) e deploy versione 85187afc. Marco ha dato il consenso esplicito a eseguire wrangler. Resta il controllo E2E ui-review (1 test instabile "ricerca globale e codice sconosciuto").
