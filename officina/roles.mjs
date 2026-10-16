@@ -24,7 +24,7 @@ export function stripCosts(v) {
 /** Middleware Hono da montare dopo l'autenticazione. */
 export const cassaMiddleware = async (c, next) => {
   if (!isCassa(c.get('user')) || !c.req.path.startsWith('/api/')) return next();
-  if (BLOCKED.some((re) => re.test(c.req.path))) return c.json({ ok: false, error: 'Questa sezione non è disponibile per il ruolo Cassa.' }, 403);
+  if (BLOCKED.some((re) => re.test(c.req.path))) return c.json({ ok: false, error: 'Questa sezione non è disponibile per il ruolo Cassa.', code: 'RUOLO_NON_AUTORIZZATO', hint: 'Per vedere costi e margini serve un utente amministratore o staff.' }, 403);
   await next();
   if (!(c.res.headers.get('content-type') || '').includes('json')) return;
   let data = await c.res.clone().json().catch(() => null);

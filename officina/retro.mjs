@@ -48,10 +48,10 @@ export const retroMiddleware = async (c, next) => {
   const body = await c.req.raw.clone().json().catch(() => null);
   if (!body || body.entry_date == null || String(body.entry_date).trim() === '') return next();
   const [, re, what] = target;
-  if (isCassa(c.get('user'))) return c.json({ ok: false, error: 'Il ruolo Cassa non può inserire operazioni con data passata.' }, 403);
+  if (isCassa(c.get('user'))) return c.json({ ok: false, error: 'Il ruolo Cassa non può inserire operazioni con data passata.', code: 'RUOLO_NON_AUTORIZZATO', hint: 'Chiedi a un amministratore di inserire l’operazione con la data corretta.' }, 403);
 
   let when;
-  try { when = parseEntryDate(body.entry_date); } catch (e) { return c.json({ ok: false, error: e.message }, e.status || 400); }
+  try { when = parseEntryDate(body.entry_date); } catch (e) { return c.json({ ok: false, error: e.message, code: e.code || 'DATA_NON_VALIDA', hint: e.hint || 'Indica una data che esiste e non è nel futuro.' }, e.status || 400); }
   const now = nowLocal();
   if (when.slice(0, 10) === now.slice(0, 10)) return next(); // oggi: niente da fare
 

@@ -907,6 +907,15 @@
     <li>Le condizioni stampate sulla scheda (campo “Condizioni”) hanno il nuovo testo solo nelle installazioni nuove: per quella in uso, copialo da <code>officina/dbref.mjs</code> o dal file di revisione.</li>
   </ul>
 </section>
+<section id="errori-parlanti">
+  <h2><span class="n">30</span>Quando qualcosa non riesce: messaggi e codice errore</h2>
+  <ul>
+    <li>Ogni rifiuto dice <b>cosa è successo, su quale scheda/cliente e cosa fare</b> (es. “Non posso mettere la riparazione R-0123 in Preventivo da approvare: manca il preventivo” + suggerimento).</li>
+    <li>Un errore imprevisto non mostra dettagli tecnici ma un <b>codice di riferimento</b> (es. <code>E-3F2AK9QD</code>): comunicalo a Marco, che lo ritrova nel registro del servizio.</li>
+    <li>Il database non lascia più salvare doppioni o collegamenti rotti senza spiegare perché (“Esiste già un cliente con lo stesso telefono…”).</li>
+    <li>Corretto: non si può più registrare un <b>acconto</b> su una riparazione già consegnata o annullata (falsava saldo e cassa).</li>
+  </ul>
+</section>
 <!-- agente D: fine sezioni -->
 
 </main>
