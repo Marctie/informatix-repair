@@ -6,7 +6,7 @@ import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagat
 import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts, busy, statusPrereq } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
-import { retroField, retroVal } from './retro.js';
+import { retroField, retroVal, keepRetro } from './retro.js';
 import { showBlackAlert, watchBlack } from './blacks.js';
 
 import { attachModelSuggest } from './modelli.js'; // suggerimenti marca/modello dalla terza lettera
@@ -308,6 +308,7 @@ export async function openRepairDetail(id, onChange) {
     const waKind = r.status === 'ready' ? 'ready' : r.status === 'quote_pending' ? 'quote' : 'generic';
     const waHref = wa(waKind);
     const statusOptions = Object.entries(META.statuses).filter(([k]) => k !== 'delivered' && k !== r.status).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+    const restoreRetro = keepRetro(body); // la data "giorno passato" digitata non si perde se la scheda si ridisegna
     body.innerHTML = `
       <div class="sticky-head">
         <div class="badges">
@@ -451,6 +452,7 @@ export async function openRepairDetail(id, onChange) {
         <ul class="tl">${r.events.map((e) => `<li><time>${fdt(e.created_at)}</time><span>${esc(e.note || '')} ${e.is_public ? '' : '<span class="badge bg-gray-100 text-gray-500">interna</span>'}</span></li>`).join('')}</ul>
       </section>`;
 
+    restoreRetro();
     bindChecklistGrids(body);
     // riparazione esterna e muletto collegati a questa scheda (lotto B)
     const extras = $('#d-extras', body);
