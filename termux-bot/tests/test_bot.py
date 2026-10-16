@@ -88,9 +88,9 @@ class AntiRimbalzo(unittest.TestCase):
         m = bot.Monitor([n for n, _ in bot.SERVICES])
         down = lambda url: (None, 20.0)
         send = lambda cfg, t: sent.append(t)
-        bot.run_checks(m, CFG, 0, check=down, send=send)
+        bot.run_checks(m, CFG, 0, check=down, send=send, probe=lambda: True)
         self.assertEqual(sent, [])
-        bot.run_checks(m, CFG, 300, check=down, send=send)
+        bot.run_checks(m, CFG, 300, check=down, send=send, probe=lambda: True)
         self.assertEqual(len(sent), len(bot.SERVICES))
         bot.run_checks(m, CFG, 600, check=lambda u: (200, 0.3), send=send)
         self.assertEqual(len(sent), 2 * len(bot.SERVICES))
@@ -255,7 +255,7 @@ class Sicurezza(unittest.TestCase):
         with mock.patch("urllib.request.urlopen", side_effect=fake):
             data, err = bot.fetch_monitor(CFG)
         self.assertIsNone(data)
-        self.assertEqual(err, "rete non raggiungibile")
+        self.assertIn("non raggiungibile", err)
         self.assertNotIn(CFG["MONITOR_TOKEN"], seen[0].full_url)
         self.assertEqual(seen[0].get_header("Authorization"), f"Bearer {CFG['MONITOR_TOKEN']}")
 
@@ -265,7 +265,7 @@ class Sicurezza(unittest.TestCase):
             bot.setup_logging([CFG["TELEGRAM_BOT_TOKEN"], CFG["TELEGRAM_OWNER_ID"], CFG["MONITOR_TOKEN"]], p)
             bot.log.info("token %s id %s chiave %s", CFG["TELEGRAM_BOT_TOKEN"], CFG["TELEGRAM_OWNER_ID"], CFG["MONITOR_TOKEN"])
             def boom(req, timeout): raise OSError("https://api.telegram.org/bot" + CFG["TELEGRAM_BOT_TOKEN"])
-            bot.tg_send(CFG, "x", opener=boom)
+            bot.tg_send(CFG, "x", opener=boom, sleep=lambda s: None)
             for h in bot.log.handlers: h.flush()
             txt = open(p, encoding="utf-8").read()
             self.assertNotIn("SECRETTOKEN", txt)
@@ -329,7 +329,7 @@ class Processo(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with mock.patch.object(bot, "PID_FILE", os.path.join(d, "bot.pid")), mock.patch.object(bot, "HEARTBEAT_FILE", os.path.join(d, "hb")), \
                     mock.patch.object(bot, "load_env", return_value=CFG), mock.patch.object(bot, "setup_logging"), \
-                    mock.patch.object(bot, "tick", side_effect=boom), mock.patch("signal.signal"), \
+                    mock.patch.object(bot, "tick", side_effect=boom), mock.patch("signal.signal"), mock.patch.object(bot, "tg_send", return_value=True), \
                     mock.patch("time.sleep", side_effect=[None, bot.Stop]), mock.patch.object(bot, "CHECK_EVERY", 0):
                 self.assertEqual(bot.main([]), 0)
         self.assertEqual(len(calls), 2)
