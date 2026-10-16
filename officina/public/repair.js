@@ -6,7 +6,7 @@ import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagat
 import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts, busy, statusPrereq } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
-import { retroField, retroVal } from './retro.js';
+import { retroField, retroVal, entryDateField, entryDateInit, entryDateVal } from './retro.js';
 import { showBlackAlert, watchBlack } from './blacks.js';
 
 import { attachModelSuggest } from './modelli.js'; // suggerimenti marca/modello dalla terza lettera
@@ -90,7 +90,7 @@ export function openRepairForm(onDone, preset = {}) {
           <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
         </div>
-        ${retroField('rf-retro')}
+        ${entryDateField('rf-retro')}
         <div class="field">
           <label class="l">Consegna stimata</label>
           <div class="row tight">
@@ -104,6 +104,7 @@ export function openRepairForm(onDone, preset = {}) {
     { title: 'Nuova riparazione', wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-outline btn-lg" id="rf-save">Salva</button><button class="btn btn-primary btn-lg" id="rf-save-print">🖨️ Salva e stampa</button>` }
   );
   const root = m.el;
+  entryDateInit(root, 'rf-retro');
   let customerId = null;
   // marca e modello: dalla terza lettera i suggerimenti del catalogo; scegliendo si imposta anche il tipo di dispositivo
   attachModelSuggest($('#rf-model', root), {
@@ -211,6 +212,8 @@ export function openRepairForm(onDone, preset = {}) {
   };
 
   const doSave = async (btn, print) => {
+    let entryDate;
+    try { entryDate = entryDateVal(root, 'rf-retro'); } catch (e) { toast(e.message, false); return; }
     // la scheda di stampa va aperta SUBITO (durante il click), altrimenti il browser blocca la finestra
     const pw = print ? window.open('about:blank', '_blank') : null;
     const accessories = [...selected(root, '#rf-acc')];
@@ -230,7 +233,7 @@ export function openRepairForm(onDone, preset = {}) {
       quote_agreed: $('#rf-agreed', root).checked,
       deposit: $('#rf-deposit', root).value,
       deposit_method: $('#rf-method', root).value,
-      ...retroVal(root, 'rf-retro'),
+      ...entryDate,
       eta_date: $('#rf-etadate', root).value,
       urgent: $('#rf-urgent', root).checked,
     };
@@ -395,6 +398,7 @@ export async function openRepairDetail(id, onChange) {
                 ${retroField('d-dep-retro')}
                 <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
               <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button><button class="btn btn-outline btn-sm" data-act="sendquote">📨 Invia preventivo al cliente</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
+            <p class="hint">Data di inserimento: <b>${fdt(r.created_at)}</b></p>
             ${r.delivered_at ? `<p class="hint">Consegnata il ${fdt(r.delivered_at)} · garanzia fino al <b>${fdate(r.warranty_until)}</b></p>` : ''}
           </section>
 

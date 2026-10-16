@@ -8,19 +8,21 @@ import { writeAudit } from './audit.mjs';
 import { HttpError } from './logic.mjs';
 import { isCassa } from './roles.mjs';
 
+/** Giorni indietro consentiti al ruolo Cassa per la data di inserimento di una riparazione. */
+export const CASSA_MAX_DAYS = 7;
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?$/;
 
 /** Normalizza in 'AAAA-MM-GG HH:MM:SS' (senza ora: 12:00). Errore se non valida, troppo vecchia o nel futuro. */
 export function parseEntryDate(v, now = nowLocal()) {
   const s = String(v ?? '').trim();
   const m = DATE_RE.exec(s);
-  if (!m) throw new HttpError(400, 'Data non valida (usa AAAA-MM-GG).');
+  if (!m) throw new HttpError(400, 'Data di inserimento non valida: non riesco a leggerla.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato AAAA-MM-GG, con l’ora se vuoi (AAAA-MM-GG HH:MM).' });
   const [, y, mo, d, hh = '12', mm = '00'] = m;
   const dt = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
-  if (dt.getUTCFullYear() !== Number(y) || dt.getUTCMonth() !== Number(mo) - 1 || dt.getUTCDate() !== Number(d) || Number(hh) > 23 || Number(mm) > 59) throw new HttpError(400, 'Data non valida.');
-  if (Number(y) < 2000) throw new HttpError(400, 'Data troppo vecchia.');
+  if (dt.getUTCFullYear() !== Number(y) || dt.getUTCMonth() !== Number(mo) - 1 || dt.getUTCDate() !== Number(d) || Number(hh) > 23 || Number(mm) > 59) throw new HttpError(400, 'Data di inserimento non valida: quel giorno o quell’ora non esistono.', { code: 'DATA_NON_VALIDA', hint: 'Controlla giorno, mese e ora.' });
+  if (Number(y) < 2000) throw new HttpError(400, 'Data di inserimento troppo vecchia (prima del 2000).', { code: 'DATA_TROPPO_VECCHIA', hint: 'Controlla l’anno.' });
   const out = `${y}-${mo}-${d} ${hh}:${mm}:00`;
-  if (out > now) throw new HttpError(400, 'La data non può essere nel futuro.');
+  if (out > now) throw new HttpError(400, 'La data di inserimento non può essere nel futuro.', { code: 'DATA_FUTURA', hint: 'Scegli adesso o un momento già passato.' });
   return out;
 }
 
@@ -48,12 +50,20 @@ export const retroMiddleware = async (c, next) => {
   const body = await c.req.raw.clone().json().catch(() => null);
   if (!body || body.entry_date == null || String(body.entry_date).trim() === '') return next();
   const [, re, what] = target;
-  if (isCassa(c.get('user'))) return c.json({ ok: false, error: 'Il ruolo Cassa non può inserire operazioni con data passata.', code: 'RUOLO_NON_AUTORIZZATO', hint: 'Chiedi a un amministratore di inserire l’operazione con la data corretta.' }, 403);
+  const cassa = isCassa(c.get('user'));
+  // Cassa: solo la data di inserimento di una NUOVA riparazione, fino a CASSA_MAX_DAYS giorni indietro (il resto: amministratore)
+  if (cassa && what !== 'riparazione') return c.json({ ok: false, error: 'Il ruolo Cassa non può inserire operazioni con data passata.', code: 'RUOLO_NON_AUTORIZZATO', hint: 'Chiedi a un amministratore di inserire l’operazione con la data corretta.' }, 403);
 
   let when;
   try { when = parseEntryDate(body.entry_date); } catch (e) { return c.json({ ok: false, error: e.message, code: e.code || 'DATA_NON_VALIDA', hint: e.hint || 'Indica una data che esiste e non è nel futuro.' }, e.status || 400); }
   const now = nowLocal();
-  if (when.slice(0, 10) === now.slice(0, 10)) return next(); // oggi: niente da fare
+  const withTime = /[ T]\d{2}:\d{2}$/.test(String(body.entry_date).trim());
+  if (cassa) {
+    const lim = new Date(Date.now() - CASSA_MAX_DAYS * 86400000);
+    const limStr = new Date(lim.getTime() - lim.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    if (when.slice(0, 10) < limStr) return c.json({ ok: false, error: `Il ruolo Cassa può mettere una data di inserimento fino a ${CASSA_MAX_DAYS} giorni indietro.`, code: 'DATA_TROPPO_VECCHIA', hint: 'Per una data più vecchia chiedi a un amministratore.' }, 403);
+  }
+  if (when.slice(0, 10) === now.slice(0, 10) && !withTime) return next(); // oggi senza ora: niente da fare
 
   // le spese hanno gia' la loro data: si controlla solo che coincida e si registra l'uso
   if (what === 'spesa') {

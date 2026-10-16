@@ -72,7 +72,7 @@ const header = (s, kind, r) => `
   <div class="row">
     <div><h1>${esc(s.shop_name)}</h1><div class="muted">${esc(s.shop_address)}<br>Tel. ${esc(s.shop_phone)}</div></div>
     <div style="text-align:right"><div class="muted">${kind}</div><div class="big">${esc(r.code)}</div>
-      <div class="muted">Ricevuto il ${dt(r.created_at)}</div>${r.urgent ? '<div><span class="pill urg">URGENTE</span></div>' : ''}
+      <div class="muted">Data di inserimento: ${dt(r.created_at)}</div>${r.urgent ? '<div><span class="pill urg">URGENTE</span></div>' : ''}
       <div style="margin-top:4px;display:inline-block">${barcode(r.code, 150, 30)}</div></div>
   </div>`;
 
@@ -115,7 +115,7 @@ function customerHalf(r, trackUrl, s, copy) {
   <div class="row hh">
     <div><b class="shop">${esc(s.shop_name)}</b><div class="muted">${esc(s.shop_address)} · Tel. ${esc(s.shop_phone)}</div></div>
     <div style="text-align:right"><span class="copy">${copy}</span><div><b class="big">${esc(r.code)}</b> ${r.urgent ? '<span class="pill urg">URGENTE</span>' : ''}</div>
-      <div class="muted">Scheda di ingresso · ${dt(r.created_at)}</div></div>
+      <div class="muted">Scheda di ingresso · inserita il ${dt(r.created_at)}</div></div>
   </div>
   <div class="cgrid">
     <div>
