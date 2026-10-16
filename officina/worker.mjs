@@ -9,6 +9,7 @@ import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
 import { notifyDueReminders } from './promemoria.mjs';
 import { notifyMaterialsDue } from './materiali.mjs';
+import { purgeErrors } from './errori.mjs';
 import { createPublisher } from './publisher.mjs';
 import { r2Media } from './media.mjs';
 import { storageDigest } from './remote.mjs';
@@ -102,6 +103,7 @@ export default {
       return;
     }
     try {
+      try { await purgeErrors(); } catch (e) { console.error('pulizia registro errori', e); } // retention 90 giorni
       const key = await saveBackup(env);
       // dispositivi non riparati con la giacenza scaduta: un promemoria al giorno finche' non si decide (smaltire o deposito)
       await sendTelegram(env, await storageDigest().catch(() => null));

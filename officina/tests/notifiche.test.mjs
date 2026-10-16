@@ -252,3 +252,125 @@ test('pagamenti sempre tracciati: "non tracciato" rifiutato su vendite, acconti,
   assert.equal((await call('GET', `/api/repairs/${r.id}`)).data.status, 'ready', 'la consegna non è avvenuta');
   assert.equal((await call('POST', `/api/repairs/${r.id}/deliver`, { method: 'contanti' })).status, 200);
 });
+
+// ---------------- Avvisi di errore chiari, gravita', anti-spam, registro errori (agente G) ----------------
+const { describeEvent, describeFailure, safeTruncate, isQuiet } = await import('../notify.mjs');
+const { db } = await import('../dbref.mjs');
+const { purgeErrors } = await import('../errori.mjs');
+const flat = (t) => t.replace(/<[^>]+>/g, '');
+
+test('errore di validazione: dice quale riparazione, cliente, dispositivo, cosa si faceva e cosa fare; senza suono', async () => {
+  const r = await newRepair({ quote: null, brand_model: 'Galaxy S22' });
+  await call('POST', `/api/repairs/${r.id}/advance`); // ricevuto -> in diagnosi
+  const bad = await call('POST', `/api/repairs/${r.id}/advance`); // senza preventivo: rifiutato
+  assert.equal(bad.status, 400);
+  assert.equal(bad.msgs.length, 1);
+  const t = flat(bad.msgs[0].text);
+  assert.match(t, new RegExp(`Riparazione ${r.code} \\(Anna Verdi, Galaxy S22\\): non si può avanzare a «Preventivo da approvare»`));
+  assert.match(t, /Motivo: Inserisci prima il preventivo/);
+  assert.match(t, /Stato attuale: In diagnosi/);
+  assert.match(t, /Cosa fare: |👉/);
+  assert.match(t, /Christian/);
+  assert.match(t, /🕒 \d\d\/\d\d \d\d:\d\d/);
+  assert.equal(bad.msgs[0].disable_notification, true, 'errore dell\'utente: niente suono');
+  assert.doesNotMatch(t, /operazione non riuscita/);
+});
+
+test('anti-spam: lo stesso errore ripetuto entro pochi minuti = un solo avviso, ma il registro conta le ripetizioni', async () => {
+  const r = await newRepair({ quote: null, brand_model: 'Pixel 7' });
+  await call('POST', `/api/repairs/${r.id}/advance`);
+  // stesso utente, stesso errore: gia' avvisato nel test precedente (altra riparazione) quindi nessun nuovo avviso
+  for (let i = 0; i < 3; i++) assert.equal((await call('POST', `/api/repairs/${r.id}/advance`)).msgs.length, 0);
+  const log = (await call('GET', '/api/errors?status=400&user=christian@test.it')).data;
+  const row = log.rows.find((e) => /Inserisci prima il preventivo/.test(e.reason));
+  assert.ok(row.count >= 4, 'contate le ripetizioni: ' + row.count);
+  assert.equal(row.severity, 'info');
+  assert.equal(row.notified, 1);
+  assert.match(row.entity, /Riparazione R-/);
+});
+
+test('404 e 409 sono avvisi informativi senza suono', async () => {
+  const x = await call('POST', '/api/repairs/999999/advance');
+  assert.equal(x.status, 404);
+  assert.equal(x.msgs.length, 1);
+  assert.equal(x.msgs[0].disable_notification, true);
+  assert.match(flat(x.msgs[0].text), /L’elemento non esiste più/);
+});
+
+test('registro errori: filtri per gravita\', utente, stato, periodo; solo amministratore; sola lettura', async () => {
+  const all = (await call('GET', '/api/errors')).data;
+  assert.ok(all.total >= 2 && all.retention_days === 90);
+  assert.ok(all.rows.every((e) => e.user_email && e.ref && e.fingerprint));
+  assert.equal((await call('GET', '/api/errors?severity=error')).data.rows.filter((e) => e.severity !== 'error').length, 0);
+  assert.equal((await call('GET', '/api/errors?severity=info&user=christian@test.it')).data.rows.length > 0, true);
+  assert.equal((await call('GET', '/api/errors?user=nessuno@test.it')).data.rows.length, 0);
+  assert.equal((await call('GET', '/api/errors?status=404')).data.rows.every((e) => e.status === 404), true);
+  assert.equal((await call('GET', '/api/errors?from=2999-01-01')).data.rows.length, 0);
+  assert.equal((await call('GET', '/api/errors?severity=boh')).status, 400);
+  const before = (await db.prepare('SELECT COUNT(*) AS n FROM repairs').get()).n;
+  await call('GET', '/api/errors');
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM repairs').get()).n, before);
+  // un utente non amministratore: 403 + avviso di sicurezza con suono, poi anti-spam
+  const staff = createAdminApp({ auth: async (c, next) => { c.set('user', { email: 'staff@test.it', name: 'Staff', role: 'staff' }); await next(); } });
+  const forb = await call('GET', '/api/errors', null, staff);
+  assert.equal(forb.status, 403);
+  assert.equal((await call('GET', '/api/errors', null, staff)).msgs.length, 0, 'anti-spam anche per i permessi');
+  const sec = (await call('GET', '/api/errors?severity=security')).data.rows;
+  assert.ok(sec.some((e) => e.user_email === 'staff@test.it' && e.status === 403));
+});
+
+test('retention: il registro cancella da solo le righe oltre 90 giorni e tiene le altre', async () => {
+  await db.prepare("INSERT INTO error_log (at, last_at, severity, status, method, path, user_email, fingerprint) VALUES ('2020-01-01 10:00:00','2020-01-01 10:00:00','info',400,'POST','/api/x','vecchio@test.it','vecchio')").run();
+  const n = await purgeErrors();
+  assert.ok(n >= 1);
+  assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM error_log WHERE user_email = 'vecchio@test.it'").get()).n, 0);
+  assert.ok((await db.prepare('SELECT COUNT(*) AS n FROM error_log').get()).n >= 2);
+});
+
+test('errore vero (5xx): suono, codice di riferimento, percorso e versione; token e dati sensibili mai inclusi', () => {
+  const u = { name: 'Marco', email: 'm@example.com' };
+  const ctx = { method: 'POST', path: '/api/repairs/5/deposit', status: 500, user: u, body: { amount: 20, method: 'carta', passcode: '9876' }, error: 'D1_ERROR <x> 123456789:AAAbbbCCCdddEEEfffGGGhhhIIIjjjKKK12', pre: { code: 'R-2026-0007', customer_name: 'Mario Rossi', brand_model: 'iPhone 13', status: 'ready' }, version: 'abc12345', ip: '1.2.3.4', country: 'IT' };
+  const t = describeEvent({ ...ctx, meta: { ref: 'E-7K3QX', repeated: 2, at: '2026-10-16 09:30:00' } });
+  const p = flat(t);
+  assert.match(p, /ERRORE DEL SISTEMA · rif\. E-7K3QX/);
+  assert.match(p, /Riparazione R-2026-0007 \(Mario Rossi, iPhone 13\): non si può registrare l’acconto di 20,00 €/);
+  assert.match(p, /POST \/api\/repairs\/5\/deposit · versione abc12345/);
+  assert.match(p, /16\/10 09:30/);
+  assert.match(p, /ripetuto altre 2 volte/);
+  assert.ok(t.includes('&lt;x&gt;') && t.includes('[token]') && !t.includes('AAAbbb') && !t.includes('9876'));
+  assert.equal(isQuiet('POST', '/api/repairs/5/deposit', 500), false);
+  assert.equal(isQuiet('POST', '/api/repairs/5/deposit', 400), true);
+  assert.equal(isQuiet('POST', '/api/repairs/5/deposit', 403), false);
+});
+
+test('campi code e hint dei JSON d\'errore usati se presenti; altrimenti error', () => {
+  const f = describeFailure({ method: 'POST', path: '/api/sales', status: 409, user: { email: 'a@b.it' }, result: { error: 'Giacenza insufficiente', code: 'STOCK_LOW', hint: 'Carica prima la merce.' } });
+  assert.equal(f.errorCode, 'STOCK_LOW');
+  assert.equal(f.hint, 'Carica prima la merce.');
+  assert.equal(f.severity, 'info');
+  const g = describeFailure({ method: 'POST', path: '/api/sales', status: 400, result: { error: 'Aggiungi un articolo' } });
+  assert.equal(g.reason, 'Aggiungi un articolo');
+  assert.equal(g.errorCode, undefined);
+  assert.match(g.hint, /Controlla i dati/);
+});
+
+test('link del cliente: il token non compare mai nel testo dell\'errore', () => {
+  const t = describeEvent({ method: 'POST', path: '/api/track/SEGRETOTOKEN123/decision', status: 400, result: { error: 'Firma obbligatoria' } });
+  assert.ok(!t.includes('SEGRETOTOKEN123'));
+  assert.match(flat(t), /cliente \(dal link\)/);
+});
+
+test('messaggi lunghi: il taglio non spezza tag ed entita\' (Telegram rifiuterebbe il messaggio)', () => {
+  const html = `<b>Titolo</b>\n<code>${'a&amp;'.repeat(900)}</code>`;
+  const cut = safeTruncate(html, 400);
+  assert.ok(cut.length <= 400);
+  assert.ok(cut.endsWith('</code>') && cut.includes('…'));
+  assert.equal(safeTruncate('<b>ok</b>', 400), '<b>ok</b>');
+  assert.equal((cut.match(/<code>/g) || []).length, (cut.match(/<\/code>/g) || []).length);
+});
+
+test('importi non numerici non diventano "NaN €"; conversione senza metodo non lascia parentesi vuote', () => {
+  const t = describeEvent({ method: 'POST', path: '/api/quotes/3/convert', status: 200, user: { email: 'a@b.it' }, body: { to: 'sale' }, result: { quote: { code: 'P-1', total: 'abc', sale_code: 'V-1' } } });
+  assert.doesNotMatch(t, /NaN/);
+  assert.doesNotMatch(t, /\(incassata \)/);
+});
