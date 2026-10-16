@@ -34,7 +34,7 @@ export function entryDateField(id) {
       <label class="check box"><input type="checkbox" id="${id}-auto" checked /> Automatica (adesso)</label>
       <input type="datetime-local" id="${id}" max="${nowInput()}"${min} style="width:auto;display:none" aria-label="Data e ora di inserimento" />
     </div>
-    <span class="hint">Predefinita: data e ora di adesso. Togli la spunta per indicare un altro momento${cassa ? ` (fino a ${CASSA_DAYS} giorni indietro)` : ''}: finisce nei conti di quel giorno e resta scritta nel Registro.</span>
+    <p class="hint" style="margin-top:.75rem">Predefinita: data e ora di adesso. Togli la spunta per indicare un altro momento${cassa ? ` (fino a ${CASSA_DAYS} giorni indietro)` : ''}: finisce nei conti di quel giorno e resta scritta nel Registro.</p>
   </div>`;
 }
 
