@@ -9,12 +9,8 @@ import { ensureModel } from './modelli.mjs';
 
 import { fillText, isVerified, buildQuoteFlow } from './legal.mjs';
 
-export class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
+import { HttpError } from './errori.mjs';
+export { HttpError }; // retrocompatibile: gli altri moduli lo importano ancora da qui
 
 // ---------- Stati riparazione ----------
 // step = passo mostrato al cliente nella barra di avanzamento (0..5)
@@ -94,7 +90,7 @@ export async function moveStock(productId, delta, reason, ref) {
 export function assertMethod(method, { allowVoucher = false } = {}) {
   const m = String(method ?? '').trim();
   if (/non\s*tracciat/i.test(m) || m.length > 30 || (!allowVoucher && /^buono$/i.test(m))) {
-    throw new HttpError(400, 'Ogni pagamento deve avere un metodo registrato (contanti, carta, bonifico…).');
+    throw new HttpError(400, 'Il metodo di pagamento indicato non è ammesso: ogni incasso deve avere un metodo reale registrato.', { code: 'METODO_PAGAMENTO_MANCANTE', hint: 'Scegli contanti, carta, bonifico…; il buono si usa solo dall’apposito campo alla consegna o in vendita.' });
   }
   return m;
 }
@@ -245,7 +241,7 @@ export async function updateRepair(id, b) {
       if (['quote', 'final_price'].includes(k)) { v = num(v); if (v != null && v < 0) throw new HttpError(400, 'Gli importi non possono essere negativi'); }
       else if (k === 'warranty_days') v = num(v, 90);
       else v = str(v);
-      if (['brand_model', 'problem'].includes(k) && !v) throw new HttpError(400, `${k} obbligatorio`);
+      if (['brand_model', 'problem'].includes(k) && !v) throw new HttpError(400, `Il campo “${k === 'brand_model' ? 'marca e modello' : 'problema segnalato'}” non può restare vuoto: la modifica non è stata salvata.`, { code: 'CAMPO_OBBLIGATORIO', hint: 'Compila il campo e salva di nuovo.' });
       sets.push(`${k} = ?`);
       args.push(v);
     }
@@ -274,11 +270,12 @@ export async function setStatus(id, status, note, isPublic = true) {
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
-    if (!STATUSES[status]) throw new HttpError(400, 'Stato non valido');
-    if (r.status === 'delivered') throw new HttpError(409, 'La riparazione è già stata consegnata.');
-    if (r.status === status) throw new HttpError(400, 'La riparazione è già in questo stato.');
-    if (status === 'delivered') throw new HttpError(400, 'Per consegnare usa "Consegna e incassa".');
-    if (status === 'quote_pending' && r.quote == null && !(await db.prepare('SELECT 1 AS x FROM quote_options WHERE repair_id = ? LIMIT 1').get(id))) throw new HttpError(400, 'Inserisci prima il preventivo (o le opzioni).');
+    if (!STATUSES[status]) throw new HttpError(400, `Lo stato richiesto per la riparazione ${r.code} non esiste.`, { code: 'STATO_NON_VALIDO', hint: 'Scegli uno degli stati proposti nella scheda.' });
+    const lbl = (k) => STATUSES[k]?.label || k;
+    if (r.status === 'delivered') throw new HttpError(409, `La riparazione ${r.code} è già stata consegnata: non si può più cambiare stato.`, { code: 'GIA_CONSEGNATA', hint: 'Se serve correggere qualcosa usa le note della scheda, oppure apri una nuova riparazione.' });
+    if (r.status === status) throw new HttpError(400, `La riparazione ${r.code} è già nello stato “${lbl(status)}”: nessuna modifica fatta.`, { code: 'STATO_GIA_IMPOSTATO', hint: 'Aggiorna la pagina: forse qualcuno l’ha già avanzata.' });
+    if (status === 'delivered') throw new HttpError(400, `La riparazione ${r.code} non si consegna da qui: la consegna registra anche l’incasso.`, { code: 'USA_CONSEGNA', hint: 'Premi “Consegna e incassa” nella scheda.' });
+    if (status === 'quote_pending' && r.quote == null && !(await db.prepare('SELECT 1 AS x FROM quote_options WHERE repair_id = ? LIMIT 1').get(id))) throw new HttpError(400, `Non posso mettere la riparazione ${r.code} in “${lbl('quote_pending')}”: manca il preventivo.`, { code: 'QUOTE_MISSING', hint: 'Apri la scheda e inserisci l’importo del preventivo (oppure le opzioni) prima di avanzare.' });
     await db.prepare("UPDATE repairs SET status = ?, quote_decision = CASE WHEN ?='quote_pending' THEN NULL ELSE quote_decision END WHERE id = ?").run(status, status, id);
     if (status === 'approved' && !r.quote_decision) {
       await db.prepare("UPDATE repairs SET quote_decision='accepted', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
@@ -292,7 +289,7 @@ export async function deliverRepair(id, { final_price, method, note, ...pay } = 
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
-    if (r.status === 'delivered') throw new HttpError(400, 'Già consegnata.');
+    if (r.status === 'delivered') throw new HttpError(400, `La riparazione ${r.code} è già stata consegnata e incassata: non si consegna due volte.`, { code: 'GIA_CONSEGNATA', hint: 'Aggiorna la pagina: il saldo risulta già registrato.' });
     const final = money(num(final_price, r.final_price ?? r.quote ?? 0));
     const paid = (await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(id)).s;
     const due = Math.max(0, money(final - paid));
@@ -319,7 +316,7 @@ export async function addPart(repairId, { product_id, name, qty, unit_price, uni
       if (unit_price === undefined || unit_price === '') price = p.price;
       await moveStock(p.id, -q, 'riparazione', r.code);
     }
-    if (!pName) throw new HttpError(400, 'Nome ricambio obbligatorio');
+    if (!pName) throw new HttpError(400, 'Manca il nome del ricambio da aggiungere alla riparazione.', { code: 'NOME_MANCANTE', hint: 'Scegli un articolo di magazzino oppure scrivi il nome del ricambio.' });
     // Ricambio a mano (non a magazzino): il costo d'acquisto inserito entra nel guadagno della riparazione.
     let vat = null;
     if (!pid) {
@@ -340,7 +337,7 @@ export async function addPart(repairId, { product_id, name, qty, unit_price, uni
 export async function removePart(repairId, partId) {
   return tx(async () => {
     const part = await db.prepare('SELECT * FROM repair_parts WHERE id = ? AND repair_id = ?').get(partId, repairId);
-    if (!part) throw new HttpError(404, 'Ricambio non trovato');
+    if (!part) throw new HttpError(404, 'Questo ricambio non è più presente nella riparazione.', { code: 'RICAMBIO_NON_TROVATO', hint: 'Riapri la scheda: potrebbe essere già stato rimosso.' });
     if (part.product_id) {
       const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
       await moveStock(part.product_id, part.qty, 'rimosso da riparazione', r.code);
@@ -362,7 +359,7 @@ export async function addNote(id, note, isPublic) {
 export async function createSale(b) {
   return tx(async () => {
     const items = Array.isArray(b.items) ? b.items : [];
-    if (!items.length) throw new HttpError(400, 'Aggiungi almeno un articolo');
+    if (!items.length) throw new HttpError(400, 'La vendita non ha nessun articolo: non c’è nulla da registrare.', { code: 'VENDITA_VUOTA', hint: 'Aggiungi almeno un articolo o un servizio e conferma di nuovo.' });
     // 1) si legge tutto e si controlla (nessuna scrittura): totale, buono e quote del pagamento diviso
     const lines = [];
     let total = 0;
@@ -376,13 +373,13 @@ export async function createSale(b) {
         if (price == null) price = p.price;
       }
       if (!name) throw new HttpError(400, 'Nome articolo obbligatorio');
-      if (price == null || price < 0) throw new HttpError(400, `Prezzo mancante per ${name}`);
+      if (price == null || price < 0) throw new HttpError(400, `Manca il prezzo dell’articolo “${name}”.`, { code: 'PREZZO_MANCANTE', hint: 'Inserisci il prezzo di vendita nella riga e conferma di nuovo.' });
       lines.push({ pid, name, q, price, cost, serial: str(it.serial) });
       total += q * price;
     }
     const baseDiscount = money(num(b.discount, 0));
     total = money(total - baseDiscount);
-    if (total < 0) throw new HttpError(400, 'Lo sconto supera il totale');
+    if (total < 0) throw new HttpError(400, 'Lo sconto inserito è maggiore del totale della vendita.', { code: 'SCONTO_ECCESSIVO', hint: 'Riduci lo sconto: al massimo può azzerare il totale.' });
     const plan = await planSettlement(b, total);
     total = money(total - plan.discount);
     // 2) si scrive

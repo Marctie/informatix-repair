@@ -3,6 +3,7 @@
 //  - Una chiusura bloccata si puo' solo sbloccare (amministratore, con motivo). Ogni passaggio e' nel Registro.
 //  - Si possono caricare anche chiusure di giorni passati (marcate "retroattiva": nel Registro resta la data vera di inserimento).
 import { db } from './dbref.mjs';
+import { toResponse } from './errori.mjs';
 import { HttpError, money, localDate } from './logic.mjs';
 import { writeAudit, AUDIT_TYPES } from './audit.mjs';
 
@@ -228,6 +229,6 @@ export function registerClosingRoutes(app, h, { adminOnly, media }) {
       const o = await media(c).get(row.photo_key);
       if (!o) return c.text('Foto non trovata', 404);
       return c.body(o.bytes, 200, { 'content-type': o.contentType, 'cache-control': 'private, max-age=600' });
-    } catch (e) { return c.text(e.message || 'Errore', e.status || 500); }
+    } catch (e) { const r = toResponse(e, { method: 'GET', path: `/api/closings/${c.req.param('id')}/photo`, id: c.req.param('id') }); return c.text([r.body.error, r.body.hint].filter(Boolean).join('\n'), r.status); }
   });
 }

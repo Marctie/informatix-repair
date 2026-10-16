@@ -7,6 +7,7 @@ import { ensureDefaults, ensureOwner } from './dbref.mjs';
 import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
+import { toResponse } from './errori.mjs';
 import { notifyDueReminders } from './promemoria.mjs';
 import { notifyMaterialsDue } from './materiali.mjs';
 import { createPublisher } from './publisher.mjs';
@@ -40,11 +41,11 @@ async function init(env) {
 
 const app = new Hono();
 app.onError(async (err, c) => {
-  console.error(err);
-  try { c.executionCtx.waitUntil(sendTelegram(c.env, `🔴 <b>ERRORE non gestito</b>
+  const r = toResponse(err, { method: c.req.method, path: new URL(c.req.url).pathname }); // logga con codice di riferimento
+  if (r.status === 500) try { c.executionCtx.waitUntil(sendTelegram(c.env, `🔴 <b>ERRORE non gestito</b> (${r.ref})
 ${c.req.method} ${new URL(c.req.url).pathname}
 <code>${String(err.message || err).slice(0, 500)}</code>`)); } catch { /* ignora */ }
-  return c.json({ ok: false, error: 'Errore interno' }, 500);
+  return c.json(r.body, r.status);
 });
 app.use('*', async (c, next) => { await init(c.env); await next(); });
 
