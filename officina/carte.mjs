@@ -40,7 +40,7 @@ export function validateLoyaltySettings(b) {
   for (const k of LOYALTY_SETTING_KEYS) {
     if (!(k in b)) continue;
     const v = Number(String(b[k]).replace(',', '.'));
-    if (!Number.isFinite(v) || v <= 0 || v > 100000) throw new HttpError(400, 'Le regole dei punti devono essere numeri maggiori di zero.');
+    if (!Number.isFinite(v) || v <= 0 || v > 100000) throw new HttpError(400, 'Le regole dei punti non sono valide: ogni valore deve essere un numero maggiore di zero (e ragionevole).', { code: 'REGOLE_PUNTI_NON_VALIDE', hint: 'Correggi i valori nelle impostazioni delle carte punti.' });
   }
 }
 
@@ -56,7 +56,7 @@ export function nfcSecret(c) {
 }
 async function hmacKey(c) {
   const secret = nfcSecret(c);
-  if (secret.length < 16) throw new HttpError(503, 'Carte punti non configurate: manca il segreto NFC_SECRET (o VAULT_KEY), almeno 16 caratteri. Vedi il manuale.');
+  if (secret.length < 16) throw new HttpError(503, 'Le carte punti non sono utilizzabili: manca la chiave di sicurezza del server (NFC_SECRET o VAULT_KEY, almeno 16 caratteri).', { code: 'CARTE_NON_CONFIGURATE', hint: 'Avvisa l’amministratore: la chiave va impostata sul server (vedi il manuale, sezione Carte punti).' });
   if (!keyCache.has(secret)) keyCache.set(secret, crypto.subtle.importKey('raw', enc.encode(`informatix-nfc-v1:${secret}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']));
   return keyCache.get(secret);
 }
@@ -95,10 +95,10 @@ async function makeSession(c, card, level) {
 }
 async function readSession(c, sid, cardId) {
   const [body, mac] = String(sid || '').split('.');
-  if (!body || !mac || !(await verify(c, `sid|${body}`, mac))) throw new HttpError(401, 'Verifica della carta mancante o non valida: avvicina di nuovo la carta.');
-  let s; try { s = JSON.parse(new TextDecoder().decode(unb64u(body))); } catch { throw new HttpError(401, 'Verifica della carta non valida.'); }
-  if (s.c !== Number(cardId)) throw new HttpError(401, 'La verifica appartiene a un’altra carta.');
-  if (s.e < Math.floor(Date.now() / 1000)) throw new HttpError(401, 'Verifica scaduta: avvicina di nuovo la carta.');
+  if (!body || !mac || !(await verify(c, `sid|${body}`, mac))) throw new HttpError(401, 'La verifica della carta manca o non è valida: l’operazione non è stata eseguita.', { code: 'CARTA_VERIFICA_NON_VALIDA', hint: 'Avvicina di nuovo la carta al lettore e ripeti l’operazione.' });
+  let s; try { s = JSON.parse(new TextDecoder().decode(unb64u(body))); } catch { throw new HttpError(401, 'La verifica della carta è illeggibile: l’operazione non è stata eseguita.', { code: 'CARTA_VERIFICA_NON_VALIDA', hint: 'Avvicina di nuovo la carta al lettore e ripeti l’operazione.' }); }
+  if (s.c !== Number(cardId)) throw new HttpError(401, 'La verifica ricevuta appartiene a un’altra carta: l’operazione non è stata eseguita.', { code: 'CARTA_VERIFICA_ALTRA_CARTA', hint: 'Avvicina la carta giusta e ripeti l’operazione.' });
+  if (s.e < Math.floor(Date.now() / 1000)) throw new HttpError(401, 'La verifica della carta è scaduta: l’operazione non è stata eseguita.', { code: 'CARTA_VERIFICA_SCADUTA', hint: 'Avvicina di nuovo la carta al lettore e ripeti l’operazione.' });
   return s;
 }
 
@@ -106,7 +106,7 @@ async function readSession(c, sid, cardId) {
 /** UID in esadecimale maiuscolo senza separatori (4, 7 o 10 byte). Accetta "04:a1:b2:c3" e simili. */
 export function normalizeUid(v) {
   const s = String(v ?? '').replace(/[\s:.-]/g, '').toUpperCase();
-  if (!/^[0-9A-F]+$/.test(s) || s.length % 2 || s.length < 8 || s.length > 20) throw new HttpError(400, 'UID non valido: servono 4-10 byte in esadecimale (es. 04A1B2C3).');
+  if (!/^[0-9A-F]+$/.test(s) || s.length % 2 || s.length < 8 || s.length > 20) throw new HttpError(400, 'UID non valido: il codice del chip deve avere da 4 a 10 byte in esadecimale.', { code: 'UID_NON_VALIDO', hint: 'Rileggi il chip oppure scrivi l’UID così: 04A1B2C3.' });
   return s;
 }
 const ctxOf = (req) => ({ by: req.user?.email || 'locale', ip: clientIp(req.c) || null, c: req.c });
@@ -116,7 +116,7 @@ const pub = (c) => ({ id: c.id, card_no: c.card_no, customer_id: c.customer_id, 
 const SELECT = 'SELECT k.*, c.name AS customer_name, c.phone AS customer_phone FROM loyalty_cards k JOIN customers c ON c.id = k.customer_id';
 async function cardById(id) {
   const k = await db.prepare(`${SELECT} WHERE k.id = ?`).get(id);
-  if (!k) throw new HttpError(404, 'Carta non trovata');
+  if (!k) throw new HttpError(404, 'Carta non trovata', { code: 'CARTA_NON_TROVATA', hint: 'Riapri l’elenco delle carte: potrebbe essere stata sostituita o annullata.' });
   return k;
 }
 async function log(cardId, kind, { points = 0, ref_kind = null, ref_id = null, voucher_id = null, detail = null } = {}, x) {
@@ -128,13 +128,13 @@ async function log(cardId, kind, { points = 0, ref_kind = null, ref_id = null, v
 async function throttle(x) {
   const who = x.by;
   const ops = (await db.prepare('SELECT COUNT(*) AS n FROM loyalty_events WHERE by_user = ? AND created_at >= ?').get(who, ago(1))).n;
-  if (ops >= LIMITS.opsPerMinute) throw new HttpError(429, 'Troppe operazioni ravvicinate sulle carte: riprova fra un minuto.');
+  if (ops >= LIMITS.opsPerMinute) throw new HttpError(429, 'Troppe operazioni sulle carte in un minuto: questa è stata fermata per sicurezza.', { code: 'CARTE_TROPPE_OPERAZIONI', hint: 'Attendi circa un minuto e riprova.' });
   const fails = (await db.prepare("SELECT COUNT(*) AS n FROM loyalty_events WHERE by_user = ? AND kind IN ('tentativo_fallito','sospetta_clonazione') AND created_at >= ?").get(who, ago(10))).n;
-  if (fails >= LIMITS.failsPer10Min) throw new HttpError(429, 'Troppi tentativi falliti: attendi qualche minuto o chiama l’amministratore.');
+  if (fails >= LIMITS.failsPer10Min) throw new HttpError(429, 'Troppi tentativi falliti sulle carte da questo utente: l’operazione è stata fermata per sicurezza.', { code: 'CARTE_TROPPI_TENTATIVI', hint: 'Attendi qualche minuto oppure chiama l’amministratore.' });
 }
 
 /** Registra un fallimento e, dopo troppi di fila, blocca la carta. Lancia sempre l'errore da mostrare. */
-async function fail(card, x, why, status = 403, msg = 'Verifica non riuscita.') {
+async function fail(card, x, why, status = 403, msg = 'Verifica della carta non riuscita: il codice letto non è valido.', code = 'CARTA_VERIFICA_FALLITA', hint = 'Avvicina di nuovo la carta; dopo troppi errori la carta si blocca per sicurezza.') {
   await log(card?.id ?? null, 'tentativo_fallito', { detail: why }, x);
   if (card) {
     await db.prepare('UPDATE loyalty_cards SET fail_count = fail_count + 1 WHERE id = ?').run(card.id);
@@ -142,13 +142,13 @@ async function fail(card, x, why, status = 403, msg = 'Verifica non riuscita.') 
     if (k.fail_count >= LIMITS.failBlock) {
       await db.prepare("UPDATE loyalty_cards SET status='bloccata', locked_reason=? WHERE id = ? AND status='attiva'").run('Troppi tentativi falliti', card.id);
       await log(card.id, 'blocco', { detail: 'automatico: troppi tentativi falliti' }, x);
-      throw new HttpError(423, 'Carta bloccata dopo troppi tentativi falliti: serve l’amministratore.');
+      throw new HttpError(423, `Carta ${card.card_no} bloccata automaticamente dopo troppi tentativi falliti.`, { code: 'CARTA_BLOCCATA_TENTATIVI', hint: 'Solo l’amministratore può sbloccarla dalla scheda della carta.' });
     }
   }
-  throw new HttpError(status, msg);
+  throw new HttpError(status, msg, { code, hint });
 }
 const liveGuard = (card) => {
-  if (card.status !== 'attiva') throw new HttpError(423, `Carta ${CARD_STATUS[card.status].toLowerCase()}${card.locked_reason ? `: ${card.locked_reason}` : ''}. ${card.status === 'bloccata' ? 'Serve l’amministratore.' : ''}`.trim());
+  if (card.status !== 'attiva') throw new HttpError(423, `Carta ${card.card_no} ${CARD_STATUS[card.status].toLowerCase()}${card.locked_reason ? `: ${card.locked_reason}` : ''}. ${card.status === 'bloccata' ? 'Serve l’amministratore.' : ''}`.trim(), { code: 'CARTA_NON_ATTIVA', hint: 'Una carta bloccata la sblocca l’amministratore; una persa o annullata va sostituita con una nuova.' });
 };
 
 // ---------- Operazioni ----------
@@ -158,16 +158,16 @@ async function nextCardNo() {
   const max = rows.reduce((m, r) => Math.max(m, Number(String(r.card_no).slice(2)) || 0), 0);
   return `C-${String(max + 1).padStart(6, '0')}`;
 }
-const cleanPin = (p) => { const s = String(p ?? '').trim(); if (s && !/^\d{4,8}$/.test(s)) throw new HttpError(400, 'Il PIN deve avere da 4 a 8 cifre.'); return s; };
+const cleanPin = (p) => { const s = String(p ?? '').trim(); if (s && !/^\d{4,8}$/.test(s)) throw new HttpError(400, 'Il PIN indicato non è valido: devono essere solo cifre, da 4 a 8.', { code: 'PIN_NON_VALIDO', hint: 'Scegli un PIN di 4-8 cifre (es. 4821).' }); return s; };
 
 /** Emette una carta: restituisce il codice da scrivere sul chip e il PIN (mostrato UNA volta). */
 export async function issueCard(req, { customer_id, uid, pin }) {
   const x = ctxOf(req);
   await throttle(x);
-  if (!customer_id || !(await db.prepare('SELECT id FROM customers WHERE id = ?').get(customer_id))) throw new HttpError(404, 'Cliente non trovato');
+  if (!customer_id || !(await db.prepare('SELECT id FROM customers WHERE id = ?').get(customer_id))) throw new HttpError(404, 'Il cliente scelto per la carta non esiste più in anagrafica.', { code: 'CLIENTE_NON_TROVATO', hint: 'Cerca di nuovo il cliente e riprova.' });
   const u = normalizeUid(uid);
   const taken = await db.prepare("SELECT card_no FROM loyalty_cards WHERE uid = ? AND status IN ('attiva','bloccata')").get(u);
-  if (taken) throw new HttpError(409, `Questo chip è già registrato (carta ${taken.card_no}).`);
+  if (taken) throw new HttpError(409, `Questo chip è già registrato sulla carta ${taken.card_no}: non lo assegno a una seconda carta.`, { code: 'CHIP_GIA_REGISTRATO', hint: 'Usa un chip nuovo, oppure sostituisci o annulla prima la carta che lo usa.' });
   const thePin = cleanPin(pin) || randomPin();
   return tx(async () => {
     const cardNo = await nextCardNo();
@@ -189,15 +189,15 @@ export async function scanCard(req, { uid, token }) {
   await throttle(x);
   const u = normalizeUid(uid);
   const tok = token ? parseToken(token) : null;
-  if (token && !tok) { await log(null, 'tentativo_fallito', { detail: 'codice sul chip illeggibile' }, x); throw new HttpError(400, 'Il chip contiene un codice che non è di questa carta.'); }
+  if (token && !tok) { await log(null, 'tentativo_fallito', { detail: 'codice sul chip illeggibile' }, x); throw new HttpError(400, 'Il codice scritto sul chip non appartiene a questa carta: l’operazione è stata fermata.', { code: 'CHIP_CODICE_NON_VALIDO', hint: 'Avvicina la carta giusta; se il chip è stato riscritto, rigenerane il codice dall’amministrazione.' }); }
   let card = await db.prepare(`${SELECT} WHERE k.uid = ? AND k.status IN ('attiva','bloccata') ORDER BY k.id DESC`).get(u);
   if (!card) {
     if (tok) { // codice di una carta nostra copiato su un chip con UID diverso
       const owner = await db.prepare(`${SELECT} WHERE k.card_no = ?`).get(tok.cardNo);
-      if (owner) await fail(owner, x, `UID diverso: letto ${u}`, 403, 'Questo chip non corrisponde alla carta indicata.');
+      if (owner) await fail(owner, x, `UID diverso: letto ${u}`, 403, 'Il chip letto non corrisponde alla carta indicata: l’operazione è stata fermata.', 'CHIP_NON_CORRISPONDE', 'Avvicina la carta giusta; ripetuti errori bloccano la carta.');
     }
     await log(null, 'tentativo_fallito', { detail: `UID sconosciuto ${u}` }, x);
-    throw new HttpError(404, 'Carta non registrata: emettila dal cliente.');
+    throw new HttpError(404, 'Questo chip non è associato a nessuna carta punti.', { code: 'CARTA_NON_REGISTRATA', hint: 'Emetti la carta dalla scheda del cliente, poi riprova.' });
   }
   liveGuard(card);
   if (!tok) {
@@ -208,7 +208,7 @@ export async function scanCard(req, { uid, token }) {
   if (tok.counter < card.counter) { // codice gia' usato: copia del chip o replay
     await db.prepare("UPDATE loyalty_cards SET status='bloccata', locked_reason=? WHERE id = ?").run('Sospetta clonazione: codice già usato', card.id);
     await log(card.id, 'sospetta_clonazione', { detail: `contatore ${tok.counter} < ${card.counter}` }, x);
-    throw new HttpError(423, 'Carta BLOCCATA: il codice sul chip era già stato usato (possibile copia). Serve l’amministratore.');
+    throw new HttpError(423, `Carta ${card.card_no} BLOCCATA per sicurezza: il codice sul chip era già stato usato (possibile copia).`, { code: 'CARTA_SOSPETTA_COPIA', hint: 'Chiama l’amministratore: deve verificare e sostituire la carta.' });
   }
   // contatore uguale (normale) o avanti (dopo un ripristino del backup): si accetta e si avanza
   const next = tok.counter + 1;
@@ -216,7 +216,7 @@ export async function scanCard(req, { uid, token }) {
   if (!r.changes) { // due passaggi in contemporanea con lo stesso codice: il secondo e' un replay
     await db.prepare("UPDATE loyalty_cards SET status='bloccata', locked_reason=? WHERE id = ?").run('Sospetta clonazione: due usi contemporanei dello stesso codice', card.id);
     await log(card.id, 'sospetta_clonazione', { detail: 'uso simultaneo' }, x);
-    throw new HttpError(423, 'Carta BLOCCATA: lo stesso codice è stato usato due volte insieme.');
+    throw new HttpError(423, `Carta ${card.card_no} BLOCCATA per sicurezza: lo stesso codice è stato presentato due volte contemporaneamente.`, { code: 'CARTA_SOSPETTA_COPIA', hint: 'Chiama l’amministratore: deve verificare e sostituire la carta.' });
   }
   await log(card.id, 'verifica', { detail: tok.counter > card.counter ? `codice avanti (${tok.counter}), contatore riallineato` : 'codice firmato' }, x);
   const fresh = await cardById(card.id);
@@ -234,22 +234,22 @@ export async function accrue(req, id, { ref_kind, ref_id, session }) {
   let amount; let who;
   if (ref_kind === 'sale') {
     const s = await db.prepare('SELECT id, code, total, customer_id FROM sales WHERE id = ?').get(ref_id);
-    if (!s) throw new HttpError(404, 'Vendita non trovata');
-    if (s.customer_id && s.customer_id !== card.customer_id) throw new HttpError(409, 'Questa vendita è di un altro cliente.');
+    if (!s) throw new HttpError(404, 'La vendita indicata per i punti non esiste più.', { code: 'VENDITA_NON_TROVATA', hint: 'Riapri l’elenco delle vendite e riprova.' });
+    if (s.customer_id && s.customer_id !== card.customer_id) throw new HttpError(409, `La vendita ${s.code} è intestata a un altro cliente: i punti non vanno sulla carta ${card.card_no}.`, { code: 'VENDITA_ALTRO_CLIENTE', hint: 'Usa la carta del cliente che ha fatto l’acquisto.' });
     amount = s.total; who = s.code;
   } else if (ref_kind === 'repair') {
     const r = await db.prepare('SELECT id, code, status, final_price, quote, customer_id FROM repairs WHERE id = ?').get(ref_id);
-    if (!r) throw new HttpError(404, 'Riparazione non trovata');
-    if (r.customer_id !== card.customer_id) throw new HttpError(409, 'Questa riparazione è di un altro cliente.');
-    if (r.status !== 'delivered') throw new HttpError(409, 'I punti si danno alla consegna: la riparazione non è ancora consegnata.');
+    if (!r) throw new HttpError(404, 'La riparazione indicata per i punti non esiste più.', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni e riprova.' });
+    if (r.customer_id !== card.customer_id) throw new HttpError(409, `La riparazione ${r.code} è intestata a un altro cliente: i punti non vanno sulla carta ${card.card_no}.`, { code: 'RIPARAZIONE_ALTRO_CLIENTE', hint: 'Usa la carta del cliente della riparazione.' });
+    if (r.status !== 'delivered') throw new HttpError(409, `Riparazione ${r.code}: i punti si danno solo alla consegna e non è ancora consegnata.`, { code: 'RIPARAZIONE_NON_CONSEGNATA', hint: 'Consegna prima la riparazione, poi accredita i punti.' });
     amount = r.final_price ?? r.quote ?? 0; who = r.code;
-  } else throw new HttpError(400, 'Indica la vendita o la riparazione che dà i punti.');
+  } else throw new HttpError(400, 'Accredito punti non eseguito: non è indicato quale vendita o riparazione li origina.', { code: 'ORIGINE_PUNTI_MANCANTE', hint: 'Scegli la vendita o la riparazione consegnata.' });
   const pts = Math.floor(Number(amount) * R.points_per_euro + 1e-9);
-  if (!(pts > 0)) throw new HttpError(400, 'Questo importo non dà punti.');
-  if (pts > R.max_accrual) throw new HttpError(409, `Limite di ${R.max_accrual} punti per operazione superato (${pts}): chiama l’amministratore.`);
+  if (!(pts > 0)) throw new HttpError(400, `Carta ${card.card_no}: l’importo del documento è troppo basso per dare punti.`, { code: 'IMPORTO_SENZA_PUNTI', hint: 'Nessuna azione: i punti si calcolano sugli importi più alti.' });
+  if (pts > R.max_accrual) throw new HttpError(409, `Carta ${card.card_no}: l’operazione darebbe ${pts} punti, oltre il limite di ${R.max_accrual} per volta.`, { code: 'PUNTI_LIMITE_OPERAZIONE', hint: 'Chiama l’amministratore per una rettifica manuale se l’importo è corretto.' });
   return tx(async () => {
     try { await log(card.id, 'accredito', { points: pts, ref_kind, ref_id: Number(ref_id), detail: `${who} · ${Number(amount).toFixed(2)} €` }, x); }
-    catch (e) { if (/UNIQUE/i.test(String(e.message))) throw new HttpError(409, 'I punti di questo documento sono già stati accreditati.'); throw e; }
+    catch (e) { if (/UNIQUE/i.test(String(e.message))) throw new HttpError(409, `Carta ${card.card_no}: i punti di questo documento sono già stati accreditati.`, { code: 'PUNTI_GIA_ACCREDITATI', hint: 'Non serve ripetere l’operazione: controlla lo storico della carta.' }); throw e; }
     await db.prepare('UPDATE loyalty_cards SET points = points + ?, fail_count = 0, last_used_at = ' + NOW + ' WHERE id = ?').run(pts, card.id);
     return { card: pub(await cardById(card.id)), added: pts };
   });
@@ -263,19 +263,19 @@ export async function redeem(req, id, { points, session, pin }) {
   liveGuard(card);
   const s = await readSession(req.c, session, card.id);
   if (s.l !== 'token') {
-    if (!card.pin_hash) throw new HttpError(403, 'Con il solo UID serve il PIN, ma questa carta non ne ha: usa una carta scrivibile.');
-    if (!cleanPin(pin) || !(await verify(req.c, `pin|${card.card_no}|${String(pin).trim()}`, card.pin_hash))) await fail(card, x, 'PIN errato', 403, 'PIN errato.');
+    if (!card.pin_hash) throw new HttpError(403, `Carta ${card.card_no}: con il solo UID è obbligatorio il PIN, ma questa carta non ne ha uno.`, { code: 'CARTA_SENZA_PIN', hint: 'Usa una carta scrivibile (con codice firmato) oppure sostituiscila con una che abbia il PIN.' });
+    if (!cleanPin(pin) || !(await verify(req.c, `pin|${card.card_no}|${String(pin).trim()}`, card.pin_hash))) await fail(card, x, 'PIN errato', 403, 'PIN errato: l’operazione non è stata eseguita.', 'PIN_ERRATO', 'Riprova con il PIN corretto; dopo troppi errori la carta si blocca per sicurezza.');
   }
   const R = await rules();
   const pts = Math.round(Number(points));
-  if (!(pts > 0) || pts % R.redeem_step) throw new HttpError(400, `I punti si riscattano a multipli di ${R.redeem_step}.`);
-  if (pts > card.points) throw new HttpError(409, `Punti insufficienti: ${card.points} disponibili.`);
+  if (!(pts > 0) || pts % R.redeem_step) throw new HttpError(400, `Carta ${card.card_no}: i punti da riscattare devono essere multipli di ${R.redeem_step}.`, { code: 'RISCATTO_NON_MULTIPLO', hint: 'Scegli un numero di punti che sia multiplo del passo indicato nel messaggio.' });
+  if (pts > card.points) throw new HttpError(409, `Carta ${card.card_no}: punti insufficienti (${card.points} disponibili).`, { code: 'PUNTI_INSUFFICIENTI', hint: 'Riscatta al massimo i punti disponibili.' });
   const today = (await db.prepare("SELECT COALESCE(-SUM(points),0) AS n FROM loyalty_events WHERE card_id = ? AND kind = 'riscatto' AND date(created_at) = date('now','localtime')").get(card.id)).n;
-  if (today + pts > R.max_redeem_day) throw new HttpError(409, `Limite giornaliero di ${R.max_redeem_day} punti per carta superato.`);
+  if (today + pts > R.max_redeem_day) throw new HttpError(409, `Carta ${card.card_no}: superato il limite giornaliero di ${R.max_redeem_day} punti riscattabili.`, { code: 'RISCATTO_LIMITE_GIORNALIERO', hint: 'Riprova domani oppure chiama l’amministratore.' });
   const euro = Math.round((pts / R.redeem_step) * R.euro_per_step * 100) / 100;
   return tx(async () => {
     const r = await db.prepare('UPDATE loyalty_cards SET points = points - ?, fail_count = 0, last_used_at = ' + NOW + ' WHERE id = ? AND points >= ? AND status = ?').run(pts, card.id, pts, 'attiva');
-    if (!r.changes) throw new HttpError(409, 'I punti sono cambiati nel frattempo: ripeti l’operazione.');
+    if (!r.changes) throw new HttpError(409, `Carta ${card.card_no}: i punti sono cambiati un attimo fa (altra operazione in corso), il riscatto non è stato eseguito.`, { code: 'PUNTI_CAMBIATI', hint: 'Ricarica la carta e ripeti il riscatto.' });
     const d = new Date(`${nowLocal().slice(0, 10)}T12:00:00`); d.setMonth(d.getMonth() + R.voucher_months);
     const code = newVoucherCode();
     const v = await db.prepare(`INSERT INTO vouchers (code, kind, value, balance, expires_at, customer_id, notes, created_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
@@ -290,10 +290,10 @@ export async function adjust(req, id, { points, reason }) {
   const x = ctxOf(req);
   const card = await cardById(id);
   const p = Math.round(Number(points));
-  if (!Number.isFinite(p) || !p) throw new HttpError(400, 'Indica quanti punti aggiungere o togliere.');
-  if (Math.abs(p) > 100000) throw new HttpError(400, 'Rettifica troppo grande.');
-  if (!str(reason) || String(reason).trim().length < 5) throw new HttpError(400, 'Scrivi il motivo della rettifica (almeno 5 caratteri): resta nel registro.');
-  if (card.points + p < 0) throw new HttpError(409, 'Il saldo non può andare sotto zero.');
+  if (!Number.isFinite(p) || !p) throw new HttpError(400, 'Rettifica non eseguita: non è indicato di quanti punti.', { code: 'RETTIFICA_PUNTI_MANCANTI', hint: 'Scrivi un numero di punti (negativo per togliere).' });
+  if (Math.abs(p) > 100000) throw new HttpError(400, 'Rettifica non eseguita: supera il massimo di 100000 punti per volta.', { code: 'RETTIFICA_TROPPO_GRANDE', hint: 'Dividi la rettifica in più operazioni o correggi il numero.' });
+  if (!str(reason) || String(reason).trim().length < 5) throw new HttpError(400, 'Rettifica non eseguita: manca il motivo (almeno 5 caratteri), che resta nel registro.', { code: 'MOTIVO_MANCANTE', hint: 'Scrivi perché stai correggendo i punti.' });
+  if (card.points + p < 0) throw new HttpError(409, `Carta ${card.card_no}: la rettifica porterebbe il saldo sotto zero (ora ${card.points} punti).`, { code: 'SALDO_NEGATIVO', hint: 'Togli al massimo i punti disponibili.' });
   return tx(async () => {
     await db.prepare('UPDATE loyalty_cards SET points = points + ? WHERE id = ?').run(p, card.id);
     await log(card.id, 'rettifica', { points: p, detail: String(reason).trim() }, x);
@@ -304,7 +304,7 @@ export async function adjust(req, id, { points, reason }) {
 export async function setBlocked(req, id, block, reason) {
   const x = ctxOf(req);
   const card = await cardById(id);
-  if (['persa', 'annullata'].includes(card.status)) throw new HttpError(409, 'Questa carta non è più utilizzabile.');
+  if (['persa', 'annullata'].includes(card.status)) throw new HttpError(409, `Carta ${card.card_no} non è più utilizzabile (persa o annullata).`, { code: 'CARTA_CHIUSA', hint: 'Emetti una nuova carta al cliente.' });
   if (block) await db.prepare("UPDATE loyalty_cards SET status='bloccata', locked_reason=? WHERE id = ?").run(str(reason) || 'bloccata a mano', id);
   else await db.prepare("UPDATE loyalty_cards SET status='attiva', locked_reason=NULL, fail_count=0 WHERE id = ?").run(id);
   await log(id, block ? 'blocco' : 'sblocco', { detail: str(reason) }, x);
@@ -319,7 +319,7 @@ export async function reissueToken(req, id, { pin }) {
   liveGuard(card);
   const isAdmin = !req.user || req.user.role === 'admin';
   if (!isAdmin) {
-    if (!cleanPin(pin) || !card.pin_hash || !(await verify(req.c, `pin|${card.card_no}|${String(pin).trim()}`, card.pin_hash))) await fail(card, x, 'PIN errato in riscrittura', 403, 'PIN errato.');
+    if (!cleanPin(pin) || !card.pin_hash || !(await verify(req.c, `pin|${card.card_no}|${String(pin).trim()}`, card.pin_hash))) await fail(card, x, 'PIN errato in riscrittura', 403, 'PIN errato: la carta non è stata riscritta.', 'PIN_ERRATO', 'Riprova con il PIN corretto; dopo troppi errori la carta si blocca per sicurezza.');
   }
   await db.prepare('UPDATE loyalty_cards SET counter = counter + 1 WHERE id = ?').run(id);
   await log(id, 'riemissione', { detail: 'nuovo codice per il chip' }, x);
@@ -331,10 +331,10 @@ export async function reissueToken(req, id, { pin }) {
 export async function replaceCard(req, id, { uid }) {
   const x = ctxOf(req);
   const old = await cardById(id);
-  if (['persa', 'annullata'].includes(old.status)) throw new HttpError(409, 'Questa carta è già chiusa.');
+  if (['persa', 'annullata'].includes(old.status)) throw new HttpError(409, `Carta ${old.card_no} è già chiusa (persa o annullata): non si sostituisce.`, { code: 'CARTA_CHIUSA', hint: 'Emetti una nuova carta dalla scheda del cliente.' });
   const u = normalizeUid(uid);
-  if (u === old.uid) throw new HttpError(409, 'Serve un chip diverso da quello della carta da sostituire.');
-  if (await db.prepare("SELECT 1 AS x FROM loyalty_cards WHERE uid = ? AND status IN ('attiva','bloccata')").get(u)) throw new HttpError(409, 'Il nuovo chip è già registrato.');
+  if (u === old.uid) throw new HttpError(409, `Carta ${old.card_no}: il nuovo chip è lo stesso di quello da sostituire.`, { code: 'CHIP_UGUALE', hint: 'Avvicina il chip nuovo.' });
+  if (await db.prepare("SELECT 1 AS x FROM loyalty_cards WHERE uid = ? AND status IN ('attiva','bloccata')").get(u)) throw new HttpError(409, 'Il nuovo chip è già registrato su un’altra carta attiva o bloccata.', { code: 'CHIP_GIA_REGISTRATO', hint: 'Usa un chip mai registrato.' });
   const pin = randomPin();
   return tx(async () => {
     await db.prepare("UPDATE loyalty_cards SET status='persa', locked_reason=? WHERE id = ?").run('sostituita', old.id);
@@ -358,6 +358,7 @@ export async function cardHistory(id, limit = 100) {
 
 /** Vendite e riparazioni consegnate del cliente non ancora premiate con punti (per il pulsante "Accredita"). */
 export async function creditable(customerId) {
+  if (!customerId) throw new HttpError(400, 'Non so di quale cliente cercare vendite e riparazioni da premiare: manca il cliente.', { code: 'CLIENTE_MANCANTE', hint: 'Apri la carta dalla scheda del cliente.' });
   const R = await rules();
   const sales = await db.prepare(`SELECT s.id, s.code, s.total AS amount, s.created_at AS at FROM sales s WHERE s.customer_id = ? AND NOT EXISTS (SELECT 1 FROM loyalty_events e WHERE e.kind='accredito' AND e.ref_kind='sale' AND e.ref_id=s.id) ORDER BY s.id DESC LIMIT 30`).all(customerId);
   const repairs = await db.prepare(`SELECT r.id, r.code, COALESCE(r.final_price, r.quote, 0) AS amount, r.delivered_at AS at FROM repairs r WHERE r.customer_id = ? AND r.status='delivered' AND NOT EXISTS (SELECT 1 FROM loyalty_events e WHERE e.kind='accredito' AND e.ref_kind='repair' AND e.ref_id=r.id) ORDER BY r.id DESC LIMIT 30`).all(customerId);
@@ -366,7 +367,7 @@ export async function creditable(customerId) {
 }
 
 export function registerLoyaltyRoutes(app, h) {
-  const adminOnly = (req) => { if (req.user && req.user.role !== 'admin') throw new HttpError(403, 'Solo l’amministratore può farlo.'); };
+  const adminOnly = (req) => { if (req.user && req.user.role !== 'admin') throw new HttpError(403, 'Operazione sulle carte riservata all’amministratore: il tuo utente non ha il permesso.', { code: 'SOLO_ADMIN', hint: 'Accedi come amministratore, oppure chiedi a Christian/Marco di farlo.' }); };
   app.get('/api/carte/meta', h(async (req) => ({ rules: await rules(), limits: LIMITS, statuses: CARD_STATUS, configured: nfcSecret(req.c).length >= 16 })));
   app.get('/api/carte', h(async (req) => {
     const where = []; const args = [];

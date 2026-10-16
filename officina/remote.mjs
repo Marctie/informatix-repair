@@ -15,32 +15,32 @@ export const listOptions = (repairId) => db.prepare('SELECT * FROM quote_options
 
 export async function addOption(repairId, b) {
   const r = await db.prepare('SELECT status, quote_decision FROM repairs WHERE id = ?').get(repairId);
-  if (!r) throw new HttpError(404, 'Riparazione non trovata');
-  if (['delivered', 'cancelled'].includes(r.status)) throw new HttpError(409, 'La riparazione è chiusa.');
+  if (!r) throw new HttpError(404, 'Riparazione non trovata', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni.' });
+  if (['delivered', 'cancelled'].includes(r.status)) throw new HttpError(409, `La riparazione è già conclusa (${r.status === 'delivered' ? 'consegnata' : 'annullata'}): non accetta più opzioni di preventivo.`, { code: 'RIPARAZIONE_CONCLUSA', hint: 'Le opzioni si gestiscono solo mentre la riparazione è in corso.' });
   const label = str(b.label);
   const amount = Number(String(b.amount ?? '').replace(',', '.'));
-  if (!label) throw new HttpError(400, 'Scrivi cosa comprende la soluzione');
-  if (!Number.isFinite(amount) || amount < 0) throw new HttpError(400, 'Importo non valido');
+  if (!label) throw new HttpError(400, 'Opzione di preventivo non salvata: manca la descrizione di cosa comprende.', { code: 'OPZIONE_DESCRIZIONE_MANCANTE', hint: 'Scrivi cosa comprende la soluzione.' });
+  if (!Number.isFinite(amount) || amount < 0) throw new HttpError(400, 'Opzione di preventivo non salvata: l’importo non è valido (non numerico o negativo).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi l’importo in euro.' });
   const n = (await db.prepare('SELECT COUNT(*) AS n FROM quote_options WHERE repair_id = ?').get(repairId)).n;
-  if (n >= 6) throw new HttpError(400, 'Al massimo 6 opzioni');
+  if (n >= 6) throw new HttpError(400, 'Opzione non aggiunta: questa riparazione ha già 6 opzioni, il massimo.', { code: 'TROPPE_OPZIONI', hint: 'Elimina un’opzione prima di aggiungerne un’altra.' });
   await db.prepare('INSERT INTO quote_options (repair_id, label, amount, description, sort) VALUES (?,?,?,?,?)').run(repairId, label.slice(0, 120), money(amount), str(b.description)?.slice(0, 300) || null, n);
   return listOptions(repairId);
 }
 
 export async function removeOption(repairId, optionId) {
   const r = await db.prepare('DELETE FROM quote_options WHERE id = ? AND repair_id = ?').run(optionId, repairId);
-  if (!r.changes) throw new HttpError(404, 'Opzione non trovata');
+  if (!r.changes) throw new HttpError(404, 'L’opzione di preventivo indicata non esiste più.', { code: 'OPZIONE_NON_TROVATA', hint: 'Ricarica la pagina per vedere le opzioni attuali.' });
   return listOptions(repairId);
 }
 
 // ---------- Risposta del cliente al preventivo (con firma) ----------
 export async function customerDecision(token, b, c) {
   const r = await db.prepare('SELECT * FROM repairs WHERE token = ?').get(token);
-  if (!r) throw new HttpError(404, 'Riparazione non trovata');
-  if (r.status !== 'quote_pending') throw new HttpError(409, 'Nessun preventivo in attesa di risposta.');
+  if (!r) throw new HttpError(404, 'Riparazione non trovata', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni.' });
+  if (r.status !== 'quote_pending') throw new HttpError(409, 'Per questa riparazione non c’è nessun preventivo in attesa della tua risposta.', { code: 'PREVENTIVO_NON_IN_ATTESA', hint: 'Contatta il negozio se pensi sia un errore.' });
   const options = await listOptions(r.id);
   const action = String(b.action || '');
-  if (!['accept', 'option', 'decline'].includes(action)) throw new HttpError(400, 'Scelta non valida');
+  if (!['accept', 'option', 'decline'].includes(action)) throw new HttpError(400, 'La risposta ricevuta non è valida.', { code: 'SCELTA_NON_VALIDA', hint: 'Premi uno dei pulsanti proposti.' });
   cleanImage(b.image); // la firma e' obbligatoria in ogni caso
   const s = await getSettings();
   const ip = clientIp(c) || 'non rilevato';
@@ -48,7 +48,7 @@ export async function customerDecision(token, b, c) {
 
   if (action === 'decline') {
     const choice = b.device_choice;
-    if (!['pickup', 'cede'].includes(choice)) throw new HttpError(400, 'Scegli cosa fare del dispositivo');
+    if (!['pickup', 'cede'].includes(choice)) throw new HttpError(400, 'Rifiuto non registrato: non è indicato cosa fare del dispositivo.', { code: 'DESTINO_DISPOSITIVO_MANCANTE', hint: 'Scegli se ritirare il dispositivo o cederlo al negozio.' });
     const v = quoteVars(s, r);
     const shown = `${fillText(s.quote_decline_text, v)}\n${fillText(choice === 'cede' ? s.quote_decline_cede : s.quote_decline_pickup, v)}\n${s.quote_sign_text}`;
     await tx(async () => {
@@ -65,12 +65,12 @@ export async function customerDecision(token, b, c) {
   // conferma (con o senza opzioni)
   let opt = null;
   if (options.length) {
-    if (action !== 'option') throw new HttpError(400, 'Scegli una delle soluzioni proposte.');
+    if (action !== 'option') throw new HttpError(400, 'Risposta non registrata: non è stata scelta una delle soluzioni proposte.', { code: 'OPZIONE_NON_SCELTA', hint: 'Scegli una soluzione dall’elenco.' });
     opt = options.find((o) => String(o.id) === String(b.option_id));
-    if (!opt) throw new HttpError(400, 'Soluzione non valida');
+    if (!opt) throw new HttpError(400, 'La soluzione scelta non fa parte di quelle proposte per questa riparazione.', { code: 'OPZIONE_NON_VALIDA', hint: 'Ricarica la pagina e scegli di nuovo.' });
   } else {
-    if (action !== 'accept') throw new HttpError(400, 'Scelta non valida');
-    if (r.quote == null) throw new HttpError(409, 'Nessun preventivo in attesa di risposta.');
+    if (action !== 'accept') throw new HttpError(400, 'La risposta ricevuta non è valida.', { code: 'SCELTA_NON_VALIDA', hint: 'Premi uno dei pulsanti proposti.' });
+    if (r.quote == null) throw new HttpError(409, 'Per questa riparazione non c’è nessun preventivo in attesa della tua risposta.', { code: 'PREVENTIVO_NON_IN_ATTESA', hint: 'Contatta il negozio se pensi sia un errore.' });
   }
   const amount = opt ? opt.amount : r.quote;
   const shown = `${fillText(s.quote_accept_text, quoteVars(s, r, amount))}${opt ? `\nSoluzione scelta: ${opt.label} (${opt.amount.toFixed(2)} €).` : ''}\n${s.quote_sign_text}`;
@@ -87,10 +87,10 @@ export async function customerDecision(token, b, c) {
 export const FATES = { giacenza: 'In giacenza (attende il ritiro)', ritirato: 'Ritirato dal cliente', ceduto: 'Lasciato da smaltire / per pezzi di ricambio', deposito: 'In deposito a pagamento', smaltito: 'Smaltito / recuperato' };
 
 export async function setFate(repairId, { fate, note } = {}, { resetCount = false } = {}) {
-  if (!FATES[fate]) throw new HttpError(400, 'Destino del dispositivo non valido');
+  if (!FATES[fate]) throw new HttpError(400, 'Il destino indicato per il dispositivo non è tra quelli previsti.', { code: 'DESTINO_NON_VALIDO', hint: 'Scegli ritiro o cessione.' });
   const r = await db.prepare('SELECT status, device_fate, fate_since FROM repairs WHERE id = ?').get(repairId);
-  if (!r) throw new HttpError(404, 'Riparazione non trovata');
-  if (r.status !== 'cancelled') throw new HttpError(409, 'Il destino si registra solo per le riparazioni annullate / non riparabili.');
+  if (!r) throw new HttpError(404, 'Riparazione non trovata', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni.' });
+  if (r.status !== 'cancelled') throw new HttpError(409, 'Il destino del dispositivo si registra solo per le riparazioni annullate o non riparabili: questa non lo è.', { code: 'RIPARAZIONE_NON_ANNULLATA', hint: 'Annulla prima la riparazione se il dispositivo non è riparabile.' });
   // i 15 giorni partono dal rifiuto/annullamento: restano quelli esistenti salvo nuovo conteggio richiesto
   const since = fate === 'giacenza' && (resetCount || !r.fate_since) ? nowLocal() : r.fate_since || nowLocal();
   await tx(async () => {

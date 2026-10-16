@@ -28,16 +28,16 @@ export const parsers = {
   ddt_pdf: {
     id: 'ddt_pdf', label: 'DDT / PDF digitale (testo estratto dal browser)', supported: true,
     detect: (text, filename) => /^\s*%PDF-/.test(String(text).slice(0, 20)) || /\.pdf$/i.test(String(filename || '')),
-    parse: () => { throw new HttpError(400, 'Il PDF va letto dal browser: scegli il file dalla scheda Importa (il testo viene estratto lì e controllato da te prima di confermare). Con l’API serve il campo pdf_text.'); },
+    parse: () => { throw new HttpError(400, 'Il PDF non si può leggere direttamente dal server: il testo va estratto dal browser.', { code: 'PDF_DA_BROWSER', hint: 'Scegli il file dalla scheda Importa (il testo viene estratto lì e controllato da te prima di confermare). Con l’API serve il campo pdf_text.' }); },
   },
 };
 
 export function parseDocument(body) {
   const text = String(body?.xml ?? body?.text ?? '');
   const filename = String(body?.filename || '');
-  if (!text.trim()) throw new HttpError(400, 'Nessun file ricevuto.');
-  if (text.length > MAX_XML) throw new HttpError(400, 'File troppo grande (massimo 6 MB).');
-  if (looksLikeP7m(text, filename)) throw new HttpError(400, P7M_MESSAGE);
+  if (!text.trim()) throw new HttpError(400, 'Importazione non riuscita: il file ricevuto è vuoto.', { code: 'FILE_VUOTO', hint: 'Scegli di nuovo il file della fattura e riprova.' });
+  if (text.length > MAX_XML) throw new HttpError(400, 'Il file della fattura supera i 6 MB consentiti.', { code: 'FILE_TROPPO_GRANDE', hint: 'Controlla di aver scelto la fattura giusta; se è davvero così grande, dividila.' });
+  if (looksLikeP7m(text, filename)) throw new HttpError(400, P7M_MESSAGE, { code: 'FILE_P7M', hint: 'Apri il file .p7m con il software di firma e salva l’XML, oppure scarica l’XML dal portale delle fatture.' });
   const p = Object.values(parsers).find((x) => x.detect(text, filename)) || parsers.fatturapa;
   return { source: p.id, parsed: p.parse(text, filename) };
 }
@@ -143,7 +143,7 @@ export async function priceAlerts({ days = 60 } = {}) {
 /** Serie storica dei prezzi di un prodotto, per fornitore, con minimo e ultima variazione. */
 export async function productPrices(productId) {
   const p = await db.prepare('SELECT id, name, sku, cost FROM products WHERE id = ?').get(productId);
-  if (!p) throw new HttpError(404, 'Prodotto non trovato');
+  if (!p) throw new HttpError(404, 'Articolo di magazzino non trovato: potrebbe essere stato eliminato.', { code: 'ARTICOLO_NON_TROVATO', hint: 'Riapri il magazzino e cerca di nuovo l’articolo.' });
   const rows = (await loadHistory()).filter((r) => r.product_id === p.id).sort(byDate);
   const series = rows.map((r) => ({ id: r.id, date: r.doc_date, price: r.unit_price, qty: r.qty, supplier_id: r.supplier_id, supplier_name: r.supplier_name, purchase_id: r.purchase_id }));
   const bySup = new Map();
@@ -201,7 +201,7 @@ async function matchSupplier(s) {
 
 async function analyze(parsed, supplierOverrideId) {
   const supplier = supplierOverrideId
-    ? await db.prepare('SELECT id, name FROM suppliers WHERE id = ?').get(supplierOverrideId).then((r) => { if (!r) throw new HttpError(400, 'Fornitore scelto non trovato'); return { ...r, by: 'scelta' }; })
+    ? await db.prepare('SELECT id, name FROM suppliers WHERE id = ?').get(supplierOverrideId).then((r) => { if (!r) throw new HttpError(400, 'Il fornitore scelto per l’importazione non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Scegli di nuovo il fornitore dall’elenco.' }); return { ...r, by: 'scelta' }; })
     : await matchSupplier(parsed.supplier);
   const products = await db.prepare('SELECT id, sku, name, qty, cost FROM products WHERE active = 1').all();
   const codes = supplier ? await db.prepare('SELECT supplier_code, product_id FROM supplier_codes WHERE supplier_id = ?').all(supplier.id) : [];
@@ -272,7 +272,7 @@ const nextId = async (table) => ((await db.prepare(`SELECT COALESCE(MAX(id),0) A
 export async function confirmPurchase(body) {
   const { source, parsed } = await resolveDocument(body);
   const a = await analyze(parsed, body?.supplier_id ? Number(body.supplier_id) : null);
-  if (a.duplicate) throw new HttpError(409, `Documento già importato il ${String(a.duplicate.imported_at).slice(0, 10)}: non lo importo di nuovo.`);
+  if (a.duplicate) throw new HttpError(409, `Il documento è già stato importato il ${String(a.duplicate.imported_at).slice(0, 10)}: non lo importo di nuovo per non duplicare il carico.`, { code: 'DOCUMENTO_GIA_IMPORTATO', hint: 'Cerca l’acquisto già importato nell’elenco acquisti.' });
 
   // decisioni per riga (se mancano si usa la proposta)
   const given = new Map((Array.isArray(body.lines) ? body.lines : []).map((x) => [Number(x.n), x]));
@@ -282,10 +282,10 @@ export async function confirmPurchase(body) {
     const g = given.get(l.n) || {};
     const action = ['match', 'new', 'skip'].includes(g.action) ? g.action : l.suggested.action;
     let qty = g.qty === undefined || g.qty === '' ? l.qty : Number(String(g.qty).replace(',', '.'));
-    if (!Number.isFinite(qty) || qty < 0) throw new HttpError(400, `Riga ${l.n}: quantità non valida`);
+    if (!Number.isFinite(qty) || qty < 0) throw new HttpError(400, `Riga ${l.n} del documento: la quantità non è valida (vuota, non numerica o negativa).`, { code: 'RIGA_QUANTITA_NON_VALIDA', hint: 'Correggi la quantità della riga e conferma di nuovo.' });
     if (action === 'match') {
       const pid = Number(g.product_id ?? l.suggested.product_id);
-      if (!productIds.has(pid)) throw new HttpError(400, `Riga ${l.n}: scegli un prodotto esistente oppure “nuovo prodotto”`);
+      if (!productIds.has(pid)) throw new HttpError(400, `Riga ${l.n} del documento: non è stato scelto a quale articolo di magazzino abbinarla.`, { code: 'RIGA_ARTICOLO_MANCANTE', hint: 'Scegli un articolo esistente oppure “nuovo prodotto” per la riga.' });
       return { l, action, pid, qty };
     }
     if (action === 'new') {
@@ -353,7 +353,7 @@ export async function confirmPurchase(body) {
   try {
     await tx(() => db.batch(all));
   } catch (e) {
-    if (/UNIQUE|constraint/i.test(String(e.message))) throw new HttpError(409, 'Documento già importato: non lo importo di nuovo.');
+    if (/UNIQUE/i.test(String(e.message))) throw new HttpError(409, 'Il documento risulta già importato (importato in contemporanea): non lo duplico.', { code: 'DOCUMENTO_GIA_IMPORTATO', hint: 'Cerca l’acquisto già importato nell’elenco acquisti.' });
     throw e;
   }
   // PDF/DDT: dopo la conferma il formato di questo fornitore si impara (colonne corrette dall'utente), cosi' la volta dopo e' piu' preciso
@@ -373,11 +373,11 @@ export async function confirmPurchase(body) {
 export async function manualLoad(body) {
   const b = body || {};
   const qty = Math.round(Number(String(b.qty ?? '').replace(',', '.')));
-  if (!Number.isFinite(qty) || qty <= 0) throw new HttpError(400, 'Quantità non valida');
+  if (!Number.isFinite(qty) || qty <= 0) throw new HttpError(400, 'Carico merce non registrato: la quantità non è valida (serve un numero maggiore di zero).', { code: 'QUANTITA_NON_VALIDA', hint: 'Scrivi quanti pezzi sono arrivati (es. 5).' });
   const price = Number(String(b.unit_price ?? '').replace(',', '.'));
-  if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'Prezzo d’acquisto non valido');
+  if (!Number.isFinite(price) || price < 0) throw new HttpError(400, 'Carico merce non registrato: il prezzo d’acquisto non è valido (non numerico o negativo).', { code: 'PREZZO_ACQUISTO_NON_VALIDO', hint: 'Scrivi il prezzo di acquisto unitario (es. 12,50).' });
   const date = str(b.date) || localDate();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Data non valida');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new HttpError(400, 'Carico merce non registrato: la data del documento non è valida (formato AAAA-MM-GG).', { code: 'DATA_NON_VALIDA', hint: 'Scegli la data dal calendario.' });
   // IVA: prezzo scritto IVA esclusa (predefinito) o inclusa; `vat_apply` aggiunge davvero l'IVA al costo (acquisto estero, reverse charge...)
   const rate = parseRate(b.vat_rate, Number((await getSettings()).vat_rate) || 22);
   const vat = computeVat({ amount: price, mode: b.price_mode === 'gross' ? 'gross' : 'net', rate, apply: truthy(b.vat_apply) });
@@ -385,13 +385,13 @@ export async function manualLoad(body) {
   return tx(async () => {
     let productId = Number(b.product_id) || null;
     let prod = productId ? await db.prepare('SELECT * FROM products WHERE id = ? AND active = 1').get(productId) : null;
-    if (productId && !prod) throw new HttpError(404, 'Articolo non trovato');
+    if (productId && !prod) throw new HttpError(404, 'L’articolo scelto per il carico non esiste più a magazzino.', { code: 'ARTICOLO_NON_TROVATO', hint: 'Riapri il magazzino e scegli di nuovo l’articolo.' });
     const supplierId = Number(b.supplier_id) || prod?.supplier_id || null;
     const supplier = supplierId ? await db.prepare('SELECT id, name FROM suppliers WHERE id = ?').get(supplierId) : null;
-    if (!supplier) throw new HttpError(400, 'Scegli il fornitore.');
+    if (!supplier) throw new HttpError(400, 'Carico merce non registrato: manca il fornitore da cui arriva la merce.', { code: 'FORNITORE_MANCANTE', hint: 'Scegli il fornitore dall’elenco o creane uno nuovo.' });
     if (!prod) { // articolo nuovo
       const name = str(b.name);
-      if (!name) throw new HttpError(400, 'Scegli un articolo oppure scrivi il nome del nuovo.');
+      if (!name) throw new HttpError(400, 'Carico merce non registrato: non è stato scelto né scritto l’articolo.', { code: 'ARTICOLO_MANCANTE', hint: 'Scegli un articolo esistente oppure scrivi il nome del nuovo.' });
       const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, created_at) VALUES (?,?,?,0,?,?,?,?,${NOW})`)
         .run(str(b.sku), name.slice(0, 200), str(b.category), Math.max(0, Math.round(Number(b.min_qty) || 0)), unit, money(Number(String(b.price ?? 0).replace(',', '.')) || 0), supplier.id);
       productId = Number(r.lastInsertRowid);
@@ -401,7 +401,7 @@ export async function manualLoad(body) {
     // documento: stesso numero + fornitore + data = stesso documento (se e' manuale); senza numero ne nasce uno automatico
     const docNo = str(b.doc_number) || `CARICO-${date.replaceAll('-', '')}-${Date.now().toString(36).toUpperCase()}`;
     let doc = await db.prepare('SELECT id, source, total FROM purchases WHERE supplier_id = ? AND doc_number = ? AND doc_date = ?').get(supplier.id, docNo, date);
-    if (doc && doc.source !== 'manuale') throw new HttpError(409, 'Esiste già un documento importato con questo numero: usa un altro numero o lascia vuoto.');
+    if (doc && doc.source !== 'manuale') throw new HttpError(409, 'Esiste già un documento importato con lo stesso numero di questo carico manuale.', { code: 'NUMERO_DOCUMENTO_DUPLICATO', hint: 'Usa un altro numero oppure lascia il campo vuoto.' });
     const lineTotal = money(qty * unit);
     const lineVat = money(qty * vat.vat);
     if (!doc) {
@@ -427,8 +427,8 @@ export async function manualLoad(body) {
 export async function partToStock(repairId, partId) {
   return tx(async () => {
     const part = await db.prepare('SELECT * FROM repair_parts WHERE id = ? AND repair_id = ?').get(partId, repairId);
-    if (!part) throw new HttpError(404, 'Ricambio non trovato');
-    if (part.product_id) throw new HttpError(409, 'Questo ricambio è già un articolo a magazzino.');
+    if (!part) throw new HttpError(404, 'Il ricambio indicato non esiste più nella scheda riparazione.', { code: 'RICAMBIO_NON_TROVATO', hint: 'Riapri la riparazione e riprova.' });
+    if (part.product_id) throw new HttpError(409, 'Il ricambio è già collegato a un articolo di magazzino: non lo creo una seconda volta.', { code: 'RICAMBIO_GIA_IN_MAGAZZINO', hint: 'Apri l’articolo dal magazzino.' });
     const rep = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(repairId);
     const sup = part.supplier_name ? await db.prepare('SELECT id FROM suppliers WHERE LOWER(name) = LOWER(?)').get(part.supplier_name) : null;
     let prod = part.supplier_code ? await db.prepare('SELECT * FROM products WHERE active = 1 AND sku = ?').get(part.supplier_code) : null;
@@ -459,7 +459,7 @@ export async function listPurchases() {
 }
 export async function getPurchase(id) {
   const p = await db.prepare('SELECT p.*, s.name AS supplier_name FROM purchases p JOIN suppliers s ON s.id = p.supplier_id WHERE p.id = ?').get(id);
-  if (!p) throw new HttpError(404, 'Acquisto non trovato');
+  if (!p) throw new HttpError(404, 'Acquisto non trovato', { code: 'ACQUISTO_NON_TROVATO', hint: 'Riapri l’elenco degli acquisti: potrebbe essere stato eliminato.' });
   const lines = await db.prepare('SELECT l.*, pr.name AS product_name FROM purchase_lines l LEFT JOIN products pr ON pr.id = l.product_id WHERE l.purchase_id = ? ORDER BY l.id').all(id);
   return { ...p, lines };
 }
@@ -470,11 +470,11 @@ export function registerPurchaseRoutes(app, h) {
   app.get('/api/purchases/parsers', h(() => Object.values(parsers).map(({ id, label, supported }) => ({ id, label, supported }))));
   // Carico merce a mano da Magazzino (non per il ruolo Cassa: tocca i costi)
   const loadRoute = h((req) => {
-    if (req.user?.role === 'cassa') throw new HttpError(403, 'Il carico merce non è disponibile per il ruolo Cassa.');
+    if (req.user?.role === 'cassa') throw new HttpError(403, 'Il carico merce non è consentito al ruolo Cassa.', { code: 'RUOLO_NON_AMMESSO', hint: 'Accedi come amministratore o tecnico per caricare la merce.' });
     return manualLoad({ ...req.body, product_id: req.params.id ?? req.body.product_id });
   });
   app.post('/api/repairs/:id/parts/:partId/stock', h((req) => {
-    if (req.user?.role === 'cassa') throw new HttpError(403, 'Non disponibile per il ruolo Cassa.');
+    if (req.user?.role === 'cassa') throw new HttpError(403, 'Questa funzione non è consentita al ruolo Cassa.', { code: 'RUOLO_NON_AMMESSO', hint: 'Accedi come amministratore o tecnico.' });
     return partToStock(Number(req.params.id), Number(req.params.partId));
   }));
   app.post('/api/products/load', loadRoute);

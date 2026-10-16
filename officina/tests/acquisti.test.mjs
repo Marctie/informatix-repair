@@ -97,7 +97,8 @@ test('lettori: DDT/PDF è supportato ma solo col testo estratto dal browser', as
   assert.equal(parsers.ddt_pdf.supported, true);
   const r = await a('POST', '/api/purchases/preview', { xml: '%PDF-1.4 ...', filename: 'ddt.pdf' });
   assert.equal(r.status, 400);
-  assert.match(r.data.error, /PDF va letto dal browser/i);
+  assert.match(r.data.error, /estratto dal browser/i);
+  assert.equal(r.data.code, 'PDF_DA_BROWSER');
   const p7 = await a('POST', '/api/purchases/preview', { xml: 'x', filename: 'fattura.xml.p7m' });
   assert.equal(p7.status, 400);
   assert.match(p7.data.error, /\.p7m/);
@@ -142,7 +143,8 @@ test('conferma: crea fornitore e prodotti, carica il magazzino, salva lo storico
   // doppione: bloccato, magazzino invariato
   const dup = await a('POST', '/api/purchases/confirm', { xml: TECH });
   assert.equal(dup.status, 409);
-  assert.match(dup.data.error, /già importato/i);
+  assert.match(dup.data.error, /già stato importato/i);
+  assert.equal(dup.data.code, 'DOCUMENTO_GIA_IMPORTATO');
   assert.equal((await a('GET', '/api/products?q=Display iPhone 13')).data[0].qty, 2);
   const pv = await a('POST', '/api/purchases/preview', { xml: TECH });
   assert.ok(pv.data.duplicate);

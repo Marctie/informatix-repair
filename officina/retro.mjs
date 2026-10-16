@@ -105,11 +105,11 @@ const KINDS = {
 /** POST /api/retro/date { type: sale|repair|delivery|payment, id, date } (solo amministratore). */
 export async function changeDate({ type, id, date }, user) {
   const k = KINDS[type];
-  if (!k) throw new HttpError(400, 'Tipo non valido (sale, repair, delivery, payment).');
+  if (!k) throw new HttpError(400, 'Il tipo di registrazione da correggere non è valido.', { code: 'TIPO_REGISTRAZIONE_NON_VALIDO', hint: 'I tipi ammessi sono: sale, repair, delivery, payment.' });
   const when = parseEntryDate(date);
   const row = await db.prepare(`SELECT ${k.col} AS d FROM ${k.table} WHERE id = ?`).get(id);
-  if (!row) throw new HttpError(404, 'Registrazione non trovata');
-  if (type === 'delivery' && !row.d) throw new HttpError(409, 'La riparazione non è stata consegnata.');
+  if (!row) throw new HttpError(404, 'Registrazione non trovata', { code: 'REGISTRAZIONE_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
+  if (type === 'delivery' && !row.d) throw new HttpError(409, 'Non si può correggere la data di consegna: la riparazione non risulta ancora consegnata.', { code: 'RIPARAZIONE_NON_CONSEGNATA', hint: 'Consegna prima la riparazione.' });
   await db.prepare(`UPDATE ${k.table} SET ${k.col} = ? WHERE id = ?`).run(when, id);
   if (type === 'sale') await db.prepare("UPDATE payments SET created_at = ? WHERE kind = 'sale' AND ref_id = ?").run(when, id);
   await writeAudit({ user, action: 'modifica', type: 'retroattivo', id, label: `Data cambiata: ${k.label} n. ${id}`, detail: `da ${row.d} a ${when.slice(0, 16)}` });

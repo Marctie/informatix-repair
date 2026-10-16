@@ -52,7 +52,7 @@ function readAmounts(b, base = {}) {
   const out = {};
   for (const [k, label] of [['float_amount', 'Fondo cassa'], ['cnt_cash', 'Contanti contati'], ['cnt_pos', 'POS contato'], ['cnt_other', 'Altro contato']]) {
     const v = k in b ? num(b[k], NaN) : (base[k] ?? 0);
-    if (!Number.isFinite(v) || v < 0 || v > 10_000_000) throw new HttpError(400, `${label}: importo non valido`);
+    if (!Number.isFinite(v) || v < 0 || v > 10_000_000) throw new HttpError(400, `${label}: l’importo non è valido (serve un numero tra 0 e 10.000.000).`, { code: 'IMPORTO_NON_VALIDO', hint: 'Controlla il campo indicato nel messaggio e scrivi un numero (es. 150,00).' });
     out[k] = money(v);
   }
   return out;
@@ -64,23 +64,23 @@ const changes = (a, b) => Object.keys(FIELD_LABELS).filter((k) => (a[k] ?? null)
 
 export async function getClosing(id) {
   const c = await db.prepare('SELECT * FROM cash_closings WHERE id = ?').get(id);
-  if (!c) throw new HttpError(404, 'Chiusura non trovata');
+  if (!c) throw new HttpError(404, 'Chiusura non trovata', { code: 'CHIUSURA_NON_TROVATA', hint: 'Riapri l’elenco delle chiusure di cassa.' });
   return c;
 }
 
 export async function previewClosing(day) {
   const d = str(day) || localDate();
-  if (!dayOk(d)) throw new HttpError(400, 'Data non valida');
+  if (!dayOk(d)) throw new HttpError(400, 'Chiusura di cassa non salvata: la data non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
   const existing = await db.prepare('SELECT * FROM cash_closings WHERE day = ?').get(d);
   return { day: d, today: localDate(), expected: await expectedFor(d), existing: decorate(existing) || null };
 }
 
 export async function createClosing(b, user) {
   const day = str(b.day) || localDate();
-  if (!dayOk(day)) throw new HttpError(400, 'Data non valida');
-  if (day > localDate()) throw new HttpError(400, 'La data non può essere nel futuro.');
+  if (!dayOk(day)) throw new HttpError(400, 'Chiusura di cassa non salvata: la data non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
+  if (day > localDate()) throw new HttpError(400, 'Chiusura di cassa non salvata: la data è nel futuro.', { code: 'DATA_FUTURA', hint: 'Scegli la data di oggi o una precedente.' });
   const operator = str(b.operator) || who(user);
-  if (await db.prepare('SELECT id FROM cash_closings WHERE day = ?').get(day)) throw new HttpError(409, `Esiste già una chiusura per il ${day}: aprila e modificala.`);
+  if (await db.prepare('SELECT id FROM cash_closings WHERE day = ?').get(day)) throw new HttpError(409, `Esiste già una chiusura per il ${day}: aprila e modificala.`, { code: 'CHIUSURA_GIA_ESISTENTE', hint: 'Apri la chiusura di quel giorno e modificala (se sbloccata).' });
   const a = readAmounts(b);
   const exp = await expectedFor(day);
   const row = { ...a, exp_cash: exp.exp_cash, exp_pos: exp.exp_pos, exp_other: exp.exp_other, cash_out: exp.cash_out };
@@ -96,7 +96,7 @@ export async function createClosing(b, user) {
 
 export async function updateClosing(id, b, user) {
   const old = await getClosing(id);
-  if (old.locked) throw new HttpError(409, 'Chiusura bloccata: per modificarla un amministratore deve prima sbloccarla (con il motivo).');
+  if (old.locked) throw new HttpError(409, `Chiusura del ${old.day} bloccata: non si modifica finché non viene sbloccata.`, { code: 'CHIUSURA_BLOCCATA', hint: 'Un amministratore deve sbloccarla scrivendo il motivo.' });
   const a = readAmounts(b, old);
   let exp = { exp_cash: old.exp_cash, exp_pos: old.exp_pos, exp_other: old.exp_other, cash_out: old.cash_out };
   if (b.recalc) exp = await expectedFor(old.day);
@@ -123,7 +123,7 @@ export async function lockClosing(id, user) {
 export async function unlockClosing(id, reason, user) {
   const c = await getClosing(id);
   const why = str(reason);
-  if (!why || why.length < 3) throw new HttpError(400, 'Scrivi il motivo dello sblocco.');
+  if (!why || why.length < 3) throw new HttpError(400, `Chiusura del ${c.day}: lo sblocco richiede un motivo (almeno 3 caratteri) che resta nel registro.`, { code: 'MOTIVO_MANCANTE', hint: 'Scrivi perché stai sbloccando la chiusura.' });
   if (!c.locked) return decorate(c);
   await db.prepare('UPDATE cash_closings SET locked=0, locked_at=NULL, locked_by=NULL WHERE id=?').run(id);
   await writeAudit({ user, action: 'modifica', type: 'chiusura cassa', id, label: `Chiusura del ${c.day}`, detail: `sbloccata. Motivo: ${why}`.slice(0, 480) });
@@ -132,7 +132,7 @@ export async function unlockClosing(id, reason, user) {
 
 export async function deleteClosing(id, user, media) {
   const c = await getClosing(id);
-  if (c.locked) throw new HttpError(409, 'Chiusura bloccata: sbloccala prima di eliminarla.');
+  if (c.locked) throw new HttpError(409, `Chiusura del ${c.day} bloccata: non si elimina.`, { code: 'CHIUSURA_BLOCCATA', hint: 'Sbloccala (con il motivo) e poi eliminala.' });
   if (c.photo_key) await media?.remove(c.photo_key).catch(() => {});
   await db.prepare('DELETE FROM cash_closings WHERE id = ?').run(id);
   await writeAudit({ user, action: 'elimina', type: 'chiusura cassa', id, label: `Chiusura del ${c.day}`, detail: `eliminata: atteso ${eur(c.expected_total)}, contato ${eur(c.counted_total)}, differenza ${eur(c.difference)}, operatore ${c.operator}` });
@@ -144,11 +144,11 @@ const isJpeg = (b) => b.length > 4 && b[0] === 0xff && b[1] === 0xd8;
 
 export async function setPhoto(id, image, user, media) {
   const c = await getClosing(id);
-  if (c.locked) throw new HttpError(409, 'Chiusura bloccata: sbloccala per cambiare la foto.');
+  if (c.locked) throw new HttpError(409, `Chiusura del ${c.day} bloccata: la foto non si cambia.`, { code: 'CHIUSURA_BLOCCATA', hint: 'Sbloccala (con il motivo) e poi cambia la foto.' });
   let bytes;
-  try { bytes = b64ToBytes(image || ''); } catch { throw new HttpError(400, 'Foto non valida'); }
-  if (!isJpeg(bytes)) throw new HttpError(400, 'La foto deve essere un JPEG');
-  if (bytes.length > MAX_PHOTO) throw new HttpError(413, 'Foto troppo grande: va ridimensionata prima dell’invio');
+  try { bytes = b64ToBytes(image || ''); } catch { throw new HttpError(400, 'La foto della chiusura non è leggibile.', { code: 'FOTO_NON_VALIDA', hint: 'Scatta di nuovo la foto e riprova.' }); }
+  if (!isJpeg(bytes)) throw new HttpError(400, 'La foto della chiusura non è un file JPEG.', { code: 'FOTO_NON_JPEG', hint: 'Usa una foto in formato JPG.' });
+  if (bytes.length > MAX_PHOTO) throw new HttpError(413, 'La foto della chiusura è troppo grande.', { code: 'FOTO_TROPPO_GRANDE', hint: 'Ridimensionala prima dell’invio (di solito lo fa il browser da solo: ricarica la pagina).' });
   const key = `chiusure/${c.day}-${id}-${Math.random().toString(36).slice(2, 8)}.jpg`;
   await media.put(key, bytes);
   if (c.photo_key) await media.remove(c.photo_key).catch(() => {});
@@ -159,7 +159,7 @@ export async function setPhoto(id, image, user, media) {
 
 export async function removePhoto(id, user, media) {
   const c = await getClosing(id);
-  if (c.locked) throw new HttpError(409, 'Chiusura bloccata: sbloccala per togliere la foto.');
+  if (c.locked) throw new HttpError(409, `Chiusura del ${c.day} bloccata: la foto non si toglie.`, { code: 'CHIUSURA_BLOCCATA', hint: 'Sbloccala (con il motivo) e poi togli la foto.' });
   if (!c.photo_key) return decorate(c);
   await media.remove(c.photo_key).catch(() => {});
   await db.prepare(`UPDATE cash_closings SET photo_key=NULL, updated_at=${NOW}, updated_by=? WHERE id=?`).run(who(user), id);
@@ -170,7 +170,7 @@ export async function removePhoto(id, user, media) {
 export async function listClosings({ from, to, q, only_diff } = {}) {
   const f = str(from) || '0000-01-01';
   const t = str(to) || '9999-12-31';
-  if (!dayOk(f === '0000-01-01' ? '2000-01-01' : f) || !dayOk(t === '9999-12-31' ? '2000-01-01' : t)) throw new HttpError(400, 'Periodo non valido');
+  if (!dayOk(f === '0000-01-01' ? '2000-01-01' : f) || !dayOk(t === '9999-12-31' ? '2000-01-01' : t)) throw new HttpError(400, 'Il periodo richiesto non è valido: una delle due date non esiste.', { code: 'PERIODO_NON_VALIDO', hint: 'Scegli data iniziale e finale dal calendario.' });
   const where = ['day BETWEEN ? AND ?'];
   const args = [f, t];
   if (str(q)) { where.push('(operator LIKE ? OR notes LIKE ? OR day LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
@@ -205,14 +205,14 @@ export function closingsCsv(rows) {
 
 /** Rotte /api/closings. deps: { adminOnly, media:(c)=>archivio } */
 export function registerClosingRoutes(app, h, { adminOnly, media }) {
-  const ensureMedia = (c) => { const m = media(c); if (!m || m.mode === 'missing') throw new HttpError(503, 'Archivio foto non collegato: la chiusura si salva lo stesso, senza foto.'); return m; };
+  const ensureMedia = (c) => { const m = media(c); if (!m || m.mode === 'missing') throw new HttpError(503, 'L’archivio delle foto non è collegato a questo ambiente: le foto non si possono salvare né vedere (la chiusura invece sì).', { code: 'ARCHIVIO_FOTO_NON_COLLEGATO', hint: 'Avvisa l’amministratore: serve collegare l’archivio foto.' }); return m; };
   app.get('/api/closings', h((req) => listClosings(req.query)));
   app.get('/api/closings/preview', h((req) => previewClosing(req.query.day)));
   app.get('/api/closings/export.csv', async (c) => {
     try {
       const d = await listClosings(c.req.query());
       return c.body(closingsCsv(d.rows), 200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="chiusure-cassa-${d.from || 'inizio'}_${d.to || localDate()}.csv"`, 'cache-control': 'no-store' });
-    } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Esportazione non riuscita' }, e.status || 500); }
+    } catch (e) { const r = toResponse(e, { method: c.req.method, path: c.req.path }); return c.json(r.body, r.status); }
   });
   app.get('/api/closings/:id{-?[0-9]+}', h(async (req) => decorate(await getClosing(req.params.id))));
   app.post('/api/closings', h((req) => createClosing(req.body, req.user)));

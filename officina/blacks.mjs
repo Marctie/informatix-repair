@@ -36,10 +36,10 @@ export async function findBlacks({ customer_id, name, phone, email } = {}) {
 function clean(b, current = {}) {
   const m = { ...current, ...b };
   const reason = str(m.reason);
-  if (!reason) throw new HttpError(400, 'Il motivo della segnalazione è obbligatorio');
+  if (!reason) throw new HttpError(400, 'Segnalazione non salvata: manca il motivo.', { code: 'MOTIVO_MANCANTE', hint: 'Scrivi perché stai segnalando il cliente: resta nello storico.' });
   const reported_on = str(m.reported_on) || localToday();
-  if (!DATE_RE.test(reported_on)) throw new HttpError(400, 'Data non valida (AAAA-MM-GG)');
-  if (reported_on > localToday()) throw new HttpError(400, 'La data non può essere nel futuro');
+  if (!DATE_RE.test(reported_on)) throw new HttpError(400, 'Segnalazione non salvata: la data non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa una data che esiste (AAAA-MM-GG).' });
+  if (reported_on > localToday()) throw new HttpError(400, 'Segnalazione non salvata: la data è nel futuro.', { code: 'DATA_FUTURA', hint: 'Scegli la data di oggi o una precedente.' });
   return { reason: reason.slice(0, 200), note: str(m.note)?.slice(0, 1000) || null, reported_on };
 }
 
@@ -47,16 +47,16 @@ export async function createBlack(b, user) {
   let customer = null;
   if (b.customer_id) {
     customer = await db.prepare('SELECT id, name, phone, email FROM customers WHERE id = ?').get(b.customer_id);
-    if (!customer) throw new HttpError(404, 'Cliente non trovato');
+    if (!customer) throw new HttpError(404, 'Il cliente da segnalare non esiste più in anagrafica.', { code: 'CLIENTE_NON_TROVATO', hint: 'Cerca di nuovo il cliente.' });
   }
   const name = str(b.name) || customer?.name;
-  if (!name) throw new HttpError(400, 'Nome obbligatorio');
+  if (!name) throw new HttpError(400, 'Segnalazione non salvata: manca il nome della persona.', { code: 'NOME_MANCANTE', hint: 'Scrivi nome e cognome oppure scegli un cliente.' });
   const f = clean(b);
   const phone = str(b.phone) || customer?.phone || null;
   const email = str(b.email) || customer?.email || null;
   if (customer) {
     const dup = await db.prepare('SELECT id FROM blacklist WHERE active = 1 AND customer_id = ?').get(customer.id);
-    if (dup) throw new HttpError(409, 'Questo cliente è già nell’elenco dei segnalati.');
+    if (dup) throw new HttpError(409, 'Questo cliente risulta già tra i segnalati: non lo aggiungo due volte.', { code: 'SEGNALAZIONE_DUPLICATA', hint: 'Apri la segnalazione esistente.' });
   }
   const r = await db.prepare(`INSERT INTO blacklist (customer_id, name, phone, email, reason, note, reported_on, reported_by, created_at) VALUES (?,?,?,?,?,?,?,?,${NOW})`)
     .run(customer?.id ?? null, name, phone, email, f.reason, f.note, f.reported_on, user?.email || 'locale');
@@ -65,7 +65,7 @@ export async function createBlack(b, user) {
 
 export const getBlack = async (id) => {
   const b = await db.prepare('SELECT * FROM blacklist WHERE id = ?').get(id);
-  if (!b) throw new HttpError(404, 'Segnalazione non trovata');
+  if (!b) throw new HttpError(404, 'Segnalazione non trovata', { code: 'SEGNALAZIONE_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
   return b;
 };
 
@@ -88,16 +88,16 @@ export async function updateBlack(id, b) {
 /** Rimozione (solo amministratore, con motivo): archivia, non cancella. */
 export async function removeBlack(id, b, user) {
   const cur = await getBlack(id);
-  if (!cur.active) throw new HttpError(409, 'Segnalazione già rimossa.');
+  if (!cur.active) throw new HttpError(409, 'La segnalazione è già stata rimossa.', { code: 'SEGNALAZIONE_GIA_RIMOSSA', hint: 'Aggiorna l’elenco.' });
   const why = str(b?.removed_note);
-  if (!why) throw new HttpError(400, 'Scrivi perché la segnalazione viene rimossa.');
+  if (!why) throw new HttpError(400, 'Rimozione non eseguita: manca il motivo.', { code: 'MOTIVO_MANCANTE', hint: 'Scrivi perché la segnalazione viene rimossa: resta nello storico.' });
   await db.prepare(`UPDATE blacklist SET active = 0, removed_at = ${NOW}, removed_by = ?, removed_note = ? WHERE id = ?`).run(user?.email || 'locale', why.slice(0, 300), id);
   return getBlack(id);
 }
 
 export async function restoreBlack(id) {
   const cur = await getBlack(id);
-  if (cur.active) throw new HttpError(409, 'Segnalazione già attiva.');
+  if (cur.active) throw new HttpError(409, 'La segnalazione è già attiva.', { code: 'SEGNALAZIONE_GIA_ATTIVA', hint: 'Aggiorna l’elenco.' });
   await db.prepare('UPDATE blacklist SET active = 1, removed_at = NULL, removed_by = NULL, removed_note = NULL WHERE id = ?').run(id);
   return getBlack(id);
 }
