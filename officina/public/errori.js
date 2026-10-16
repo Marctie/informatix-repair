@@ -70,3 +70,36 @@ export function statusPrereq(r, target) {
   }
   return null;
 }
+
+/** Etichette di gravità per la vista admin "Errori". */
+export const SEVERITY_LABEL = { info: 'Avviso', security: 'Sicurezza', error: 'Errore' };
+
+/** Riga di error_log -> testo pronto da mostrare (puro: provabile senza DOM). */
+export function describeErrorRow(r = {}) {
+  const n = Number(r.count) || 1;
+  return {
+    severity: SEVERITY_LABEL[r.severity] ? r.severity : 'error',
+    severityLabel: SEVERITY_LABEL[r.severity] || 'Errore',
+    ref: r.ref || '',
+    who: r.user_name || r.user_email || 'visitatore',
+    doing: r.action || r.section || (r.method && r.path ? `${r.method} ${r.path}` : 'Operazione non indicata'),
+    entity: r.entity || '',
+    reason: r.reason || r.title || 'Motivo non registrato',
+    hint: r.hint || '',
+    status: r.status || 0,
+    repeats: n,
+    repeatsLabel: n > 1 ? `${n} volte` : '1 volta',
+    when: r.last_at || r.at || '',
+    first: r.at && r.last_at && r.at !== r.last_at ? r.at : '',
+  };
+}
+
+/** Parametri di query dai filtri della vista (vuoti scartati). */
+export function errorsQuery(f = {}, page = 1) {
+  const qs = new URLSearchParams({ page: String(Math.max(1, Number(page) || 1)) });
+  for (const k of ['severity', 'user', 'status', 'from', 'to', 'q']) {
+    const v = String(f[k] ?? '').trim();
+    if (v) qs.set(k, v);
+  }
+  return qs.toString();
+}

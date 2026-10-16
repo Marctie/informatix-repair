@@ -1,6 +1,6 @@
 // Inserimento retroattivo: campo "data dell'operazione" da aggiungere ai moduli (vendita, nuova riparazione, acconto, consegna).
 // Vuoto = adesso. Con una data passata il server registra l'operazione in quel giorno (i report la rispettano) e la segna nel Registro.
-import { $, today, canSeeCosts } from './util.js';
+import { $, $$, today, canSeeCosts } from './util.js';
 
 /** Blocco HTML ripiegabile; `id` = id dell'input data. Vuoto per il ruolo Cassa (non puo' farlo). */
 export function retroField(id) {
@@ -57,4 +57,20 @@ export function entryDateVal(root, id) {
   if (!v) throw new Error('Data di inserimento manuale: scegli giorno e ora, oppure rimetti «Automatica (adesso)».');
   if (v > nowInput()) throw new Error('La data di inserimento non può essere nel futuro: scegli adesso o un momento già passato.');
   return { entry_date: v.replace('T', ' ') };
+}
+/**
+ * Prima di ridisegnare un contenitore: salva la data (e se il riquadro era aperto) di ogni campo "giorno passato".
+ * Ritorna la funzione che le rimette a posto dopo il ridisegno (se il campo non c'e' piu' non fa nulla).
+ */
+export function keepRetro(root) {
+  const saved = $$('details.retro', root).map((d) => ({ id: d.querySelector('input[type=date]')?.id, value: d.querySelector('input[type=date]')?.value || '', open: d.open }));
+  return () => {
+    for (const s of saved) {
+      if (!s.id || (!s.value && !s.open)) continue;
+      const input = $(`#${s.id}`, root);
+      if (!input) continue;
+      if (s.value) input.value = s.value;
+      input.closest('details')?.setAttribute('open', '');
+    }
+  };
 }

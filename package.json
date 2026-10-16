@@ -13,7 +13,7 @@
     "usati": "node scripts/build-usati.mjs",
     "admin": "node admin/server.mjs",
     "officina": "node officina/server.mjs",
-    "test:officina": "node --test officina/tests/notifiche.test.mjs officina/tests/api.test.mjs officina/tests/acquisti.test.mjs officina/tests/registro.test.mjs officina/tests/ordini.test.mjs officina/tests/dispositivi.test.mjs officina/tests/schede.test.mjs officina/tests/anagrafiche.test.mjs officina/tests/iva.test.mjs officina/tests/retroattivo.test.mjs officina/tests/blacks.test.mjs officina/tests/archivi.test.mjs officina/tests/lottoB.test.mjs officina/tests/materiali.test.mjs officina/tests/preventivo-riparazione.test.mjs officina/tests/carte.test.mjs officina/tests/nfc-sdk.test.mjs officina/tests/ddt.test.mjs officina/tests/errori.test.mjs officina/tests/errori-backend.test.mjs officina/tests/data-inserimento.test.mjs"
+    "test:officina": "node --test officina/tests/notifiche.test.mjs officina/tests/api.test.mjs officina/tests/acquisti.test.mjs officina/tests/registro.test.mjs officina/tests/ordini.test.mjs officina/tests/dispositivi.test.mjs officina/tests/schede.test.mjs officina/tests/anagrafiche.test.mjs officina/tests/iva.test.mjs officina/tests/retroattivo.test.mjs officina/tests/blacks.test.mjs officina/tests/archivi.test.mjs officina/tests/lottoB.test.mjs officina/tests/materiali.test.mjs officina/tests/preventivo-riparazione.test.mjs officina/tests/carte.test.mjs officina/tests/nfc-sdk.test.mjs officina/tests/ddt.test.mjs officina/tests/errori.test.mjs officina/tests/errori-backend.test.mjs officina/tests/data-inserimento.test.mjs officina/tests/cliente-errori.test.mjs officina/tests/errori-vista.test.mjs"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",

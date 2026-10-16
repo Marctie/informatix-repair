@@ -149,7 +149,7 @@ async function openCard(id, scan, done) {
     if (act === 'replace') {
       const uid = window.prompt('Nuovo chip: scrivi o incolla il suo UID (es. 04A1B2C3):'); if (!uid) return;
       const out = await safe(() => api('POST', `/api/carte/${id}/replace`, { uid }));
-      if (out) { await writeToken(out.token); window.alert(`Nuova carta ${out.card.card_no} con ${out.card.points} punti.\nPIN da dare al cliente: ${out.pin}`); m.close(); done?.(); }
+      if (out) { await writeToken(out.token); openModal(`<p>Nuova carta <b>${esc(out.card.card_no)}</b> con ${esc(out.card.points)} punti.</p><p>PIN da dare al cliente: <b style="font-size:1.4em;letter-spacing:.1em">${esc(out.pin)}</b></p><p class="hint">Il PIN non viene più mostrato: scrivilo o comunicalo ora.</p>`, { title: 'Carta sostituita', footer: '<button class="btn btn-primary" data-close>Ho capito</button>' }); m.close(); done?.(); }
     }
     if (act === 'accrue') accrueDialog(k, session, async () => { reload(); });
     if (act === 'redeem') redeemDialog(id, session, level, async () => { reload(); });

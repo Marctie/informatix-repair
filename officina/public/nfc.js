@@ -136,8 +136,10 @@ export class BridgeAdapter extends Adapter {
   }
   async stop() { this.es?.close(); this.es = null; }
   async write(text, uid) {
-    const res = await fetch(`${this.url}/write`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ uid, token: text }) });
-    if (!res.ok) throw new Error('Scrittura sul chip non riuscita.');
+    let res;
+    try { res = await fetch(`${this.url}/write`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ uid, token: text }) }); }
+    catch { throw new Error('Programma ponte del lettore non raggiungibile: controlla che sia acceso sul PC, poi riprova a scrivere il chip.'); }
+    if (!res.ok) throw new Error('Scrittura sul chip non riuscita: riavvicina il chip al lettore e riprova.');
   }
 }
 

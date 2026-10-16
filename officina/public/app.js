@@ -8,6 +8,7 @@ import { stockView, suppliersView } from './stock.js';
 import { salesView, cashView, settingsView } from './sales.js';
 import { usersView } from './users.js';
 import { auditView } from './audit.js';
+import { erroriView } from './errori-vista.js';
 import { analyticsView } from './analytics.js';
 import { usatiView } from './usati.js';
 import { portaleView } from './portale.js';
@@ -71,6 +72,7 @@ const VIEWS = [
   { id: 'utenti', label: 'Utenti', icon: '🔑', render: usersView, admin: true, group: 'gestione' },
   { id: 'credenziali', label: 'Credenziali', icon: '🔐', render: credenzialiView, admin: true, group: 'gestione' },
   { id: 'registro', label: 'Registro', icon: '📜', render: auditView, admin: true, group: 'gestione' },
+  { id: 'errori', label: 'Errori', icon: '🛠️', render: erroriView, admin: true, group: 'gestione' },
   // --- Agente C ---
   { id: 'chiusure', label: 'Chiusure cassa', icon: '🧮', render: chiusureView, group: 'banco' },
   { id: 'dareavere', label: 'Dare/avere', icon: '⚖️', render: dareavereView, group: 'banco' },

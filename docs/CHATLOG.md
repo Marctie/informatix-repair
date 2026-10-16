@@ -966,3 +966,9 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - **Decisione ruolo Cassa** (default prudente): puo' impostare la data di inserimento SOLO di una nuova riparazione e fino a 7 giorni indietro (`CASSA_MAX_DAYS`); vendite, acconti, consegne con data passata e date piu' vecchie restano all'amministratore (senza limiti).
 - Mostrata in scheda riparazione, Storico (lista e dettaglio) e stampe di ingresso (print.mjs). Tracciamento cliente: gia' mostra `received_at` = created_at. Nessuna migrazione.
 - Test `officina/tests/data-inserimento.test.mjs` (aggiunto a test:officina): 182/182. Manuale: bullet in «Operazioni con data passata».
+## Agente J (frontend, 2026-10-16): errori parlanti lato cliente + vista Errori
+- **Pagine pubbliche**: nuovo `public/cliente-errori.js` (script semplice, nessun dato riservato, window.ClientErr): classifica rete/timeout/404/409/410/429/5xx in italiano semplice e rassicurante, "Riprova", niente codici. `preventivo.js` e `track.js` non usano piu' `fetch`/`alert`; la firma resta sul riquadro se la rete cade; 409 = "gia' registrato" con "Aggiorna la pagina"; il polling di track.js non cancella piu' la schermata se cade la rete.
+- **nfc.js / carte.js / pdftext.js**: messaggi parlanti per ponte NFC e lettore PDF; l'`alert` col PIN della carta sostituita e' ora una finestra del gestionale.
+- **retro.js**: `keepRetro()` conserva data e apertura del riquadro "giorno passato" quando la scheda riparazione si ridisegna (repair.js: 3 righe).
+- **Vista admin Errori** (`public/errori-vista.js`, menu Gestione): filtri gravita'/utente/stato/periodo/testo o codice E-XXXXX, paginazione, riepilogo per gravita'; logica pura `describeErrorRow`/`errorsQuery` in `errori.js`.
+- Test: `cliente-errori.test.mjs`, `errori-vista.test.mjs` (officina 186/186). Manuale sezione 41 (la 40 esisteva gia': nessun duplicato).
