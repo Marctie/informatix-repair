@@ -85,6 +85,7 @@
     a{color:#000;text-decoration:none}
   }
   main b, main code{overflow-wrap:anywhere}
+  table.cod{border-collapse:collapse;width:100%;font-size:.88rem;margin:.6rem 0}table.cod th,table.cod td{border:1px solid var(--line);padding:.35rem .55rem;text-align:left;vertical-align:top}table.cod th[colspan]{background:#F3F4F6}table.cod code{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -146,6 +147,7 @@
   <a href="#testi-legali">38 · Testi legali controllati</a>
   <a href="#s30">39 · Quando qualcosa non va: gli avvisi</a>
   <a href="#errori-parlanti">40 · Messaggi e codice errore</a>
+  <a href="#errori-vista">41 · Errori: pagine del cliente e registro</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -708,9 +710,10 @@
   </ul>
   <h3>Operazioni con data passata (inserimento retroattivo)</h3>
   <ul>
+    <li><b>Data di inserimento della riparazione</b>: nella «Nuova riparazione» il campo è sempre visibile e di norma è <b>Automatica (adesso)</b>. Togli la spunta per scegliere a mano <b>giorno e ora</b> (mai nel futuro): la scheda nasce in quel momento, vale per conti, report e garanzia, e compare nella scheda, nello Storico e nelle stampe di ingresso. Il ruolo <b>Cassa</b> può farlo fino a <b>7 giorni indietro</b>; oltre serve l’amministratore (senza limiti).</li>
     <li>Hai un incasso o una riparazione di qualche giorno fa da registrare? Nella <b>vendita al banco</b>, nella <b>nuova riparazione</b>, nel <b>nuovo acconto</b> e nella <b>consegna</b> trovi «📅 Operazione di un giorno passato?»: aprilo, scegli la data e registra come sempre.</li>
     <li>L’operazione entra nei conti <b>di quel giorno</b>: Cassa, grafici, report per periodo e garanzia (che parte dalla data di consegna scelta) la rispettano. Non si possono scegliere date future. Le <b>spese</b> hanno già la loro data.</li>
-    <li>Ogni inserimento retroattivo è scritto nel <b>Registro</b> (tipo «retroattivo») con chi l’ha fatto, l’ora vera in cui l’ha fatto e la data scelta. Il ruolo Cassa non può usarlo.</li>
+    <li>Ogni inserimento retroattivo è scritto nel <b>Registro</b> (tipo «retroattivo») con chi l’ha fatto, l’ora vera in cui l’ha fatto e la data scelta. Il ruolo Cassa può usarlo solo per la data di inserimento di una nuova riparazione (max 7 giorni indietro).</li>
     <li>Sbagliata la data di una vendita, di un incasso o di una riparazione già fatta? L’amministratore la può correggere (resta nel Registro «da … a …»).</li>
   </ul>
   <h3>Blacks: clienti segnalati</h3>
@@ -925,6 +928,292 @@
     <li>Un errore imprevisto non mostra dettagli tecnici ma un <b>codice di riferimento</b> (es. <code>E-3F2AK9QD</code>): comunicalo a Marco, che lo ritrova nel registro del servizio.</li>
     <li>Il database non lascia più salvare doppioni o collegamenti rotti senza spiegare perché (“Esiste già un cliente con lo stesso telefono…”).</li>
     <li>Corretto: non si può più registrare un <b>acconto</b> su una riparazione già consegnata o annullata (falsava saldo e cassa).</li>
+    <li>Ogni messaggio ha un <b>codice stabile</b> (MAIUSCOLO_CON_TRATTINO_BASSO) e un <b>suggerimento</b>: se devi segnalare un problema a Marco, comunica il codice. Più sotto la tabella dei codici dei moduli, divisa per area.</li>
+    <li>Corretto: due pagamenti (o due acconti) premuti nello stesso istante sulla stessa <b>fattura</b> o sullo stesso <b>ordine</b> potevano incassare il totale due volte; ora passa solo il primo e l’altro è rifiutato con spiegazione (<code>PAGAMENTO_DOPPIO</code> / <code>ACCONTO_DOPPIO</code>).</li>
+    <li>Corretto: documenti d’identità e carte punti senza cliente indicato davano “errore interno”; collegare un dispositivo o un prestito a un cliente/fornitore inesistente ora spiega cosa manca invece di un generico “dati collegati”.</li>
+  </ul>
+<h3>Tabella dei codici (moduli)</h3>
+<table class="cod">
+<thead><tr><th>Codice</th><th>Cosa fare</th></tr></thead>
+<tbody>
+<tr><th colspan="2">Ordini</th></tr>
+<tr><td><code>ORDINE_NON_TROVATO</code></td><td>Riapri l’elenco degli ordini: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>ORDINE_SENZA_ARTICOLI</code></td><td>Aggiungi almeno un articolo da ordinare (descrizione e quantità) e salva di nuovo.</td></tr>
+<tr><td><code>ORDINE_PREZZO_NON_VALIDO</code></td><td>Correggi il prezzo con un numero uguale o maggiore di zero (es. 12,50).</td></tr>
+<tr><td><code>ORDINE_CLIENTE_MANCANTE</code></td><td>Scegli il cliente dall’anagrafica oppure crea un ordine per il fornitore.</td></tr>
+<tr><td><code>COLLEGAMENTO_NON_TROVATO</code></td><td>Aggiorna la pagina e scegli di nuovo cliente, fornitore o riparazione.</td></tr>
+<tr><td><code>ACCONTO_NON_VALIDO</code></td><td>Scrivi l’acconto in euro (es. 20,00).</td></tr>
+<tr><td><code>ACCONTO_DOPPIO</code></td><td>Ricarica l’ordine e controlla gli acconti già presenti prima di riprovare.</td></tr>
+<tr><td><code>ACCONTO_NEGATIVO</code></td><td>Scrivi 0 oppure un importo positivo.</td></tr>
+<tr><td><code>ACCONTO_SOLO_CLIENTI</code></td><td>Togli l’acconto, oppure cambia il tipo dell’ordine in “cliente”.</td></tr>
+<tr><td><code>ACCONTO_SUPERA_TOTALE</code></td><td>Abbassa l’acconto o controlla i prezzi degli articoli.</td></tr>
+<tr><td><code>ORDINE_CHIUSO</code></td><td>Se serve ancora, riapri l’ordine (un ordine annullato torna “da ordinare”) oppure creane uno nuovo.</td></tr>
+<tr><td><code>TOTALE_SOTTO_ACCONTO</code></td><td>Alza i prezzi/quantità oppure annulla l’ordine e restituisci l’acconto.</td></tr>
+<tr><td><code>STATO_ORDINE_NON_VALIDO</code></td><td>Scegli uno degli stati proposti (da ordinare, ordinato, arrivato, consegnato, annullato).</td></tr>
+<tr><td><code>ORDINE_PASSAGGIO_NON_AMMESSO</code></td><td>Segui l’ordine dei passaggi: da ordinare, ordinato, arrivato, consegnato.</td></tr>
+<tr><td><code>ORDINI_NESSUNO_SELEZIONATO</code></td><td>Spunta almeno un ordine nell’elenco e riprova.</td></tr>
+<tr><td><code>ACCONTO_SUPERA_RESIDUO</code></td><td>Scrivi un acconto non superiore al residuo, oppure consegna l’ordine incassando il saldo.</td></tr>
+<tr><td><code>ORDINE_CON_INCASSI</code></td><td>Annulla l’ordine invece di eliminarlo.</td></tr>
+<tr><th colspan="2">Preventivi</th></tr>
+<tr><td><code>PREVENTIVO_NON_TROVATO</code></td><td>Riapri l’elenco dei preventivi: potrebbe essere stato eliminato o il link non è più valido.</td></tr>
+<tr><td><code>PREVENTIVO_SENZA_VOCI</code></td><td>Aggiungi una voce (lavoro o ricambio) con descrizione e prezzo e salva di nuovo.</td></tr>
+<tr><td><code>PREVENTIVO_PREZZO_NON_VALIDO</code></td><td>Correggi il prezzo con un numero uguale o maggiore di zero.</td></tr>
+<tr><td><code>CLIENTE_NON_TROVATO</code></td><td>Cerca di nuovo il cliente, oppure scrivi il nome a mano.</td></tr>
+<tr><td><code>PREVENTIVO_CLIENTE_MANCANTE</code></td><td>Scegli il cliente dall’anagrafica oppure scrivine il nome.</td></tr>
+<tr><td><code>PREVENTIVO_VALIDITA_NON_VALIDA</code></td><td>Scegli una data dal calendario.</td></tr>
+<tr><td><code>SCONTO_SUPERA_TOTALE</code></td><td>Abbassa lo sconto oppure controlla i prezzi delle voci.</td></tr>
+<tr><td><code>PREVENTIVO_VALIDITA_PASSATA</code></td><td>Scegli una data di oggi o futura.</td></tr>
+<tr><td><code>PREVENTIVO_GIA_CONVERTITO</code></td><td>Modifica la riparazione o la vendita nata dal preventivo, oppure fai un nuovo preventivo.</td></tr>
+<tr><td><code>STATO_PREVENTIVO_NON_VALIDO</code></td><td>Aggiorna la pagina e riprova; se resta, avvisa Marco.</td></tr>
+<tr><td><code>PREVENTIVO_PASSAGGIO_NON_AMMESSO</code></td><td>Scegli uno degli stati proposti per questo preventivo.</td></tr>
+<tr><td><code>PREVENTIVO_SCADUTO</code></td><td>Apri il preventivo, prolunga la data di validità e riprova.</td></tr>
+<tr><td><code>PREVENTIVO_RIFIUTATO</code></td><td>Riportalo in bozza o inviato se il cliente ha cambiato idea.</td></tr>
+<tr><td><code>DISPOSITIVO_MANCANTE</code></td><td>Scrivi marca e modello del dispositivo e converti di nuovo.</td></tr>
+<tr><td><code>CONVERSIONE_NON_SCELTA</code></td><td>Scegli “in riparazione” oppure “in vendita”.</td></tr>
+<tr><td><code>PREVENTIVO_NON_IN_ATTESA</code></td><td>Contatta il negozio se vuoi cambiare la tua risposta.</td></tr>
+<tr><td><code>SCELTA_NON_VALIDA</code></td><td>Premi “Accetto” oppure “Non accetto”.</td></tr>
+<tr><td><code>VALIDITA_NON_VALIDA</code></td><td>Scrivi un numero di giorni da 1 a 365.</td></tr>
+<tr><td><code>RIPARAZIONE_CONCLUSA</code></td><td>Il preventivo si invia solo mentre la riparazione è in corso.</td></tr>
+<tr><td><code>CLIENTE_MANCANTE</code></td><td>Collega la scheda a un cliente e riprova.</td></tr>
+<tr><td><code>CANALE_NON_VALIDO</code></td><td>Scegli uno dei canali proposti (WhatsApp, SMS, email…).</td></tr>
+<tr><td><code>PREVENTIVO_VUOTO</code></td><td>Scrivi l’importo del preventivo nella scheda (o aggiungi ricambi con prezzo) e riprova.</td></tr>
+<tr><td><code>PREVENTIVO_GIA_ACCETTATO</code></td><td>Non serve rinviarlo; per cambiarlo ritira prima l’accettazione.</td></tr>
+<tr><td><code>RIPARAZIONE_NON_TROVATA</code></td><td>Riapri l’elenco delle riparazioni.</td></tr>
+<tr><td><code>OPZIONE_DESCRIZIONE_MANCANTE</code></td><td>Scrivi cosa comprende la soluzione.</td></tr>
+<tr><td><code>IMPORTO_NON_VALIDO</code></td><td>Scrivi l’importo in euro.</td></tr>
+<tr><td><code>TROPPE_OPZIONI</code></td><td>Elimina un’opzione prima di aggiungerne un’altra.</td></tr>
+<tr><td><code>OPZIONE_NON_TROVATA</code></td><td>Ricarica la pagina per vedere le opzioni attuali.</td></tr>
+<tr><td><code>DESTINO_DISPOSITIVO_MANCANTE</code></td><td>Scegli se ritirare il dispositivo o cederlo al negozio.</td></tr>
+<tr><td><code>OPZIONE_NON_SCELTA</code></td><td>Scegli una soluzione dall’elenco.</td></tr>
+<tr><td><code>OPZIONE_NON_VALIDA</code></td><td>Ricarica la pagina e scegli di nuovo.</td></tr>
+<tr><td><code>DESTINO_NON_VALIDO</code></td><td>Scegli ritiro o cessione.</td></tr>
+<tr><td><code>RIPARAZIONE_NON_ANNULLATA</code></td><td>Annulla prima la riparazione se il dispositivo non è riparabile.</td></tr>
+<tr><th colspan="2">Acquisti e DDT</th></tr>
+<tr><td><code>PDF_DA_BROWSER</code></td><td>Scegli il file dalla scheda Importa (il testo viene estratto lì e controllato da te prima di confermare). Con l’API serve il campo pdf_text.</td></tr>
+<tr><td><code>FILE_VUOTO</code></td><td>Scegli di nuovo il file della fattura e riprova.</td></tr>
+<tr><td><code>FILE_TROPPO_GRANDE</code></td><td>Controlla di aver scelto la fattura giusta; se è davvero così grande, dividila.</td></tr>
+<tr><td><code>FILE_P7M</code></td><td>Apri il file .p7m con il software di firma e salva l’XML, oppure scarica l’XML dal portale delle fatture.</td></tr>
+<tr><td><code>ARTICOLO_NON_TROVATO</code></td><td>Riapri il magazzino e cerca di nuovo l’articolo.</td></tr>
+<tr><td><code>FORNITORE_NON_TROVATO</code></td><td>Scegli di nuovo il fornitore dall’elenco.</td></tr>
+<tr><td><code>DOCUMENTO_GIA_IMPORTATO</code></td><td>Cerca l’acquisto già importato nell’elenco acquisti.</td></tr>
+<tr><td><code>RIGA_QUANTITA_NON_VALIDA</code></td><td>Correggi la quantità della riga e conferma di nuovo.</td></tr>
+<tr><td><code>RIGA_ARTICOLO_MANCANTE</code></td><td>Scegli un articolo esistente oppure “nuovo prodotto” per la riga.</td></tr>
+<tr><td><code>QUANTITA_NON_VALIDA</code></td><td>Scrivi quanti pezzi sono arrivati (es. 5).</td></tr>
+<tr><td><code>PREZZO_ACQUISTO_NON_VALIDO</code></td><td>Scrivi il prezzo di acquisto unitario (es. 12,50).</td></tr>
+<tr><td><code>DATA_NON_VALIDA</code></td><td>Scegli la data dal calendario.</td></tr>
+<tr><td><code>FORNITORE_MANCANTE</code></td><td>Scegli il fornitore dall’elenco o creane uno nuovo.</td></tr>
+<tr><td><code>ARTICOLO_MANCANTE</code></td><td>Scegli un articolo esistente oppure scrivi il nome del nuovo.</td></tr>
+<tr><td><code>NUMERO_DOCUMENTO_DUPLICATO</code></td><td>Usa un altro numero oppure lascia il campo vuoto.</td></tr>
+<tr><td><code>RICAMBIO_NON_TROVATO</code></td><td>Riapri la riparazione e riprova.</td></tr>
+<tr><td><code>RICAMBIO_GIA_IN_MAGAZZINO</code></td><td>Apri l’articolo dal magazzino.</td></tr>
+<tr><td><code>ACQUISTO_NON_TROVATO</code></td><td>Riapri l’elenco degli acquisti: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>RUOLO_NON_AMMESSO</code></td><td>Accedi come amministratore o tecnico per caricare la merce.</td></tr>
+<tr><td><code>PDF_SENZA_TESTO</code></td><td>Usa un PDF digitale, oppure inserisci le righe a mano.</td></tr>
+<tr><td><code>DOCUMENTO_TROPPO_LUNGO</code></td><td>Importa solo le pagine che servono, oppure inserisci le righe a mano.</td></tr>
+<tr><td><code>DOCUMENTO_MANCANTE</code></td><td>Rileggi il documento e riprova.</td></tr>
+<tr><td><code>NUMERO_DOCUMENTO_MANCANTE</code></td><td>Scrivi il numero come compare sul documento.</td></tr>
+<tr><td><code>DOCUMENTO_SENZA_RIGHE</code></td><td>Aggiungi almeno una riga con descrizione e quantità.</td></tr>
+<tr><td><code>TROPPE_RIGHE</code></td><td>Dividi il documento in più parti.</td></tr>
+<tr><td><code>RIGA_DESCRIZIONE_MANCANTE</code></td><td>Scrivi la descrizione dell’articolo.</td></tr>
+<tr><td><code>RIGA_PREZZO_NON_VALIDO</code></td><td>Correggi il prezzo della riga.</td></tr>
+<tr><td><code>RIGA_IVA_NON_VALIDA</code></td><td>Correggi l’aliquota IVA della riga (es. 22).</td></tr>
+<tr><td><code>FORMATO_NON_TROVATO</code></td><td>Aggiorna l’elenco dei formati: potrebbe essere già stato eliminato.</td></tr>
+<tr><th colspan="2">Fatture</th></tr>
+<tr><td><code>FATTURA_NON_TROVATA</code></td><td>Riapri l’archivio fatture: potrebbe essere stata eliminata.</td></tr>
+<tr><td><code>FATTURA_DIREZIONE_MANCANTE</code></td><td>Scegli “emessa” (a un cliente) oppure “ricevuta” (da un fornitore).</td></tr>
+<tr><td><code>FATTURA_NUMERO_MANCANTE</code></td><td>Scrivi il numero come compare sul documento.</td></tr>
+<tr><td><code>DATA_FUTURA</code></td><td>Scegli la data di oggi o una precedente.</td></tr>
+<tr><td><code>SCADENZA_NON_VALIDA</code></td><td>Scegli una data che esiste (GG/MM/AAAA).</td></tr>
+<tr><td><code>SCADENZA_PRIMA_EMISSIONE</code></td><td>Scegli una scadenza uguale o successiva alla data della fattura.</td></tr>
+<tr><td><code>IVA_NON_VALIDA</code></td><td>Scrivi l’importo dell’IVA contenuto nel totale.</td></tr>
+<tr><td><code>FATTURA_INTESTATARIO_MANCANTE</code></td><td>Scegli dall’elenco oppure scrivi il nome.</td></tr>
+<tr><td><code>VENDITA_NON_TROVATA</code></td><td>Togli il collegamento oppure scegli un’altra vendita.</td></tr>
+<tr><td><code>FATTURA_DA_STORNARE_NON_TROVATA</code></td><td>Scegli la fattura originale dall’archivio.</td></tr>
+<tr><td><code>NOTA_CREDITO_TIPO_DIVERSO</code></td><td>Scegli una fattura dello stesso tipo della nota.</td></tr>
+<tr><td><code>NOTA_CREDITO_SUPERA_FATTURA</code></td><td>Abbassa l’importo della nota fino al massimo indicato.</td></tr>
+<tr><td><code>FATTURA_DUPLICATA</code></td><td>Aprila dall’archivio, oppure controlla il numero che hai scritto.</td></tr>
+<tr><td><code>TOTALE_SOTTO_PAGATO</code></td><td>Alza il totale, oppure elimina prima i pagamenti o le note di credito di troppo.</td></tr>
+<tr><td><code>FATTURA_CON_PAGAMENTI</code></td><td>Elimina prima i pagamenti uno per uno (restano nel Registro), poi la fattura.</td></tr>
+<tr><td><code>FATTURA_CON_NOTE_CREDITO</code></td><td>Elimina prima le note di credito collegate.</td></tr>
+<tr><td><code>NOTA_CREDITO_NON_PAGABILE</code></td><td>Registra i pagamenti sulla fattura originale.</td></tr>
+<tr><td><code>FATTURA_STORNATA</code></td><td>Non serve registrare altri pagamenti.</td></tr>
+<tr><td><code>PAGAMENTO_SUPERA_RESIDUO</code></td><td>Scrivi al massimo il residuo indicato: serve a non incassare due volte.</td></tr>
+<tr><td><code>METODO_PAGAMENTO_MANCANTE</code></td><td>Scegli come è stato pagato (contanti, carta, bonifico…): ogni movimento va tracciato.</td></tr>
+<tr><td><code>PAGAMENTO_PRIMA_FATTURA</code></td><td>Scegli una data uguale o successiva all’emissione.</td></tr>
+<tr><td><code>PAGAMENTO_DOPPIO</code></td><td>Ricarica la fattura e controlla i pagamenti già presenti prima di riprovare.</td></tr>
+<tr><td><code>PAGAMENTO_NON_TROVATO</code></td><td>Aggiorna la fattura: il pagamento potrebbe essere già stato eliminato.</td></tr>
+<tr><td><code>ACQUISTO_GIA_IN_ARCHIVIO</code></td><td>Cercalo nell’archivio fatture ricevute.</td></tr>
+<tr><td><code>VENDITA_GIA_FATTURATA</code></td><td>Apri la fattura già presente nell’archivio.</td></tr>
+<tr><th colspan="2">Chiusure di cassa</th></tr>
+<tr><td><code>CHIUSURA_NON_TROVATA</code></td><td>Riapri l’elenco delle chiusure di cassa.</td></tr>
+<tr><td><code>CHIUSURA_GIA_ESISTENTE</code></td><td>Apri la chiusura di quel giorno e modificala (se sbloccata).</td></tr>
+<tr><td><code>CHIUSURA_BLOCCATA</code></td><td>Un amministratore deve sbloccarla scrivendo il motivo.</td></tr>
+<tr><td><code>MOTIVO_MANCANTE</code></td><td>Scrivi perché stai sbloccando la chiusura.</td></tr>
+<tr><td><code>FOTO_NON_VALIDA</code></td><td>Scatta di nuovo la foto e riprova.</td></tr>
+<tr><td><code>FOTO_NON_JPEG</code></td><td>Usa una foto in formato JPG.</td></tr>
+<tr><td><code>FOTO_TROPPO_GRANDE</code></td><td>Ridimensionala prima dell’invio (di solito lo fa il browser da solo: ricarica la pagina).</td></tr>
+<tr><td><code>PERIODO_NON_VALIDO</code></td><td>Scegli data iniziale e finale dal calendario.</td></tr>
+<tr><td><code>ARCHIVIO_FOTO_NON_COLLEGATO</code></td><td>Avvisa l’amministratore: serve collegare l’archivio foto.</td></tr>
+<tr><th colspan="2">Dare/avere</th></tr>
+<tr><td><code>SOGLIA_NON_VALIDA</code></td><td>Scrivi un numero; 0 spegne il controllo.</td></tr>
+<tr><td><code>TIPO_MOVIMENTO_MANCANTE</code></td><td>Scegli se è un credito, un debito, un incasso o un pagamento.</td></tr>
+<tr><td><code>DESCRIZIONE_MANCANTE</code></td><td>Scrivi di cosa si tratta, in poche parole.</td></tr>
+<tr><td><code>RIPARAZIONE_ALTRO_CLIENTE</code></td><td>Scegli una riparazione dello stesso cliente.</td></tr>
+<tr><td><code>VENDITA_ALTRO_CLIENTE</code></td><td>Scegli una vendita dello stesso cliente.</td></tr>
+<tr><td><code>MOVIMENTO_NON_TROVATO</code></td><td>Aggiorna l’elenco: il movimento potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>CLIENTE_CON_DAREAVERE</code></td><td>Elimina o salda prima i movimenti dalla sezione Dare/avere.</td></tr>
+<tr><th colspan="2">Carte punti</th></tr>
+<tr><td><code>REGOLE_PUNTI_NON_VALIDE</code></td><td>Correggi i valori nelle impostazioni delle carte punti.</td></tr>
+<tr><td><code>CARTE_NON_CONFIGURATE</code></td><td>Avvisa l’amministratore: la chiave va impostata sul server (vedi il manuale, sezione Carte punti).</td></tr>
+<tr><td><code>CARTA_VERIFICA_NON_VALIDA</code></td><td>Avvicina di nuovo la carta al lettore e ripeti l’operazione.</td></tr>
+<tr><td><code>CARTA_VERIFICA_ALTRA_CARTA</code></td><td>Avvicina la carta giusta e ripeti l’operazione.</td></tr>
+<tr><td><code>CARTA_VERIFICA_SCADUTA</code></td><td>Avvicina di nuovo la carta al lettore e ripeti l’operazione.</td></tr>
+<tr><td><code>UID_NON_VALIDO</code></td><td>Rileggi il chip oppure scrivi l’UID così: 04A1B2C3.</td></tr>
+<tr><td><code>CARTA_NON_TROVATA</code></td><td>Riapri l’elenco delle carte: potrebbe essere stata sostituita o annullata.</td></tr>
+<tr><td><code>CARTE_TROPPE_OPERAZIONI</code></td><td>Attendi circa un minuto e riprova.</td></tr>
+<tr><td><code>CARTE_TROPPI_TENTATIVI</code></td><td>Attendi qualche minuto oppure chiama l’amministratore.</td></tr>
+<tr><td><code>CARTA_BLOCCATA_TENTATIVI</code></td><td>Solo l’amministratore può sbloccarla dalla scheda della carta.</td></tr>
+<tr><td><code>CARTA_NON_ATTIVA</code></td><td>Una carta bloccata la sblocca l’amministratore; una persa o annullata va sostituita con una nuova.</td></tr>
+<tr><td><code>PIN_NON_VALIDO</code></td><td>Scegli un PIN di 4-8 cifre (es. 4821).</td></tr>
+<tr><td><code>CHIP_GIA_REGISTRATO</code></td><td>Usa un chip nuovo, oppure sostituisci o annulla prima la carta che lo usa.</td></tr>
+<tr><td><code>CHIP_CODICE_NON_VALIDO</code></td><td>Avvicina la carta giusta; se il chip è stato riscritto, rigenerane il codice dall’amministrazione.</td></tr>
+<tr><td><code>CARTA_NON_REGISTRATA</code></td><td>Emetti la carta dalla scheda del cliente, poi riprova.</td></tr>
+<tr><td><code>CARTA_SOSPETTA_COPIA</code></td><td>Chiama l’amministratore: deve verificare e sostituire la carta.</td></tr>
+<tr><td><code>RIPARAZIONE_NON_CONSEGNATA</code></td><td>Consegna prima la riparazione, poi accredita i punti.</td></tr>
+<tr><td><code>ORIGINE_PUNTI_MANCANTE</code></td><td>Scegli la vendita o la riparazione consegnata.</td></tr>
+<tr><td><code>IMPORTO_SENZA_PUNTI</code></td><td>Nessuna azione: i punti si calcolano sugli importi più alti.</td></tr>
+<tr><td><code>PUNTI_LIMITE_OPERAZIONE</code></td><td>Chiama l’amministratore per una rettifica manuale se l’importo è corretto.</td></tr>
+<tr><td><code>PUNTI_GIA_ACCREDITATI</code></td><td>Non serve ripetere l’operazione: controlla lo storico della carta.</td></tr>
+<tr><td><code>CARTA_SENZA_PIN</code></td><td>Usa una carta scrivibile (con codice firmato) oppure sostituiscila con una che abbia il PIN.</td></tr>
+<tr><td><code>RISCATTO_NON_MULTIPLO</code></td><td>Scegli un numero di punti che sia multiplo del passo indicato nel messaggio.</td></tr>
+<tr><td><code>PUNTI_INSUFFICIENTI</code></td><td>Riscatta al massimo i punti disponibili.</td></tr>
+<tr><td><code>RISCATTO_LIMITE_GIORNALIERO</code></td><td>Riprova domani oppure chiama l’amministratore.</td></tr>
+<tr><td><code>PUNTI_CAMBIATI</code></td><td>Ricarica la carta e ripeti il riscatto.</td></tr>
+<tr><td><code>RETTIFICA_PUNTI_MANCANTI</code></td><td>Scrivi un numero di punti (negativo per togliere).</td></tr>
+<tr><td><code>RETTIFICA_TROPPO_GRANDE</code></td><td>Dividi la rettifica in più operazioni o correggi il numero.</td></tr>
+<tr><td><code>SALDO_NEGATIVO</code></td><td>Togli al massimo i punti disponibili.</td></tr>
+<tr><td><code>CARTA_CHIUSA</code></td><td>Emetti una nuova carta al cliente.</td></tr>
+<tr><td><code>CHIP_UGUALE</code></td><td>Avvicina il chip nuovo.</td></tr>
+<tr><td><code>SOLO_ADMIN</code></td><td>Accedi come amministratore, oppure chiedi a Christian/Marco di farlo.</td></tr>
+<tr><th colspan="2">Buoni</th></tr>
+<tr><td><code>BUONO_CODICE_MANCANTE</code></td><td>Scrivi il codice stampato sul buono.</td></tr>
+<tr><td><code>BUONO_NON_TROVATO</code></td><td>Controlla il codice sul buono (lettere e cifre) e riprova.</td></tr>
+<tr><td><code>BUONO_ANNULLATO</code></td><td>Usa un altro buono, oppure chiedi all’amministratore di ripristinarlo.</td></tr>
+<tr><td><code>BUONO_SCADUTO</code></td><td>Usa un altro buono, oppure chiedi all’amministratore di prolungare la scadenza.</td></tr>
+<tr><td><code>BUONO_ESAURITO</code></td><td>Usa un altro buono.</td></tr>
+<tr><td><code>BUONO_SENZA_SCONTO</code></td><td>Aggiungi articoli alla vendita oppure usa un altro buono.</td></tr>
+<tr><td><code>TROPPE_QUOTE</code></td><td>Unisci le quote con lo stesso metodo.</td></tr>
+<tr><td><code>QUOTA_IMPORTO_NON_VALIDO</code></td><td>Correggi l’importo della quota.</td></tr>
+<tr><td><code>BUONO_COME_METODO</code></td><td>Scrivi il codice del buono nell’apposito campo.</td></tr>
+<tr><td><code>QUOTA_METODO_NON_VALIDO</code></td><td>Scegli uno dei metodi proposti.</td></tr>
+<tr><td><code>QUOTE_NON_COINCIDONO</code></td><td>Correggi gli importi finché la somma è uguale al totale.</td></tr>
+<tr><td><code>BUONO_NON_PIU_VALIDO</code></td><td>Ricontrolla il buono e ripeti la vendita.</td></tr>
+<tr><td><code>PERCENTUALE_NON_VALIDA</code></td><td>Scrivi una percentuale da 1 a 100.</td></tr>
+<tr><td><code>BUONO_CODICE_NON_VALIDO</code></td><td>Scegli un codice tipo ESTATE-25 oppure lascia che lo generi il sistema.</td></tr>
+<tr><td><code>BUONO_CODICE_DUPLICATO</code></td><td>Scegli un altro codice.</td></tr>
+<tr><td><code>BUONO_GIA_USATO</code></td><td>Annullalo invece di eliminarlo.</td></tr>
+<tr><th colspan="2">Dispositivi, prestiti, riparazioni esterne</th></tr>
+<tr><td><code>DISPOSITIVO_MODELLO_MANCANTE</code></td><td>Scrivi marca e modello (es. Apple iPhone 13).</td></tr>
+<tr><td><code>IMEI_NON_VALIDO</code></td><td>Rileggi l’IMEI (digita *#06#), oppure conferma che è corretto per forzare il salvataggio.</td></tr>
+<tr><td><code>SERIALE_DUPLICATO</code></td><td>Apri il dispositivo già presente, oppure conferma di volerlo registrare lo stesso.</td></tr>
+<tr><td><code>DISPOSITIVO_NON_TROVATO</code></td><td>Riapri il registro dispositivi: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>STATO_DISPOSITIVO_NON_VALIDO</code></td><td>Scegli uno degli stati proposti (ok, sospetto, bloccato…).</td></tr>
+<tr><td><code>PRESTITO_NON_TROVATO</code></td><td>Aggiorna l’elenco: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>DISPOSITIVO_GIA_IN_PRESTITO</code></td><td>Segna prima il rientro del prestito in corso.</td></tr>
+<tr><td><code>PRESTITO_DISPOSITIVO_MANCANTE</code></td><td>Scrivi il dispositivo o sceglilo dal registro.</td></tr>
+<tr><td><code>PRESTITO_SENZA_COLLEGAMENTO</code></td><td>Scegli la riparazione o il cliente a cui lo stai prestando.</td></tr>
+<tr><td><code>SCADENZA_PRIMA_CONSEGNA</code></td><td>Scegli una scadenza uguale o successiva alla consegna.</td></tr>
+<tr><td><code>PRESTITO_GIA_RIENTRATO</code></td><td>Aggiorna l’elenco: il rientro è già stato registrato.</td></tr>
+<tr><td><code>RIENTRO_PRIMA_CONSEGNA</code></td><td>Scegli una data di rientro uguale o successiva alla consegna.</td></tr>
+<tr><td><code>COSTO_NON_VALIDO</code></td><td>Scrivi il costo in euro (es. 80,00).</td></tr>
+<tr><td><code>LABORATORIO_MANCANTE</code></td><td>Scegli il laboratorio dall’anagrafica fornitori o scrivine il nome.</td></tr>
+<tr><td><code>RIENTRO_PRIMA_INVIO</code></td><td>Correggi le due date: il rientro viene dopo l’invio.</td></tr>
+<tr><td><code>ESTERNA_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
+<tr><td><code>ESTERNA_ANNULLATA</code></td><td>Riaprila prima, poi cambia lo stato.</td></tr>
+<tr><th colspan="2">Documenti, credenziali, cassaforte, firme</th></tr>
+<tr><td><code>DOCUMENTI_NON_AUTORIZZATO</code></td><td>Chiedi all’amministratore di abilitare il tuo ruolo nelle impostazioni dei documenti.</td></tr>
+<tr><td><code>FILE_NON_TROVATO</code></td><td>Ricarica la scheda del cliente: il file potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>DOCUMENTO_NON_TROVATO</code></td><td>Aggiorna la scheda del cliente: il documento potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>CONSENSO_PRIVACY_MANCANTE</code></td><td>Fai leggere l’informativa al cliente e spunta la casella di presa visione.</td></tr>
+<tr><td><code>FORMATO_NON_AMMESSO</code></td><td>Usa una foto (JPG, PNG, WebP) oppure un PDF.</td></tr>
+<tr><td><code>FILE_NON_LEGGIBILE</code></td><td>Scatta o carica di nuovo il file.</td></tr>
+<tr><td><code>DOCUMENTO_VUOTO</code></td><td>Scrivi il numero del documento oppure allega una foto.</td></tr>
+<tr><td><code>CANCELLAZIONE_NON_CONFERMATA</code></td><td>Conferma la cancellazione dalla finestra apposita.</td></tr>
+<tr><td><code>URL_NON_VALIDO</code></td><td>Scrivi un indirizzo completo, es. https://www.esempio.it.</td></tr>
+<tr><td><code>CREDENZIALE_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
+<tr><td><code>PASSWORD_NON_SALVATA</code></td><td>Modifica la credenziale e inserisci la password.</td></tr>
+<tr><td><code>CASSAFORTE_NON_CONFIGURATA</code></td><td>Avvisa l’amministratore: la chiave va impostata sul server (vedi manuale, sezione Documenti e credenziali).</td></tr>
+<tr><td><code>CASSAFORTE_CHIAVE_DIVERSA</code></td><td>Avvisa l’amministratore: la chiave VAULT_KEY è stata cambiata e va ripristinata quella originale.</td></tr>
+<tr><td><code>FIRMA_MANCANTE</code></td><td>Disegna la firma nel riquadro e conferma.</td></tr>
+<tr><td><code>FIRMA_TROPPO_GRANDE</code></td><td>Cancella e rifai la firma più semplice.</td></tr>
+<tr><td><code>FIRMA_NON_VALIDA</code></td><td>Cancella e rifai la firma.</td></tr>
+<tr><td><code>TIPO_FIRMA_NON_VALIDO</code></td><td>Ricarica la pagina e riprova.</td></tr>
+<tr><td><code>CESSIONE_NON_AMMESSA</code></td><td>Annulla prima la riparazione (non riparabile) se il cliente cede il dispositivo.</td></tr>
+<tr><td><code>SCHEDA_GIA_FIRMATA</code></td><td>Non serve ripeterla; la firma esistente resta valida.</td></tr>
+<tr><td><code>FIRMA_NON_RICHIESTA</code></td><td>Chiedi al negozio di inviarti di nuovo il link per firmare.</td></tr>
+<tr><td><code>CONDIZIONI_NON_ACCETTATE</code></td><td>Spunta la casella di accettazione e firma di nuovo.</td></tr>
+<tr><th colspan="2">Usati</th></tr>
+<tr><td><code>NUMERO_NON_VALIDO</code></td><td>Correggi prezzi e quantità con numeri uguali o maggiori di zero.</td></tr>
+<tr><td><code>PUBBLICAZIONE_FALLITA</code></td><td>Le modifiche restano salvate nel gestionale: ripremi Pubblica tra qualche minuto; se si ripete avvisa Marco.</td></tr>
+<tr><td><code>CONDIZIONE_NON_VALIDA</code></td><td>Scegli una condizione dall’elenco (es. ottimo, buono, usurato).</td></tr>
+<tr><td><code>CATEGORIA_NON_VALIDA</code></td><td>Scegli una categoria dall’elenco.</td></tr>
+<tr><td><code>BATTERIA_NON_VALIDA</code></td><td>Scrivi un numero da 0 a 100.</td></tr>
+<tr><td><code>ARTICOLO_USATO_NON_TROVATO</code></td><td>Aggiorna l’elenco degli usati.</td></tr>
+<tr><td><code>NOME_MANCANTE</code></td><td>Scrivi il nome (es. iPhone 12 128GB nero).</td></tr>
+<tr><td><code>CONDIZIONE_MANCANTE</code></td><td>Scegli la condizione dall’elenco.</td></tr>
+<tr><td><code>TROPPE_FOTO</code></td><td>Elimina una foto prima di aggiungerne un’altra.</td></tr>
+<tr><td><code>ORDINE_FOTO_NON_VALIDO</code></td><td>Ricarica la scheda e riordina di nuovo le foto.</td></tr>
+<tr><td><code>FOTO_NON_TROVATA</code></td><td>Ricarica la scheda dell’articolo.</td></tr>
+<tr><th colspan="2">Spese, IVA, controlli, modelli, note, promemoria, materiali</th></tr>
+<tr><td><code>SPESA_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
+<tr><td><code>MODALITA_PREZZO_NON_VALIDA</code></td><td>Scegli “IVA esclusa” oppure “IVA inclusa”.</td></tr>
+<tr><td><code>ELENCO_NON_VALIDO</code></td><td>Ricarica la pagina e riprova.</td></tr>
+<tr><td><code>ELENCO_TROPPO_LUNGO</code></td><td>Riduci le voci a 40 al massimo.</td></tr>
+<tr><td><code>TIPO_DISPOSITIVO_NON_VALIDO</code></td><td>Scegli un tipo dall’elenco (smartphone, portatile…).</td></tr>
+<tr><td><code>ELENCO_VUOTO</code></td><td>Modifica almeno un elenco e salva di nuovo.</td></tr>
+<tr><td><code>FASE_NON_VALIDA</code></td><td>Scegli ingresso o uscita.</td></tr>
+<tr><td><code>CONTROLLI_NON_VALIDI</code></td><td>Ricarica la scheda e riprova.</td></tr>
+<tr><td><code>MARCA_MANCANTE</code></td><td>Scrivi la marca (es. Apple).</td></tr>
+<tr><td><code>MODELLO_MANCANTE</code></td><td>Scrivi il modello (es. iPhone 13).</td></tr>
+<tr><td><code>MODELLO_DUPLICATO</code></td><td>Cercalo nel catalogo e modificalo.</td></tr>
+<tr><td><code>MODELLO_NON_TROVATO</code></td><td>Aggiorna il catalogo: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>NOTA_VUOTA</code></td><td>Scrivi almeno il titolo o il testo.</td></tr>
+<tr><td><code>NOTA_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
+<tr><td><code>DATA_ORA_NON_VALIDA</code></td><td>Usa il formato AAAA-MM-GG HH:MM con una data che esiste.</td></tr>
+<tr><td><code>PROMEMORIA_NON_TROVATO</code></td><td>Aggiorna l’elenco: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>TESTO_MANCANTE</code></td><td>Scrivi cosa ricordare.</td></tr>
+<tr><td><code>NESSUNA_SELEZIONE</code></td><td>Spunta almeno una riga e riprova.</td></tr>
+<tr><td><code>STATO_RICAMBIO_NON_VALIDO</code></td><td>Scegli uno degli stati proposti.</td></tr>
+<tr><td><code>ORARIO_NON_VALIDO</code></td><td>Usa il formato ore:minuti, es. 12:00.</td></tr>
+<tr><td><code>GIORNI_NON_VALIDI</code></td><td>Scegli giorni della settimana da 0 (domenica) a 6 (sabato).</td></tr>
+<tr><td><code>DATA_TROPPO_VECCHIA</code></td><td>Scegli una data dal 2000 in poi.</td></tr>
+<tr><td><code>RUOLO_NON_AUTORIZZATO</code></td><td>Chiedi a un amministratore di inserire l’operazione con la data corretta.</td></tr>
+<tr><td><code>TIPO_REGISTRAZIONE_NON_VALIDO</code></td><td>I tipi ammessi sono: sale, repair, delivery, payment.</td></tr>
+<tr><td><code>REGISTRAZIONE_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
+<tr><th colspan="2">Clienti e segnalati</th></tr>
+<tr><td><code>CLIENTE_TIPO_NON_VALIDO</code></td><td>Scegli privato oppure azienda.</td></tr>
+<tr><td><code>RAGIONE_SOCIALE_MANCANTE</code></td><td>Scrivi la ragione sociale dell’azienda.</td></tr>
+<tr><td><code>PARTITA_IVA_NON_VALIDA</code></td><td>Ricontrolla le 11 cifre sul documento del cliente.</td></tr>
+<tr><td><code>CODICE_FISCALE_NON_VALIDO</code></td><td>Ricontrolla il codice sul tesserino del cliente.</td></tr>
+<tr><td><code>CAP_NON_VALIDO</code></td><td>Scrivi il CAP di 5 cifre (es. 20100).</td></tr>
+<tr><td><code>PROVINCIA_NON_VALIDA</code></td><td>Scrivi la sigla, es. MI.</td></tr>
+<tr><td><code>CODICE_SDI_NON_VALIDO</code></td><td>Scrivi il codice destinatario di 7 caratteri, oppure lascia vuoto.</td></tr>
+<tr><td><code>PEC_NON_VALIDA</code></td><td>Controlla l’indirizzo (es. nome@pec.it).</td></tr>
+<tr><td><code>EMAIL_NON_VALIDA</code></td><td>Controlla l’indirizzo (es. nome@esempio.it).</td></tr>
+<tr><td><code>SEGNALAZIONE_DUPLICATA</code></td><td>Apri la segnalazione esistente.</td></tr>
+<tr><td><code>SEGNALAZIONE_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
+<tr><td><code>SEGNALAZIONE_GIA_RIMOSSA</code></td><td>Aggiorna l’elenco.</td></tr>
+<tr><td><code>SEGNALAZIONE_GIA_ATTIVA</code></td><td>Aggiorna l’elenco.</td></tr>
+</tbody>
+</table>
+
+</section>
+<section id="errori-vista">
+  <h2><span class="n">41</span>Errori: pagine del cliente e registro</h2>
+  <ul>
+    <li><b>Il cliente</b> (link del preventivo e pagina di tracciamento): se cade internet mentre firma, la firma resta sul riquadro e compare “Connessione assente” con <i>Riprova</i>, senza rifarla. Link sbagliato o già usato = messaggio chiaro, mai codici o termini tecnici. Non compaiono più finestre di avviso del browser.</li>
+    <li><b>Registro errori</b> (menu Gestione, solo amministratore): per ogni riga vedi quando, chi, cosa stava facendo, su quale scheda, il motivo, cosa fare e quante volte si è ripetuto. Filtri per gravità (avviso / sicurezza / errore), utente, stato, periodo; la ricerca trova anche il codice <code>E-XXXXX</code> che il personale ti comunica. Si svuota da solo dopo 90 giorni. Se è vuoto, va tutto bene.</li>
+    <li>Nella scheda riparazione la data “giorno passato” (acconto, consegna) non si azzera più quando un’altra azione ridisegna la scheda. Carte punti: il PIN della nuova carta compare in una finestra del gestionale. Lettore NFC e lettore PDF dicono cosa controllare se non rispondono.</li>
   </ul>
 </section>
 <!-- agente D: fine sezioni -->

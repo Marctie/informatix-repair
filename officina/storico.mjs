@@ -99,7 +99,7 @@ export function registerStoricoRoutes(app, h) {
   // Scheda riassuntiva di una riparazione: tutti i dettagli in un colpo (la scheda completa resta in Riparazioni)
   app.get('/api/storico/:id', h(async (req) => {
     const r = await db.prepare(`${SELECT} WHERE r.id = ?`).get(req.params.id);
-    if (!r) throw new HttpError(404, 'Riparazione non trovata');
+    if (!r) throw new HttpError(404, 'Riparazione non trovata', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni.' });
     const cassa = isCassa(req.user);
     const parts = await db.prepare('SELECT name, qty, unit_price, unit_cost FROM repair_parts WHERE repair_id = ? ORDER BY id').all(r.id);
     const events = await db.prepare('SELECT status, note, created_at FROM repair_events WHERE repair_id = ? AND is_public = 1 ORDER BY id').all(r.id);

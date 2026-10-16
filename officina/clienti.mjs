@@ -2,7 +2,7 @@
 import { HttpError } from './logic.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
-const bad = (m) => { throw new HttpError(400, m); };
+const bad = (m, code, hint) => { throw new HttpError(400, m, { code, hint }); };
 
 /** Partita IVA italiana: 11 cifre + cifra di controllo (algoritmo di Luhn dell'Agenzia delle Entrate). */
 export function validVat(v) {
@@ -40,37 +40,37 @@ export function cleanCustomer(b, current = null) {
   const m = { ...(current || {}), ...b };
   const out = {};
   const kind = str(m.kind) || 'privato';
-  if (!['privato', 'azienda'].includes(kind)) bad('Tipo cliente non valido (privato o azienda)');
+  if (!['privato', 'azienda'].includes(kind)) bad('Cliente non salvato: il tipo scelto non è valido.', 'CLIENTE_TIPO_NON_VALIDO', 'Scegli privato oppure azienda.');
   out.kind = kind;
   out.company_name = str(m.company_name);
-  if (kind === 'azienda' && !out.company_name && !str(m.name)) bad('Ragione sociale obbligatoria');
+  if (kind === 'azienda' && !out.company_name && !str(m.name)) bad('Azienda non salvata: manca la ragione sociale.', 'RAGIONE_SOCIALE_MANCANTE', 'Scrivi la ragione sociale dell’azienda.');
   // nome visualizzato: per le aziende e' la ragione sociale se non indicato altro
   out.name = str(m.name) || (kind === 'azienda' ? out.company_name : null);
-  if (!out.name) bad('Nome obbligatorio');
+  if (!out.name) bad('Cliente non salvato: manca il nome.', 'NOME_MANCANTE', 'Compila il campo Nome e salva di nuovo.');
 
   const vat = str(m.vat_number)?.replace(/[\s.]/g, '').replace(/^IT/i, '') || null;
-  if (vat && !validVat(vat)) bad('Partita IVA non valida (11 cifre, con cifra di controllo corretta)');
+  if (vat && !validVat(vat)) bad('Cliente non salvato: Partita IVA non valida (servono 11 cifre con cifra di controllo corretta).', 'PARTITA_IVA_NON_VALIDA', 'Ricontrolla le 11 cifre sul documento del cliente.');
   out.vat_number = vat;
   const cf = str(m.fiscal_code)?.replace(/\s/g, '').toUpperCase() || null;
-  if (cf && !validFiscalCode(cf)) bad('Codice fiscale non valido');
+  if (cf && !validFiscalCode(cf)) bad('Cliente non salvato: il codice fiscale non è valido.', 'CODICE_FISCALE_NON_VALIDO', 'Ricontrolla il codice sul tesserino del cliente.');
   out.fiscal_code = cf;
 
   out.address = str(m.address);
   const zip = str(m.zip);
-  if (zip && !/^\d{5}$/.test(zip)) bad('CAP non valido (5 cifre)');
+  if (zip && !/^\d{5}$/.test(zip)) bad('Cliente non salvato: il CAP non è valido (servono 5 cifre).', 'CAP_NON_VALIDO', 'Scrivi il CAP di 5 cifre (es. 20100).');
   out.zip = zip;
   out.city = str(m.city);
   const prov = str(m.province)?.toUpperCase() || null;
-  if (prov && !/^[A-Z]{2}$/.test(prov)) bad('Provincia non valida (sigla di 2 lettere, es. MI)');
+  if (prov && !/^[A-Z]{2}$/.test(prov)) bad('Cliente non salvato: la provincia non è valida (sigla di 2 lettere).', 'PROVINCIA_NON_VALIDA', 'Scrivi la sigla, es. MI.');
   out.province = prov;
   const sdi = str(m.sdi_code)?.toUpperCase() || null;
-  if (sdi && !/^[A-Z0-9]{6,7}$/.test(sdi)) bad('Codice SDI non valido (7 caratteri)');
+  if (sdi && !/^[A-Z0-9]{6,7}$/.test(sdi)) bad('Cliente non salvato: il codice SDI non è valido (7 caratteri).', 'CODICE_SDI_NON_VALIDO', 'Scrivi il codice destinatario di 7 caratteri, oppure lascia vuoto.');
   out.sdi_code = sdi;
   const pec = str(m.pec)?.toLowerCase() || null;
-  if (pec && !EMAIL.test(pec)) bad('PEC non valida');
+  if (pec && !EMAIL.test(pec)) bad('Cliente non salvato: l’indirizzo PEC non è valido.', 'PEC_NON_VALIDA', 'Controlla l’indirizzo (es. nome@pec.it).');
   out.pec = pec;
   const email = str(m.email);
-  if (email && !EMAIL.test(email) && email !== current?.email) bad('Email non valida');
+  if (email && !EMAIL.test(email) && email !== current?.email) bad('Cliente non salvato: l’indirizzo email non è valido.', 'EMAIL_NON_VALIDA', 'Controlla l’indirizzo (es. nome@esempio.it).');
   out.phone = str(m.phone);
   out.email = email;
   out.notes = str(m.notes);

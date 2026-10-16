@@ -31,7 +31,7 @@ async function cryptoKey(secret) {
 }
 async function keyFor(c) {
   const secret = vaultSecret(c);
-  if (secret.length < 16) throw new HttpError(503, 'Cassaforte non configurata: manca il segreto VAULT_KEY (almeno 16 caratteri). Vedi il manuale, sezione Documenti e credenziali.');
+  if (secret.length < 16) throw new HttpError(503, 'La cassaforte dei dati sensibili non è utilizzabile: manca la chiave di sicurezza del server (VAULT_KEY, almeno 16 caratteri).', { code: 'CASSAFORTE_NON_CONFIGURATA', hint: 'Avvisa l’amministratore: la chiave va impostata sul server (vedi manuale, sezione Documenti e credenziali).' });
   return cryptoKey(secret);
 }
 
@@ -52,7 +52,7 @@ export async function decryptText(c, token, { bytes = false } = {}) {
     const out = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(iv) }, key, fromB64(ct)));
     return bytes ? out : dec.decode(out);
   } catch {
-    throw new HttpError(409, 'Impossibile decifrare: la chiave VAULT_KEY non corrisponde a quella usata per salvare il dato.');
+    throw new HttpError(409, 'Il dato cifrato non si può leggere: la chiave VAULT_KEY del server non corrisponde a quella usata per salvarlo.', { code: 'CASSAFORTE_CHIAVE_DIVERSA', hint: 'Avvisa l’amministratore: la chiave VAULT_KEY è stata cambiata e va ripristinata quella originale.' });
   }
 }
 export const encryptJson = (c, obj) => encryptText(c, JSON.stringify(obj ?? {}));

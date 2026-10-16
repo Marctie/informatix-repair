@@ -52,13 +52,13 @@ export const DEFAULT_CHECKLISTS = {
 };
 
 const cleanList = (v) => {
-  if (!Array.isArray(v)) throw new HttpError(400, 'Elenco di voci non valido');
+  if (!Array.isArray(v)) throw new HttpError(400, 'L’elenco dei controlli non è valido: manca o non è nel formato atteso.', { code: 'ELENCO_NON_VALIDO', hint: 'Ricarica la pagina e riprova.' });
   const out = [...new Set(v.map((x) => String(x ?? '').trim().slice(0, 80)).filter(Boolean))];
-  if (out.length > 40) throw new HttpError(400, 'Al massimo 40 voci per elenco');
+  if (out.length > 40) throw new HttpError(400, 'L’elenco dei controlli ha più di 40 voci.', { code: 'ELENCO_TROPPO_LUNGO', hint: 'Riduci le voci a 40 al massimo.' });
   return out;
 };
 const checkType = (t) => {
-  if (!DEVICE_TYPES[t]) throw new HttpError(400, 'Tipo di dispositivo non valido');
+  if (!DEVICE_TYPES[t]) throw new HttpError(400, 'Il tipo di dispositivo indicato non è tra quelli previsti.', { code: 'TIPO_DISPOSITIVO_NON_VALIDO', hint: 'Scegli un tipo dall’elenco (smartphone, portatile…).' });
   return t;
 };
 
@@ -82,7 +82,7 @@ export async function saveTemplate(type, body) {
   checkType(type);
   const lists = {};
   for (const p of Object.keys(PHASES)) if (p in body) lists[p] = cleanList(body[p]);
-  if (!Object.keys(lists).length) throw new HttpError(400, 'Nessun elenco da salvare');
+  if (!Object.keys(lists).length) throw new HttpError(400, 'Non c’era nessun elenco di controlli da salvare.', { code: 'ELENCO_VUOTO', hint: 'Modifica almeno un elenco e salva di nuovo.' });
   await tx(async () => {
     for (const [p, items] of Object.entries(lists)) {
       await db.prepare('INSERT INTO checklist_templates (device_type, phase, items) VALUES (?,?,?) ON CONFLICT(device_type, phase) DO UPDATE SET items = excluded.items').run(type, p, JSON.stringify(items));
@@ -103,10 +103,10 @@ export const parseCheck = (raw) => {
 };
 
 export async function saveRepairCheck(repairId, phase, items, user) {
-  if (!PHASES[phase]) throw new HttpError(400, 'Fase non valida');
-  if (!Array.isArray(items)) throw new HttpError(400, 'Controlli non validi');
+  if (!PHASES[phase]) throw new HttpError(400, 'La fase indicata per i controlli non esiste.', { code: 'FASE_NON_VALIDA', hint: 'Scegli ingresso o uscita.' });
+  if (!Array.isArray(items)) throw new HttpError(400, 'I controlli ricevuti non sono nel formato atteso: non sono stati salvati.', { code: 'CONTROLLI_NON_VALIDI', hint: 'Ricarica la scheda e riprova.' });
   const r = await db.prepare('SELECT id FROM repairs WHERE id = ?').get(repairId);
-  if (!r) throw new HttpError(404, 'Riparazione non trovata');
+  if (!r) throw new HttpError(404, 'La riparazione a cui collegare i controlli non esiste più.', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni.' });
   const clean = items.slice(0, 60).map((i) => ({ l: String(i?.l ?? '').trim().slice(0, 80), s: STATES.includes(i?.s) ? i.s : null })).filter((i) => i.l);
   const by = user?.name || user?.email || 'locale';
   const rec = { items: clean, by, at: nowLocal() };

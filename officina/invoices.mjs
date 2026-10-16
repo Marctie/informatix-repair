@@ -5,6 +5,7 @@
 //  - Il pagamento di una fattura RICEVUTA puo' essere registrato anche tra le spese (casella facoltativa).
 //  - Tutto nel Registro (audit_log).
 import { db } from './dbref.mjs';
+import { toResponse } from './errori.mjs';
 import { HttpError, money, localDate, assertMethod } from './logic.mjs';
 import { nowLocal } from './dbref.mjs';
 import { createExpense } from './expenses.mjs';
@@ -51,11 +52,11 @@ const BASE = `SELECT i.*, c.name AS customer_name, s.name AS supplier_name,
   FROM invoices i LEFT JOIN customers c ON c.id = i.customer_id LEFT JOIN suppliers s ON s.id = i.supplier_id LEFT JOIN invoices o ON o.id = i.credit_for_id`;
 
 const decorate = (r, today) => ({ ...r, paid: money(r.paid), credited: money(r.credited), retro: !!r.retro, party: r.customer_name || r.supplier_name || r.party_name || '—', ...invoiceState(r, today) });
-const guard = (user, direction) => { if (isCassa(user) && direction !== 'emessa') throw new HttpError(403, 'Le fatture ricevute non sono disponibili per il ruolo Cassa.'); };
+const guard = (user, direction) => { if (isCassa(user) && direction !== 'emessa') throw new HttpError(403, 'Il ruolo Cassa non può vedere né modificare le fatture ricevute.', { code: 'RUOLO_NON_AMMESSO', hint: 'Accedi come amministratore per le fatture ricevute.' }); };
 
 export async function getInvoice(id, user) {
   const r = await db.prepare(`${BASE} WHERE i.id = ?`).get(id);
-  if (!r) throw new HttpError(404, 'Fattura non trovata');
+  if (!r) throw new HttpError(404, 'Fattura non trovata', { code: 'FATTURA_NON_TROVATA', hint: 'Riapri l’archivio fatture: potrebbe essere stata eliminata.' });
   guard(user, r.direction);
   const today = localDate();
   const payments = await db.prepare('SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY paid_on, id').all(id);
@@ -68,44 +69,44 @@ export async function getInvoice(id, user) {
 
 async function clean(b, user, old = null) {
   const direction = old?.direction || str(b.direction);
-  if (!DIRECTIONS[direction]) throw new HttpError(400, 'Indica se la fattura è emessa o ricevuta.');
+  if (!DIRECTIONS[direction]) throw new HttpError(400, 'Documento non salvato: non è indicato se è una fattura emessa o ricevuta.', { code: 'FATTURA_DIREZIONE_MANCANTE', hint: 'Scegli “emessa” (a un cliente) oppure “ricevuta” (da un fornitore).' });
   guard(user, direction);
   const doc_type = old?.doc_type || (b.doc_type === 'nota_credito' ? 'nota_credito' : 'fattura');
   const number = str(b.number ?? old?.number);
-  if (!number) throw new HttpError(400, 'Numero documento obbligatorio');
+  if (!number) throw new HttpError(400, 'Documento non salvato: manca il numero della fattura.', { code: 'FATTURA_NUMERO_MANCANTE', hint: 'Scrivi il numero come compare sul documento.' });
   const issue_date = str(b.issue_date ?? old?.issue_date) || localDate();
-  if (!dayOk(issue_date)) throw new HttpError(400, 'Data fattura non valida');
-  if (issue_date > localDate()) throw new HttpError(400, 'La data della fattura non può essere nel futuro.');
+  if (!dayOk(issue_date)) throw new HttpError(400, 'Documento non salvato: la data della fattura non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
+  if (issue_date > localDate()) throw new HttpError(400, 'Documento non salvato: la data della fattura è nel futuro.', { code: 'DATA_FUTURA', hint: 'Scegli la data di oggi o una precedente.' });
   let due_date = 'due_date' in b ? str(b.due_date) : (old ? old.due_date : null);
   if (!due_date && doc_type === 'fattura') due_date = addDaysStr(issue_date, Math.max(0, Math.round(num(b.terms_days, DEFAULT_TERMS_DAYS))));
   if (doc_type === 'nota_credito') due_date = null;
-  if (due_date && !dayOk(due_date)) throw new HttpError(400, 'Scadenza non valida');
-  if (due_date && due_date < issue_date) throw new HttpError(400, 'La scadenza non può essere prima della data della fattura.');
+  if (due_date && !dayOk(due_date)) throw new HttpError(400, 'Documento non salvato: la data di scadenza non è valida.', { code: 'SCADENZA_NON_VALIDA', hint: 'Scegli una data che esiste (GG/MM/AAAA).' });
+  if (due_date && due_date < issue_date) throw new HttpError(400, 'Documento non salvato: la scadenza viene prima della data della fattura.', { code: 'SCADENZA_PRIMA_EMISSIONE', hint: 'Scegli una scadenza uguale o successiva alla data della fattura.' });
   const total = money(num(b.total ?? old?.total, NaN));
-  if (!Number.isFinite(total) || total <= 0 || total > 100_000_000) throw new HttpError(400, 'Importo non valido');
+  if (!Number.isFinite(total) || total <= 0 || total > 100_000_000) throw new HttpError(400, 'Documento non salvato: il totale non è valido (serve un importo maggiore di zero, in euro).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi il totale della fattura (es. 122,00).' });
   const vat = money(num(b.vat ?? old?.vat, 0));
-  if (!Number.isFinite(vat) || vat < 0 || vat > total) throw new HttpError(400, 'IVA non valida');
+  if (!Number.isFinite(vat) || vat < 0 || vat > total) throw new HttpError(400, 'Documento non salvato: l’IVA indicata non è valida (negativa o superiore al totale).', { code: 'IVA_NON_VALIDA', hint: 'Scrivi l’importo dell’IVA contenuto nel totale.' });
   let customer_id = 'customer_id' in b ? (b.customer_id ? Number(b.customer_id) : null) : (old?.customer_id ?? null);
   let supplier_id = 'supplier_id' in b ? (b.supplier_id ? Number(b.supplier_id) : null) : (old?.supplier_id ?? null);
   if (direction === 'emessa') supplier_id = null; else customer_id = null;
   let party_name = 'party_name' in b ? str(b.party_name) : (old?.party_name ?? null);
-  if (customer_id) { const c = await db.prepare('SELECT name FROM customers WHERE id = ?').get(customer_id); if (!c) throw new HttpError(404, 'Cliente non trovato'); party_name = c.name; }
-  if (supplier_id) { const s = await db.prepare('SELECT name FROM suppliers WHERE id = ?').get(supplier_id); if (!s) throw new HttpError(404, 'Fornitore non trovato'); party_name = s.name; }
-  if (!party_name) throw new HttpError(400, direction === 'emessa' ? 'Indica il cliente (scegli dall’elenco o scrivi il nome).' : 'Indica il fornitore (scegli dall’elenco o scrivi il nome).');
+  if (customer_id) { const c = await db.prepare('SELECT name FROM customers WHERE id = ?').get(customer_id); if (!c) throw new HttpError(404, 'Il cliente scelto per la fattura non esiste più in anagrafica.', { code: 'CLIENTE_NON_TROVATO', hint: 'Cerca di nuovo il cliente o scrivine il nome.' }); party_name = c.name; }
+  if (supplier_id) { const s = await db.prepare('SELECT name FROM suppliers WHERE id = ?').get(supplier_id); if (!s) throw new HttpError(404, 'Il fornitore scelto per la fattura non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Cerca di nuovo il fornitore o scrivine il nome.' }); party_name = s.name; }
+  if (!party_name) throw new HttpError(400, direction === 'emessa' ? 'Fattura emessa senza intestatario: manca il cliente.' : 'Fattura ricevuta senza intestatario: manca il fornitore.', { code: 'FATTURA_INTESTATARIO_MANCANTE', hint: 'Scegli dall’elenco oppure scrivi il nome.' });
   const link = (k) => (k in b ? (b[k] ? Number(b[k]) : null) : (old?.[k] ?? null));
   const sale_id = direction === 'emessa' ? link('sale_id') : null;
   const repair_id = direction === 'emessa' ? link('repair_id') : null;
   const purchase_id = direction === 'ricevuta' ? link('purchase_id') : null;
-  if (sale_id && !(await db.prepare('SELECT id FROM sales WHERE id = ?').get(sale_id))) throw new HttpError(404, 'Vendita collegata non trovata');
-  if (repair_id && !(await db.prepare('SELECT id FROM repairs WHERE id = ?').get(repair_id))) throw new HttpError(404, 'Riparazione collegata non trovata');
-  if (purchase_id && !(await db.prepare('SELECT id FROM purchases WHERE id = ?').get(purchase_id))) throw new HttpError(404, 'Acquisto collegato non trovato');
+  if (sale_id && !(await db.prepare('SELECT id FROM sales WHERE id = ?').get(sale_id))) throw new HttpError(404, 'La vendita collegata alla fattura non esiste più.', { code: 'VENDITA_NON_TROVATA', hint: 'Togli il collegamento oppure scegli un’altra vendita.' });
+  if (repair_id && !(await db.prepare('SELECT id FROM repairs WHERE id = ?').get(repair_id))) throw new HttpError(404, 'La riparazione collegata alla fattura non esiste più.', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Togli il collegamento oppure scegli un’altra riparazione.' });
+  if (purchase_id && !(await db.prepare('SELECT id FROM purchases WHERE id = ?').get(purchase_id))) throw new HttpError(404, 'L’acquisto collegato alla fattura non esiste più.', { code: 'ACQUISTO_NON_TROVATO', hint: 'Togli il collegamento oppure scegli un altro acquisto.' });
   let credit_for_id = 'credit_for_id' in b ? (b.credit_for_id ? Number(b.credit_for_id) : null) : (old?.credit_for_id ?? null);
   if (doc_type === 'nota_credito' && credit_for_id) {
     const o = await db.prepare(`${BASE} WHERE i.id = ?`).get(credit_for_id);
-    if (!o || o.doc_type !== 'fattura') throw new HttpError(404, 'Fattura da stornare non trovata');
-    if (o.direction !== direction) throw new HttpError(400, 'La nota di credito deve essere dello stesso tipo della fattura (emessa/ricevuta).');
+    if (!o || o.doc_type !== 'fattura') throw new HttpError(404, 'La fattura che la nota di credito dovrebbe stornare non esiste (o è a sua volta una nota di credito).', { code: 'FATTURA_DA_STORNARE_NON_TROVATA', hint: 'Scegli la fattura originale dall’archivio.' });
+    if (o.direction !== direction) throw new HttpError(400, 'La nota di credito non può stornare una fattura di tipo diverso (emessa/ricevuta).', { code: 'NOTA_CREDITO_TIPO_DIVERSO', hint: 'Scegli una fattura dello stesso tipo della nota.' });
     const already = money(o.credited) - (old ? money(old.total) : 0);
-    if (already + total > o.total + 0.005) throw new HttpError(400, `La nota di credito supera la fattura: si può stornare al massimo ${eur(o.total - already)}.`);
+    if (already + total > o.total + 0.005) throw new HttpError(400, `La nota di credito supera la fattura ${o.number}: si può stornare al massimo ${eur(o.total - already)}.`, { code: 'NOTA_CREDITO_SUPERA_FATTURA', hint: 'Abbassa l’importo della nota fino al massimo indicato.' });
   } else credit_for_id = null;
   return { direction, doc_type, number, issue_date, due_date, customer_id, supplier_id, party_name, total, vat, credit_for_id, sale_id, repair_id, purchase_id, notes: 'notes' in b ? str(b.notes) : (old?.notes ?? null) };
 }
@@ -113,7 +114,7 @@ async function clean(b, user, old = null) {
 async function assertNoDuplicate(c, exceptId = 0) {
   const d = await db.prepare(`SELECT id FROM invoices WHERE direction = ? AND doc_type = ? AND lower(number) = lower(?) AND substr(issue_date,1,4) = ? AND COALESCE(customer_id,0) = ? AND COALESCE(supplier_id,0) = ? AND lower(COALESCE(party_name,'')) = lower(?) AND id <> ?`)
     .get(c.direction, c.doc_type, c.number, c.issue_date.slice(0, 4), c.customer_id || 0, c.supplier_id || 0, c.party_name || '', exceptId);
-  if (d) throw new HttpError(409, `Esiste già ${c.doc_type === 'nota_credito' ? 'la nota di credito' : 'la fattura'} ${c.number} di ${c.party_name} nello stesso anno: aprila dall’archivio.`);
+  if (d) throw new HttpError(409, `Esiste già ${c.doc_type === 'nota_credito' ? 'la nota di credito' : 'la fattura'} ${c.number} di ${c.party_name} nello stesso anno: aprila dall’archivio.`, { code: 'FATTURA_DUPLICATA', hint: 'Aprila dall’archivio, oppure controlla il numero che hai scritto.' });
 }
 
 /** Collega a una fattura emessa gli incassi gia' registrati in cassa per la vendita/riparazione collegata (nessun doppione, importo mai oltre il totale). */
@@ -152,11 +153,11 @@ export async function createInvoice(b, user) {
 
 export async function updateInvoice(id, b, user) {
   const old = await db.prepare(`${BASE} WHERE i.id = ?`).get(id);
-  if (!old) throw new HttpError(404, 'Fattura non trovata');
+  if (!old) throw new HttpError(404, 'Fattura non trovata', { code: 'FATTURA_NON_TROVATA', hint: 'Riapri l’archivio fatture: potrebbe essere stata eliminata.' });
   guard(user, old.direction);
   const c = await clean(b, user, old);
   await assertNoDuplicate(c, id);
-  if (c.doc_type === 'fattura' && c.total < money(old.paid + old.credited) - 0.005) throw new HttpError(400, `Importo inferiore a quanto già pagato/stornato (${eur(old.paid + old.credited)}).`);
+  if (c.doc_type === 'fattura' && c.total < money(old.paid + old.credited) - 0.005) throw new HttpError(400, `Fattura ${old.number}: il nuovo totale è inferiore a quanto risulta già pagato o stornato (${eur(old.paid + old.credited)}).`, { code: 'TOTALE_SOTTO_PAGATO', hint: 'Alza il totale, oppure elimina prima i pagamenti o le note di credito di troppo.' });
   await db.prepare(`UPDATE invoices SET number=?, issue_date=?, due_date=?, customer_id=?, supplier_id=?, party_name=?, total=?, vat=?, credit_for_id=?, sale_id=?, repair_id=?, purchase_id=?, notes=?, updated_at=${NOW}, updated_by=? WHERE id=?`)
     .run(c.number, c.issue_date, c.due_date, c.customer_id, c.supplier_id, c.party_name, c.total, c.vat, c.credit_for_id, c.sale_id, c.repair_id, c.purchase_id, c.notes, who(user), id);
   const ch = [];
@@ -167,8 +168,8 @@ export async function updateInvoice(id, b, user) {
 
 export async function deleteInvoice(id, user) {
   const inv = await getInvoice(id, user);
-  if (inv.payments.length) throw new HttpError(409, 'La fattura ha pagamenti registrati: eliminali prima (uno per uno, restano nel Registro).');
-  if (inv.credit_notes.length) throw new HttpError(409, 'La fattura ha note di credito collegate: eliminale prima.');
+  if (inv.payments.length) throw new HttpError(409, `Fattura ${inv.number}: ha ${inv.payments.length} pagamenti registrati e non si elimina finché ci sono.`, { code: 'FATTURA_CON_PAGAMENTI', hint: 'Elimina prima i pagamenti uno per uno (restano nel Registro), poi la fattura.' });
+  if (inv.credit_notes.length) throw new HttpError(409, `Fattura ${inv.number}: ha note di credito collegate e non si elimina finché ci sono.`, { code: 'FATTURA_CON_NOTE_CREDITO', hint: 'Elimina prima le note di credito collegate.' });
   await db.prepare('DELETE FROM invoices WHERE id = ?').run(id);
   await writeAudit({ user, action: 'elimina', type: 'fattura', id, label: `${inv.doc_type === 'nota_credito' ? 'Nota di credito' : 'Fattura'} ${inv.number} · ${inv.party}`, detail: `eliminata: ${inv.direction} del ${inv.issue_date}, ${eur(inv.total)}` });
   return { ok: true };
@@ -176,17 +177,17 @@ export async function deleteInvoice(id, user) {
 
 export async function addInvoicePayment(id, b, user) {
   const inv = await getInvoice(id, user);
-  if (inv.doc_type === 'nota_credito') throw new HttpError(400, 'Una nota di credito non si paga.');
-  if (inv.status === 'stornata') throw new HttpError(409, 'La fattura è stata stornata per intero.');
+  if (inv.doc_type === 'nota_credito') throw new HttpError(400, `${inv.number}: è una nota di credito e non si paga né si incassa.`, { code: 'NOTA_CREDITO_NON_PAGABILE', hint: 'Registra i pagamenti sulla fattura originale.' });
+  if (inv.status === 'stornata') throw new HttpError(409, `Fattura ${inv.number}: è stata stornata per intero, non resta nulla da pagare.`, { code: 'FATTURA_STORNATA', hint: 'Non serve registrare altri pagamenti.' });
   const amount = money(num(b.amount, NaN));
-  if (!Number.isFinite(amount) || amount <= 0) throw new HttpError(400, 'Importo non valido');
-  if (amount > inv.open + 0.005) throw new HttpError(400, `L’importo supera quanto resta da pagare (${eur(inv.open)}).`);
+  if (!Number.isFinite(amount) || amount <= 0) throw new HttpError(400, 'Pagamento non registrato: l’importo non è valido (serve un numero maggiore di zero).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi l’importo pagato (es. 50,00).' });
+  if (amount > inv.open + 0.005) throw new HttpError(400, `Fattura ${inv.number}: l’importo supera quanto resta da pagare (${eur(inv.open)}).`, { code: 'PAGAMENTO_SUPERA_RESIDUO', hint: 'Scrivi al massimo il residuo indicato: serve a non incassare due volte.' });
   const method = assertMethod(b.method);
-  if (!method) throw new HttpError(400, 'Scegli il metodo di pagamento (contanti, carta, bonifico…).');
+  if (!method) throw new HttpError(400, `Fattura ${inv.number}: pagamento non registrato perché manca il metodo di pagamento.`, { code: 'METODO_PAGAMENTO_MANCANTE', hint: 'Scegli come è stato pagato (contanti, carta, bonifico…): ogni movimento va tracciato.' });
   const paid_on = str(b.paid_on) || localDate();
-  if (!dayOk(paid_on)) throw new HttpError(400, 'Data del pagamento non valida');
-  if (paid_on > localDate()) throw new HttpError(400, 'La data del pagamento non può essere nel futuro.');
-  if (paid_on < inv.issue_date) throw new HttpError(400, 'Il pagamento non può essere prima della data della fattura.');
+  if (!dayOk(paid_on)) throw new HttpError(400, 'Pagamento non registrato: la data del pagamento non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
+  if (paid_on > localDate()) throw new HttpError(400, 'Pagamento non registrato: la data del pagamento è nel futuro.', { code: 'DATA_FUTURA', hint: 'Scegli la data di oggi o una precedente.' });
+  if (paid_on < inv.issue_date) throw new HttpError(400, `Fattura ${inv.number}: la data del pagamento è precedente alla data della fattura (${inv.issue_date}).`, { code: 'PAGAMENTO_PRIMA_FATTURA', hint: 'Scegli una data uguale o successiva all’emissione.' });
   let payment_id = null;
   let expense_id = null;
   if (inv.direction === 'emessa') {
@@ -199,6 +200,14 @@ export async function addInvoicePayment(id, b, user) {
     expense_id = e.id;
   }
   const r = await db.prepare(`INSERT INTO invoice_payments (invoice_id, paid_on, amount, method, note, payment_id, expense_id, created_at, created_by) VALUES (?,?,?,?,?,?,?,${NOW},?)`).run(id, paid_on, amount, method, str(b.note), payment_id, expense_id, who(user));
+  // Controllo anti doppio incasso: due richieste simultanee potrebbero aver superato entrambe il controllo sul residuo. Si ricalcola a pagamento inserito e, se si e' sforato, si annulla questo.
+  const total = money((await db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM invoice_payments WHERE invoice_id = ? AND id <= ?').get(id, Number(r.lastInsertRowid))).s);
+  if (total > money(inv.total - inv.credited) + 0.005) {
+    await db.prepare('DELETE FROM invoice_payments WHERE id = ?').run(Number(r.lastInsertRowid));
+    if (payment_id) await db.prepare('DELETE FROM payments WHERE id = ?').run(payment_id);
+    if (expense_id) await db.prepare('DELETE FROM expenses WHERE id = ?').run(expense_id);
+    throw new HttpError(409, `Fattura ${inv.number}: nello stesso istante è stato registrato un altro pagamento e questo avrebbe superato il totale: il tuo pagamento NON è stato registrato.`, { code: 'PAGAMENTO_DOPPIO', hint: 'Ricarica la fattura e controlla i pagamenti già presenti prima di riprovare.' });
+  }
   await writeAudit({ user, action: 'crea', type: 'fattura', id, label: `Fattura ${inv.number} · ${inv.party}`, detail: `${inv.direction === 'emessa' ? 'incasso' : 'pagamento'} ${eur(amount)} (${method}) del ${paid_on}${paid_on < localDate() ? ' RETROATTIVO' : ''}${payment_id ? ' · registrato in cassa' : ''}${expense_id ? ' · registrato tra le spese' : ''}` });
   return { ...(await getInvoice(id, user)), payment: { id: Number(r.lastInsertRowid) } };
 }
@@ -206,7 +215,7 @@ export async function addInvoicePayment(id, b, user) {
 export async function deleteInvoicePayment(id, pid, user) {
   const inv = await getInvoice(id, user);
   const p = await db.prepare('SELECT * FROM invoice_payments WHERE id = ? AND invoice_id = ?').get(pid, id);
-  if (!p) throw new HttpError(404, 'Pagamento non trovato');
+  if (!p) throw new HttpError(404, 'Il pagamento indicato non esiste per questa fattura.', { code: 'PAGAMENTO_NON_TROVATO', hint: 'Aggiorna la fattura: il pagamento potrebbe essere già stato eliminato.' });
   const own = p.payment_id ? await db.prepare("SELECT id FROM payments WHERE id = ? AND kind = 'fattura'").get(p.payment_id) : null;
   if (own) await db.prepare('DELETE FROM payments WHERE id = ?').run(own.id); // solo gli incassi creati da questa fattura; quelli di vendite/riparazioni restano
   if (p.expense_id) await db.prepare('DELETE FROM expenses WHERE id = ?').run(p.expense_id);
@@ -218,18 +227,18 @@ export async function deleteInvoicePayment(id, pid, user) {
 export async function fromPurchase(purchaseId, b, user) {
   guard(user, 'ricevuta');
   const p = await db.prepare('SELECT * FROM purchases WHERE id = ?').get(purchaseId);
-  if (!p) throw new HttpError(404, 'Acquisto non trovato');
-  if (await db.prepare('SELECT id FROM invoices WHERE purchase_id = ?').get(p.id)) throw new HttpError(409, 'Questo acquisto è già nell’archivio fatture.');
+  if (!p) throw new HttpError(404, 'Acquisto non trovato', { code: 'ACQUISTO_NON_TROVATO', hint: 'Riapri l’elenco degli acquisti.' });
+  if (await db.prepare('SELECT id FROM invoices WHERE purchase_id = ?').get(p.id)) throw new HttpError(409, `L’acquisto n. ${p.doc_number || p.id} è già nell’archivio fatture: non lo duplico.`, { code: 'ACQUISTO_GIA_IN_ARCHIVIO', hint: 'Cercalo nell’archivio fatture ricevute.' });
   return createInvoice({ direction: 'ricevuta', doc_type: p.doc_type === 'TD04' ? 'nota_credito' : 'fattura', number: p.doc_number, issue_date: p.doc_date, due_date: b?.due_date, terms_days: b?.terms_days, supplier_id: p.supplier_id, total: p.total, purchase_id: p.id, notes: 'Dall’import degli acquisti' }, user);
 }
 
 export async function fromSale(saleId, b, user) {
   const s = await db.prepare('SELECT * FROM sales WHERE id = ?').get(saleId);
-  if (!s) throw new HttpError(404, 'Vendita non trovata');
-  if (await db.prepare("SELECT id FROM invoices WHERE sale_id = ? AND direction = 'emessa' AND doc_type = 'fattura'").get(s.id)) throw new HttpError(409, 'Per questa vendita c’è già una fattura nell’archivio.');
+  if (!s) throw new HttpError(404, 'Vendita non trovata', { code: 'VENDITA_NON_TROVATA', hint: 'Riapri l’elenco delle vendite.' });
+  if (await db.prepare("SELECT id FROM invoices WHERE sale_id = ? AND direction = 'emessa' AND doc_type = 'fattura'").get(s.id)) throw new HttpError(409, `La vendita n. ${s.id} ha già una fattura nell’archivio: non ne registro una seconda.`, { code: 'VENDITA_GIA_FATTURATA', hint: 'Apri la fattura già presente nell’archivio.' });
   const number = str(b?.number);
-  if (!number) throw new HttpError(400, 'Scrivi il numero della fattura che hai emesso.');
-  if (!s.customer_id && !str(b?.party_name)) throw new HttpError(400, 'La vendita non ha un cliente: scrivi il nome dell’intestatario.');
+  if (!number) throw new HttpError(400, `Vendita n. ${s.id}: manca il numero della fattura emessa.`, { code: 'FATTURA_NUMERO_MANCANTE', hint: 'Scrivi il numero come compare sul documento.' });
+  if (!s.customer_id && !str(b?.party_name)) throw new HttpError(400, `Vendita n. ${s.id}: non ha un cliente, quindi non so a chi intestare la fattura.`, { code: 'FATTURA_INTESTATARIO_MANCANTE', hint: 'Scrivi il nome dell’intestatario.' });
   return createInvoice({ direction: 'emessa', number, issue_date: str(b?.issue_date) || s.created_at.slice(0, 10), due_date: b?.due_date, terms_days: b?.terms_days, customer_id: s.customer_id, party_name: b?.party_name, total: s.total, sale_id: s.id }, user);
 }
 
@@ -313,7 +322,7 @@ export function registerInvoiceRoutes(app, h, { adminOnly }) {
     try {
       const d = await listInvoices(c.req.query(), c.get('user'));
       return c.body(invoicesCsv(d.rows), 200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="archivio-fatture-${localDate()}.csv"`, 'cache-control': 'no-store' });
-    } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Esportazione non riuscita' }, e.status || 500); }
+    } catch (e) { const r = toResponse(e, { method: c.req.method, path: c.req.path }); return c.json(r.body, r.status); }
   });
   app.get('/api/invoices/meta', h(() => ({ directions: DIRECTIONS, statuses: STATUS_LABELS, terms_days: DEFAULT_TERMS_DAYS })));
   app.post('/api/invoices/from-purchase/:id{-?[0-9]+}', h((req) => fromPurchase(Number(req.params.id), req.body, req.user)));
