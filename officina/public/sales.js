@@ -54,6 +54,9 @@ export async function salesView(el) {
   function renderCart() {
     const subtotal = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
     const keepDisc = discNow(); // lo sconto digitato non si perde quando cambia il carrello
+    const keepRetro = $('#s-retro', el)?.value || ''; // idem la data di un giorno passato e la spunta "stampa"
+    const keepPrint = $('#s-print', el) ? $('#s-print', el).checked : wantPrint();
+    const retroOpen = !!$('#s-cart details.retro[open]', el);
     $('#s-cart', el).innerHTML = cart.length
       ? `<div class="sec" style="gap:0"><h3 class="sec-t" style="margin-bottom:.9rem">Carrello</h3>${cart.map((i, idx) => `<div class="cart-item">
           <span class="name">${esc(i.name)}</span><button class="xbtn" data-rm="${idx}" aria-label="Rimuovi ${esc(i.name)}">✕</button>
@@ -68,10 +71,13 @@ export async function salesView(el) {
         </div>
         <div class="sec" id="s-settle"></div>
         ${retroField('s-retro')}
-        <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${wantPrint() ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
+        <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${keepPrint ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
     const disc = $('#s-disc', el);
+    const rd = $('#s-retro', el);
+    if (rd && keepRetro) { rd.value = keepRetro; }
+    if (rd && (keepRetro || retroOpen)) rd.closest('details')?.setAttribute('open', '');
     if (disc) {
       settle.mount($('#s-settle', el));
       disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - discNow())); settle.update(); };

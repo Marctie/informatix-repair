@@ -929,3 +929,10 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - DA FARE: applicare le migrazioni D1 0017-0028 e `wrangler deploy` (bloccato dai permessi della sessione: serve il via libera di Marco). Poi: prove di Christian (elenco nelle relazioni degli agenti), fattura XML vera (attesa), PDF/DDT veri, regolamento punti (domanda 21), conferma testi legali da un professionista.
 
 - **PUBBLICATO 2026-10-16**: migrazioni D1 0017-0028 applicate (dopo un errore 7403 passeggero) e deploy versione 85187afc. Marco ha dato il consenso esplicito a eseguire wrangler. Resta il controllo E2E ui-review (1 test instabile "ricerca globale e codice sconosciuto").
+
+## Agente F: errori parlanti nell interfaccia
+- Nuovo officina/public/errori.js (logica pura, testata in tests/errori.test.mjs): classifica 400/401/403/404/409/429/5xx, rete assente, timeout, risposta HTML (login Access); usa code/hint del backend se presenti.
+- util.js: api() con timeout 30 s e ApiError; toast con suggerimento e pulsanti; safe() con Riprova; busy() anti doppio click; gestore globale error/unhandledrejection e avvisi offline/online.
+- repair.js: avanzamento a "in attesa di approvazione" senza preventivo bloccato prima del server con pulsante "Inserisci ora"; un solo azione alla volta.
+- sales.js: data retroattiva, riquadro aperto e spunta stampa non si azzerano piu al ridisegno del carrello.
+- Manuale sezione 30. Test officina 161/161. Backend (agente E): aggiungere code/hint ai JSON d errore.
