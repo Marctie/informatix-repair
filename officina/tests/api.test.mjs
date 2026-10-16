@@ -374,9 +374,9 @@ test('notifiche Telegram: testo chiaro, escape HTML, niente segreti', async () =
   const { describeEvent } = await import('../notify.mjs');
   const u = { name: 'Marco', email: 'm@example.com' };
   const e500 = describeEvent({ method: 'POST', path: '/api/sales', status: 500, user: u, error: 'boom <x> & 123456789:AAAbbbCCCdddEEEfffGGGhhhIIIjjjKKK12' });
-  assert.match(e500, /ERRORE 500/);
+  assert.match(e500, /ERRORE DEL SISTEMA/);
   assert.ok(e500.includes('&lt;x&gt; &amp;') && e500.includes('[token]') && !e500.includes('AAAbbb'));
-  assert.match(describeEvent({ method: 'POST', path: '/api/sales', status: 400, user: u, result: { error: 'Aggiungi almeno un articolo' } }), /Vendita: operazione non riuscita/);
+  assert.match(describeEvent({ method: 'POST', path: '/api/sales', status: 400, user: u, result: { error: 'Aggiungi almeno un articolo' } }), /Nuova vendita: non si è potuto salvare[\s\S]*Aggiungi almeno un articolo/);
   const p = describeEvent({ method: 'POST', path: '/api/repairs/1/parts', status: 200, user: u, body: { product_id: 3, qty: 2 }, result: { code: 'R-1', parts: [{ name: 'Display <A&B>' }] } });
   assert.ok(p.includes('Display &lt;A&amp;B&gt; ×2'));
   const s = describeEvent({ method: 'PUT', path: '/api/settings', status: 200, user: u, body: { shop_name: 'x', admin_password: 'segreto' } });

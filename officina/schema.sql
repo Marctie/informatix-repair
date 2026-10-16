@@ -522,3 +522,32 @@ CREATE TABLE IF NOT EXISTS supplier_formats (
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+
+-- Agente G: registro errori consultabile (migrazione 0031)
+CREATE TABLE IF NOT EXISTS error_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  last_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  severity TEXT NOT NULL,
+  status INTEGER NOT NULL,
+  method TEXT NOT NULL,
+  path TEXT NOT NULL,
+  section TEXT,
+  action TEXT,
+  entity TEXT,
+  title TEXT,
+  reason TEXT,
+  hint TEXT,
+  error_code TEXT,
+  ref TEXT,
+  version TEXT,
+  user_email TEXT NOT NULL DEFAULT 'visitatore',
+  user_name TEXT,
+  ip TEXT,
+  country TEXT,
+  fingerprint TEXT NOT NULL,
+  count INTEGER NOT NULL DEFAULT 1,
+  notified INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_error_log_at ON error_log(at);
+CREATE INDEX IF NOT EXISTS idx_error_log_fp ON error_log(fingerprint, last_at);

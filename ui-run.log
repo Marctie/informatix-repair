@@ -1,0 +1,38 @@
+
+> informatix-repair@1.0.0 test:e2e
+> node cypress/run.mjs --spec cypress/e2e/ui-review.cy.js
+
+
+
+DevTools listening on ws://127.0.0.1:53539/devtools/browser/dbb98d9c-2aed-4525-9998-313e16f3339f
+(node:44940) ExperimentalWarning: `--experimental-loader` may be removed in the future; instead use `register()`:
+--import 'data:text/javascript,import { register } from "node:module"; import { pathToFileURL } from "node:url"; register("file%3A///C%3A/Users/marco.peluso/AppData/Local/Cypress/Cache/13.17.0/Cypress/resources/app/node_modules/ts-node/esm/transpile-only.mjs", pathToFileURL("./"));'
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:44940) [DEP0180] DeprecationWarning: fs.Stats constructor is deprecated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Cypress detected policy settings on your computer that may cause issues.
+
+The following policies were detected that may prevent Cypress from automating Chrome:
+
+ - HKEY_LOCAL_MACHINE\Software\Policies\Google\Chrome\ExtensionSettings
+
+For more information, see https://on.cypress.io/bad-browser-policy
+
+====================================================================================================
+
+  (Run Starting)
+
+  ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Cypress:        13.17.0                                                                        │
+  │ Browser:        Electron 118 (headless)                                                        │
+  │ Node Version:   v22.23.2 (C:\Program Files\nodejs\node.exe)                                    │
+  │ Specs:          1 found (ui-review.cy.js)                                                      │
+  │ Searched:       C:\1Marco Peluso\Lavoro da eliminare\Sito Informatix.it\Sito-Informatix\cy-wt\ │
+  │                 cypress\e2e\ui-review.cy.js                                                    │
+  └────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+                                                                                                    
+  Running:  ui-review.cy.js                                                                 (1 of 1)
+[23712:1016/091649.578:ERROR:dns_config_service.cc(273)] DNS config watch failed.
