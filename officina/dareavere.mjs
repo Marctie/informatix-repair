@@ -8,6 +8,7 @@
 //  Niente e' nascosto: ogni riga e' nel Registro e i movimenti di denaro finiscono in cassa/spese.
 //  Cattivo pagatore: soglie in Impostazioni (giorni di debito aperto, importo aperto, ricorrenza di debiti pagati in ritardo o ancora aperti).
 import { db, nowLocal } from './dbref.mjs';
+import { toResponse } from './errori.mjs';
 import { HttpError, money, localDate, assertMethod } from './logic.mjs';
 import { createExpense } from './expenses.mjs';
 import { writeAudit, AUDIT_TYPES } from './audit.mjs';
@@ -41,7 +42,7 @@ export async function setConfig(b) {
   for (const k of Object.keys(CONFIG_DEFAULTS)) {
     if (!(k in b)) continue;
     const v = num(b[k], NaN);
-    if (!Number.isFinite(v) || v < 0 || v > 1_000_000) throw new HttpError(400, 'Valore non valido: usa un numero, 0 = controllo spento.');
+    if (!Number.isFinite(v) || v < 0 || v > 1_000_000) throw new HttpError(400, 'Il valore della soglia non è valido: serve un numero tra 0 e 1.000.000.', { code: 'SOGLIA_NON_VALIDA', hint: 'Scrivi un numero; 0 spegne il controllo.' });
     await db.prepare('INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(k, String(v));
   }
   return getConfig();
@@ -96,32 +97,32 @@ const decorate = (e) => ({ ...e, retro: !!e.retro, type_label: TYPES[e.entry_typ
 export async function createEntry(b, user) {
   const cid = Number(b.customer_id);
   const customer = cid ? await db.prepare('SELECT * FROM customers WHERE id = ?').get(cid) : null;
-  if (!customer) throw new HttpError(400, 'Scegli il cliente.');
+  if (!customer) throw new HttpError(400, 'Movimento dare/avere non salvato: manca il cliente.', { code: 'CLIENTE_MANCANTE', hint: 'Scegli il cliente dall’anagrafica.' });
   const T = TYPES[b.entry_type];
-  if (!T) throw new HttpError(400, 'Scegli il tipo di movimento.');
+  if (!T) throw new HttpError(400, 'Movimento dare/avere non salvato: manca il tipo di movimento.', { code: 'TIPO_MOVIMENTO_MANCANTE', hint: 'Scegli se è un credito, un debito, un incasso o un pagamento.' });
   const amount = money(num(b.amount, NaN));
-  if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) throw new HttpError(400, 'Importo non valido');
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 10_000_000) throw new HttpError(400, 'Movimento dare/avere non salvato: l’importo non è valido (serve un numero maggiore di zero).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi l’importo in euro (es. 40,00).' });
   const entry_date = str(b.entry_date) || localDate();
-  if (!dayOk(entry_date)) throw new HttpError(400, 'Data non valida');
-  if (entry_date > localDate()) throw new HttpError(400, 'La data non può essere nel futuro.');
+  if (!dayOk(entry_date)) throw new HttpError(400, 'Movimento dare/avere non salvato: la data non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
+  if (entry_date > localDate()) throw new HttpError(400, 'Movimento dare/avere non salvato: la data è nel futuro.', { code: 'DATA_FUTURA', hint: 'Scegli la data di oggi o una precedente.' });
   const description = str(b.description);
-  if (!description) throw new HttpError(400, 'Scrivi una descrizione (di cosa si tratta).');
+  if (!description) throw new HttpError(400, 'Movimento dare/avere non salvato: manca la descrizione.', { code: 'DESCRIZIONE_MANCANTE', hint: 'Scrivi di cosa si tratta, in poche parole.' });
   let method = null;
   if (T.cash) {
     method = assertMethod(b.method);
-    if (!method) throw new HttpError(400, 'Scegli il metodo di pagamento (contanti, carta, bonifico…).');
+    if (!method) throw new HttpError(400, 'Movimento dare/avere non salvato: manca il metodo di pagamento dell’incasso.', { code: 'METODO_PAGAMENTO_MANCANTE', hint: 'Scegli come ha pagato il cliente (contanti, carta, bonifico…): ogni incasso va registrato.' });
   }
   const repair_id = b.repair_id ? Number(b.repair_id) : null;
   const sale_id = b.sale_id ? Number(b.sale_id) : null;
   if (repair_id) {
     const r = await db.prepare('SELECT customer_id FROM repairs WHERE id = ?').get(repair_id);
-    if (!r) throw new HttpError(404, 'Riparazione non trovata');
-    if (r.customer_id !== cid) throw new HttpError(400, 'La riparazione scelta è di un altro cliente.');
+    if (!r) throw new HttpError(404, 'La riparazione collegata al movimento non esiste più.', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Scegli di nuovo la riparazione o togli il collegamento.' });
+    if (r.customer_id !== cid) throw new HttpError(400, 'La riparazione scelta appartiene a un altro cliente: non la collego a questo movimento.', { code: 'RIPARAZIONE_ALTRO_CLIENTE', hint: 'Scegli una riparazione dello stesso cliente.' });
   }
   if (sale_id) {
     const s = await db.prepare('SELECT customer_id FROM sales WHERE id = ?').get(sale_id);
-    if (!s) throw new HttpError(404, 'Vendita non trovata');
-    if (s.customer_id !== cid) throw new HttpError(400, 'La vendita scelta è di un altro cliente.');
+    if (!s) throw new HttpError(404, 'La vendita collegata al movimento non esiste più.', { code: 'VENDITA_NON_TROVATA', hint: 'Scegli di nuovo la vendita o togli il collegamento.' });
+    if (s.customer_id !== cid) throw new HttpError(400, 'La vendita scelta appartiene a un altro cliente: non la collego a questo movimento.', { code: 'VENDITA_ALTRO_CLIENTE', hint: 'Scegli una vendita dello stesso cliente.' });
   }
   const retro = entry_date < localDate() ? 1 : 0;
   const r = await db.prepare(`INSERT INTO ledger_entries (customer_id, entry_date, entry_type, direction, amount, method, description, repair_id, sale_id, retro, created_at, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,${NOW},?)`)
@@ -144,7 +145,7 @@ export async function createEntry(b, user) {
 
 export async function deleteEntry(id, user) {
   const e = await db.prepare(`${SELECT} WHERE e.id = ?`).get(id);
-  if (!e) throw new HttpError(404, 'Movimento non trovato');
+  if (!e) throw new HttpError(404, 'Movimento non trovato', { code: 'MOVIMENTO_NON_TROVATO', hint: 'Aggiorna l’elenco: il movimento potrebbe essere stato eliminato.' });
   if (e.payment_id) await db.prepare("DELETE FROM payments WHERE id = ? AND kind = 'dareavere'").run(e.payment_id);
   if (e.expense_id) await db.prepare('DELETE FROM expenses WHERE id = ?').run(e.expense_id);
   await db.prepare('DELETE FROM ledger_entries WHERE id = ?').run(id);
@@ -154,7 +155,7 @@ export async function deleteEntry(id, user) {
 
 export async function customerLedger(customerId) {
   const c = await db.prepare('SELECT id, name, phone FROM customers WHERE id = ?').get(customerId);
-  if (!c) throw new HttpError(404, 'Cliente non trovato');
+  if (!c) throw new HttpError(404, 'Cliente non trovato', { code: 'CLIENTE_NON_TROVATO', hint: 'Riapri l’anagrafica clienti e cercalo di nuovo.' });
   const cfg = await getConfig();
   const entries = (await db.prepare(`${SELECT} WHERE e.customer_id = ? ORDER BY e.entry_date DESC, e.id DESC`).all(customerId)).map(decorate);
   const status = analyzeLedger(entries, cfg);
@@ -262,7 +263,7 @@ export function registerLedgerRoutes(app, h, { adminOnly }) {
     try {
       const d = await listEntries(c.req.query());
       return c.body(ledgerCsv(d.rows), 200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="dare-avere-${localDate()}.csv"`, 'cache-control': 'no-store' });
-    } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Esportazione non riuscita' }, e.status || 500); }
+    } catch (e) { const r = toResponse(e, { method: c.req.method, path: c.req.path }); return c.json(r.body, r.status); }
   });
   app.get('/api/ledger/customer/:id{-?[0-9]+}', h((req) => customerLedger(Number(req.params.id))));
   app.get('/api/ledger/status/:id{-?[0-9]+}', h((req) => customerStatus(Number(req.params.id))));
@@ -274,5 +275,5 @@ export function registerLedgerRoutes(app, h, { adminOnly }) {
 /** Un cliente con movimenti di dare/avere non si elimina: i suoi incassi/rimborsi sono in cassa e nelle spese. */
 export async function assertNoLedger(customerId) {
   const n = (await db.prepare('SELECT COUNT(*) AS n FROM ledger_entries WHERE customer_id = ?').get(customerId)).n;
-  if (n) throw new HttpError(409, 'Il cliente ha movimenti di dare/avere: eliminali prima dalla sezione Dare/avere.');
+  if (n) throw new HttpError(409, 'Il cliente non si elimina: ha movimenti di dare/avere registrati.', { code: 'CLIENTE_CON_DAREAVERE', hint: 'Elimina o salda prima i movimenti dalla sezione Dare/avere.' });
 }
