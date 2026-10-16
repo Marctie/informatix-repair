@@ -285,8 +285,8 @@ export function findLines(rows, fmt) {
 /** Testo del documento -> struttura identica a quella delle fatture XML (supplier, doc, lines, warnings...) + indicazioni per l'anteprima. */
 export function parseDdtText(text, { format = null } = {}) {
   const t = String(text || '');
-  if (!t.trim()) throw new HttpError(400, 'Nessun testo nel PDF: forse è una scansione (immagine). Servono PDF digitali, oppure inserisci le righe a mano.');
-  if (t.length > MAX_TEXT) throw new HttpError(400, 'Documento troppo lungo.');
+  if (!t.trim()) throw new HttpError(400, 'Il PDF non contiene testo leggibile: probabilmente è una scansione (immagine).', { code: 'PDF_SENZA_TESTO', hint: 'Usa un PDF digitale, oppure inserisci le righe a mano.' });
+  if (t.length > MAX_TEXT) throw new HttpError(400, 'Il documento è troppo lungo per essere letto in una volta.', { code: 'DOCUMENTO_TROPPO_LUNGO', hint: 'Importa solo le pagine che servono, oppure inserisci le righe a mano.' });
   const rows = toRows(t);
   const supplier = findSupplier(rows);
   const fmt = format || null;
@@ -328,29 +328,29 @@ export function parseDdtText(text, { format = null } = {}) {
 // ---------- Anteprima corretta a mano -> struttura valida ----------
 /** Prende il documento modificato dall'utente e lo rende valido e coerente (stessa forma dell'XML). */
 export function normalizeParsed(p) {
-  if (!p || typeof p !== 'object') throw new HttpError(400, 'Documento mancante');
+  if (!p || typeof p !== 'object') throw new HttpError(400, 'Importazione non eseguita: i dati del documento non sono arrivati.', { code: 'DOCUMENTO_MANCANTE', hint: 'Rileggi il documento e riprova.' });
   const s = p.supplier || {};
   const name = String(s.name ?? '').trim();
-  if (!name) throw new HttpError(400, 'Scrivi il nome del fornitore.');
+  if (!name) throw new HttpError(400, 'Documento non importato: manca il nome del fornitore.', { code: 'FORNITORE_MANCANTE', hint: 'Scrivi il fornitore come compare sul documento.' });
   const vat = String(s.vat ?? '').replace(/\D/g, '') || null;
   const d = p.doc || {};
   const number = String(d.number ?? '').trim().slice(0, 40);
-  if (!number) throw new HttpError(400, 'Scrivi il numero del documento.');
+  if (!number) throw new HttpError(400, 'Documento non importato: manca il numero del documento.', { code: 'NUMERO_DOCUMENTO_MANCANTE', hint: 'Scrivi il numero come compare sul documento.' });
   const date = /^\d{4}-\d{2}-\d{2}$/.test(String(d.date ?? '')) ? d.date : parseDate(d.date);
-  if (!date) throw new HttpError(400, 'Data del documento non valida (usa gg/mm/aaaa).');
+  if (!date) throw new HttpError(400, 'Documento non importato: la data del documento non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Usa il formato gg/mm/aaaa con una data che esiste.' });
   const type = ['DDT', 'TD01', 'TD04'].includes(d.type) ? d.type : 'DDT';
   const raw = Array.isArray(p.lines) ? p.lines : [];
-  if (!raw.length) throw new HttpError(400, 'Aggiungi almeno una riga.');
-  if (raw.length > 500) throw new HttpError(400, 'Troppe righe (massimo 500).');
+  if (!raw.length) throw new HttpError(400, 'Documento non importato: serve almeno una riga e non ce ne sono.', { code: 'DOCUMENTO_SENZA_RIGHE', hint: 'Aggiungi almeno una riga con descrizione e quantità.' });
+  if (raw.length > 500) throw new HttpError(400, 'Documento non importato: ha più di 500 righe.', { code: 'TROPPE_RIGHE', hint: 'Dividi il documento in più parti.' });
   const warnings = [];
   const lines = raw.map((l, k) => {
     const description = String(l.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
-    if (!description) throw new HttpError(400, `Riga ${k + 1}: manca la descrizione.`);
+    if (!description) throw new HttpError(400, `Riga ${k + 1} del documento: manca la descrizione.`, { code: 'RIGA_DESCRIZIONE_MANCANTE', hint: 'Scrivi la descrizione dell’articolo.' });
     const qty = parseNum(l.qty) ?? NaN; const price = l.unit_price === '' || l.unit_price == null ? 0 : parseNum(l.unit_price) ?? NaN;
-    if (!Number.isFinite(qty) || qty < 0) throw new HttpError(400, `Riga ${k + 1}: quantità non valida.`);
-    if (!Number.isFinite(price) || price < 0) throw new HttpError(400, `Riga ${k + 1}: prezzo non valido.`);
+    if (!Number.isFinite(qty) || qty < 0) throw new HttpError(400, `Riga ${k + 1} del documento: la quantità non è valida (vuota, non numerica o negativa).`, { code: 'RIGA_QUANTITA_NON_VALIDA', hint: 'Correggi la quantità della riga.' });
+    if (!Number.isFinite(price) || price < 0) throw new HttpError(400, `Riga ${k + 1} del documento: il prezzo non è valido (non numerico o negativo).`, { code: 'RIGA_PREZZO_NON_VALIDO', hint: 'Correggi il prezzo della riga.' });
     const vatRate = l.vat_rate === '' || l.vat_rate == null ? 22 : parseNum(l.vat_rate);
-    if (vatRate == null || vatRate < 0 || vatRate > 100) throw new HttpError(400, `Riga ${k + 1}: IVA non valida.`);
+    if (vatRate == null || vatRate < 0 || vatRate > 100) throw new HttpError(400, `Riga ${k + 1} del documento: l’aliquota IVA non è valida (deve essere tra 0 e 100).`, { code: 'RIGA_IVA_NON_VALIDA', hint: 'Correggi l’aliquota IVA della riga (es. 22).' });
     return {
       n: k + 1, number: k + 1, description, code: String(l.code ?? '').trim().slice(0, 60) || null, ean: null, qty, unit: String(l.unit ?? '').trim().slice(0, 10) || null,
       list_price: r4(price), unit_price: r4(price), discount: 0, discounts: [], vat_rate: vatRate, nature: null, line_total: r2(qty * price),
@@ -428,7 +428,7 @@ export async function listFormats() {
 }
 export async function deleteFormat(id) {
   const r = await db.prepare('DELETE FROM supplier_formats WHERE id = ?').run(id);
-  if (!r.changes) throw new HttpError(404, 'Formato non trovato');
+  if (!r.changes) throw new HttpError(404, 'Il formato fornitore indicato non esiste più.', { code: 'FORMATO_NON_TROVATO', hint: 'Aggiorna l’elenco dei formati: potrebbe essere già stato eliminato.' });
   return { ok: true };
 }
 
