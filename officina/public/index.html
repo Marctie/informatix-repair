@@ -285,7 +285,12 @@
     input,select,textarea{font-size:16px} /* evita lo zoom automatico su iPhone */
     .kpi b{font-size:1.4rem}
   }
-  #toast{box-shadow:0 8px 24px -6px rgb(0 0 0/.35);max-width:92vw;text-align:center}
+  #toast{box-shadow:0 8px 24px -6px rgb(0 0 0/.35);max-width:min(92vw,30rem);text-align:center}
+  html body #toast .toast-hint{font-weight:500;font-size:.8rem;opacity:.9;margin-top:.25rem;line-height:1.35}
+  html body #toast .toast-actions{display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.6rem}
+  html body #toast .toast-actions button{min-height:2.5rem;padding:.4rem 1rem;border-radius:.6rem;background:#fff;color:#0B0F19;font-weight:700;font-size:.85rem;border:0;cursor:pointer}
+  html body .fix-flash{outline:3px solid #F59E0B;outline-offset:2px;border-radius:.5rem;animation:fixflash 1.6s ease-out 2}
+  @keyframes fixflash{50%{outline-color:transparent}}
   #side .side-foot{flex-shrink:0;display:flex;flex-direction:column;gap:.5rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.1);font-size:.72rem;line-height:1.3;color:#9CA3AF}
   #side .side-foot span{display:flex;align-items:center;gap:.5rem}
   #side .side-foot kbd{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#E5E7EB;min-width:1.4rem;text-align:center}
