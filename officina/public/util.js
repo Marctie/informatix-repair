@@ -1,4 +1,6 @@
 // Helper condivisi dall'interfaccia del gestionale officina.
+import { buildApiError, networkError, friendly } from './errori.js';
+export { ApiError, friendly, errorText, statusPrereq } from './errori.js';
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -9,26 +11,93 @@ const ld = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0'
 export const today = () => ld(new Date());
 export const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ld(d); };
 
+const API_TIMEOUT_MS = 30000;
 export async function api(method, path, body) {
-  const res = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctl?.abort(); }, API_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body), signal: ctl?.signal });
+  } catch (e) {
+    // rete assente, server irraggiungibile, timeout, oppure Cloudflare Access che reindirizza al login (bloccato dal browser)
+    throw networkError(method, path, timedOut);
+  } finally { clearTimeout(timer); }
   let data = null;
-  try { data = await res.json(); } catch { /* risposta non JSON */ }
-  if (!res.ok) throw new Error(data?.error || `Errore ${res.status}`);
+  const contentType = res.headers.get('content-type') || '';
+  let raw = '';
+  try { raw = await res.text(); data = raw ? JSON.parse(raw) : null; } catch { data = null; /* risposta non JSON */ }
+  // errore in testo semplice (es. "Firma non trovata"): lo teniamo come messaggio
+  if (data === null && raw && !/html/i.test(contentType) && !/^\s*</.test(raw) && !res.ok) data = { error: raw.slice(0, 200) };
+  if (!res.ok || /html/i.test(contentType)) {
+    throw buildApiError({ status: res.status, data, contentType, redirected: res.redirected, method, path });
+  }
   return data;
 }
 
-export function toast(msg, ok = true) {
+/** Mostra un avviso. opts.action = { label, fn } aggiunge un pulsante; opts.ms = durata. */
+export function toast(msg, ok = true, opts = {}) {
   const t = $('#toast');
-  t.textContent = msg;
+  if (!t) return;
+  t.textContent = '';
+  const main = document.createElement('div');
+  main.textContent = msg;
+  t.appendChild(main);
+  if (opts.hint) { const h = document.createElement('div'); h.className = 'toast-hint'; h.textContent = opts.hint; t.appendChild(h); }
+  const acts = (opts.actions || (opts.action ? [opts.action] : []));
+  if (acts.length) {
+    const row = document.createElement('div'); row.className = 'toast-actions';
+    for (const a of acts) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
+      b.onclick = () => { t.classList.add('hidden'); a.fn?.(); };
+      row.appendChild(b);
+    }
+    t.appendChild(row);
+  }
   t.style.background = ok ? '#0B0F19' : '#B91C1C';
   t.classList.remove('hidden');
   clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.add('hidden'), 2800);
+  const ms = opts.ms ?? (ok ? 2800 : acts.length || opts.hint ? 9000 : 4500);
+  t._h = setTimeout(() => t.classList.add('hidden'), ms);
 }
 
-// Esegue un'azione mostrando eventuali errori come toast.
+/** Mostra un errore in modo parlante: cosa e' successo, cosa fare, e pulsanti Riprova / Ricarica quando servono. */
+export function showError(e, retryFn) {
+  const f = friendly(e);
+  const actions = [];
+  if (f.retry && retryFn) actions.push({ label: 'Riprova', fn: () => safe(retryFn) });
+  if (f.reload) actions.push({ label: 'Ricarica la pagina', fn: () => location.reload() });
+  toast(f.message, false, { hint: f.hint, actions });
+}
+
+// Esegue un'azione mostrando eventuali errori come toast parlanti (con "Riprova" se la rete e' caduta).
 export async function safe(fn) {
-  try { return await fn(); } catch (e) { toast(e.message, false); return undefined; }
+  try { return await fn(); } catch (e) { showError(e, fn); return undefined; }
+}
+
+/** Evita il doppio click: finche' l'azione e' in corso il pulsante e' disabilitato e un secondo click viene ignorato. */
+const inFlight = new WeakSet();
+export async function busy(el, fn) {
+  if (el && inFlight.has(el)) return undefined;
+  if (el) { inFlight.add(el); el.disabled = true; el.setAttribute('aria-busy', 'true'); }
+  try { return await fn(); } finally { if (el) { inFlight.delete(el); el.disabled = false; el.removeAttribute('aria-busy'); } }
+}
+
+// ---------- Gestore globale degli errori non previsti ----------
+let lastGlobal = { msg: '', at: 0 };
+function globalFail(e) {
+  const f = friendly(e);
+  if (/ResizeObserver|Script error|AbortError/.test(String(e?.message || e || e?.name))) return;
+  if (lastGlobal.msg === f.message && Date.now() - lastGlobal.at < 4000) return; // niente raffica di avvisi uguali
+  lastGlobal = { msg: f.message, at: Date.now() };
+  try { console.error('[gestionale]', e); } catch { /* console assente */ }
+  try { showError(e); } catch { /* DOM non pronto */ }
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (ev) => globalFail(ev.error || ev.message));
+  window.addEventListener('unhandledrejection', (ev) => { globalFail(ev.reason); ev.preventDefault?.(); });
+  window.addEventListener('offline', () => toast('Connessione persa.', false, { hint: 'Puoi continuare a compilare: i dati restano nella schermata. Appena torna internet riprova a salvare.', ms: 8000 }));
+  window.addEventListener('online', () => toast('Connessione tornata: puoi salvare.'));
 }
 
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

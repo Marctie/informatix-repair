@@ -4,7 +4,7 @@ import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
 import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagatore
 import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
-import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts } from './util.js';
+import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts, busy, statusPrereq } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 import { retroField, retroVal } from './retro.js';
 import { showBlackAlert, watchBlack } from './blacks.js';
@@ -295,9 +295,11 @@ export async function openRepairDetail(id, onChange) {
   const reloadList = () => { changed = true; };
   m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]') || e.target === m.el) setTimeout(() => changed && onChange?.(), 0); });
 
+  let cur = null; // ultima scheda caricata: serve a controllare i prerequisiti prima di chiamare il server
   async function render() {
     const [r] = await Promise.all([safe(() => api('GET', `/api/repairs/${id}`)), loadChecklists()]);
     if (!r) return m.close();
+    cur = r;
     $('h2', m.el).textContent = `${r.code} · ${r.brand_model}`;
     const done = ['delivered', 'cancelled'].includes(r.status);
     const total = r.final_price ?? r.quote;
@@ -469,7 +471,27 @@ export async function openRepairDetail(id, onChange) {
     }, 200);
   }
 
-  const act = async (fn, msg) => { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } };
+  let acting = false; // un'azione alla volta: il doppio click non la ripete
+  const act = async (fn, msg) => {
+    if (acting) return;
+    acting = true;
+    try { const out = await safe(fn); if (out !== undefined) { reloadList(); await render(); if (msg) toast(msg); } } finally { acting = false; }
+  };
+  // Controllo prima di chiamare il server: se manca qualcosa lo diciamo e offriamo la soluzione.
+  const blocked = (target) => {
+    const p = statusPrereq(cur, target);
+    if (!p) return false;
+    toast(p.message, false, { hint: p.hint, action: { label: p.fixLabel, fn: () => focusQuote() } });
+    return true;
+  };
+  const focusQuote = () => {
+    const f = $('#d-quote', body);
+    if (!f) return;
+    f.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    f.classList.add('fix-flash');
+    setTimeout(() => f.classList.remove('fix-flash'), 3400);
+    f.focus({ preventScroll: true });
+  };
   body.addEventListener('click', async (e) => {
     const ps = e.target.closest('[data-pstate]');
     if (ps) { if (!ps.dataset.pnext) return; return act(() => api('POST', `/api/materiali/parts/${ps.dataset.pstate}/state`, { state: ps.dataset.pnext }), ps.dataset.pnext === 'ordinato' ? 'Segnato come ordinato' : 'Segnato come arrivato'); }
@@ -490,7 +512,7 @@ export async function openRepairDetail(id, onChange) {
     switch (b.dataset.act) {
       case 'delrepair': { if (!(await confirmDelete(`la riparazione ${$('h2', m.el).textContent}`, { typed: 'ELIMINA', detail: 'Storico e firme vengono cancellati. Anche gli incassi in cassa vengono tolti.' }))) return; const out = await safe(() => api('DELETE', `/api/repairs/${id}`)); if (out) { toast('Riparazione eliminata'); m.close(); onChange?.(); } return; }
       case 'manualpart': return manualPartDialog(id, () => { reloadList(); render(); });
-      case 'advance': return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
+      case 'advance': if (blocked(cur?.next_status)) return; return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
       case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
       case 'sendquote': return sendQuoteDialog(id, () => { reloadList(); render(); });
@@ -517,6 +539,7 @@ export async function openRepairDetail(id, onChange) {
   });
   body.addEventListener('change', (e) => {
     if (e.target.id === 'd-status' && e.target.value === 'cancelled') { e.target.value = ''; return cancelDialog(id, () => { reloadList(); render(); }); }
+    if (e.target.id === 'd-status' && e.target.value && blocked(e.target.value)) { e.target.value = ''; return; }
     if (e.target.id === 'd-status' && e.target.value) act(() => api('POST', `/api/repairs/${id}/status`, { status: e.target.value }), 'Stato aggiornato');
   });
   await render();
