@@ -1,6 +1,7 @@
 // Vetrina Usati dentro il gestionale: articoli nel database, foto nell'archivio (R2), pubblicazione sul sito tramite "publisher".
 // Il sito pubblico legge content/usati/usati.json (+ public/images/usati/<slug>/...) e si rigenera da solo quando il file cambia.
 import { db, nowLocal } from './dbref.mjs';
+import { toResponse } from './errori.mjs';
 import { HttpError, localDate } from './logic.mjs';
 import { b64ToBytes, bytesToB64, DRAFT_MESSAGE } from './publisher.mjs';
 
@@ -13,7 +14,7 @@ const MAX_PHOTOS = 10;
 const NOW = "datetime('now','localtime')";
 
 const str = (v) => (v == null ? undefined : String(v).trim() || undefined);
-const numOrUndef = (v) => { if (v === '' || v == null) return undefined; const n = Number(String(v).replace(',', '.')); if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Numero non valido'); return n; };
+const numOrUndef = (v) => { if (v === '' || v == null) return undefined; const n = Number(String(v).replace(',', '.')); if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Un campo numerico dell’articolo usato non è valido (non numerico o negativo).', { code: 'NUMERO_NON_VALIDO', hint: 'Correggi prezzi e quantità con numeri uguali o maggiori di zero.' }); return n; };
 const TEXT_FIELDS = ['name', 'nameEn', 'memory', 'memoryEn', 'color', 'colorEn', 'conditionLabel', 'conditionLabelEn', 'tagline', 'taglineEn', 'description', 'descriptionEn'];
 // ordine dei campi nel JSON pubblicato (come in content/usati/usati.json)
 const ORDER = ['slug', 'name', 'nameEn', 'memory', 'memoryEn', 'color', 'colorEn', 'condition', 'conditionLabel', 'conditionLabelEn', 'price', 'featured', 'photos', 'files', 'battery', 'cycles', 'tagline', 'taglineEn', 'description', 'descriptionEn', 'specs', 'specsEn', 'category', 'contact', 'sold', 'soldAt'];
@@ -121,7 +122,7 @@ export async function publishNow({ publisher, media }) {
     console.error('Pubblicazione usati non riuscita:', e.message);
     await markDirty();
     await setMeta(META.error, e.message);
-    return { state: 'error', message: `Pubblicazione sul sito non riuscita: ${e.message}`, ...(await publishStatus(publisher)) };
+    return { state: 'error', code: 'PUBBLICAZIONE_FALLITA', hint: 'Le modifiche restano salvate nel gestionale: ripremi Pubblica tra qualche minuto; se si ripete avvisa Marco.', message: `Pubblicazione sul sito non riuscita: ${e.message}`, ...(await publishStatus(publisher)) };
   }
 }
 
@@ -129,10 +130,10 @@ export async function publishNow({ publisher, media }) {
 function fromBody(body, prev = {}) {
   const d = { ...prev };
   for (const k of TEXT_FIELDS) if (k in body) { const v = str(body[k]); if (v === undefined) delete d[k]; else d[k] = v; }
-  if ('condition' in body) { if (!CONDITIONS.some(([v]) => v === body.condition)) throw new HttpError(400, 'Condizione non valida'); d.condition = body.condition; }
-  if ('category' in body) { if (!CATEGORIES.some(([v]) => v === body.category)) throw new HttpError(400, 'Categoria non valida'); d.category = body.category; }
+  if ('condition' in body) { if (!CONDITIONS.some(([v]) => v === body.condition)) throw new HttpError(400, 'La condizione indicata per l’articolo usato non è tra quelle previste.', { code: 'CONDIZIONE_NON_VALIDA', hint: 'Scegli una condizione dall’elenco (es. ottimo, buono, usurato).' }); d.condition = body.condition; }
+  if ('category' in body) { if (!CATEGORIES.some(([v]) => v === body.category)) throw new HttpError(400, 'La categoria indicata per l’articolo usato non è tra quelle previste.', { code: 'CATEGORIA_NON_VALIDA', hint: 'Scegli una categoria dall’elenco.' }); d.category = body.category; }
   for (const k of ['battery', 'cycles']) if (k in body) { const n = numOrUndef(body[k]); if (n === undefined) delete d[k]; else d[k] = Math.round(n); }
-  if (d.battery > 100) throw new HttpError(400, 'La batteria è una percentuale (0-100)');
+  if (d.battery > 100) throw new HttpError(400, 'Lo stato batteria indicato non è valido: deve essere una percentuale tra 0 e 100.', { code: 'BATTERIA_NON_VALIDA', hint: 'Scrivi un numero da 0 a 100.' });
   for (const k of ['featured', 'contact']) if (k in body) d[k] = !!body[k];
   for (const k of ['specs', 'specsEn']) {
     if (!(k in body)) continue;
@@ -150,7 +151,7 @@ async function uniqueSlug(base) {
 }
 const load = async (slug) => {
   const row = await db.prepare('SELECT * FROM usati_items WHERE slug = ?').get(slug);
-  if (!row) throw new HttpError(404, 'Articolo non trovato');
+  if (!row) throw new HttpError(404, 'L’articolo usato non esiste più (potrebbe essere stato venduto o eliminato).', { code: 'ARTICOLO_USATO_NON_TROVATO', hint: 'Aggiorna l’elenco degli usati.' });
   return row;
 };
 const photoName = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -195,8 +196,8 @@ export function mountUsati(app, { h, adminOnly, publisher, media, siteUrl }) {
 
   app.post('/api/usati', h(async ({ c, body, query }) => {
     const d = fromBody(body);
-    if (!d.name) throw new HttpError(400, 'Nome obbligatorio');
-    if (!d.condition) throw new HttpError(400, 'Scegli la condizione');
+    if (!d.name) throw new HttpError(400, 'Articolo usato non salvato: manca il nome.', { code: 'NOME_MANCANTE', hint: 'Scrivi il nome (es. iPhone 12 128GB nero).' });
+    if (!d.condition) throw new HttpError(400, 'Articolo usato non salvato: manca la condizione.', { code: 'CONDIZIONE_MANCANTE', hint: 'Scegli la condizione dall’elenco.' });
     if (!d.category) d.category = 'smartphone';
     if (!d.conditionLabel) d.conditionLabel = CONDITIONS.find(([v]) => v === d.condition)[1];
     if (!d.specs) d.specs = [];
@@ -212,7 +213,7 @@ export function mountUsati(app, { h, adminOnly, publisher, media, siteUrl }) {
     const row = await load(params.slug);
     const d = fromBody(body, parse(row.data, {}));
     const name = 'name' in body ? str(body.name) : row.name;
-    if (!name) throw new HttpError(400, 'Nome obbligatorio');
+    if (!name) throw new HttpError(400, 'Articolo usato non salvato: manca il nome.', { code: 'NOME_MANCANTE', hint: 'Scrivi il nome (es. iPhone 12 128GB nero).' });
     const price = 'price' in body ? (numOrUndef(body.price) ?? null) : row.price;
     delete d.name;
     await db.prepare(`UPDATE usati_items SET name=?, price=?, data=?, updated_at=${NOW} WHERE id=?`).run(name, price, JSON.stringify(d), row.id);
@@ -246,11 +247,11 @@ export function mountUsati(app, { h, adminOnly, publisher, media, siteUrl }) {
   app.post('/api/usati/:slug/photos', h(async ({ c, params, body }) => {
     const row = await load(params.slug);
     const list = parse(row.photo_list, []);
-    if (list.length >= MAX_PHOTOS) throw new HttpError(400, `Massimo ${MAX_PHOTOS} foto per articolo`);
+    if (list.length >= MAX_PHOTOS) throw new HttpError(400, `Foto non aggiunta: l’articolo ha già il massimo di ${MAX_PHOTOS} foto.`, { code: 'TROPPE_FOTO', hint: 'Elimina una foto prima di aggiungerne un’altra.' });
     let full; let thumb;
-    try { full = b64ToBytes(String(body.image || '')); thumb = b64ToBytes(String(body.thumb || '')); } catch { throw new HttpError(400, 'Foto non valida'); }
-    if (!isJpeg(full) || !isJpeg(thumb)) throw new HttpError(400, 'La foto deve essere un JPEG');
-    if (full.length > 1_500_000 || thumb.length > 300_000) throw new HttpError(413, 'Foto troppo grande: va ridimensionata prima dell’invio');
+    try { full = b64ToBytes(String(body.image || '')); thumb = b64ToBytes(String(body.thumb || '')); } catch { throw new HttpError(400, 'La foto dell’articolo non è leggibile.', { code: 'FOTO_NON_VALIDA', hint: 'Scatta di nuovo la foto e riprova.' }); }
+    if (!isJpeg(full) || !isJpeg(thumb)) throw new HttpError(400, 'La foto dell’articolo non è un file JPEG.', { code: 'FOTO_NON_JPEG', hint: 'Usa una foto in formato JPG.' });
+    if (full.length > 1_500_000 || thumb.length > 300_000) throw new HttpError(413, 'La foto dell’articolo è troppo grande.', { code: 'FOTO_TROPPO_GRANDE', hint: 'Ridimensionala (di solito lo fa il browser: ricarica la pagina).' });
     const m = media(c);
     const name = photoName();
     await m.put(`usati/${row.slug}/${name}.jpg`, full);
@@ -264,7 +265,7 @@ export function mountUsati(app, { h, adminOnly, publisher, media, siteUrl }) {
     const row = await load(params.slug);
     const list = parse(row.photo_list, []);
     const order = Array.isArray(body.order) ? body.order.map(String) : [];
-    if (order.length !== list.length || !list.every((p) => order.includes(p.name))) throw new HttpError(400, 'Ordine foto non valido');
+    if (order.length !== list.length || !list.every((p) => order.includes(p.name))) throw new HttpError(400, 'Il nuovo ordine delle foto non corrisponde a quelle presenti.', { code: 'ORDINE_FOTO_NON_VALIDO', hint: 'Ricarica la scheda e riordina di nuovo le foto.' });
     const sorted = order.map((n) => list.find((p) => p.name === n));
     await db.prepare(`UPDATE usati_items SET photo_list=?, updated_at=${NOW} WHERE id=?`).run(JSON.stringify(sorted), row.id);
     await markDirty();
@@ -274,7 +275,7 @@ export function mountUsati(app, { h, adminOnly, publisher, media, siteUrl }) {
     const row = await load(params.slug);
     const list = parse(row.photo_list, []);
     const p = list.find((x) => x.name === params.name);
-    if (!p) throw new HttpError(404, 'Foto non trovata');
+    if (!p) throw new HttpError(404, 'La foto indicata non esiste più per questo articolo.', { code: 'FOTO_NON_TROVATA', hint: 'Ricarica la scheda dell’articolo.' });
     if (p.pub || p.legacy) for (const path of trashPaths(row.slug, p)) await db.prepare('INSERT OR IGNORE INTO usati_trash (path) VALUES (?)').run(path);
     if (!p.legacy) for (const s of ['', '-t']) await media(c).remove(`usati/${row.slug}/${p.name}${s}.jpg`).catch(() => {});
     await db.prepare(`UPDATE usati_items SET photo_list=?, updated_at=${NOW} WHERE id=?`).run(JSON.stringify(list.filter((x) => x !== p)), row.id);
@@ -290,6 +291,6 @@ export function mountUsati(app, { h, adminOnly, publisher, media, siteUrl }) {
       const o = await media(c).get(`usati/${slug}/${file}`);
       if (!o) return c.text('Non trovato', 404);
       return c.body(o.bytes, 200, { 'content-type': o.contentType, 'cache-control': 'private, max-age=3600' });
-    } catch (e) { return c.text(e.message, e.status || 500); }
+    } catch (e) { const r = toResponse(e, { method: 'GET', path: c.req.path }); return c.text([r.body.error, r.body.hint].filter(Boolean).join(' '), r.status); }
   });
 }

@@ -136,14 +136,14 @@ export function registerModelRoutes(app, h) {
   const clean = (b) => {
     const brand = str(b.brand);
     const model = str(b.model);
-    if (!brand) throw new HttpError(400, 'La marca è obbligatoria');
-    if (!model) throw new HttpError(400, 'Il modello è obbligatorio');
+    if (!brand) throw new HttpError(400, 'Modello non salvato: manca la marca.', { code: 'MARCA_MANCANTE', hint: 'Scrivi la marca (es. Apple).' });
+    if (!model) throw new HttpError(400, 'Modello non salvato: manca il nome del modello.', { code: 'MODELLO_MANCANTE', hint: 'Scrivi il modello (es. iPhone 13).' });
     const kind = b.kind in MODEL_KINDS ? b.kind : 'smartphone';
     return { kind, brand, model, keywords: str(b.keywords) };
   };
   const dup = async (v, exceptId = 0) => {
     const d = await db.prepare('SELECT id FROM device_models WHERE kind = ? AND brand = ? AND model = ? AND id <> ?').get(v.kind, v.brand, v.model, exceptId);
-    if (d) throw new HttpError(409, 'Questo modello è già nel catalogo.');
+    if (d) throw new HttpError(409, 'Il modello è già presente nel catalogo (stessa marca e stesso modello).', { code: 'MODELLO_DUPLICATO', hint: 'Cercalo nel catalogo e modificalo.' });
   };
   const listWhere = (query) => {
     const where = ['1=1'];
@@ -185,8 +185,8 @@ export function registerModelRoutes(app, h) {
   app.post('/api/modelli/import', h(async (req) => {
     await ensureSeed();
     const rows = parseCsv(req.body.csv);
-    if (!rows.length) throw new HttpError(400, 'Il file è vuoto.');
-    if (rows.length > 5000) throw new HttpError(400, 'Troppe righe (massimo 5000 per volta).');
+    if (!rows.length) throw new HttpError(400, 'Importazione non eseguita: il file non contiene righe.', { code: 'FILE_VUOTO', hint: 'Controlla il file e riprova.' });
+    if (rows.length > 5000) throw new HttpError(400, 'Importazione non eseguita: il file ha più di 5000 righe.', { code: 'TROPPE_RIGHE', hint: 'Dividi il file in più parti.' });
     let added = 0; let skipped = 0;
     const errors = [];
     const stmts = [];
@@ -212,7 +212,7 @@ export function registerModelRoutes(app, h) {
   app.post('/api/modelli/ripristina', h(async () => { await ensureSeed(); return { added: await insertSeed() }; }));
   app.get('/api/modelli/:id', h(async (req) => {
     const m = await db.prepare('SELECT * FROM device_models WHERE id = ?').get(req.params.id);
-    if (!m) throw new HttpError(404, 'Modello non trovato');
+    if (!m) throw new HttpError(404, 'Modello non trovato', { code: 'MODELLO_NON_TROVATO', hint: 'Aggiorna il catalogo: potrebbe essere stato eliminato.' });
     return shape(m);
   }));
   app.post('/api/modelli', h(async (req) => {
@@ -224,7 +224,7 @@ export function registerModelRoutes(app, h) {
   }));
   app.put('/api/modelli/:id', h(async (req) => {
     const old = await db.prepare('SELECT * FROM device_models WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Modello non trovato');
+    if (!old) throw new HttpError(404, 'Modello non trovato', { code: 'MODELLO_NON_TROVATO', hint: 'Aggiorna il catalogo: potrebbe essere stato eliminato.' });
     const v = clean(req.body);
     await dup(v, old.id);
     await db.prepare(`UPDATE device_models SET kind=?, brand=?, model=?, keywords=?, updated_at=${NOW} WHERE id=?`).run(v.kind, v.brand, v.model, v.keywords, old.id);
@@ -232,7 +232,7 @@ export function registerModelRoutes(app, h) {
   }));
   app.delete('/api/modelli/:id', h(async (req) => {
     const r = await db.prepare('DELETE FROM device_models WHERE id = ?').run(req.params.id);
-    if (!r.changes) throw new HttpError(404, 'Modello non trovato');
+    if (!r.changes) throw new HttpError(404, 'Modello non trovato', { code: 'MODELLO_NON_TROVATO', hint: 'Aggiorna il catalogo: potrebbe essere stato eliminato.' });
     return { ok: true };
   }));
 }

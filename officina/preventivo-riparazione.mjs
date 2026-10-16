@@ -18,7 +18,7 @@ export const SEND_VIA = ['whatsapp', 'email', 'link'];
 export async function validityDays(requested) {
   if (requested !== undefined && requested !== null && requested !== '') {
     const n = Math.round(num(requested, NaN));
-    if (!Number.isFinite(n) || n < 1 || n > 365) throw new HttpError(400, 'La validità va da 1 a 365 giorni');
+    if (!Number.isFinite(n) || n < 1 || n > 365) throw new HttpError(400, 'La validità del preventivo indicata non è ammessa: deve essere tra 1 e 365 giorni.', { code: 'VALIDITA_NON_VALIDA', hint: 'Scrivi un numero di giorni da 1 a 365.' });
     return n;
   }
   return Math.max(1, Math.round(num((await getSettings()).quote_valid_days, DEFAULT_VALID_DAYS)) || DEFAULT_VALID_DAYS);
@@ -64,10 +64,10 @@ export async function repairQuoteInfo(repairId, base) {
 /** Crea/collega il preventivo, ne fissa la validita' e lo rende apribile dal cliente (bozza -> inviato). Idempotente: richiamarlo riusa lo stesso preventivo. */
 export async function sendRepairQuote(repairId, b, base) {
   const repair = await getRepair(repairId);
-  if (['delivered', 'cancelled'].includes(repair.status)) throw new HttpError(409, 'La riparazione è conclusa: non si invia più un preventivo.');
-  if (!repair.customer_id) throw new HttpError(400, 'La riparazione non ha un cliente.');
+  if (['delivered', 'cancelled'].includes(repair.status)) throw new HttpError(409, `Riparazione ${repair.code}: è già ${repair.status === 'delivered' ? 'consegnata' : 'annullata'}, quindi non si invia più un preventivo.`, { code: 'RIPARAZIONE_CONCLUSA', hint: 'Il preventivo si invia solo mentre la riparazione è in corso.' });
+  if (!repair.customer_id) throw new HttpError(400, `Riparazione ${repair.code}: manca il cliente, quindi non so a chi mandare il preventivo.`, { code: 'CLIENTE_MANCANTE', hint: 'Collega la scheda a un cliente e riprova.' });
   const via = str(b.via);
-  if (via && !SEND_VIA.includes(via)) throw new HttpError(400, 'Canale di invio non valido');
+  if (via && !SEND_VIA.includes(via)) throw new HttpError(400, 'Il canale scelto per l’invio non è tra quelli previsti.', { code: 'CANALE_NON_VALIDO', hint: 'Scegli uno dei canali proposti (WhatsApp, SMS, email…).' });
   const days = await validityDays(b.valid_days);
   const explicit = str(b.valid_until);
   const hasValidity = b.valid_days !== undefined && b.valid_days !== '' || !!explicit;
@@ -76,13 +76,13 @@ export async function sendRepairQuote(repairId, b, base) {
   const wanted = Array.isArray(b.items) && b.items.length ? b.items : null;
   if (!id) {
     const items = wanted || itemsFromRepair(repair);
-    if (!items.length) throw new HttpError(400, 'Scrivi prima l’importo del preventivo nella scheda (o ricambi con prezzo): il cliente deve vedere cosa accetta.');
+    if (!items.length) throw new HttpError(400, `Riparazione ${repair.code}: non c’è nessuna voce da far vedere al cliente (manca l’importo o i ricambi con prezzo).`, { code: 'PREVENTIVO_VUOTO', hint: 'Scrivi l’importo del preventivo nella scheda (o aggiungi ricambi con prezzo) e riprova.' });
     const q = await createQuote({ customer_id: repair.customer_id, valid_until, items, notes: str(b.notes) || `Riparazione ${repair.code} · ${repair.brand_model}` });
     id = q.id;
     await db.prepare('UPDATE quotes SET repair_id = ? WHERE id = ?').run(repair.id, id);
   } else {
     const cur = await getQuote(id);
-    if (cur.status === 'accettato') throw new HttpError(409, 'Il cliente ha già accettato questo preventivo.');
+    if (cur.status === 'accettato') throw new HttpError(409, `Riparazione ${repair.code}: il cliente ha già accettato questo preventivo.`, { code: 'PREVENTIVO_GIA_ACCETTATO', hint: 'Non serve rinviarlo; per cambiarlo ritira prima l’accettazione.' });
     const patch = {};
     if (hasValidity || cur.expired) patch.valid_until = valid_until;
     if (wanted) patch.items = wanted;

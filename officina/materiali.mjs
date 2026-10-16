@@ -57,7 +57,7 @@ export const countMaterials = (groups) => groups.reduce((n, g) => n + g.lines.le
 export async function markOrdered({ order_ids = [], part_ids = [] } = {}) {
   const oids = [...new Set((Array.isArray(order_ids) ? order_ids : []).map(Number).filter(Boolean))];
   const pids = [...new Set((Array.isArray(part_ids) ? part_ids : []).map(Number).filter(Boolean))];
-  if (!oids.length && !pids.length) throw new HttpError(400, 'Niente di selezionato');
+  if (!oids.length && !pids.length) throw new HttpError(400, 'Operazione non eseguita: non è selezionato nessun ordine né ricambio.', { code: 'NESSUNA_SELEZIONE', hint: 'Spunta almeno una riga e riprova.' });
   let orders = 0, parts = 0;
   await tx(async () => {
     for (const id of oids) { const o = await getOrder(id); if (o.status === 'da_ordinare') { await setOrderStatus(id, 'ordinato'); orders++; } }
@@ -72,9 +72,9 @@ export async function markOrdered({ order_ids = [], part_ids = [] } = {}) {
 /** Cambia lo stato di un ricambio di riparazione: da_ordinare | ordinato | arrivato | null (non serve ordinarlo). */
 export async function setPartState(partId, state) {
   const p = await db.prepare('SELECT id FROM repair_parts WHERE id = ?').get(partId);
-  if (!p) throw new HttpError(404, 'Ricambio non trovato');
+  if (!p) throw new HttpError(404, 'Ricambio non trovato', { code: 'RICAMBIO_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
   const st = state ? String(state) : null;
-  if (st && !PART_STATES[st]) throw new HttpError(400, 'Stato non valido');
+  if (st && !PART_STATES[st]) throw new HttpError(400, 'Lo stato indicato per il ricambio non esiste.', { code: 'STATO_RICAMBIO_NON_VALIDO', hint: 'Scegli uno degli stati proposti.' });
   await db.prepare(`UPDATE repair_parts SET order_state=?, ordered_at=${st === 'ordinato' ? NOW : 'ordered_at'} WHERE id=?`).run(st, partId);
   return db.prepare('SELECT * FROM repair_parts WHERE id = ?').get(partId);
 }
@@ -98,10 +98,10 @@ export const REMINDER_WINDOW_MIN = 120;
 
 /** Controlla i valori in arrivo da Impostazioni. */
 export function validateReminderSettings(b) {
-  if ('materials_reminder_time' in b && !HHMM.test(String(b.materials_reminder_time).trim())) throw new HttpError(400, 'Orario non valido (usa il formato 12:00)');
+  if ('materials_reminder_time' in b && !HHMM.test(String(b.materials_reminder_time).trim())) throw new HttpError(400, 'L’orario del promemoria materiali non è valido.', { code: 'ORARIO_NON_VALIDO', hint: 'Usa il formato ore:minuti, es. 12:00.' });
   if ('materials_reminder_days' in b) {
     const ok = String(b.materials_reminder_days).split(',').map((x) => x.trim()).filter(Boolean);
-    if (ok.some((d) => !/^[0-6]$/.test(d))) throw new HttpError(400, 'Giorni non validi');
+    if (ok.some((d) => !/^[0-6]$/.test(d))) throw new HttpError(400, 'I giorni del promemoria materiali non sono validi.', { code: 'GIORNI_NON_VALIDI', hint: 'Scegli giorni della settimana da 0 (domenica) a 6 (sabato).' });
   }
 }
 

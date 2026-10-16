@@ -11,7 +11,7 @@ export const LOAN_STATUS = { prestato: 'In prestito', rientrato: 'Rientrato' };
 const dateOr = (v, fallback, label) => {
   const s = str(v)?.slice(0, 10);
   if (!s) return fallback;
-  if (!DATE.test(s)) throw new HttpError(400, `${label}: data non valida`);
+  if (!DATE.test(s)) throw new HttpError(400, `${label}: la data non è valida.`, { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
   return s;
 };
 
@@ -45,7 +45,7 @@ export async function loanAlerts() {
 export function registerLoanRoutes(app, h) {
   const one = async (id) => {
     const l = await db.prepare(`${SELECT} WHERE l.id = ?`).get(id);
-    if (!l) throw new HttpError(404, 'Prestito non trovato');
+    if (!l) throw new HttpError(404, 'Prestito non trovato', { code: 'PRESTITO_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
     return shape(l);
   };
   const clean = async (b, old = null) => {
@@ -53,24 +53,25 @@ export function registerLoanRoutes(app, h) {
     const repairId = b.repair_id ? Number(b.repair_id) : null;
     if (repairId) {
       repair = await db.prepare('SELECT id, customer_id, eta_date FROM repairs WHERE id = ?').get(repairId);
-      if (!repair) throw new HttpError(400, 'Riparazione non trovata');
+      if (!repair) throw new HttpError(400, 'La riparazione collegata al prestito non esiste più.', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Scegli di nuovo la riparazione.' });
     }
     let label = str(b.label);
     const deviceId = b.device_id ? Number(b.device_id) : null;
     if (deviceId) {
       const d = await db.prepare('SELECT id, brand_model FROM devices WHERE id = ?').get(deviceId);
-      if (!d) throw new HttpError(400, 'Dispositivo non trovato nel registro');
+      if (!d) throw new HttpError(400, 'Il dispositivo scelto non è più nel registro dispositivi.', { code: 'DISPOSITIVO_NON_TROVATO', hint: 'Scegli di nuovo il dispositivo o scrivine la descrizione.' });
       label = label || d.brand_model;
       const busy = await db.prepare("SELECT id FROM loans WHERE device_id = ? AND status = 'prestato' AND id <> ?").get(deviceId, old?.id || 0);
-      if (busy) throw new HttpError(409, 'Questo dispositivo è già in prestito a qualcuno: segna prima il rientro.');
+      if (busy) throw new HttpError(409, 'Il dispositivo scelto risulta già in prestito a qualcun altro: non lo presto due volte.', { code: 'DISPOSITIVO_GIA_IN_PRESTITO', hint: 'Segna prima il rientro del prestito in corso.' });
     }
-    if (!label) throw new HttpError(400, 'Scrivi quale dispositivo presti (o sceglilo dal registro)');
+    if (!label) throw new HttpError(400, 'Prestito non salvato: non è indicato quale dispositivo si presta.', { code: 'PRESTITO_DISPOSITIVO_MANCANTE', hint: 'Scrivi il dispositivo o sceglilo dal registro.' });
     const customerId = b.customer_id ? Number(b.customer_id) : repair?.customer_id ?? null;
-    if (!repairId && !customerId) throw new HttpError(400, 'Collega il prestito a una riparazione o a un cliente');
+    if (!repairId && !customerId) throw new HttpError(400, 'Prestito non salvato: non è collegato né a una riparazione né a un cliente.', { code: 'PRESTITO_SENZA_COLLEGAMENTO', hint: 'Scegli la riparazione o il cliente a cui lo stai prestando.' });
+    if (customerId && !(await db.prepare('SELECT id FROM customers WHERE id = ?').get(customerId))) throw new HttpError(400, 'Il cliente scelto per il prestito non esiste più in anagrafica.', { code: 'CLIENTE_NON_TROVATO', hint: 'Cerca di nuovo il cliente e riprova.' });
     const lent = dateOr(b.lent_at, localDate(), 'Data di consegna');
     // senza scadenza esplicita, vale la consegna stimata della riparazione (se c'e')
     const due = dateOr(b.due_at, repair?.eta_date || null, 'Scadenza');
-    if (due && due < lent) throw new HttpError(400, 'La scadenza non può essere prima della consegna');
+    if (due && due < lent) throw new HttpError(400, 'La scadenza del prestito è precedente alla data di consegna.', { code: 'SCADENZA_PRIMA_CONSEGNA', hint: 'Scegli una scadenza uguale o successiva alla consegna.' });
     return { deviceId, label, repairId, customerId, lent, due, out: str(b.condition_out), notes: str(b.notes) };
   };
 
@@ -110,7 +111,7 @@ export function registerLoanRoutes(app, h) {
   }));
   app.put('/api/prestiti/:id', h(async (req) => {
     const old = await db.prepare('SELECT * FROM loans WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Prestito non trovato');
+    if (!old) throw new HttpError(404, 'Prestito non trovato', { code: 'PRESTITO_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
     const v = await clean({ ...old, ...req.body }, old);
     await db.prepare(`UPDATE loans SET device_id=?, label=?, repair_id=?, customer_id=?, lent_at=?, due_at=?, condition_out=?, notes=?, updated_at=${NOW} WHERE id=?`)
       .run(v.deviceId, v.label, v.repairId, v.customerId, v.lent, v.due, v.out, v.notes, old.id);
@@ -118,10 +119,10 @@ export function registerLoanRoutes(app, h) {
   }));
   app.post('/api/prestiti/:id/rientro', h(async (req) => {
     const old = await db.prepare('SELECT * FROM loans WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Prestito non trovato');
-    if (old.status === 'rientrato') throw new HttpError(409, 'Già rientrato.');
+    if (!old) throw new HttpError(404, 'Prestito non trovato', { code: 'PRESTITO_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
+    if (old.status === 'rientrato') throw new HttpError(409, `Il prestito n. ${old.id} risulta già rientrato.`, { code: 'PRESTITO_GIA_RIENTRATO', hint: 'Aggiorna l’elenco: il rientro è già stato registrato.' });
     const when = dateOr(req.body.returned_at, localDate(), 'Data di rientro');
-    if (when < old.lent_at) throw new HttpError(400, 'Il rientro non può essere prima della consegna');
+    if (when < old.lent_at) throw new HttpError(400, 'La data di rientro è precedente alla data di consegna.', { code: 'RIENTRO_PRIMA_CONSEGNA', hint: 'Scegli una data di rientro uguale o successiva alla consegna.' });
     await db.prepare(`UPDATE loans SET status='rientrato', returned_at=?, condition_back=?, updated_at=${NOW} WHERE id=?`).run(when, str(req.body.condition_back), old.id);
     if (old.repair_id) await logEvent(old.repair_id, null, `Muletto rientrato: ${old.label}.`, 0);
     return one(old.id);
@@ -129,14 +130,14 @@ export function registerLoanRoutes(app, h) {
   // Rientro annullato per errore
   app.post('/api/prestiti/:id/riapri', h(async (req) => {
     const old = await db.prepare('SELECT * FROM loans WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Prestito non trovato');
-    if (old.device_id && (await db.prepare("SELECT id FROM loans WHERE device_id = ? AND status = 'prestato' AND id <> ?").get(old.device_id, old.id))) throw new HttpError(409, 'Il dispositivo è già in prestito a qualcun altro.');
+    if (!old) throw new HttpError(404, 'Prestito non trovato', { code: 'PRESTITO_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
+    if (old.device_id && (await db.prepare("SELECT id FROM loans WHERE device_id = ? AND status = 'prestato' AND id <> ?").get(old.device_id, old.id))) throw new HttpError(409, 'Non si può rimettere in prestito: lo stesso dispositivo risulta già prestato a qualcun altro.', { code: 'DISPOSITIVO_GIA_IN_PRESTITO', hint: 'Segna prima il rientro dell’altro prestito.' });
     await db.prepare(`UPDATE loans SET status='prestato', returned_at=NULL, updated_at=${NOW} WHERE id=?`).run(old.id);
     return one(old.id);
   }));
   app.delete('/api/prestiti/:id', h(async (req) => {
     const r = await db.prepare('DELETE FROM loans WHERE id = ?').run(req.params.id);
-    if (!r.changes) throw new HttpError(404, 'Prestito non trovato');
+    if (!r.changes) throw new HttpError(404, 'Prestito non trovato', { code: 'PRESTITO_NON_TROVATO', hint: 'Aggiorna l’elenco: potrebbe essere stato eliminato.' });
     return { ok: true };
   }));
 }

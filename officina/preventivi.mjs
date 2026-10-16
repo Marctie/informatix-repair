@@ -35,37 +35,37 @@ function shape(q) {
 
 export async function getQuote(id) {
   const q = await db.prepare(`${SELECT} WHERE q.id = ?`).get(id);
-  if (!q) throw new HttpError(404, 'Preventivo non trovato');
+  if (!q) throw new HttpError(404, 'Preventivo non trovato', { code: 'PREVENTIVO_NON_TROVATO', hint: 'Riapri l’elenco dei preventivi: potrebbe essere stato eliminato o il link non è più valido.' });
   return { ...shape(q), items: await db.prepare('SELECT * FROM quote_items WHERE quote_id = ? ORDER BY id').all(id), signature: await db.prepare('SELECT kind, signer_name, ip, signed_at, reason FROM quote_signatures WHERE quote_id = ? ORDER BY id DESC LIMIT 1').get(id) || null };
 }
 
 function cleanItems(list) {
   const items = (Array.isArray(list) ? list : []).map((i) => ({ description: str(i.description), qty: Math.max(1, Math.round(num(i.qty, 1))), unit_price: num(i.unit_price, 0) })).filter((i) => i.description);
-  if (!items.length) throw new HttpError(400, 'Aggiungi almeno una voce al preventivo');
-  if (items.some((i) => !Number.isFinite(i.unit_price) || i.unit_price < 0)) throw new HttpError(400, 'Prezzo non valido');
+  if (!items.length) throw new HttpError(400, 'Preventivo senza voci: serve almeno una voce con la descrizione compilata.', { code: 'PREVENTIVO_SENZA_VOCI', hint: 'Aggiungi una voce (lavoro o ricambio) con descrizione e prezzo e salva di nuovo.' });
+  if (items.some((i) => !Number.isFinite(i.unit_price) || i.unit_price < 0)) throw new HttpError(400, 'Una voce del preventivo ha un prezzo non valido (non numerico o negativo).', { code: 'PREVENTIVO_PREZZO_NON_VALIDO', hint: 'Correggi il prezzo con un numero uguale o maggiore di zero.' });
   return items;
 }
 
 async function prepare(b, cur) {
   const customer_id = 'customer_id' in b ? b.customer_id || null : cur?.customer_id ?? null;
-  if (customer_id && !(await db.prepare('SELECT id FROM customers WHERE id = ?').get(customer_id))) throw new HttpError(404, 'Cliente non trovato');
+  if (customer_id && !(await db.prepare('SELECT id FROM customers WHERE id = ?').get(customer_id))) throw new HttpError(404, 'Il cliente scelto per il preventivo non esiste più in anagrafica.', { code: 'CLIENTE_NON_TROVATO', hint: 'Cerca di nuovo il cliente, oppure scrivi il nome a mano.' });
   const name = 'customer_name' in b ? str(b.customer_name) : cur?.customer_name ?? null;
-  if (!customer_id && !name) throw new HttpError(400, 'Indica il cliente (dall’anagrafica o scrivendo il nome)');
+  if (!customer_id && !name) throw new HttpError(400, 'Preventivo senza intestatario: non è stato scelto né scritto nessun cliente.', { code: 'PREVENTIVO_CLIENTE_MANCANTE', hint: 'Scegli il cliente dall’anagrafica oppure scrivine il nome.' });
   const settings = await getSettings();
   const days = Math.max(1, Math.round(num(settings.quote_valid_days, DEFAULT_VALID_DAYS)) || DEFAULT_VALID_DAYS);
   const valid_until = str(b.valid_until) || cur?.valid_until || addDays(localDate(), days);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(valid_until)) throw new HttpError(400, 'Data di validità non valida');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valid_until)) throw new HttpError(400, 'La data di validità del preventivo non è valida (formato atteso AAAA-MM-GG).', { code: 'PREVENTIVO_VALIDITA_NON_VALIDA', hint: 'Scegli una data dal calendario.' });
   const discount = Math.max(0, num(b.discount, cur?.discount ?? 0));
   const items = b.items ? cleanItems(b.items) : null;
   const total = (items || cur?.items || []).reduce((s, i) => s + i.qty * i.unit_price, 0);
-  if (discount > total + 0.001) throw new HttpError(400, 'Lo sconto supera il totale');
+  if (discount > total + 0.001) throw new HttpError(400, 'Lo sconto indicato è più alto del totale delle voci del preventivo.', { code: 'SCONTO_SUPERA_TOTALE', hint: 'Abbassa lo sconto oppure controlla i prezzi delle voci.' });
   return { customer_id, name: customer_id ? null : name, phone: customer_id ? null : ('customer_phone' in b ? str(b.customer_phone) : cur?.customer_phone ?? null), valid_until, discount, items,
     notes: 'notes' in b ? str(b.notes) : cur?.notes ?? null, terms: 'terms' in b ? str(b.terms) : cur?.terms ?? null };
 }
 
 export async function createQuote(b) {
   const p = await prepare(b, null);
-  if (p.valid_until < localDate()) throw new HttpError(400, 'La data di validità è già passata');
+  if (p.valid_until < localDate()) throw new HttpError(400, 'La data di validità scelta è già passata: il preventivo nascerebbe scaduto.', { code: 'PREVENTIVO_VALIDITA_PASSATA', hint: 'Scegli una data di oggi o futura.' });
   const items = p.items || cleanItems(b.items);
   return tx(async () => {
     const code = await nextDocCode('quotes', 'P');
@@ -79,7 +79,7 @@ export async function createQuote(b) {
 
 export async function updateQuote(id, b) {
   const cur = await getQuote(id);
-  if (cur.status === 'convertito') throw new HttpError(409, 'Un preventivo già convertito non si modifica.');
+  if (cur.status === 'convertito') throw new HttpError(409, `Preventivo ${cur.code} già convertito in riparazione o vendita: non si modifica più.`, { code: 'PREVENTIVO_GIA_CONVERTITO', hint: 'Modifica la riparazione o la vendita nata dal preventivo, oppure fai un nuovo preventivo.' });
   const p = await prepare(b, cur);
   return tx(async () => {
     await db.prepare(`UPDATE quotes SET customer_id=?, customer_name=?, customer_phone=?, valid_until=?, discount=?, notes=?, terms=?, updated_at=${NOW} WHERE id=?`)
@@ -96,10 +96,10 @@ const MOVES = { bozza: ['inviato', 'accettato', 'rifiutato'], inviato: ['accetta
 
 export async function setQuoteStatus(id, status) {
   const q = await getQuote(id);
-  if (!MOVES[q.status]) throw new HttpError(400, 'Stato non valido');
+  if (!MOVES[q.status]) throw new HttpError(400, `Preventivo ${q.code}: lo stato attuale “${q.status}” non è riconosciuto.`, { code: 'STATO_PREVENTIVO_NON_VALIDO', hint: 'Aggiorna la pagina e riprova; se resta, avvisa Marco.' });
   if (status === q.status) return q;
-  if (!MOVES[q.status].includes(status)) throw new HttpError(409, `Da “${QUOTE_STATUS[q.status]}” non si passa a “${QUOTE_STATUS[status] || status}”.`);
-  if (status === 'accettato' && q.expired) throw new HttpError(409, 'Il preventivo è scaduto: prolunga prima la data di validità.');
+  if (!MOVES[q.status].includes(status)) throw new HttpError(409, `Preventivo ${q.code}: da “${QUOTE_STATUS[q.status]}” non si passa a “${QUOTE_STATUS[status] || status}”.`, { code: 'PREVENTIVO_PASSAGGIO_NON_AMMESSO', hint: 'Scegli uno degli stati proposti per questo preventivo.' });
+  if (status === 'accettato' && q.expired) throw new HttpError(409, `Il preventivo ${q.code} è scaduto il ${q.valid_until}: non si può procedere.`, { code: 'PREVENTIVO_SCADUTO', hint: 'Apri il preventivo, prolunga la data di validità e riprova.' });
   await db.prepare(`UPDATE quotes SET status=?, updated_at=${NOW} WHERE id=?`).run(status, id);
   return getQuote(id);
 }
@@ -107,12 +107,12 @@ export async function setQuoteStatus(id, status) {
 /** Converte in riparazione (to='repair') o vendita (to='sale'). La vendita incassa subito: serve il metodo di pagamento. */
 export async function convertQuote(id, b) {
   const q = await getQuote(id);
-  if (q.status === 'convertito') throw new HttpError(409, 'Preventivo già convertito.');
-  if (q.status === 'rifiutato') throw new HttpError(409, 'Il preventivo è stato rifiutato.');
-  if (q.expired) throw new HttpError(409, 'Il preventivo è scaduto: prolunga prima la data di validità.');
+  if (q.status === 'convertito') throw new HttpError(409, `Preventivo ${q.code} già convertito: non si converte due volte.`, { code: 'PREVENTIVO_GIA_CONVERTITO', hint: 'Apri la riparazione o la vendita già creata dal preventivo.' });
+  if (q.status === 'rifiutato') throw new HttpError(409, `Preventivo ${q.code} rifiutato dal cliente: non si può procedere.`, { code: 'PREVENTIVO_RIFIUTATO', hint: 'Riportalo in bozza o inviato se il cliente ha cambiato idea.' });
+  if (q.expired) throw new HttpError(409, `Il preventivo ${q.code} è scaduto il ${q.valid_until}: non si può procedere.`, { code: 'PREVENTIVO_SCADUTO', hint: 'Apri il preventivo, prolunga la data di validità e riprova.' });
   if (b.to === 'repair') {
     const brand = str(b.brand_model);
-    if (!brand) throw new HttpError(400, 'Scrivi il dispositivo da riparare');
+    if (!brand) throw new HttpError(400, `Preventivo ${q.code}: per aprire la riparazione serve il dispositivo (marca e modello) e non è stato scritto.`, { code: 'DISPOSITIVO_MANCANTE', hint: 'Scrivi marca e modello del dispositivo e converti di nuovo.' });
     return tx(async () => {
       const customerId = q.customer_id || (await upsertCustomer({ name: q.who, phone: q.who_phone }));
       const r = await createRepair({ customer: { id: customerId }, brand_model: brand, problem: str(b.problem) || q.items.map((i) => i.description).join(', '), quote: q.total, quote_agreed: q.status === 'accettato', device_type: b.device_type });
@@ -127,15 +127,15 @@ export async function convertQuote(id, b) {
       return { quote: await getQuote(id), sale };
     });
   }
-  throw new HttpError(400, 'Scegli se convertire in riparazione o in vendita');
+  throw new HttpError(400, `Preventivo ${q.code}: non è stato scelto in cosa convertirlo.`, { code: 'CONVERSIONE_NON_SCELTA', hint: 'Scegli “in riparazione” oppure “in vendita”.' });
 }
 
 /** Crea (se manca) il codice del link online. Un preventivo in bozza passa a "inviato". */
 export async function shareQuote(id) {
   const q = await getQuote(id);
-  if (q.status === 'convertito') throw new HttpError(409, 'Un preventivo già convertito non si invia più.');
-  if (q.status === 'rifiutato') throw new HttpError(409, 'Il preventivo è stato rifiutato.');
-  if (q.expired) throw new HttpError(409, 'Il preventivo è scaduto: prolunga prima la data di validità.');
+  if (q.status === 'convertito') throw new HttpError(409, `Preventivo ${q.code} già convertito: non si invia più al cliente.`, { code: 'PREVENTIVO_GIA_CONVERTITO', hint: 'Non serve rinviarlo: la pratica è già aperta.' });
+  if (q.status === 'rifiutato') throw new HttpError(409, `Preventivo ${q.code} rifiutato dal cliente: non si può procedere.`, { code: 'PREVENTIVO_RIFIUTATO', hint: 'Riportalo in bozza o inviato se il cliente ha cambiato idea.' });
+  if (q.expired) throw new HttpError(409, `Il preventivo ${q.code} è scaduto il ${q.valid_until}: non si può procedere.`, { code: 'PREVENTIVO_SCADUTO', hint: 'Apri il preventivo, prolunga la data di validità e riprova.' });
   let token = q.token;
   if (!token) { token = newToken(); await db.prepare('UPDATE quotes SET token = ? WHERE id = ?').run(token, id); }
   if (q.status === 'bozza') await db.prepare(`UPDATE quotes SET status='inviato', updated_at=${NOW} WHERE id=?`).run(id);
@@ -148,7 +148,7 @@ const lastQuoteSig = (id) => db.prepare('SELECT kind, signer_name, ip, signed_at
 /** Vista pubblica per il cliente: niente telefono ne' email, solo cio' che serve per decidere. */
 export async function quoteView(token) {
   const row = token ? await db.prepare(`${SELECT} WHERE q.token = ?`).get(token) : null;
-  if (!row) throw new HttpError(404, 'Preventivo non trovato');
+  if (!row) throw new HttpError(404, 'Preventivo non trovato', { code: 'PREVENTIVO_NON_TROVATO', hint: 'Riapri l’elenco dei preventivi: potrebbe essere stato eliminato o il link non è più valido.' });
   const q = shape(row);
   const items = await db.prepare('SELECT description, qty, unit_price FROM quote_items WHERE quote_id = ? ORDER BY id').all(q.id);
   const s = await getSettings();
@@ -166,12 +166,12 @@ export async function quoteView(token) {
 /** Risposta del cliente dal link: accetta o rifiuta, sempre con firma disegnata (data, ora e IP registrati). */
 export async function quoteDecision(token, b, c) {
   const row = token ? await db.prepare(`${SELECT} WHERE q.token = ?`).get(token) : null;
-  if (!row) throw new HttpError(404, 'Preventivo non trovato');
+  if (!row) throw new HttpError(404, 'Preventivo non trovato', { code: 'PREVENTIVO_NON_TROVATO', hint: 'Riapri l’elenco dei preventivi: potrebbe essere stato eliminato o il link non è più valido.' });
   const q = shape(row);
-  if (q.status !== 'inviato') throw new HttpError(409, 'Questo preventivo non è in attesa di risposta.');
-  if (q.expired) throw new HttpError(409, 'Il preventivo è scaduto: contatta il negozio.');
+  if (q.status !== 'inviato') throw new HttpError(409, 'Questo preventivo non è in attesa di risposta (è già stato deciso o non è stato inviato).', { code: 'PREVENTIVO_NON_IN_ATTESA', hint: 'Contatta il negozio se vuoi cambiare la tua risposta.' });
+  if (q.expired) throw new HttpError(409, 'Il preventivo è scaduto e non si può più accettare da questo link.', { code: 'PREVENTIVO_SCADUTO', hint: 'Contatta il negozio per averne uno aggiornato.' });
   const action = String(b?.action || '');
-  if (!['accept', 'decline'].includes(action)) throw new HttpError(400, 'Scelta non valida');
+  if (!['accept', 'decline'].includes(action)) throw new HttpError(400, 'La risposta al preventivo non è valida: va scelto accetto oppure rifiuto.', { code: 'SCELTA_NON_VALIDA', hint: 'Premi “Accetto” oppure “Non accetto”.' });
   const image = cleanImage(b.image);
   const name = String(b.signer_name ?? '').trim().slice(0, 120) || null;
   const reason = action === 'decline' ? String(b.reason ?? '').trim().slice(0, 300) || null : null;
@@ -180,7 +180,7 @@ export async function quoteDecision(token, b, c) {
     : `Non accetto il preventivo ${q.code} di ${eur(q.total)}.`;
   await tx(async () => {
     const r = await db.prepare(`UPDATE quotes SET status=?, updated_at=${NOW} WHERE id=? AND status='inviato'`).run(action === 'accept' ? 'accettato' : 'rifiutato', q.id);
-    if (!r.changes) throw new HttpError(409, 'Questo preventivo non è più in attesa di risposta.');
+    if (!r.changes) throw new HttpError(409, 'Il preventivo ha già ricevuto una risposta un attimo fa: la tua non è stata registrata.', { code: 'PREVENTIVO_NON_IN_ATTESA', hint: 'Ricarica la pagina per vedere la risposta già registrata.' });
     await db.prepare('INSERT INTO quote_signatures (quote_id, kind, image, signer_name, text_shown, ip, user_agent, signed_at, reason) VALUES (?,?,?,?,?,?,?,?,?)')
       .run(q.id, action, image, name, shown, clientIp(c) || null, String(c?.req.header('user-agent') || '').slice(0, 200) || null, nowLocal(), reason);
   });
