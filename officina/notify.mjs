@@ -4,11 +4,13 @@
 // Senza configurazione il sistema non fa nulla. Dati sensibili (PIN dei dispositivi, password, token) non vengono mai inviati.
 // I testi usano i dati veri: prima dell'azione si leggono dal database i nomi di cio' che si elimina o si tocca (`pre`),
 // dopo l'azione gli incassi effettivi (`post`). Le operazioni minori (stampe, foto, checklist...) arrivano senza suono.
-import { db, DEFAULT_SETTINGS } from './dbref.mjs';
+import { db, DEFAULT_SETTINGS, nowLocal } from './dbref.mjs';
+import { NEXT_STATUS } from './logic.mjs';
+import { recordError } from './registro-errori.mjs';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const SECRET_KEYS = /pass|pin|token|secret|password|cookie/i;
-const eur = (n) => (n == null || n === '' ? '—' : `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
+const eur = (n) => (n == null || n === '' || !Number.isFinite(Number(n)) ? '—' : `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
 const short = (s, n = 80) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 const maskPhone = (p) => (p ? String(p).replace(/\s/g, '').replace(/.(?=.{3})/g, '•') : '');
 const join = (...a) => a.filter((x) => x != null && x !== '').join(' · ');
@@ -71,22 +73,113 @@ function settingChanges(body, prev) {
   return out;
 }
 
+// ---- Errori: cosa si stava facendo, su cosa, perche' e cosa fare (mai dati sensibili: solo codici, nomi e dispositivo)
+const SEVERITY_OF = (status) => (status >= 500 ? 'error' : status === 401 || status === 403 ? 'security' : 'info');
+const DEFAULT_HINT = {
+  400: 'Controlla i dati inseriti e riprova.',
+  401: 'La sessione non è valida: esci e rientra nel gestionale.',
+  403: 'Serve un ruolo con più permessi (di solito l’amministratore).',
+  404: 'L’elemento non esiste più (forse eliminato): aggiorna la pagina.',
+  409: 'L’elemento è cambiato o esiste già: aggiorna la pagina e riprova.',
+  422: 'Controlla i dati inseriti e riprova.',
+  429: 'Troppe richieste ravvicinate: attendi un minuto.',
+  500: 'Riprova tra un minuto; se si ripete, comunica il codice di riferimento a Marco.',
+};
+const REPAIR_ID = '\\/api\\/repairs\\/\\d+';
+/** [metodo, percorso, azione in parole] — l'azione puo' dipendere dal corpo e dal contesto letto dal database. */
+const ACTIONS = [
+  ['POST', /^\/api\/repairs$/, () => 'registrare la nuova riparazione'],
+  ['POST', new RegExp(`^${REPAIR_ID}/advance$`), (b, p) => (NEXT_STATUS[p.status] ? `avanzare a «${STATUS[NEXT_STATUS[p.status]]}»` : 'avanzare lo stato')],
+  ['POST', new RegExp(`^${REPAIR_ID}/status$`), (b) => `portare allo stato «${STATUS[b.status] || b.status || '?'}»`],
+  ['POST', new RegExp(`^${REPAIR_ID}/deliver$`), () => 'consegnare il dispositivo'],
+  ['POST', new RegExp(`^${REPAIR_ID}/deposit$`), (b) => `registrare l’acconto${depositTotal(b) > 0 ? ` di ${eur(depositTotal(b))}` : ''}`],
+  ['POST', new RegExp(`^${REPAIR_ID}/note$`), () => 'aggiungere la nota'],
+  ['POST', new RegExp(`^${REPAIR_ID}/parts/\\d+/stock$`), () => 'caricare il ricambio a magazzino'],
+  ['POST', new RegExp(`^${REPAIR_ID}/parts$`), (b) => `aggiungere il ricambio${b.name ? ` «${short(b.name, 40)}»` : ''}`],
+  ['DELETE', new RegExp(`^${REPAIR_ID}/parts/\\d+$`), () => 'togliere il ricambio'],
+  ['POST', new RegExp(`^${REPAIR_ID}/(signature|request-signature)$`), () => 'registrare la firma'],
+  ['POST', new RegExp(`^${REPAIR_ID}/fate$`), () => 'impostare il destino del dispositivo'],
+  ['*', new RegExp(`^${REPAIR_ID}/quote-options`), () => 'gestire le opzioni di preventivo'],
+  ['PUT', new RegExp(`^${REPAIR_ID}/checklist$`), () => 'salvare il controllo'],
+  ['POST', new RegExp(`^${REPAIR_ID}/online-quote$`), () => 'inviare il preventivo online'],
+  ['PATCH', new RegExp(`^${REPAIR_ID}$`), () => 'modificare la riparazione'],
+  ['DELETE', new RegExp(`^${REPAIR_ID}$`), () => 'eliminare la riparazione'],
+  ['POST', /^\/api\/track\/[^/]+\/decision$/, () => 'rispondere al preventivo'],
+  ['POST', /^\/api\/quote\/[^/]+\/decision$/, () => 'rispondere al preventivo'],
+  ['POST', /^\/api\/track\/[^/]+\/sign$/, () => 'firmare la scheda'],
+  ['POST', /^\/api\/sales$/, () => 'registrare la vendita'],
+  ['POST', /^\/api\/expenses$/, () => 'registrare la spesa'],
+  ['POST', /^\/api\/products\/(\d+\/)?load$/, () => 'caricare la merce'],
+  ['POST', /^\/api\/products\/\d+\/move$/, () => 'spostare la giacenza'],
+  ['POST', /^\/api\/purchases\/confirm$/, () => 'importare l’acquisto'],
+  ['POST', /^\/api\/purchases\/preview/, () => 'leggere la fattura'],
+  ['PUT', /^\/api\/settings$/, () => 'salvare'],
+  ['POST', /^\/api\/orders$/, () => 'creare l’ordine'],
+  ['POST', /^\/api\/quotes$/, () => 'creare il preventivo'],
+  ['POST', /^\/api\/buoni$/, () => 'creare il buono'],
+];
+/** Su cosa si stava operando: "Riparazione R-0123 (Mario Rossi, iPhone 13)", "Cliente Mario Rossi", ... Solo nomi e codici. */
+function entityOf(path, body, p) {
+  const b = body || {};
+  const parens = (...a) => { const t = a.filter(Boolean).map((x) => short(x, 40)).join(', '); return t ? ` (${t})` : ''; };
+  if (/^\/api\/repairs(\/|$)/.test(path)) return p.code ? `Riparazione ${p.code}${parens(p.customer_name, p.brand_model)}` : /^\/api\/repairs$/.test(path) ? `Nuova riparazione${parens(b.customer?.name, b.brand_model)}` : '';
+  if (/^\/api\/sales/.test(path)) return p.code ? `Vendita ${p.code}` : `Nuova vendita${parens(...(Array.isArray(b.items) ? b.items.slice(0, 2).map((i) => i?.name) : []))}`;
+  const named = [[/^\/api\/customers/, 'Cliente'], [/^\/api\/suppliers/, 'Fornitore'], [/^\/api\/products/, 'Prodotto']].find(([re]) => re.test(path));
+  if (named) return p.name || b.name ? `${named[1]} ${short(p.name || b.name, 60)}` : '';
+  const coded = [[/^\/api\/quotes/, 'Preventivo'], [/^\/api\/orders/, 'Ordine']].find(([re]) => re.test(path));
+  if (coded && p.code) return `${coded[1]} ${p.code}`;
+  return '';
+}
+/** Analizza un errore (>= 400) e lo riassume: gravita', titolo, motivo, azione consigliata. Senza HTML: l'escape lo fa chi stampa. */
+export function describeFailure({ method = 'GET', path = '', status, user, body = {}, result = {}, error, pre = {}, version, ip, country } = {}) {
+  const m = String(method).toUpperCase();
+  const severity = SEVERITY_OF(status);
+  const act = ACTIONS.find(([mm, re]) => (mm === '*' || mm === m) && re.test(path));
+  const action = act ? act[2](body || {}, pre || {}) : '';
+  const entity = entityOf(path, body, pre || {});
+  const sec = section(path);
+  const place = entity || sec;
+  const creating = /^Nuov/.test(entity) && /^(registrare|creare)/.test(action);
+  const title = creating ? `${place}: non si è potuto salvare` : action ? `${place}: non si può ${action}` : `${place}: operazione non riuscita`;
+  const reasonRaw = status >= 500 ? (error || result?.error || '') : (result?.error || error || '');
+  const reason = short(scrub(reasonRaw), 300) || (status >= 500 ? 'Errore interno' : 'Operazione rifiutata dal gestionale.');
+  const hint = short(scrub(result?.hint || ''), 250) || DEFAULT_HINT[status] || (status >= 500 ? DEFAULT_HINT[500] : DEFAULT_HINT[400]);
+  const detail = [];
+  if (/^\/api\/repairs\/\d+/.test(path) && pre?.status) detail.push(`Stato attuale: ${STATUS[pre.status] || pre.status}`);
+  const shownPath = String(path).replace(/^(\/api\/(?:track|quote)\/)[^/]+/, '$1…');
+  return { severity, status, method: m, path: shownPath, section: sec, action, entity, title, reason, hint, errorCode: result?.code != null ? String(result.code) : undefined, detail, user, version, ip, country };
+}
+/** Testo (HTML di Telegram) di un errore gia' analizzato. `meta`: { ref, repeated, at }. */
+export function renderFailure(f, meta = {}) {
+  const who = f.user ? `${esc(f.user.name || f.user.email)}${f.user.name && f.user.email ? ` (${esc(f.user.email)})` : ''}` : /^\/api\/(track|quote)\//.test(f.path || '') ? 'cliente (dal link)' : 'visitatore';
+  const when = esc(dmy(meta.at || nowLocal()));
+  const where = [f.ip && `IP ${esc(f.ip)}`, f.country && esc(f.country)].filter(Boolean).join(' · ');
+  const detail = (f.detail || []).map((d) => `\n${esc(d)}`).join('');
+  const rep = meta.repeated > 0 ? `\n🔁 Dall’ultimo avviso uguale si è ripetuto altre ${meta.repeated} volte.` : '';
+  if (f.severity === 'error') {
+    return `🔴 <b>ERRORE DEL SISTEMA</b> · rif. <code>${esc(meta.ref || '—')}</code>\n${esc(f.title)}\n<code>${esc(f.reason)}</code>\n📍 ${esc(f.method)} ${esc(f.path)} · versione ${esc(f.version || 'n/d')}${detail}\n👉 ${esc(f.hint)}\n👤 ${who}${where ? ` · 🌐 ${where}` : ''} · 🕒 ${when}${rep}`;
+  }
+  if (f.severity === 'security') {
+    return `⛔ <b>Operazione non permessa</b> (${f.status})\n${esc(f.title)}\n❗ ${esc(f.reason)}\n👉 ${esc(f.hint)}\n👤 ${who}${where ? ` · 🌐 ${where}` : ''} · 🕒 ${when}${rep}`;
+  }
+  return `ℹ️ <b>${esc(f.title)}</b>\n❗ Motivo: ${esc(f.reason)}${detail}\n👉 ${esc(f.hint)}\n👤 ${who} · 🕒 ${when}${rep}`;
+}
+
 /** Costruisce il testo (HTML di Telegram) di un evento. Restituisce null se non vale la pena avvisare. */
-export function describeEvent({ method, path, status, user, body = {}, result = {}, error, denied, login, ip, country, pre = {}, post = {} }) {
+export function describeEvent({ method, path, status, user, body = {}, result = {}, error, denied, login, ip, country, pre = {}, post = {}, version, meta = {} }) {
   const who = user ? `${esc(user.name || user.email)} (${esc(user.email)})` : denied ? `${esc(denied)} (non abilitato)` : /^\/api\/(track|quote)\//.test(path || '') ? 'cliente (dal link)' : 'visitatore';
   const where = [ip && `IP ${esc(ip)}`, country && esc(country)].filter(Boolean).join(' · ');
   const foot = `\n👤 ${who}${where ? `\n🌐 ${where}` : ''}`;
 
   if (denied) return `🚫 <b>Accesso negato</b>\nL’indirizzo ${esc(denied)} ha provato a entrare nel gestionale ma non è nell’elenco utenti.${foot}`;
   if (login) return `🔑 <b>Accesso al gestionale</b>${foot}`;
-  if (status >= 500) return `🔴 <b>ERRORE ${status}</b> in ${esc(section(path))}\n${esc(method)} ${esc(path)}\n${error ? `<code>${esc(short(scrub(error), 600))}</code>` : 'Errore interno'}${foot}`;
+  if (status >= 400 && !(String(method).toUpperCase() === 'GET' && status < 500)) return renderFailure(describeFailure({ method, path, status, user, body, result, error, pre, version, ip, country }), meta);
 
   const m = method.toUpperCase();
   const r = result || {};
   const p = pre || {};
   const isOk = status >= 200 && status < 300;
   const fail = (what) => `⚠️ <b>${esc(what)}: operazione non riuscita</b> (${status})\n${esc(short(r.error || '', 200))}${foot}`;
-  if (status === 401 || status === 403) return `⛔ <b>Operazione non permessa</b> (${status})\nTentativo di ${VERB[m] || m} in ${esc(section(path))}\n${esc(short(r.error || '', 200))}${foot}`;
   const alerts = (list) => (list || []).map((a) => `\n🚨 <b>Seriale segnalato</b>: ${esc(short(a.brand_model || a.title || '', 60))} ${esc(a.flag_label || DEVICE_FLAG[a.flag] || '')}`.trimEnd()).join('');
 
   const blk = (list) => (list || []).map((b) => `\n⛔ <b>CLIENTE SEGNALATO (Blacks)</b>: ${esc(short(b.name, 60))} · ${esc(short(b.reason, 80))}`).join('');
@@ -201,7 +294,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     if (path === '/api/quotes' && m === 'POST') return isOk ? `🧾 <b>Nuovo preventivo ${head}</b>\nTotale ${eur(q.total)}${q.discount ? ` (sconto ${eur(q.discount)})` : ''} · valido fino al ${esc(dmy(q.valid_until))}${foot}` : fail('Nuovo preventivo');
     if (/\/link$/.test(path)) return isOk ? `🔗 <b>Link online creato</b> per il preventivo ${esc(p.code)}${p.who ? ` · ${esc(p.who)}` : ''}\n(il cliente potrà accettarlo e firmarlo dal telefono)${foot}` : fail('Link del preventivo');
     if (/\/status$/.test(path)) return isOk ? `🧾 <b>Preventivo ${head}</b> → ${esc(cap(q.status))}\nTotale ${eur(q.total)}${foot}` : fail('Stato del preventivo');
-    if (/\/convert$/.test(path)) return isOk ? `🔁 <b>Preventivo ${head} convertito</b> in ${q.sale_code ? `vendita ${esc(q.sale_code)} (incassata ${body.method ? `in ${esc(body.method)}` : ''})` : q.repair_code ? `riparazione ${esc(q.repair_code)}` : esc(body.to)}\nTotale ${eur(q.total)}${foot}` : fail('Conversione del preventivo');
+    if (/\/convert$/.test(path)) return isOk ? `🔁 <b>Preventivo ${head} convertito</b> in ${q.sale_code ? `vendita ${esc(q.sale_code)} ${body.method ? `(incassata in ${esc(body.method)})` : ''}` : q.repair_code ? `riparazione ${esc(q.repair_code)}` : esc(body.to)}\nTotale ${eur(q.total)}${foot}` : fail('Conversione del preventivo');
     if (m === 'DELETE') return isOk ? `🗑️ <b>Preventivo eliminato</b>: ${esc(p.code || path.split('/').pop())}${foot}` : fail('Eliminazione preventivo');
     return isOk ? `✏️ <b>Preventivo ${head} modificato</b>\nTotale ${eur(q.total)}${foot}` : fail('Modifica preventivo');
   }
@@ -314,7 +407,6 @@ ${ch}` : ''}${foot}`;
   if (path.startsWith('/api/purchases/preview')) return isOk ? null : fail('Lettura fattura');
 
   if (m === 'GET') return null; // le letture normali non si segnalano
-  if (status >= 400) return `⚠️ <b>${esc(section(path))}: operazione non riuscita</b> (${status})\n${esc(short(r.error || '', 200))}${foot}`;
   return `ℹ️ <b>${esc(section(path))}</b>: ${esc(m)} ${esc(path)}${foot}`;
 }
 
@@ -326,7 +418,7 @@ export function isQuiet(method, path, status) {
 }
 
 // ---- Dati letti dal database prima dell'azione (per nominare cio' che si elimina o si tocca)
-const REPAIR_CTX = 'SELECT r.code, r.brand_model, c.name AS customer_name FROM repairs r JOIN customers c ON c.id = r.customer_id WHERE r.id = ?';
+const REPAIR_CTX = 'SELECT r.code, r.brand_model, r.status, c.name AS customer_name FROM repairs r JOIN customers c ON c.id = r.customer_id WHERE r.id = ?';
 const PRE = [
   ['DELETE', /^\/api\/repairs\/(\d+)$/, `SELECT r.code, r.brand_model, c.name AS customer_name,
     (SELECT COUNT(*) FROM payments p WHERE p.kind = 'repair' AND p.ref_id = r.id) AS pay_n,
@@ -352,6 +444,14 @@ const PRE = [
   ['DELETE', /^\/api\/reminders\/(\d+)$/, 'SELECT title FROM reminders WHERE id = ?'],
   ['DELETE', /^\/api\/dispositivi\/(\d+)$/, 'SELECT brand_model, serial FROM devices WHERE id = ?'],
   ['DELETE', /^\/api\/documenti\/(\d+)$/, 'SELECT d.doc_type, c.name AS customer_name FROM id_documents d JOIN customers c ON c.id = d.customer_id WHERE d.id = ?'],
+  // Contesto generico per spiegare gli errori (sempre DOPO i casi specifici: la prima corrispondenza vince)
+  ['*', /^\/api\/repairs\/(\d+)(?:\/|$)/, REPAIR_CTX],
+  ['*', /^\/api\/sales\/(\d+)(?:\/|$)/, 'SELECT code FROM sales WHERE id = ?'],
+  ['*', /^\/api\/products\/(\d+)(?:\/|$)/, 'SELECT name, qty FROM products WHERE id = ?'],
+  ['*', /^\/api\/customers\/(\d+)(?:\/|$)/, 'SELECT name FROM customers WHERE id = ?'],
+  ['*', /^\/api\/suppliers\/(\d+)(?:\/|$)/, 'SELECT name FROM suppliers WHERE id = ?'],
+  ['*', /^\/api\/quotes\/(\d+)(?:\/|$)/, 'SELECT code FROM quotes WHERE id = ?'],
+  ['*', /^\/api\/orders\/(\d+)(?:\/|$)/, 'SELECT code FROM orders WHERE id = ?'],
   ['*', /^\/api\/credenziali\/(\d+)/, 'SELECT k.label, s.name AS supplier_name FROM supplier_credentials k JOIN suppliers s ON s.id = k.supplier_id WHERE k.id = ?'],
 ];
 async function preload(method, path, body) {
@@ -378,7 +478,18 @@ async function postload(method, path) {
   } catch { return {}; }
 }
 
-const lastErr = new Map();
+/** Accorcia un testo HTML di Telegram senza spezzare un tag o un'entita' (&amp;) e chiudendo i tag rimasti aperti: altrimenti Telegram rifiuta tutto il messaggio. */
+export function safeTruncate(html, max = 3900) {
+  const s = String(html ?? '');
+  if (s.length <= max) return s;
+  let cut = s.slice(0, max - 40).replace(/<[^>]*$/, '').replace(/&[#a-zA-Z0-9]*$/, '');
+  const open = [];
+  for (const t of cut.matchAll(/<(\/?)(b|i|u|s|code|pre|a)\b[^>]*>/g)) {
+    if (t[1]) { const i = open.lastIndexOf(t[2]); if (i >= 0) open.splice(i, 1); } else open.push(t[2]);
+  }
+  cut += '…';
+  return cut + open.reverse().map((t) => `</${t}>`).join('');
+}
 
 /** Invia un messaggio al proprietario. Non lancia mai errori. `silent`: arriva senza suono. */
 export async function sendTelegram(env, html, fetcher = globalThis.fetch, { silent = false } = {}) {
@@ -386,7 +497,7 @@ export async function sendTelegram(env, html, fetcher = globalThis.fetch, { sile
     const token = env?.TELEGRAM_BOT_TOKEN;
     const owner = env?.TELEGRAM_OWNER_ID;
     if (!token || !owner || !html) return false;
-    const text = html.length > 3900 ? `${html.slice(0, 3890)}…` : html;
+    const text = safeTruncate(html);
     const res = await fetcher(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ chat_id: String(owner), text, parse_mode: 'HTML', disable_web_page_preview: true, ...(silent ? { disable_notification: true } : {}) }),
@@ -397,6 +508,8 @@ export async function sendTelegram(env, html, fetcher = globalThis.fetch, { sile
   }
 }
 
+/** Versione in esecuzione (Cloudflare la espone come CF_VERSION_METADATA.id; in alternativa APP_VERSION), accorciata. */
+export const versionOf = (env) => short(env?.CF_VERSION_METADATA?.id || env?.APP_VERSION || '', 8) || 'n/d';
 const envOf = (c) => ({ ...(typeof process !== 'undefined' ? process.env : {}), ...(c.env || {}) });
 const wait = (c, p) => { try { c.executionCtx.waitUntil(p); } catch { /* su Node la richiesta non si chiude: si lascia correre */ } };
 // Letture che meritano un avviso (dati sensibili); le anteprime di stampa (?noprint=1) no.
@@ -412,14 +525,17 @@ export const notifyMiddleware = async (c, next) => {
   const writes = method !== 'GET' && method !== 'OPTIONS' && method !== 'HEAD';
   let body = {};
   let pre = {};
-  if (enabled && writes) {
+  const apiLike = /^\/(api|print)\//.test(path);
+  // Il contesto (corpo e nomi letti dal database) serve anche al registro errori, che funziona pure senza Telegram
+  if (writes && apiLike) {
     try { body = await c.req.raw.clone().json(); } catch { body = {}; }
   }
-  if (enabled && (writes || WATCHED_GET(path, url))) pre = await preload(method, path, body);
+  if ((enabled || apiLike) && (writes || WATCHED_GET(path, url))) pre = await preload(method, path, body);
   let thrown;
   try { await next(); } catch (e) { thrown = e; }
+  const failed = (thrown || c.res.status >= 400) && !c.get('denied_email') && (apiLike || thrown || c.res.status >= 500);
   const quietRead = method === 'GET' && !thrown && c.res.status < 500 && !WATCHED_GET(path, url); // letture normali: nessun avviso
-  if (enabled && !quietRead) {
+  if ((enabled && !quietRead) || failed) {
     try {
       const status = thrown ? 500 : c.res.status;
       let result = {};
@@ -428,18 +544,18 @@ export const notifyMiddleware = async (c, next) => {
       const err = thrown || c.get('err');
       const login = c.get('login_event');
       const denied = c.get('denied_email');
-      let text = describeEvent({
-        method, path, status, user: c.get('user'), body, result, denied, login: false, pre, post,
+      const ctx = {
+        method, path, status, user: c.get('user'), body, result, denied, login: false, pre, post, version: versionOf(env),
         error: err ? `${err.message || err}` : (status >= 500 ? result.error : ''),
         ip: c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for'), country: c.req.header('cf-ipcountry'),
-      });
-      if (text && status >= 500) { // evita raffiche dello stesso errore
-        const key = `${method} ${path} ${err?.message || ''}`;
-        const last = lastErr.get(key) || 0;
-        if (Date.now() - last < 300000) text = null; else lastErr.set(key, Date.now());
+      };
+      let text = enabled && !quietRead ? describeEvent(ctx) : null;
+      if (failed) { // registro errori + anti-spam: uno stesso errore ripetuto entro pochi minuti = un solo avviso
+        const rec = await recordError(describeFailure(ctx), { enabled: !!text });
+        text = text && rec.notify ? describeEvent({ ...ctx, meta: { ref: result?.ref || rec.ref, repeated: rec.repeated } }) : null;
       }
-      if (text) wait(c, sendTelegram(env, text, undefined, { silent: isQuiet(method, path, status) }));
-      if (login && c.get('user')) wait(c, sendTelegram(env, describeEvent({ login: true, user: c.get('user'), ip: c.req.header('cf-connecting-ip'), country: c.req.header('cf-ipcountry'), method, path, status })));
+      if (text && enabled) wait(c, sendTelegram(env, text, undefined, { silent: isQuiet(method, path, status) }));
+      if (enabled && login && c.get('user')) wait(c, sendTelegram(env, describeEvent({ login: true, user: c.get('user'), ip: c.req.header('cf-connecting-ip'), country: c.req.header('cf-ipcountry'), method, path, status })));
     } catch { /* le notifiche non devono mai rompere il gestionale */ }
   }
   if (thrown) throw thrown;
