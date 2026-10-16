@@ -8,7 +8,7 @@ const str = (v) => (v == null ? null : String(v).trim() || null);
 const numOrNull = (v) => {
   if (v === '' || v == null) return null;
   const n = Number(String(v).replace(',', '.'));
-  if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Importo non valido');
+  if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Il valore indicato per il dispositivo non è valido (serve un numero uguale o maggiore di zero).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi l’importo in euro (es. 150,00).' });
   return money(n);
 };
 
@@ -59,24 +59,27 @@ export const alertText = (a) => `ATTENZIONE: il seriale ${a.serial} (${a.brand_m
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
 export function registerDeviceRoutes(app, h) {
-  const adminOnly = (req) => { if (req.user && req.user.role !== 'admin') throw new HttpError(403, 'Solo l’amministratore può farlo.'); };
+  const adminOnly = (req) => { if (req.user && req.user.role !== 'admin') throw new HttpError(403, 'Operazione riservata all’amministratore: il tuo utente non ha il permesso.', { code: 'SOLO_ADMIN', hint: 'Accedi come amministratore, oppure chiedi a Christian/Marco di farlo.' }); };
   const who = (req) => req.user?.email || 'locale';
   const event = (id, kind, note, req) => db.prepare(`INSERT INTO device_events (device_id, kind, note, by_user, created_at) VALUES (?,?,?,?,${NOW})`).run(id, kind, note, who(req));
 
   const clean = async (b, id = 0) => {
     const brand = str(b.brand_model);
-    if (!brand) throw new HttpError(400, 'Marca e modello obbligatori');
+    if (!brand) throw new HttpError(400, 'Dispositivo non registrato: mancano marca e modello.', { code: 'DISPOSITIVO_MODELLO_MANCANTE', hint: 'Scrivi marca e modello (es. Apple iPhone 13).' });
     const category = b.category in CATEGORIES ? b.category : 'usato';
     const kind = b.kind in KINDS ? b.kind : 'smartphone';
     const serial = str(b.serial);
     const imei2 = str(b.imei2);
     for (const [label, v] of [['Seriale / IMEI', serial], ['IMEI 2', imei2]]) {
-      if (imeiValid(v) === false && !b.imei_ok) throw new HttpError(400, `${label}: IMEI non valido (cifra di controllo errata). Controlla la lettura.`);
+      if (imeiValid(v) === false && !b.imei_ok) throw new HttpError(400, `${label}: l’IMEI non è valido (la cifra di controllo non torna), quindi il dispositivo non è stato registrato.`, { code: 'IMEI_NON_VALIDO', hint: 'Rileggi l’IMEI (digita *#06#), oppure conferma che è corretto per forzare il salvataggio.' });
     }
     for (const v of [serial, imei2]) {
       if (!v) continue;
       const same = await findBySerial(v, id);
-      if (same.length && !b.duplicate_ok) throw new HttpError(409, `Seriale già registrato: ${same[0].brand_model} (n. ${same[0].id}).`);
+      if (same.length && !b.duplicate_ok) throw new HttpError(409, `Questo seriale è già registrato sul dispositivo ${same[0].brand_model} (n. ${same[0].id}): non lo duplico.`, { code: 'SERIALE_DUPLICATO', hint: 'Apri il dispositivo già presente, oppure conferma di volerlo registrare lo stesso.' });
+    }
+    for (const [col, table, what, code] of [['customer_id', 'customers', 'cliente', 'CLIENTE_NON_TROVATO'], ['supplier_id', 'suppliers', 'fornitore', 'FORNITORE_NON_TROVATO']]) {
+      if (b[col] && !(await db.prepare(`SELECT id FROM ${table} WHERE id = ?`).get(b[col]))) throw new HttpError(404, `Dispositivo non registrato: il ${what} collegato non esiste più in anagrafica.`, { code, hint: `Cerca di nuovo il ${what} o lascia il campo vuoto.` });
     }
     return {
       category, kind, brand_model: brand, serial, imei2, serial_key: serialKey(serial), imei2_key: serialKey(imei2),
@@ -139,7 +142,7 @@ export function registerDeviceRoutes(app, h) {
 
   app.get('/api/dispositivi/:id', h(async (req) => {
     const d = await db.prepare('SELECT d.*, c.name AS customer_name, s.name AS supplier_name FROM devices d LEFT JOIN customers c ON c.id=d.customer_id LEFT JOIN suppliers s ON s.id=d.supplier_id WHERE d.id = ?').get(req.params.id);
-    if (!d) throw new HttpError(404, 'Dispositivo non trovato');
+    if (!d) throw new HttpError(404, 'Dispositivo non trovato', { code: 'DISPOSITIVO_NON_TROVATO', hint: 'Riapri il registro dispositivi: potrebbe essere stato eliminato.' });
     const events = await db.prepare('SELECT * FROM device_events WHERE device_id = ? ORDER BY id DESC').all(d.id);
     // riparazioni con lo stesso seriale (anche scritto in modo diverso)
     const all = await db.prepare('SELECT r.id, r.code, r.serial, r.brand_model, r.status, r.created_at, c.name AS customer_name FROM repairs r JOIN customers c ON c.id=r.customer_id WHERE r.serial IS NOT NULL').all();
@@ -159,7 +162,7 @@ export function registerDeviceRoutes(app, h) {
 
   app.put('/api/dispositivi/:id', h(async (req) => {
     const old = await db.prepare('SELECT * FROM devices WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Dispositivo non trovato');
+    if (!old) throw new HttpError(404, 'Dispositivo non trovato', { code: 'DISPOSITIVO_NON_TROVATO', hint: 'Riapri il registro dispositivi: potrebbe essere stato eliminato.' });
     const v = await clean(req.body, old.id);
     await db.prepare(`UPDATE devices SET category=?, kind=?, brand_model=?, serial=?, imei2=?, serial_key=?, imei2_key=?, condition_notes=?, source=?, customer_id=?, supplier_id=?, purchase_date=?, cost=?, price=?, notes=?, updated_at=${NOW} WHERE id=?`)
       .run(v.category, v.kind, v.brand_model, v.serial, v.imei2, v.serial_key, v.imei2_key, v.condition_notes, v.source, v.customer_id, v.supplier_id, v.purchase_date, v.cost, v.price, v.notes, old.id);
@@ -171,12 +174,12 @@ export function registerDeviceRoutes(app, h) {
   // Segnalazione rubato / da verificare. Togliere la segnalazione (tornare "regolare") e' riservato all'amministratore.
   app.post('/api/dispositivi/:id/segnala', h(async (req) => {
     const d = await db.prepare('SELECT * FROM devices WHERE id = ?').get(req.params.id);
-    if (!d) throw new HttpError(404, 'Dispositivo non trovato');
+    if (!d) throw new HttpError(404, 'Dispositivo non trovato', { code: 'DISPOSITIVO_NON_TROVATO', hint: 'Riapri il registro dispositivi: potrebbe essere stato eliminato.' });
     const flag = req.body.flag;
-    if (!(flag in FLAGS)) throw new HttpError(400, 'Stato non valido');
+    if (!(flag in FLAGS)) throw new HttpError(400, 'Segnalazione non salvata: lo stato scelto non esiste.', { code: 'STATO_DISPOSITIVO_NON_VALIDO', hint: 'Scegli uno degli stati proposti (ok, sospetto, bloccato…).' });
     if (flag === 'ok' && d.flag !== 'ok') adminOnly(req);
     const note = str(req.body.note);
-    if (flag !== 'ok' && !note) throw new HttpError(400, 'Scrivi il motivo della segnalazione');
+    if (flag !== 'ok' && !note) throw new HttpError(400, `Dispositivo n. ${d.id}: la segnalazione richiede un motivo e non è stato scritto.`, { code: 'MOTIVO_MANCANTE', hint: 'Scrivi perché lo stai segnalando: resta nello storico.' });
     await db.prepare(`UPDATE devices SET flag=?, flag_note=?, flag_report_no=?, flag_at=${NOW}, updated_at=${NOW} WHERE id=?`).run(flag, flag === 'ok' ? null : note, flag === 'ok' ? null : str(req.body.report_no), d.id);
     await event(d.id, 'segnalazione', `${FLAGS[flag]}${note ? `: ${note}` : ''}${flag !== 'ok' && str(req.body.report_no) ? ` (denuncia ${str(req.body.report_no)})` : ''}`, req);
     return db.prepare('SELECT * FROM devices WHERE id = ?').get(d.id);

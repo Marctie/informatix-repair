@@ -29,13 +29,13 @@ const decorate = (v) => ({ ...v, state: voucherState(v), kind_label: KINDS[v.kin
 
 async function loadUsable(code) {
   const c = normCode(code);
-  if (!c) throw new HttpError(400, 'Scrivi il codice del buono');
+  if (!c) throw new HttpError(400, 'Buono non verificato: non è stato scritto il codice.', { code: 'BUONO_CODICE_MANCANTE', hint: 'Scrivi il codice stampato sul buono.' });
   const v = await db.prepare('SELECT * FROM vouchers WHERE code = ?').get(c);
-  if (!v) throw new HttpError(404, 'Buono non trovato: controlla il codice.');
+  if (!v) throw new HttpError(404, 'Nessun buono corrisponde al codice scritto.', { code: 'BUONO_NON_TROVATO', hint: 'Controlla il codice sul buono (lettere e cifre) e riprova.' });
   const st = voucherState(v);
-  if (st === 'annullato') throw new HttpError(409, 'Questo buono è stato annullato.');
-  if (st === 'scaduto') throw new HttpError(409, `Questo buono è scaduto il ${v.expires_at}.`);
-  if (st === 'esaurito') throw new HttpError(409, 'Questo buono è già stato usato per intero.');
+  if (st === 'annullato') throw new HttpError(409, `Il buono ${v.code} è stato annullato e non è più utilizzabile.`, { code: 'BUONO_ANNULLATO', hint: 'Usa un altro buono, oppure chiedi all’amministratore di ripristinarlo.' });
+  if (st === 'scaduto') throw new HttpError(409, `Il buono ${v.code} è scaduto il ${v.expires_at}.`, { code: 'BUONO_SCADUTO', hint: 'Usa un altro buono, oppure chiedi all’amministratore di prolungare la scadenza.' });
+  if (st === 'esaurito') throw new HttpError(409, `Il buono ${v.code} è già stato usato per intero: non ha più credito.`, { code: 'BUONO_ESAURITO', hint: 'Usa un altro buono.' });
   return v;
 }
 
@@ -59,24 +59,24 @@ export async function planSettlement(b, due) {
   if (str(b.voucher_code)) {
     voucher = await loadUsable(b.voucher_code);
     const eff = voucherEffect(voucher, due);
-    if (eff.amount <= 0) throw new HttpError(400, 'Il buono non porta nessuno sconto su questo totale.');
+    if (eff.amount <= 0) throw new HttpError(400, 'Il buono non darebbe nessuno sconto su questo totale: non lo applico.', { code: 'BUONO_SENZA_SCONTO', hint: 'Aggiungi articoli alla vendita oppure usa un altro buono.' });
     if (eff.as === 'discount') discount = eff.amount; else gift = eff.amount;
   }
   const rest = r2(due - discount - gift);
   let rows;
   if (Array.isArray(b.payments) && b.payments.length) {
-    if (b.payments.length > MAX_SPLIT) throw new HttpError(400, `Al massimo ${MAX_SPLIT} quote di pagamento.`);
+    if (b.payments.length > MAX_SPLIT) throw new HttpError(400, `Troppe quote di pagamento: al massimo ${MAX_SPLIT} per vendita.`, { code: 'TROPPE_QUOTE', hint: 'Unisci le quote con lo stesso metodo.' });
     rows = b.payments.map((p, i) => {
       const method = str(p.method) || 'contanti';
       const amount = r2(String(p.amount).replace(',', '.'));
-      if (!(amount > 0)) throw new HttpError(400, `Quota ${i + 1}: importo non valido.`);
-      if (/^buono$/i.test(method)) throw new HttpError(400, 'Il buono si inserisce con il suo codice, non come metodo.');
-      if (/non\s*tracciat/i.test(method)) throw new HttpError(400, 'Ogni quota deve avere un metodo di pagamento registrato (contanti, carta, bonifico…).');
-      if (method.length > 30) throw new HttpError(400, `Quota ${i + 1}: metodo non valido.`);
+      if (!(amount > 0)) throw new HttpError(400, `Quota di pagamento n. ${i + 1}: l’importo non è valido (serve un numero maggiore di zero).`, { code: 'QUOTA_IMPORTO_NON_VALIDO', hint: 'Correggi l’importo della quota.' });
+      if (/^buono$/i.test(method)) throw new HttpError(400, 'Il buono non si sceglie come metodo di pagamento: va inserito con il suo codice.', { code: 'BUONO_COME_METODO', hint: 'Scrivi il codice del buono nell’apposito campo.' });
+      if (/non\s*tracciat/i.test(method)) throw new HttpError(400, 'Una quota di pagamento ha un metodo non tracciabile: ogni incasso deve avere un metodo registrato.', { code: 'METODO_PAGAMENTO_MANCANTE', hint: 'Scegli contanti, carta, bonifico… per ogni quota.' });
+      if (method.length > 30) throw new HttpError(400, `Quota di pagamento n. ${i + 1}: il metodo non è valido (troppo lungo).`, { code: 'QUOTA_METODO_NON_VALIDO', hint: 'Scegli uno dei metodi proposti.' });
       return { method, amount, payer: str(p.payer)?.slice(0, 60) || null };
     });
     const sum = r2(rows.reduce((a, x) => a + x.amount, 0));
-    if (Math.abs(sum - rest) > 0.005) throw new HttpError(400, `Le quote (${sum.toFixed(2)} €) devono coincidere con il totale da pagare (${rest.toFixed(2)} €).`);
+    if (Math.abs(sum - rest) > 0.005) throw new HttpError(400, `Le quote di pagamento (${sum.toFixed(2)} €) non coincidono con il totale da pagare (${rest.toFixed(2)} €).`, { code: 'QUOTE_NON_COINCIDONO', hint: 'Correggi gli importi finché la somma è uguale al totale.' });
   } else {
     if (rest > 0) assertMethod(b.method);
     rows = rest > 0 ? [{ method: str(b.method) || 'contanti', amount: rest, payer: null }] : [];
@@ -97,7 +97,7 @@ export async function commitSettlement(plan, { kind, refId, label }, add) {
     const r = voucher.kind === 'sconto_percentuale'
       ? await db.prepare("UPDATE vouchers SET balance = 0 WHERE id = ? AND status = 'attivo' AND balance > 0 AND (expires_at IS NULL OR expires_at >= ?)").run(voucher.id, localDate())
       : await db.prepare("UPDATE vouchers SET balance = ROUND(balance - ?, 2) WHERE id = ? AND status = 'attivo' AND balance >= ? AND (expires_at IS NULL OR expires_at >= ?)").run(used, voucher.id, used, localDate());
-    if (!r.changes) throw new HttpError(409, 'Il buono è stato appena usato o non è più valido: ripeti l’operazione.');
+    if (!r.changes) throw new HttpError(409, 'Il buono è stato appena usato (o non è più valido) da un’altra operazione: la vendita non è stata registrata.', { code: 'BUONO_NON_PIU_VALIDO', hint: 'Ricontrolla il buono e ripeti la vendita.' });
     await db.prepare(`INSERT INTO voucher_uses (voucher_id, kind, ref_id, label, amount, created_at) VALUES (?,?,?,?,?,${NOW})`).run(voucher.id, kind, refId, label, used);
     if (plan.gift) await add(kind, refId, `${label} · buono ${voucher.code}`, plan.gift, 'buono');
   }
@@ -119,7 +119,7 @@ export async function voucherUsage(from, to) {
 export const VOUCHER_TABLES = ['vouchers', 'voucher_uses'];
 
 export function registerVoucherRoutes(app, h, { page, getSettings } = {}) {
-  const adminOnly = (req) => { if (req.user && req.user.role !== 'admin') throw new HttpError(403, 'Solo l’amministratore può farlo.'); };
+  const adminOnly = (req) => { if (req.user && req.user.role !== 'admin') throw new HttpError(403, 'La gestione dei buoni è riservata all’amministratore: il tuo utente non ha il permesso.', { code: 'SOLO_ADMIN', hint: 'Accedi come amministratore, oppure chiedi a Christian/Marco di farlo.' }); };
 
   app.get('/api/buoni', h(async (req) => {
     const rows = (await db.prepare('SELECT v.*, c.name AS customer_name FROM vouchers v LEFT JOIN customers c ON c.id=v.customer_id ORDER BY v.id DESC LIMIT 500').all()).map(decorate);
@@ -139,13 +139,13 @@ export function registerVoucherRoutes(app, h, { page, getSettings } = {}) {
     const b = req.body;
     const kind = b.kind in KINDS ? b.kind : 'regalo';
     const value = r2(String(b.value ?? '').replace(',', '.'));
-    if (!(value > 0)) throw new HttpError(400, 'Importo non valido');
-    if (kind === 'sconto_percentuale' && value > 100) throw new HttpError(400, 'La percentuale non può superare 100');
+    if (!(value > 0)) throw new HttpError(400, 'Buono non creato: il valore non è valido (serve un numero maggiore di zero).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi il valore del buono in euro, o la percentuale.' });
+    if (kind === 'sconto_percentuale' && value > 100) throw new HttpError(400, 'Buono non creato: la percentuale di sconto supera 100.', { code: 'PERCENTUALE_NON_VALIDA', hint: 'Scrivi una percentuale da 1 a 100.' });
     let code = normCode(b.code) || newVoucherCode();
-    if (code.length < 4 || code.length > 30 || !/^[A-Z0-9-]+$/.test(code)) throw new HttpError(400, 'Codice non valido: solo lettere, cifre e trattino (4-30 caratteri).');
-    if (await db.prepare('SELECT id FROM vouchers WHERE code = ?').get(code)) throw new HttpError(409, 'Esiste già un buono con questo codice.');
+    if (code.length < 4 || code.length > 30 || !/^[A-Z0-9-]+$/.test(code)) throw new HttpError(400, 'Buono non creato: il codice non è valido (solo lettere, cifre e trattino, da 4 a 30 caratteri).', { code: 'BUONO_CODICE_NON_VALIDO', hint: 'Scegli un codice tipo ESTATE-25 oppure lascia che lo generi il sistema.' });
+    if (await db.prepare('SELECT id FROM vouchers WHERE code = ?').get(code)) throw new HttpError(409, 'Buono non creato: esiste già un buono con lo stesso codice.', { code: 'BUONO_CODICE_DUPLICATO', hint: 'Scegli un altro codice.' });
     const exp = str(b.expires_at);
-    if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) throw new HttpError(400, 'Data di scadenza non valida');
+    if (exp && !/^\d{4}-\d{2}-\d{2}$/.test(exp)) throw new HttpError(400, 'Buono non creato: la data di scadenza non è valida.', { code: 'DATA_NON_VALIDA', hint: 'Scegli una data che esiste (AAAA-MM-GG).' });
     const r = await db.prepare(`INSERT INTO vouchers (code, kind, value, balance, expires_at, customer_id, notes, created_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
       .run(code, kind, value, kind === 'sconto_percentuale' ? 1 : value, exp, b.customer_id || null, str(b.notes));
     return decorate(await db.prepare('SELECT * FROM vouchers WHERE id = ?').get(r.lastInsertRowid));
@@ -153,20 +153,20 @@ export function registerVoucherRoutes(app, h, { page, getSettings } = {}) {
 
   app.get('/api/buoni/:id', h(async (req) => {
     const v = await db.prepare('SELECT v.*, c.name AS customer_name FROM vouchers v LEFT JOIN customers c ON c.id=v.customer_id WHERE v.id = ?').get(req.params.id);
-    if (!v) throw new HttpError(404, 'Buono non trovato');
+    if (!v) throw new HttpError(404, 'Buono non trovato', { code: 'BUONO_NON_TROVATO', hint: 'Riapri l’elenco dei buoni: potrebbe essere stato eliminato.' });
     return { ...decorate(v), uses: await db.prepare('SELECT * FROM voucher_uses WHERE voucher_id = ? ORDER BY id DESC').all(v.id) };
   }));
 
   app.post('/api/buoni/:id/annulla', h(async (req) => {
     adminOnly(req);
     const r = await db.prepare("UPDATE vouchers SET status = 'annullato' WHERE id = ?").run(req.params.id);
-    if (!r.changes) throw new HttpError(404, 'Buono non trovato');
+    if (!r.changes) throw new HttpError(404, 'Buono non trovato', { code: 'BUONO_NON_TROVATO', hint: 'Riapri l’elenco dei buoni: potrebbe essere stato eliminato.' });
     return decorate(await db.prepare('SELECT * FROM vouchers WHERE id = ?').get(req.params.id));
   }));
 
   app.delete('/api/buoni/:id', h(async (req) => {
     adminOnly(req);
-    if ((await db.prepare('SELECT COUNT(*) AS n FROM voucher_uses WHERE voucher_id = ?').get(req.params.id)).n) throw new HttpError(409, 'Il buono è già stato usato: non si elimina (si può annullare).');
+    if ((await db.prepare('SELECT COUNT(*) AS n FROM voucher_uses WHERE voucher_id = ?').get(req.params.id)).n) throw new HttpError(409, 'Il buono è già stato usato almeno una volta: non si elimina per non perdere lo storico.', { code: 'BUONO_GIA_USATO', hint: 'Annullalo invece di eliminarlo.' });
     await db.prepare('DELETE FROM vouchers WHERE id = ?').run(req.params.id);
     return { ok: true };
   }));
@@ -175,7 +175,7 @@ export function registerVoucherRoutes(app, h, { page, getSettings } = {}) {
   if (page) {
     app.get('/print/voucher/:id', page(async (c) => {
       const v = await db.prepare('SELECT * FROM vouchers WHERE id = ?').get(c.req.param('id'));
-      if (!v) throw new HttpError(404, 'Buono non trovato');
+      if (!v) throw new HttpError(404, 'Buono non trovato', { code: 'BUONO_NON_TROVATO', hint: 'Riapri l’elenco dei buoni: potrebbe essere stato eliminato.' });
       const s = getSettings ? await getSettings() : {};
       const e = (x) => String(x ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
       const what = v.kind === 'sconto_percentuale' ? `${v.value}% di sconto` : `${v.value.toFixed(2).replace('.', ',')} €`;

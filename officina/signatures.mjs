@@ -11,11 +11,11 @@ const MAX_IMAGE = 220000; // caratteri del data URL (una firma PNG normale e' 5-
 /** Controlla che sia un PNG vero (data URL) e di dimensioni ragionevoli. */
 export function cleanImage(img) {
   const s = String(img || '');
-  if (!/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(s)) throw new HttpError(400, 'La firma è obbligatoria: disegnala nel riquadro.');
-  if (s.length > MAX_IMAGE) throw new HttpError(400, 'La firma è troppo grande: cancella e rifai.');
+  if (!/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(s)) throw new HttpError(400, 'Firma non registrata: manca la firma disegnata (o non è un’immagine valida).', { code: 'FIRMA_MANCANTE', hint: 'Disegna la firma nel riquadro e conferma.' });
+  if (s.length > MAX_IMAGE) throw new HttpError(400, 'Firma non registrata: l’immagine della firma è troppo grande.', { code: 'FIRMA_TROPPO_GRANDE', hint: 'Cancella e rifai la firma più semplice.' });
   let head = '';
   try { head = atob(s.slice(22, 22 + 12)); } catch { /* base64 non valido */ }
-  if (head.charCodeAt(0) !== 0x89 || head.slice(1, 4) !== 'PNG') throw new HttpError(400, 'La firma non è un’immagine valida.');
+  if (head.charCodeAt(0) !== 0x89 || head.slice(1, 4) !== 'PNG') throw new HttpError(400, 'Firma non registrata: il file ricevuto non è un’immagine PNG valida.', { code: 'FIRMA_NON_VALIDA', hint: 'Cancella e rifai la firma.' });
   return s;
 }
 
@@ -25,7 +25,7 @@ export const clientIp = (c) =>
 const shortUa = (c) => String(c?.req.header('user-agent') || '').slice(0, 200);
 
 export async function addSignature(repairId, { kind, image, signer_name, choice = null, option_id = null, text_shown = '', via = 'banco', c = null, by_user = null }) {
-  if (!KINDS[kind]) throw new HttpError(400, 'Tipo di firma non valido');
+  if (!KINDS[kind]) throw new HttpError(400, 'Il tipo di firma richiesto non esiste.', { code: 'TIPO_FIRMA_NON_VALIDO', hint: 'Ricarica la pagina e riprova.' });
   const img = cleanImage(image);
   const at = nowLocal();
   const r = await db.prepare('INSERT INTO repair_signatures (repair_id, kind, image, signer_name, choice, option_id, text_shown, via, ip, user_agent, by_user, signed_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
@@ -50,7 +50,7 @@ const intakeFull = (t) => `${t.consent}\n\nCondizioni: ${t.terms}`;
 
 async function loadRepair(where, arg) {
   const r = await db.prepare(`SELECT r.*, c.name AS customer_name FROM repairs r JOIN customers c ON c.id = r.customer_id WHERE ${where}`).get(arg);
-  if (!r) throw new HttpError(404, 'Riparazione non trovata');
+  if (!r) throw new HttpError(404, 'Riparazione non trovata', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Riapri l’elenco delle riparazioni.' });
   return r;
 }
 
@@ -59,7 +59,7 @@ export async function signIntake(repairId, body, c, user) {
   const r = await loadRepair('r.id = ?', repairId);
   // kind "disposal" = cessione del dispositivo (liberatoria allo smaltimento / pezzi di ricambio) firmata al banco
   const disposal = body.kind === 'disposal';
-  if (disposal && r.status !== 'cancelled') throw new HttpError(409, 'La cessione si firma solo per le riparazioni annullate / non riparabili.');
+  if (disposal && r.status !== 'cancelled') throw new HttpError(409, `Riparazione ${r.code}: la cessione si firma solo per le riparazioni annullate o non riparabili, e questa è in stato ${r.status}.`, { code: 'CESSIONE_NON_AMMESSA', hint: 'Annulla prima la riparazione (non riparabile) se il cliente cede il dispositivo.' });
   const s = await getSettings();
   const text = disposal ? fillText(s.quote_decline_cede, { negozio: s.shop_name, codice: r.code, dispositivo: r.brand_model }) : intakeFull(await intakeTexts(r, s));
   const sig = await tx(async () => {
@@ -74,7 +74,7 @@ export async function signIntake(repairId, body, c, user) {
 /** Il negozio chiede la firma a distanza: il cliente la trova nella pagina del suo link. */
 export async function requestSignature(repairId) {
   const r = await loadRepair('r.id = ?', repairId);
-  if (await lastSignature(r.id, 'intake')) throw new HttpError(409, 'La scheda di ingresso è già firmata.');
+  if (await lastSignature(r.id, 'intake')) throw new HttpError(409, `Riparazione ${r.code}: la scheda di ingresso è già firmata.`, { code: 'SCHEDA_GIA_FIRMATA', hint: 'Non serve ripeterla; la firma esistente resta valida.' });
   await tx(async () => {
     await db.prepare('UPDATE repairs SET sign_requested = 1 WHERE id = ?').run(r.id);
     await logEvent(r.id, null, 'Firma a distanza richiesta al cliente (dal suo link).', 0);
@@ -85,9 +85,9 @@ export async function requestSignature(repairId) {
 /** Firma da casa, dal link di tracciamento (token segreto). Registra data, ora e IP. */
 export async function signIntakeRemote(token, body, c) {
   const r = await loadRepair('r.token = ?', token);
-  if (!r.sign_requested) throw new HttpError(409, 'Nessuna firma richiesta per questa riparazione.');
-  if (!body.accept) throw new HttpError(400, 'Per firmare devi accettare le condizioni.');
-  if (await lastSignature(r.id, 'intake')) throw new HttpError(409, 'La scheda è già stata firmata.');
+  if (!r.sign_requested) throw new HttpError(409, 'Per questa riparazione non c’è nessuna richiesta di firma attiva.', { code: 'FIRMA_NON_RICHIESTA', hint: 'Chiedi al negozio di inviarti di nuovo il link per firmare.' });
+  if (!body.accept) throw new HttpError(400, 'Firma non registrata: non sono state accettate le condizioni.', { code: 'CONDIZIONI_NON_ACCETTATE', hint: 'Spunta la casella di accettazione e firma di nuovo.' });
+  if (await lastSignature(r.id, 'intake')) throw new HttpError(409, 'La scheda risulta già firmata: la nuova firma non è stata registrata.', { code: 'SCHEDA_GIA_FIRMATA', hint: 'Non serve firmare di nuovo.' });
   const text = intakeFull(await intakeTexts(r));
   const sig = await tx(async () => {
     const x = await addSignature(r.id, { kind: 'intake', image: body.image, signer_name: body.signer_name || r.customer_name, text_shown: text, via: 'link', c });
