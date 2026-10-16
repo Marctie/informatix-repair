@@ -958,3 +958,10 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - **G (Telegram)**: avvisi con riparazione/cliente/dispositivo/azione/motivo/cosa fare, gravita' (400/404/409 senza suono; 401/403 e 5xx con suono), anti-spam su DB, registro `error_log` (migrazione 0031, retention 90 giorni) con `GET /api/errors` solo admin. Il modulo del registro e' `registro-errori.mjs` (il nome `errori.mjs` e' di E); l'impronta anti-spam ignora numeri e codici riparazione.
 - **H (bot Termux)**: retry Telegram, coda messaggi, un solo avviso per episodio di fermo + "ripristinato", sonda offline, heartbeat, traceback ripulito dai segreti, 7 bug corretti; `termux-bot/aggiorna-telefono.sh` con backup e rollback.
 - Manuale rinumerato 25-40 (niente duplicati). Test officina 178/178, test bot 49 (1 saltato).
+
+## Agente J (frontend, 2026-10-16): errori parlanti lato cliente + vista Errori
+- **Pagine pubbliche**: nuovo `public/cliente-errori.js` (script semplice, nessun dato riservato, window.ClientErr): classifica rete/timeout/404/409/410/429/5xx in italiano semplice e rassicurante, "Riprova", niente codici. `preventivo.js` e `track.js` non usano piu' `fetch`/`alert`; la firma resta sul riquadro se la rete cade; 409 = "gia' registrato" con "Aggiorna la pagina"; il polling di track.js non cancella piu' la schermata se cade la rete.
+- **nfc.js / carte.js / pdftext.js**: messaggi parlanti per ponte NFC e lettore PDF; l'`alert` col PIN della carta sostituita e' ora una finestra del gestionale.
+- **retro.js**: `keepRetro()` conserva data e apertura del riquadro "giorno passato" quando la scheda riparazione si ridisegna (repair.js: 3 righe).
+- **Vista admin Errori** (`public/errori-vista.js`, menu Gestione): filtri gravita'/utente/stato/periodo/testo o codice E-XXXXX, paginazione, riepilogo per gravita'; logica pura `describeErrorRow`/`errorsQuery` in `errori.js`.
+- Test: `cliente-errori.test.mjs`, `errori-vista.test.mjs` (officina 186/186). Manuale sezione 41 (la 40 esisteva gia': nessun duplicato).
