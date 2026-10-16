@@ -1,5 +1,5 @@
 // Storico riparazioni: tutte le riparazioni con i dettagli, ricerca e filtri, esportazione CSV, scheda riassuntiva.
-import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, META, canSeeCosts, addDays, today } from './util.js';
+import { $, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, META, canSeeCosts, addDays, today } from './util.js';
 import { openRepairDetail } from './repair.js';
 
 const OUT_BADGE = { 'Riparato e consegnato': 'b-ok', 'Non riparata / annullata': 'b-bad', 'Pronta, da ritirare': 'b-info', 'In corso': 'b-warn' };
@@ -40,7 +40,7 @@ export async function storicoView(el, params) {
     if (!d.rows.length) { list.innerHTML = '<p class="empty">Nessuna riparazione con questi filtri.</p>'; return; }
     list.innerHTML =
       `<div class="tbl-wrap only-wide"><table class="t" style="min-width:56rem"><thead><tr><th>Scheda</th><th>Cliente</th><th>Dispositivo</th><th>Problema</th><th>Esito</th><th>Importo</th>${canSeeCosts() ? '<th>Costi</th><th>Margine</th>' : ''}</tr></thead><tbody>` +
-      d.rows.map((r) => `<tr class="row-h" style="cursor:pointer" data-id="${r.id}"><td><b>${esc(r.code)}</b><div class="hint">${fdate(r.created_at)}${r.delivered_at ? ` → ${fdate(r.delivered_at)}` : ''}</div></td>
+      d.rows.map((r) => `<tr class="row-h" style="cursor:pointer" data-id="${r.id}"><td><b>${esc(r.code)}</b><div class="hint">Inserita ${fdt(r.created_at)}${r.delivered_at ? ` → ${fdate(r.delivered_at)}` : ''}</div></td>
         <td>${esc(r.customer_name)}<div class="hint">${esc(r.customer_phone || '')}</div></td><td><b>${esc(r.brand_model)}</b>${r.color ? ` <span class="hint">${esc(r.color)}</span>` : ''}<div class="hint" style="font-family:monospace">${esc(r.serial || '')}</div></td>
         <td style="max-width:16rem"><span class="hint" style="color:inherit">${esc(r.problem)}</span></td><td>${outBadge(r)}<div class="hint">${esc(r.status_label)}</div></td><td>${eur(r.amount)}</td>
         ${canSeeCosts() ? `<td>${eur(r.total_cost)}${r.external_count ? `<div class="hint">${r.external_count} est.</div>` : ''}</td><td>${r.margin == null ? '—' : eur(r.margin)}</td>` : ''}</tr>`).join('') +
@@ -77,7 +77,7 @@ async function openSummary(id, done) {
       <dl class="kv"><dt>Cliente</dt><dd>${esc(r.customer_name)}${r.customer_phone ? ` · ${esc(r.customer_phone)}` : ''}</dd>
         <dt>Dispositivo</dt><dd><b>${esc(r.brand_model)}</b>${r.color ? ` (${esc(r.color)})` : ''}</dd><dt>Seriale / IMEI</dt><dd style="font-family:monospace">${esc(r.serial || '—')}</dd>
         <dt>Problema</dt><dd>${esc(r.problem)}</dd>${r.tech_notes ? `<dt>Note tecniche</dt><dd>${esc(r.tech_notes)}</dd>` : ''}
-        <dt>Ingresso</dt><dd>${fdate(r.created_at)}</dd>${r.delivered_at ? `<dt>Consegna</dt><dd>${fdate(r.delivered_at)}</dd>` : ''}<dt>Garanzia</dt><dd>${r.warranty_days} giorni</dd>
+        <dt>Data di inserimento</dt><dd>${fdt(r.created_at)}</dd>${r.delivered_at ? `<dt>Consegna</dt><dd>${fdate(r.delivered_at)}</dd>` : ''}<dt>Garanzia</dt><dd>${r.warranty_days} giorni</dd>
         <dt>Preventivo / finale</dt><dd>${eur(r.quote)} / <b>${eur(r.final_price)}</b>${r.deposit ? ` · acconto ${eur(r.deposit)}` : ''}</dd>
         ${canSeeCosts() ? `<dt>Costi</dt><dd>ricambi ${eur(r.parts_cost)} · esterni ${eur(r.external_cost)}${r.margin != null ? ` · margine <b>${eur(r.margin)}</b>` : ''}</dd>` : ''}</dl></section>
     ${r.parts.length ? `<section class="sec"><h3 class="sec-t">Ricambi (${r.parts.length})</h3><div class="plist">${r.parts.map((p) => `<div><span>${esc(p.name)} <span class="hint">×${p.qty}</span></span><span>${eur(p.unit_price * p.qty)}</span></div>`).join('')}</div></section>` : ''}

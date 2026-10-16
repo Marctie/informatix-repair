@@ -958,3 +958,11 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - **G (Telegram)**: avvisi con riparazione/cliente/dispositivo/azione/motivo/cosa fare, gravita' (400/404/409 senza suono; 401/403 e 5xx con suono), anti-spam su DB, registro `error_log` (migrazione 0031, retention 90 giorni) con `GET /api/errors` solo admin. Il modulo del registro e' `registro-errori.mjs` (il nome `errori.mjs` e' di E); l'impronta anti-spam ignora numeri e codici riparazione.
 - **H (bot Termux)**: retry Telegram, coda messaggi, un solo avviso per episodio di fermo + "ripristinato", sonda offline, heartbeat, traceback ripulito dai segreti, 7 bug corretti; `termux-bot/aggiorna-telefono.sh` con backup e rollback.
 - Manuale rinumerato 25-40 (niente duplicati). Test officina 178/178, test bot 49 (1 saltato).
+
+## Agente I (16/10): Data di inserimento della riparazione
+- Richiesta di Christian: campo **Data di inserimento** nella nuova riparazione, automatica (adesso, predefinita) o manuale con data + ora.
+- UI (`public/retro.js` `entryDateField/Init/Val`, `repair.js`): campo sempre visibile con spunta «Automatica (adesso)»; togliendola compare un `datetime-local` con max = adesso. Futuro rifiutato anche lato interfaccia con messaggio parlante.
+- Backend (`retro.mjs`): accetta `AAAA-MM-GG HH:MM`, anche per oggi se c'e' l'ora; errori con `code`/`hint` (DATA_FUTURA, DATA_NON_VALIDA, DATA_TROPPO_VECCHIA). La data diventa `created_at` della riparazione (report, garanzia, ETA coerenti) e finisce nel Registro "retroattivo".
+- **Decisione ruolo Cassa** (default prudente): puo' impostare la data di inserimento SOLO di una nuova riparazione e fino a 7 giorni indietro (`CASSA_MAX_DAYS`); vendite, acconti, consegne con data passata e date piu' vecchie restano all'amministratore (senza limiti).
+- Mostrata in scheda riparazione, Storico (lista e dettaglio) e stampe di ingresso (print.mjs). Tracciamento cliente: gia' mostra `received_at` = created_at. Nessuna migrazione.
+- Test `officina/tests/data-inserimento.test.mjs` (aggiunto a test:officina): 182/182. Manuale: bullet in «Operazioni con data passata».
