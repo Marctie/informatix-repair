@@ -44,7 +44,7 @@ function loadPdfJs() {
           const code = await (await fetch(`${BASE}/pdf.worker.min.js`)).text();
           window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
           resolve(window.pdfjsLib);
-        } catch (e) { reject(e); }
+        } catch (e) { reject(new Error('Non riesco a preparare il lettore di PDF: controlla internet e riprova.')); }
       };
       s.onerror = () => reject(new Error('Non riesco a caricare il lettore di PDF: serve la connessione a internet.'));
       document.head.appendChild(s);
