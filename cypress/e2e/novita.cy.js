@@ -104,7 +104,7 @@ describe('Utenti', () => {
     cy.contains('button', 'Nuovo utente').click();
     cy.get('#ue-email').type('non-valida');
     cy.get('#ue-ok').click();
-    cy.contains('Email non valida');
+    cy.contains('non è valido');
   });
 });
 

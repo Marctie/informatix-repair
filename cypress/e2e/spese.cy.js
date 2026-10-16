@@ -18,11 +18,11 @@ describe('Spese in Cassa', () => {
     cy.get('#ex-desc').type('Prova importo');
     cy.get('#ex-amt').type('abc');
     cy.get('#ex-ok').click();
-    cy.get('#toast').should('contain', 'Importo non valido');
+    cy.get('#toast').should('contain', 'non è valido');
     cy.get('#ex-ok').should('be.visible');
     cy.get('#ex-amt').clear();
     cy.get('#ex-ok').click();
-    cy.get('#toast').should('contain', 'Importo non valido');
+    cy.get('#toast').should('contain', 'non è valido');
   });
 
   it('nuova spesa compilata: compare nell\'elenco e nei KPI', () => {
