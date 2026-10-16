@@ -10,13 +10,13 @@ export const EXT_STATUS = { da_inviare: 'Da inviare', inviata: 'Inviata al labor
 const dateOrNull = (v, label) => {
   const s = str(v);
   if (!s) return null;
-  if (!DATE.test(s.slice(0, 10))) throw new HttpError(400, `${label}: data non valida`);
+  if (!DATE.test(s.slice(0, 10))) throw new HttpError(400, `${label}: la data non è valida.`, { code: 'DATA_NON_VALIDA', hint: 'Usa il formato GG/MM/AAAA con una data che esiste.' });
   return s.slice(0, 10);
 };
 const costOrNull = (v) => {
   if (v === '' || v == null) return null;
   const n = Number(String(v).replace(',', '.'));
-  if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Costo non valido');
+  if (!Number.isFinite(n) || n < 0) throw new HttpError(400, 'Il costo della riparazione esterna non è valido (non numerico o negativo).', { code: 'COSTO_NON_VALIDO', hint: 'Scrivi il costo in euro (es. 80,00).' });
   return Math.round(n * 100) / 100;
 };
 
@@ -38,22 +38,22 @@ export async function externalAlerts() {
 export function registerExternalRoutes(app, h) {
   const clean = async (b, old = null) => {
     const repairId = Number(b.repair_id ?? old?.repair_id);
-    if (!repairId || !(await db.prepare('SELECT id FROM repairs WHERE id = ?').get(repairId))) throw new HttpError(400, 'Scegli la riparazione collegata');
+    if (!repairId || !(await db.prepare('SELECT id FROM repairs WHERE id = ?').get(repairId))) throw new HttpError(400, 'Riparazione esterna non salvata: manca (o non esiste più) la riparazione collegata.', { code: 'RIPARAZIONE_NON_TROVATA', hint: 'Scegli la scheda riparazione dall’elenco.' });
     const supplierId = b.supplier_id ? Number(b.supplier_id) : null;
-    if (supplierId && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(supplierId))) throw new HttpError(400, 'Laboratorio non trovato in anagrafica');
+    if (supplierId && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(supplierId))) throw new HttpError(400, 'Il laboratorio scelto non esiste più in anagrafica fornitori.', { code: 'FORNITORE_NON_TROVATO', hint: 'Scegli di nuovo il laboratorio o scrivine il nome.' });
     const labName = str(b.lab_name);
-    if (!supplierId && !labName) throw new HttpError(400, 'Indica il laboratorio (dall’anagrafica fornitori o scrivendone il nome)');
+    if (!supplierId && !labName) throw new HttpError(400, 'Riparazione esterna non salvata: manca il laboratorio.', { code: 'LABORATORIO_MANCANTE', hint: 'Scegli il laboratorio dall’anagrafica fornitori o scrivine il nome.' });
     const status = b.status in EXT_STATUS ? b.status : (old?.status || 'da_inviare');
     let sent = dateOrNull(b.sent_at, 'Data di invio');
     let back = dateOrNull(b.returned_at, 'Data di rientro');
     if (status === 'inviata' && !sent) sent = localDate();
     if (status === 'rientrata' && !back) back = localDate();
-    if (sent && back && back < sent) throw new HttpError(400, 'Il rientro non può essere prima dell’invio');
+    if (sent && back && back < sent) throw new HttpError(400, 'La data di rientro è precedente alla data di invio al laboratorio.', { code: 'RIENTRO_PRIMA_INVIO', hint: 'Correggi le due date: il rientro viene dopo l’invio.' });
     return { repairId, supplierId, labName: supplierId ? null : labName, work: str(b.work), status, sent, expected: dateOrNull(b.expected_back, 'Rientro previsto'), back: status === 'rientrata' ? back : (b.returned_at ? back : null), cost: costOrNull(b.cost), tracking: str(b.tracking), notes: str(b.notes) };
   };
   const one = async (id) => {
     const e = await db.prepare(`${SELECT} WHERE e.id = ?`).get(id);
-    if (!e) throw new HttpError(404, 'Riparazione esterna non trovata');
+    if (!e) throw new HttpError(404, 'Riparazione esterna non trovata', { code: 'ESTERNA_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
     return shape(e);
   };
 
@@ -84,7 +84,7 @@ export function registerExternalRoutes(app, h) {
   }));
   app.put('/api/esterne/:id', h(async (req) => {
     const old = await db.prepare('SELECT * FROM external_repairs WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Riparazione esterna non trovata');
+    if (!old) throw new HttpError(404, 'Riparazione esterna non trovata', { code: 'ESTERNA_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
     const v = await clean({ ...old, ...req.body }, old);
     await db.prepare(`UPDATE external_repairs SET supplier_id=?, lab_name=?, work=?, status=?, sent_at=?, expected_back=?, returned_at=?, cost=?, tracking=?, notes=?, updated_at=${NOW} WHERE id=?`)
       .run(v.supplierId, v.labName, v.work, v.status, v.sent, v.expected, v.back, v.cost, v.tracking, v.notes, old.id);
@@ -97,8 +97,8 @@ export function registerExternalRoutes(app, h) {
   app.post('/api/esterne/:id/rientro', h((req) => step(req, 'rientrata')));
   const step = async (req, status) => {
     const old = await db.prepare('SELECT * FROM external_repairs WHERE id = ?').get(req.params.id);
-    if (!old) throw new HttpError(404, 'Riparazione esterna non trovata');
-    if (old.status === 'annullata') throw new HttpError(409, 'È annullata: riaprila prima.');
+    if (!old) throw new HttpError(404, 'Riparazione esterna non trovata', { code: 'ESTERNA_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
+    if (old.status === 'annullata') throw new HttpError(409, `La riparazione esterna n. ${old.id} è annullata: non si modifica.`, { code: 'ESTERNA_ANNULLATA', hint: 'Riaprila prima, poi cambia lo stato.' });
     const body = { ...old, status };
     if (status === 'inviata') body.sent_at = req.body.date || localDate();
     else {
@@ -114,7 +114,7 @@ export function registerExternalRoutes(app, h) {
   };
   app.delete('/api/esterne/:id', h(async (req) => {
     const r = await db.prepare('DELETE FROM external_repairs WHERE id = ?').run(req.params.id);
-    if (!r.changes) throw new HttpError(404, 'Riparazione esterna non trovata');
+    if (!r.changes) throw new HttpError(404, 'Riparazione esterna non trovata', { code: 'ESTERNA_NON_TROVATA', hint: 'Aggiorna l’elenco: potrebbe essere stata eliminata.' });
     return { ok: true };
   }));
 }

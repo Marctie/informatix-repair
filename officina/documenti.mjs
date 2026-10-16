@@ -1,6 +1,7 @@
 // Documenti d'identita' dei clienti (punto 17). Dati sensibili: SEMPRE cifrati a riposo (vault.mjs), accesso solo admin
 // (e, se l'admin lo abilita, altri ruoli), ogni accesso e' registrato, cancellazione con doppia conferma, nessuna notifica con i contenuti.
 import { db } from './dbref.mjs';
+import { toResponse } from './errori.mjs';
 import { HttpError } from './logic.mjs';
 import { encryptText, decryptText, encryptJson, decryptJson, logAccess, vaultReady } from './vault.mjs';
 
@@ -24,9 +25,9 @@ export function registerDocumentRoutes(app, h) {
   // Admin sempre; gli altri ruoli solo se l'admin li ha abilitati (impostazione prudente: nessuno)
   const gate = async (req) => {
     if (isAdmin(req)) return;
-    if (!(await rolesSetting()).includes(req.user.role)) throw new HttpError(403, 'Non hai il permesso di vedere i documenti d’identità.');
+    if (!(await rolesSetting()).includes(req.user.role)) throw new HttpError(403, 'I documenti d’identità sono visibili solo ai ruoli abilitati dall’amministratore: il tuo non lo è.', { code: 'DOCUMENTI_NON_AUTORIZZATO', hint: 'Chiedi all’amministratore di abilitare il tuo ruolo nelle impostazioni dei documenti.' });
   };
-  const adminOnly = (req) => { if (!isAdmin(req)) throw new HttpError(403, 'Solo l’amministratore può farlo.'); };
+  const adminOnly = (req) => { if (!isAdmin(req)) throw new HttpError(403, 'Operazione sui documenti d’identità riservata all’amministratore.', { code: 'SOLO_ADMIN', hint: 'Accedi come amministratore, oppure chiedi a Christian/Marco di farlo.' }); };
   const who = (req) => req.user?.email || 'locale';
 
   app.get('/api/documenti/config', h(async (req) => {
@@ -64,17 +65,17 @@ export function registerDocumentRoutes(app, h) {
       const req = { user: c.get('user') };
       await gate(req);
       const f = await db.prepare('SELECT * FROM id_document_files WHERE id = ?').get(c.req.param('fileId'));
-      if (!f) throw new HttpError(404, 'File non trovato');
+      if (!f) throw new HttpError(404, 'Il file del documento non esiste più nell’archivio.', { code: 'FILE_NON_TROVATO', hint: 'Ricarica la scheda del cliente: il file potrebbe essere stato eliminato.' });
       const bytes = await decryptText(c, f.file_enc, { bytes: true });
       await logAccess(db, req.user, 'documenti', 'file', f.document_id, `${f.side}`);
       return c.body(bytes, 200, { 'content-type': f.mime || 'application/octet-stream', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
-    } catch (e) { return c.json({ ok: false, error: e.status ? e.message : 'Errore interno' }, e.status || 500); }
+    } catch (e) { const r = toResponse(e, { method: c.req.method, path: c.req.path }); return c.json(r.body, r.status); }
   });
 
   app.get('/api/documenti/:id', h(async (req) => {
     await gate(req);
     const d = await db.prepare('SELECT d.*, c.name AS customer_name FROM id_documents d JOIN customers c ON c.id=d.customer_id WHERE d.id = ?').get(req.params.id);
-    if (!d) throw new HttpError(404, 'Documento non trovato');
+    if (!d) throw new HttpError(404, 'Documento non trovato', { code: 'DOCUMENTO_NON_TROVATO', hint: 'Aggiorna la scheda del cliente: il documento potrebbe essere stato eliminato.' });
     const data = await decryptJson(req.c, d.data_enc);
     await logAccess(db, req.user, 'documenti', 'visione', d.id, d.customer_name);
     const files = await db.prepare('SELECT id, side, mime FROM id_document_files WHERE document_id = ? ORDER BY id').all(d.id);
@@ -85,25 +86,26 @@ export function registerDocumentRoutes(app, h) {
   app.post('/api/documenti', h(async (req) => {
     await gate(req);
     const b = req.body;
+    if (!b.customer_id) throw new HttpError(400, 'Documento non salvato: non è indicato a quale cliente appartiene.', { code: 'CLIENTE_MANCANTE', hint: 'Apri la scheda del cliente e aggiungi il documento da lì.' });
     const cust = await db.prepare('SELECT id, name FROM customers WHERE id = ?').get(b.customer_id);
-    if (!cust) throw new HttpError(404, 'Cliente non trovato');
-    if (!b.consent) throw new HttpError(400, 'Serve la presa visione dell’informativa privacy da parte del cliente.');
+    if (!cust) throw new HttpError(404, 'Il cliente a cui collegare il documento non esiste più.', { code: 'CLIENTE_NON_TROVATO', hint: 'Riapri l’anagrafica clienti e cercalo di nuovo.' });
+    if (!b.consent) throw new HttpError(400, 'Documento non salvato: manca la presa visione dell’informativa privacy da parte del cliente.', { code: 'CONSENSO_PRIVACY_MANCANTE', hint: 'Fai leggere l’informativa al cliente e spunta la casella di presa visione.' });
     const docType = b.doc_type in DOC_TYPES ? b.doc_type : 'carta_identita';
     const purpose = b.purpose in PURPOSES ? b.purpose : null;
     const files = Array.isArray(b.files) ? b.files.slice(0, 4) : [];
     const prepared = [];
     for (const f of files) {
       const mime = String(f.mime || '');
-      if (!MIMES.includes(mime)) throw new HttpError(400, 'Formato non ammesso: usa una foto (JPG, PNG, WebP) o un PDF.');
+      if (!MIMES.includes(mime)) throw new HttpError(400, 'Documento non salvato: il tipo di file non è ammesso.', { code: 'FORMATO_NON_AMMESSO', hint: 'Usa una foto (JPG, PNG, WebP) oppure un PDF.' });
       let bytes;
-      try { bytes = Uint8Array.from(atob(String(f.data_b64 || '')), (ch) => ch.charCodeAt(0)); } catch { throw new HttpError(400, 'File non leggibile'); }
-      if (!bytes.length) throw new HttpError(400, 'File vuoto');
-      if (bytes.length > MAX_FILE) throw new HttpError(400, 'File troppo grande (massimo 1 MB): usa una foto più piccola.');
+      try { bytes = Uint8Array.from(atob(String(f.data_b64 || '')), (ch) => ch.charCodeAt(0)); } catch { throw new HttpError(400, 'Documento non salvato: il file allegato non è leggibile.', { code: 'FILE_NON_LEGGIBILE', hint: 'Scatta o carica di nuovo il file.' }); }
+      if (!bytes.length) throw new HttpError(400, 'Documento non salvato: il file allegato è vuoto.', { code: 'FILE_VUOTO', hint: 'Scatta o carica di nuovo il file.' });
+      if (bytes.length > MAX_FILE) throw new HttpError(400, 'Documento non salvato: il file supera 1 MB.', { code: 'FILE_TROPPO_GRANDE', hint: 'Usa una foto più piccola (abbassa la risoluzione).' });
       prepared.push({ side: f.side === 'retro' ? 'retro' : 'fronte', mime, enc: await encryptText(req.c, bytes) });
     }
     const dt = b.data || {};
     const data = { holder: str(dt.holder), number: str(dt.number), birth_date: str(dt.birth_date), issuer: str(dt.issuer), expiry: str(dt.expiry), notes: str(dt.notes) };
-    if (!data.number && !prepared.length) throw new HttpError(400, 'Inserisci almeno il numero del documento o una foto.');
+    if (!data.number && !prepared.length) throw new HttpError(400, 'Documento non salvato: non c’è né il numero del documento né una foto.', { code: 'DOCUMENTO_VUOTO', hint: 'Scrivi il numero del documento oppure allega una foto.' });
     const r = await db.prepare(`INSERT INTO id_documents (customer_id, doc_type, purpose, data_enc, consent, consent_at, captured_by, created_at) VALUES (?,?,?,?,1,${NOW},?,${NOW})`)
       .run(cust.id, docType, purpose, await encryptJson(req.c, data), who(req));
     const id = Number(r.lastInsertRowid);
@@ -115,9 +117,9 @@ export function registerDocumentRoutes(app, h) {
   // Cancellazione definitiva: solo admin, con conferma esplicita (la finestra "doppia conferma" manda ?confirm=ELIMINA)
   app.delete('/api/documenti/:id', h(async (req) => {
     adminOnly(req);
-    if (req.query.confirm !== 'ELIMINA') throw new HttpError(400, 'Cancellazione non confermata.');
+    if (req.query.confirm !== 'ELIMINA') throw new HttpError(400, 'Cancellazione del documento non eseguita: manca la conferma.', { code: 'CANCELLAZIONE_NON_CONFERMATA', hint: 'Conferma la cancellazione dalla finestra apposita.' });
     const d = await db.prepare('SELECT id, customer_id FROM id_documents WHERE id = ?').get(req.params.id);
-    if (!d) throw new HttpError(404, 'Documento non trovato');
+    if (!d) throw new HttpError(404, 'Documento non trovato', { code: 'DOCUMENTO_NON_TROVATO', hint: 'Aggiorna la scheda del cliente: il documento potrebbe essere stato eliminato.' });
     await db.prepare('DELETE FROM id_document_files WHERE document_id = ?').run(d.id);
     await db.prepare('DELETE FROM id_documents WHERE id = ?').run(d.id);
     await logAccess(db, req.user, 'documenti', 'eliminato', d.id, `cliente ${d.customer_id}`);
