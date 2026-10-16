@@ -7,8 +7,10 @@ import { ensureDefaults, ensureOwner } from './dbref.mjs';
 import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
+import { toResponse } from './errori.mjs';
 import { notifyDueReminders } from './promemoria.mjs';
 import { notifyMaterialsDue } from './materiali.mjs';
+import { purgeErrors } from './registro-errori.mjs';
 import { createPublisher } from './publisher.mjs';
 import { r2Media } from './media.mjs';
 import { storageDigest } from './remote.mjs';
@@ -40,11 +42,11 @@ async function init(env) {
 
 const app = new Hono();
 app.onError(async (err, c) => {
-  console.error(err);
-  try { c.executionCtx.waitUntil(sendTelegram(c.env, `🔴 <b>ERRORE non gestito</b>
+  const r = toResponse(err, { method: c.req.method, path: new URL(c.req.url).pathname }); // logga con codice di riferimento
+  if (r.status === 500) try { c.executionCtx.waitUntil(sendTelegram(c.env, `🔴 <b>ERRORE non gestito</b> (${r.ref})
 ${c.req.method} ${new URL(c.req.url).pathname}
 <code>${String(err.message || err).slice(0, 500)}</code>`)); } catch { /* ignora */ }
-  return c.json({ ok: false, error: 'Errore interno' }, 500);
+  return c.json(r.body, r.status);
 });
 app.use('*', async (c, next) => { await init(c.env); await next(); });
 
@@ -102,6 +104,7 @@ export default {
       return;
     }
     try {
+      try { await purgeErrors(); } catch (e) { console.error('pulizia registro errori', e); } // retention 90 giorni
       const key = await saveBackup(env);
       // dispositivi non riparati con la giacenza scaduta: un promemoria al giorno finche' non si decide (smaltire o deposito)
       await sendTelegram(env, await storageDigest().catch(() => null));

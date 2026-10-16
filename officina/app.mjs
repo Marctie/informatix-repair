@@ -33,6 +33,7 @@ import { draftPublisher } from './publisher.mjs';
 import { missingMedia } from './media.mjs';
 import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
+import { registerErrorRoutes } from './registro-errori.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
 import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 
@@ -40,6 +41,7 @@ import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
 import * as SG from './signatures.mjs';
 import * as R from './remote.mjs';
+import { toResponse } from './errori.mjs';
 import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { printCustomer, printLab, printBoth, printLabel, printSale } from './print.mjs';
 
@@ -56,20 +58,41 @@ const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(
 const NOW = "datetime('now','localtime')";
 
 /** Adatta una funzione "req => dati" a una route Hono con gestione errori uniforme. */
+const errCtx = (c) => {
+  const u = c.get('user');
+  let id; try { id = c.req.param('id'); } catch { /* nessun parametro */ }
+  return { method: c.req.method, path: new URL(c.req.url).pathname, user: u?.email || u?.id || null, id: /^\d{1,12}$/.test(String(id || '')) ? id : null };
+};
+/** Risposta d'errore uniforme { ok:false, error, code, hint, ref? }; i 500 sono loggati con contesto. */
+export const errorReply = (c, e) => {
+  const r = toResponse(e, errCtx(c));
+  if (r.status === 500) c.set('err', e);
+  return c.json(r.body, r.status);
+};
+/** Legge il corpo JSON: vuoto = {}, ma un JSON rotto e' un errore chiaro (prima veniva ignorato in silenzio e si salvava a vuoto). */
+const readBody = async (c) => {
+  const raw = await c.req.text();
+  if (!raw.trim()) return {};
+  try { const b = JSON.parse(raw); return b && typeof b === 'object' ? b : {}; } catch {
+    throw new L.HttpError(400, 'I dati inviati non sono leggibili (JSON non valido): l’operazione non è stata eseguita.', { code: 'JSON_NON_VALIDO', hint: 'Ricarica la pagina (Ctrl+F5) e riprova; se si ripete avvisa Marco.' });
+  }
+};
 const h = (fn) => async (c) => {
   try {
     const m = c.req.method;
-    const body = m === 'GET' || m === 'DELETE' ? {} : await c.req.json().catch(() => ({}));
+    const body = m === 'GET' || m === 'DELETE' ? {} : await readBody(c);
     return c.json(await fn({ params: c.req.param(), query: c.req.query(), body: body || {}, user: c.get('user'), c }));
   } catch (e) {
-    const status = e.status || 500;
-    if (status === 500) { console.error(e); c.set('err', e); }
-    return c.json({ ok: false, error: status === 500 ? 'Errore interno' : e.message }, status);
+    return errorReply(c, e);
   }
 };
-/** Come h, ma per risposte non JSON (pagine di stampa). */
+/** Come h, ma per risposte non JSON (pagine di stampa): testo leggibile, stesso status. */
 const page = (fn) => async (c) => {
-  try { return await fn(c); } catch (e) { return c.text(e.message || 'Errore', e.status || 500); }
+  try { return await fn(c); } catch (e) {
+    const r = toResponse(e, errCtx(c));
+    if (r.status === 500) c.set('err', e);
+    return c.text([r.body.error, r.body.hint].filter(Boolean).join('\n'), r.status);
+  }
 };
 
 export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
@@ -77,6 +100,7 @@ export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
 // ---------- Pubblico ----------
 export function createPublicApp() {
   const app = new Hono();
+  app.onError((e, c) => errorReply(c, e)); // eccezioni fuori dai gestori h(): stesso formato e log con contesto
   app.use('/api/track/*', notifyMiddleware);
   app.use('/api/quote/*', notifyMiddleware);
   // Il sito pubblico (altro dominio) chiama la ricerca per numero ricevuta
@@ -97,6 +121,7 @@ export function createPublicApp() {
 // usati = { publisher:(c)=>publisher, media:(c)=>archivio foto, siteUrl:(c)=>url del sito } per la Vetrina Usati (senza: bozza e nessun archivio foto)
 export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } = {}) {
   const app = new Hono();
+  app.onError((e, c) => errorReply(c, e));
   app.use('*', notifyMiddleware); // prima dell'accesso: segnala anche i tentativi negati e gli errori
   if (auth) app.use('*', auth);
   app.use('*', cassaMiddleware); // ruolo cassa: niente costi/margini nelle risposte
@@ -110,10 +135,11 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   const trackUrl = async (token) => `${await trackBase()}/t/${token}`;
   const roleOf = (r) => (['admin', 'cassa'].includes(r) ? r : 'staff');
   const adminOnly = (req) => {
-    if (req.user && req.user.role !== 'admin') throw new L.HttpError(403, 'Solo l’amministratore può farlo.');
+    if (req.user && req.user.role !== 'admin') throw new L.HttpError(403, 'Questa operazione è riservata all’amministratore: il tuo utente non ha il permesso.', { code: 'SOLO_ADMIN', hint: 'Chiedi a Christian o Marco di eseguirla, oppure di darti il ruolo amministratore.' });
   };
 
   registerAuditRoutes(app, h, adminOnly);
+  registerErrorRoutes(app, h, adminOnly);
   registerRetroRoutes(app, h, adminOnly);
   registerBlackRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
@@ -147,8 +173,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.post('/api/users', h(async (req) => {
     adminOnly(req);
     const email = str(req.body.email)?.toLowerCase();
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new L.HttpError(400, 'Email non valida');
-    if (await db.prepare('SELECT id FROM users WHERE email = ?').get(email)) throw new L.HttpError(409, 'Utente già presente');
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new L.HttpError(400, 'L’indirizzo email inserito non è valido: l’utente non è stato aggiunto.', { code: 'EMAIL_NON_VALIDA', hint: 'Scrivilo nella forma nome@dominio.it e riprova.' });
+    if (await db.prepare('SELECT id FROM users WHERE email = ?').get(email)) throw new L.HttpError(409, `L’utente ${email} esiste già: non lo aggiungo una seconda volta.`, { code: 'UTENTE_GIA_PRESENTE', hint: 'Cercalo nell’elenco utenti e modifica il suo ruolo se serve.' });
     const role = roleOf(req.body.role);
     const r = await db.prepare(`INSERT INTO users (email, name, role, created_at) VALUES (?,?,?,${NOW})`).run(email, str(req.body.name), role);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(r.lastInsertRowid);
@@ -156,8 +182,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.put('/api/users/:id', h(async (req) => {
     adminOnly(req);
     const u = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
-    if (!u) throw new L.HttpError(404, 'Utente non trovato');
-    if (u.protected) throw new L.HttpError(409, 'Il proprietario è protetto: non si modifica.');
+    if (!u) throw new L.HttpError(404, `Utente n. ${req.params.id} non trovato.`, { code: 'UTENTE_NON_TROVATO', hint: 'Ricarica l’elenco utenti: potrebbe essere già stato eliminato.' });
+    if (u.protected) throw new L.HttpError(409, 'L’account del proprietario è protetto: non si può modificare.', { code: 'PROPRIETARIO_PROTETTO', hint: 'Per cambiare ruolo o nome usa un altro utente amministratore, non il proprietario.' });
     const active = req.body.active === false || req.body.active === 0 ? 0 : 1;
     await db.prepare('UPDATE users SET name=?, role=?, active=? WHERE id=?').run(str(req.body.name) ?? u.name, roleOf(req.body.role), active, u.id);
     return db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
@@ -165,8 +191,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.delete('/api/users/:id', h(async (req) => {
     adminOnly(req);
     const u = await db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
-    if (!u) throw new L.HttpError(404, 'Utente non trovato');
-    if (u.protected) throw new L.HttpError(409, 'Il proprietario è protetto: non si elimina.');
+    if (!u) throw new L.HttpError(404, `Utente n. ${req.params.id} non trovato.`, { code: 'UTENTE_NON_TROVATO', hint: 'Ricarica l’elenco utenti: potrebbe essere già stato eliminato.' });
+    if (u.protected) throw new L.HttpError(409, 'L’account del proprietario è protetto: non si può eliminare.', { code: 'PROPRIETARIO_PROTETTO', hint: 'Il proprietario resta sempre abilitato; elimina solo gli altri utenti.' });
     await db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
     return { ok: true };
   }));
@@ -183,7 +209,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
       const bytes = await buildNotaSpese({ shop: await getSettings(), data, who: str(c.req.query('who')) || str(c.req.query('paid_by')) || '' });
       return c.body(bytes, 200, { 'content-type': 'application/pdf', 'content-disposition': `inline; filename="nota-spese-${data.from}_${data.to}.pdf"`, 'cache-control': 'no-store' });
     } catch (e) {
-      return c.json({ ok: false, error: e.status ? e.message : 'Impossibile creare il PDF' }, e.status || 500);
+      return errorReply(c, e.status ? e : new L.HttpError(500, 'Impossibile creare il PDF della nota spese.', { code: 'PDF_NON_CREATO', hint: 'Riprova; se si ripete avvisa Marco.' }));
     }
   });
 
@@ -192,7 +218,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.post('/api/demo', h(async (req) => {
     adminOnly(req);
     const out = await loadDemo();
-    if (out.already) throw new L.HttpError(409, 'I dati demo sono già presenti.');
+    if (out.already) throw new L.HttpError(409, 'I dati demo sono già stati caricati: non li carico di nuovo.', { code: 'DEMO_GIA_PRESENTI', hint: 'Se vuoi ripartire, cancella prima i dati demo da Impostazioni.' });
     return out;
   }));
   app.delete('/api/demo', h(async (req) => {
@@ -246,7 +272,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     await assertNoLedger(req.params.id); // Agente C: niente eliminazione con dare/avere
     // si eliminano solo clienti senza lavori in corso; le riparazioni concluse (consegnate/annullate) se ne vanno con lui
     const open = (await db.prepare("SELECT COUNT(*) AS n FROM repairs WHERE customer_id = ? AND status NOT IN ('delivered','cancelled')").get(req.params.id)).n;
-    if (open) throw new L.HttpError(409, 'Il cliente ha riparazioni ancora aperte: concludile prima di eliminarlo.');
+    if (open) throw new L.HttpError(409, `Non posso eliminare il cliente n. ${req.params.id}: ha ${open} riparazion${open === 1 ? 'e ancora aperta' : 'i ancora aperte'}.`, { code: 'CLIENTE_CON_RIPARAZIONI_APERTE', hint: 'Consegna o annulla le sue riparazioni aperte, poi riprova a eliminarlo.' });
     await db.prepare("DELETE FROM payments WHERE kind = 'repair' AND ref_id IN (SELECT id FROM repairs WHERE customer_id = ?)").run(req.params.id);
     await db.prepare('DELETE FROM repairs WHERE customer_id = ?').run(req.params.id);
     await db.prepare('DELETE FROM customers WHERE id = ?').run(req.params.id);
@@ -257,27 +283,27 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/suppliers', h(() => db.prepare(`SELECT s.*, (SELECT COUNT(*) FROM products p WHERE p.supplier_id=s.id AND p.active=1) AS products_count FROM suppliers s ORDER BY s.name`).all()));
   app.post('/api/suppliers', h(async (req) => {
     const b = req.body;
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+    if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
     const r = await db.prepare(`INSERT INTO suppliers (name, phone, email, website, notes, created_at) VALUES (?,?,?,?,?,${NOW})`).run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes));
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(r.lastInsertRowid);
   }));
   app.put('/api/suppliers/:id', h(async (req) => {
     const b = req.body;
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+    if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
     const r = await db.prepare('UPDATE suppliers SET name=?, phone=?, email=?, website=?, notes=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Fornitore non trovato');
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
   }));
   app.delete('/api/suppliers/:id', h(async (req) => {
-    if ((await db.prepare('SELECT COUNT(*) AS n FROM purchases WHERE supplier_id = ?').get(req.params.id)).n) throw new L.HttpError(409, 'Il fornitore ha acquisti registrati: non si può eliminare.');
+    if ((await db.prepare('SELECT COUNT(*) AS n FROM purchases WHERE supplier_id = ?').get(req.params.id)).n) throw new L.HttpError(409, `Non posso eliminare il fornitore n. ${req.params.id}: ha acquisti registrati.`, { code: 'FORNITORE_CON_ACQUISTI', hint: 'I fornitori con storico non si cancellano: lasciali in elenco (o rinominali).' });
     await db.prepare('DELETE FROM suppliers WHERE id = ?').run(req.params.id);
     return { ok: true };
   }));
 
   // Listino servizi (senza giacenza)
   const checkService = (b) => {
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
-    for (const k of ['price', 'cost']) { const n = num(b[k], 0); if (!Number.isFinite(n) || n < 0) throw new L.HttpError(400, 'Importo non valido'); }
+    if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
+    for (const k of ['price', 'cost']) { const n = num(b[k], 0); if (!Number.isFinite(n) || n < 0) throw new L.HttpError(400, 'Un importo non è valido: deve essere un numero uguale o maggiore di zero.', { code: 'IMPORTO_NON_VALIDO', hint: 'Controlla prezzo e costo (es. 49,90) e salva di nuovo.' }); }
   };
   app.get('/api/services', h(() => db.prepare('SELECT * FROM services WHERE active = 1 ORDER BY name').all()));
   app.post('/api/services', h(async (req) => {
@@ -334,7 +360,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
       const n = num(b[k]);
       if (!Number.isFinite(n) || n < 0) throw new L.HttpError(400, `Valore non valido: ${k === 'cost' ? 'costo' : k === 'price' ? 'prezzo' : 'scorta minima'}`);
     }
-    if (b.qty !== undefined && !Number.isFinite(num(b.qty))) throw new L.HttpError(400, 'Quantità non valida');
+    if (b.qty !== undefined && !Number.isFinite(num(b.qty))) throw new L.HttpError(400, 'La quantità indicata non è un numero valido (o è zero): lo stock non è stato toccato.', { code: 'QUANTITA_NON_VALIDA', hint: 'Scrivi un numero diverso da zero: positivo per caricare, negativo per scaricare.' });
   };
   app.get('/api/products', h(async (req) => {
     const q = str(req.query.q);
@@ -347,7 +373,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/reorder', h(() => L.lowStock()));
   app.post('/api/products', h(async (req) => {
     const b = req.body;
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+    if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
     checkProduct(b);
     const qty = Math.round(num(b.qty));
     const id = await tx(async () => {
@@ -361,7 +387,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   }));
   app.put('/api/products/:id', h(async (req) => {
     const b = req.body;
-    if (!str(b.name)) throw new L.HttpError(400, 'Nome obbligatorio');
+    if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
     checkProduct(b);
     const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
     const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=? WHERE id=?')
@@ -376,7 +402,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   }));
   app.post('/api/products/:id/move', h(async (req) => {
     const delta = Math.round(num(req.body.delta));
-    if (!delta) throw new L.HttpError(400, 'Quantità non valida');
+    if (!delta) throw new L.HttpError(400, 'La quantità indicata non è un numero valido (o è zero): lo stock non è stato toccato.', { code: 'QUANTITA_NON_VALIDA', hint: 'Scrivi un numero diverso da zero: positivo per caricare, negativo per scaricare.' });
     await tx(() => L.moveStock(Number(req.params.id), delta, str(req.body.reason) || (delta > 0 ? 'carico' : 'scarico'), str(req.body.ref)));
     return db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   }));
@@ -393,9 +419,9 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return { ...r, track_url: await trackUrl(r.token) };
   }));
   app.delete('/api/repairs/:id', h(async (req) => {
-    const r = await db.prepare('SELECT status FROM repairs WHERE id = ?').get(req.params.id);
+    const r = await db.prepare('SELECT status, code FROM repairs WHERE id = ?').get(req.params.id);
     if (!r) throw new L.HttpError(404, 'Riparazione non trovata');
-    if (!['delivered', 'cancelled'].includes(r.status)) throw new L.HttpError(409, 'Si possono eliminare solo riparazioni concluse (consegnate o annullate).');
+    if (!['delivered', 'cancelled'].includes(r.status)) throw new L.HttpError(409, `La riparazione ${r.code} è ancora in lavorazione (stato: ${L.STATUSES[r.status]?.label || r.status}): non si può eliminare.`, { code: 'RIPARAZIONE_NON_CONCLUSA', hint: 'Consegnala oppure annullala, poi potrai eliminarla.' });
     await db.prepare("DELETE FROM payments WHERE kind = 'repair' AND ref_id = ?").run(req.params.id); // via anche gli incassi della riparazione (cassa)
     await db.prepare('DELETE FROM repairs WHERE id = ?').run(req.params.id); // storico, ricambi e firme vanno via
     return { ok: true };
@@ -416,7 +442,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/storage', h(() => R.storageList()));
   app.post('/api/repairs/:id/advance', h(async (req) => {
     const r = await L.getRepair(req.params.id);
-    if (!r.next_status) throw new L.HttpError(400, 'Nessun passaggio successivo.');
+    if (!r.next_status) throw new L.HttpError(400, 'La riparazione è già all’ultimo passaggio: non c’è uno stato successivo.', { code: 'NESSUN_PASSAGGIO_SUCCESSIVO', hint: 'Per chiuderla usa “Consegna e incassa”, oppure annullala.' });
     return r.next_status === 'delivered' ? L.deliverRepair(r.id, req.body || {}) : L.setStatus(r.id, r.next_status);
   }));
   app.post('/api/repairs/:id/deliver', h((req) => L.deliverRepair(req.params.id, req.body || {})));
@@ -443,19 +469,21 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.post('/api/repairs/:id/deposit', h(async (req) => {
     // un solo importo (amount + method) oppure piu' quote su metodi diversi (payments), ognuna tracciata in cassa
     const list = Array.isArray(req.body.payments) && req.body.payments.length ? req.body.payments : [{ method: req.body.method, amount: req.body.amount }];
-    if (list.length > 6) throw new L.HttpError(400, 'Al massimo 6 quote di pagamento.');
+    if (list.length > 6) throw new L.HttpError(400, `L’acconto è diviso in ${list.length} quote: il massimo è 6.`, { code: 'TROPPE_QUOTE', hint: 'Unisci le quote con lo stesso metodo di pagamento.' });
     const rows = list.map((p, i) => {
       const amount = L.money(num(p.amount));
       const method = str(p.method) || 'contanti';
-      if (!(amount > 0)) throw new L.HttpError(400, list.length > 1 ? `Quota ${i + 1}: importo non valido` : 'Importo non valido');
-      if (/^buono$/i.test(method)) throw new L.HttpError(400, 'Il buono si usa alla consegna, non per l’acconto.');
-      if (/non\s*tracciat/i.test(method) || method.length > 30) throw new L.HttpError(400, 'Ogni quota deve avere un metodo di pagamento registrato (contanti, carta, bonifico…).');
+      if (!(amount > 0)) throw new L.HttpError(400, list.length > 1 ? `La quota ${i + 1} dell’acconto ha un importo non valido: deve essere maggiore di zero.` : 'L’importo dell’acconto non è valido: deve essere maggiore di zero.', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi l’importo ricevuto (es. 50 o 49,90).' });
+      if (/^buono$/i.test(method)) throw new L.HttpError(400, 'Il buono non si può usare come acconto: si applica solo al saldo, alla consegna.', { code: 'BUONO_NON_PER_ACCONTO', hint: 'Registra l’acconto in contanti, carta o bonifico; usa il buono quando consegni.' });
+      if (/non\s*tracciat/i.test(method) || method.length > 30) throw new L.HttpError(400, 'Una quota dell’acconto ha un metodo di pagamento non ammesso: ogni incasso va registrato con il metodo reale.', { code: 'METODO_PAGAMENTO_MANCANTE', hint: 'Scegli contanti, carta, bonifico…' });
       return { amount, method };
     });
     const total = L.money(rows.reduce((a, p) => a + p.amount, 0));
     await tx(async () => {
-      const r = await db.prepare('SELECT code FROM repairs WHERE id = ?').get(req.params.id);
+      const r = await db.prepare('SELECT code, status FROM repairs WHERE id = ?').get(req.params.id);
       if (!r) throw new L.HttpError(404, 'Riparazione non trovata');
+      // BUG corretto: l'acconto su una riparazione gia' consegnata/annullata falsava il saldo e la cassa
+      if (['delivered', 'cancelled'].includes(r.status)) throw new L.HttpError(409, `La riparazione ${r.code} è ${r.status === 'delivered' ? 'già stata consegnata' : 'annullata'}: non si può più registrare un acconto.`, { code: 'ACCONTO_SU_RIPARAZIONE_CONCLUSA', hint: 'Se il cliente ha pagato qualcosa in più, registralo come vendita separata.' });
       let i = 0;
       for (const p of rows) {
         i += 1;
@@ -503,8 +531,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
       if (backup) return await backup(c);
       return c.body(JSON.stringify(await dumpAll()), 200, { 'content-type': 'application/json', 'content-disposition': `attachment; filename="officina-backup-${L.localDate()}.json"` });
     } catch (e) {
-      console.error(e);
-      return c.json({ ok: false, error: 'Backup non riuscito' }, 500);
+      return errorReply(c, e.status ? e : new Error(`Backup non riuscito: ${e.message}`)); // 500 con codice di riferimento e log
     }
   });
 
