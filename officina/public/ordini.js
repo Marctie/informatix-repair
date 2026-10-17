@@ -1,6 +1,7 @@
 // Ordini: cosa ordinare al fornitore per un cliente (o per il negozio), con stato, acconto e avviso all'arrivo.
 import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, waLink, META } from './util.js';
 import { customerField, bindCustomer, itemsEditor, methodSelect } from './pickers.js';
+import { appesoField, appesoVal } from './retro.js';
 
 const STATUS = {
   da_ordinare: { label: 'Da ordinare', cls: 'bg-gray-100 text-gray-700', next: 'ordinato', nextLabel: 'Segna ordinato' },
@@ -74,9 +75,9 @@ async function deliverDialog(id, done) {
   if (!o) return;
   const m = openModal(`<div class="sec"><p class="text-sm">Consegna dell'ordine <b>${esc(o.code)}</b>${o.customer_name ? ` a <b>${esc(o.customer_name)}</b>` : ''}.</p>
     ${o.balance > 0 ? `<div class="fgrid c2"><div class="field"><label class="l">Saldo da incassare</label><input value="${eur(o.balance)}" disabled /></div>
-      <div class="field"><label class="l" for="dv-method">Incassato con</label>${methodSelect('dv-method')}</div></div>` : '<p class="hint">Già pagato per intero.</p>'}</div>`,
+      <div class="field"><label class="l" for="dv-method">Incassato con</label>${methodSelect('dv-method')}${appesoField('dv-appeso')}</div></div>` : '<p class="hint">Già pagato per intero.</p>'}</div>`,
     { title: 'Consegna ordine', footer: `<button class="btn btn-outline" data-close>Annulla</button>${o.balance > 0 ? '<button class="btn btn-primary" id="dv-pay">Incassa e consegna</button>' : ''}<button class="btn btn-dark" id="dv-go">${o.balance > 0 ? 'Consegna senza incasso' : 'Consegna'}</button>` });
-  const go = (collect) => async () => { const r = await safe(() => api('POST', `/api/orders/${id}/status`, { status: 'consegnato', collect, method: $('#dv-method', m.el)?.value })); if (r) { m.close(); toast('Ordine consegnato'); done?.(); } };
+  const go = (collect) => async () => { const r = await safe(() => api('POST', `/api/orders/${id}/status`, { status: 'consegnato', collect, method: $('#dv-method', m.el)?.value, ...appesoVal(m.el, 'dv-appeso') })); if (r) { m.close(); toast('Ordine consegnato'); done?.(); } };
   $('#dv-go', m.el).onclick = go(false);
   if ($('#dv-pay', m.el)) $('#dv-pay', m.el).onclick = go(true);
 }
@@ -123,10 +124,10 @@ export async function openOrder(id, done) {
 
 function depositDialog(o, done) {
   const m = openModal(`<div class="sec"><div class="fgrid c2"><div class="field"><label class="l" for="dp-amt">Importo (max ${eur(o.balance)})</label><input id="dp-amt" type="number" min="0" step="0.01" inputmode="decimal" /></div>
-    <div class="field"><label class="l" for="dp-method">Pagato con</label>${methodSelect('dp-method')}</div></div></div>`,
+    <div class="field"><label class="l" for="dp-method">Pagato con</label>${methodSelect('dp-method')}${appesoField('dp-appeso')}</div></div></div>`,
   { title: 'Acconto ordine', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="dp-ok">Incassa acconto</button>' });
   $('#dp-ok', m.el).onclick = async () => {
-    if (await safe(() => api('POST', `/api/orders/${o.id}/deposit`, { amount: $('#dp-amt', m.el).value, method: $('#dp-method', m.el).value }))) { m.close(); toast('Acconto registrato'); done?.(); }
+    if (await safe(() => api('POST', `/api/orders/${o.id}/deposit`, { amount: $('#dp-amt', m.el).value, method: $('#dp-method', m.el).value, ...appesoVal(m.el, 'dp-appeso') }))) { m.close(); toast('Acconto registrato'); done?.(); }
   };
 }
 
@@ -145,7 +146,7 @@ export async function orderForm(o, done, preset = {}) {
     <div class="sec"><h3 class="sec-t">Articoli da ordinare</h3><div id="of-items"></div></div>
     <div class="sec" id="of-money"><h3 class="sec-t">Acconto</h3>
       ${o ? '<p class="hint">L’acconto si aggiunge dalla scheda dell’ordine.</p>' : `<div class="fgrid c2"><div class="field"><label class="l" for="of-dep">Acconto incassato ora (€)</label><input id="of-dep" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></div>
-        <div class="field"><label class="l" for="of-method">Pagato con</label>${methodSelect('of-method')}</div></div>`}</div>
+        <div class="field"><label class="l" for="of-method">Pagato con</label>${methodSelect('of-method')}${appesoField('of-appeso')}</div></div>`}</div>
     <div class="sec"><div class="field"><label class="l" for="of-notes">Note</label><textarea id="of-notes" rows="2" placeholder="Es. colore, modello esatto, link del prodotto…">${esc(o?.notes || '')}</textarea></div></div>`,
     { title: o ? `Modifica ${o.code}` : 'Nuovo ordine', wide: true, footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="of-ok">Salva ordine</button>' }
   );
@@ -159,7 +160,7 @@ export async function orderForm(o, done, preset = {}) {
   sync();
   $('#of-ok', m.el).onclick = async () => {
     const body = { kind: kindEl.value, customer_id: cust.value(), supplier_id: $('#of-sup', m.el).value || null, expected_date: $('#of-eta', m.el).value || null, notes: $('#of-notes', m.el).value, items: items.value(), repair_id: o?.repair_id || preset.repair_id || null };
-    if (!o) { body.deposit = $('#of-dep', m.el)?.value || 0; body.deposit_method = $('#of-method', m.el)?.value; }
+    if (!o) { body.deposit = $('#of-dep', m.el)?.value || 0; body.deposit_method = $('#of-method', m.el)?.value; Object.assign(body, appesoVal(m.el, 'of-appeso')); }
     const out = await safe(() => (o ? api('PUT', `/api/orders/${o.id}`, body) : api('POST', '/api/orders', body)));
     if (out) { m.close(); toast(o ? 'Ordine aggiornato' : `Ordine ${out.code} creato`); done?.(); }
   };

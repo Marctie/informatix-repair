@@ -59,11 +59,11 @@ export async function monitorSummary({ backups } = {}) {
     expenses_month: await safe(() => exp(monthStart), { n: 0, total: 0 }),
   };
 
-  const salesDay = await one('SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(total), 0), 2) AS total FROM sales WHERE date(created_at) = ?', today);
+  const salesDay = await one("SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(total), 0), 2) AS total FROM sales WHERE entity = 'main' AND date(created_at) = ?", today);
   const sales = {
     today: { ...salesDay, items: await all(`SELECT si.name, SUM(si.qty) AS qty, ROUND(SUM(si.qty * si.unit_price), 2) AS revenue FROM sale_items si JOIN sales s ON s.id = si.sale_id
-      WHERE date(s.created_at) = ? GROUP BY LOWER(si.name) ORDER BY qty DESC, revenue DESC LIMIT 8`, today) },
-    month: await one('SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(total), 0), 2) AS total FROM sales WHERE date(created_at) BETWEEN ? AND ?', monthStart, today),
+      WHERE s.entity = 'main' AND date(s.created_at) = ? GROUP BY LOWER(si.name) ORDER BY qty DESC, revenue DESC LIMIT 8`, today) },
+    month: await one("SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(total), 0), 2) AS total FROM sales WHERE entity = 'main' AND date(created_at) BETWEEN ? AND ?", monthStart, today),
   };
 
   const orders = await safe(async () => {

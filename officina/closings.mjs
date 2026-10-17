@@ -25,9 +25,13 @@ export function bucketOf(method) {
 
 /** Incassi e uscite in contanti del giorno (dalla tabella payments e dalle spese pagate dalla cassa). */
 export async function expectedFor(day) {
-  const rows = await db.prepare('SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) = ? GROUP BY method').all(day);
+  const rows = await db.prepare("SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE entity = 'main' AND date(created_at) = ? GROUP BY method").all(day);
   const e = { cash: 0, pos: 0, other: 0, n: 0, by_method: rows };
   for (const r of rows) { e[bucketOf(r.method)] += r.total; e.n += r.n; }
+  // Incassi di un'altra attivita' (pagamento appeso): sono fisicamente nel cassetto/POS, quindi entrano nel totale atteso
+  // (altrimenti la conta darebbe una differenza), ma senza dettaglio: i dettagli li vedono solo gli amministratori.
+  const alt = await db.prepare("SELECT method, ROUND(SUM(amount),2) AS total FROM payments WHERE entity = 'altra' AND date(created_at) = ? GROUP BY method").all(day);
+  for (const r of alt) e[bucketOf(r.method)] += r.total;
   // spese in contanti pagate dal negozio (non da una persona che poi si fa rimborsare): escono dal cassetto
   const out = await db.prepare("SELECT COALESCE(SUM(amount),0) AS t FROM expenses WHERE spent_on = ? AND lower(method) LIKE 'contant%' AND (paid_by IS NULL OR paid_by = '')").get(day);
   return { exp_cash: money(e.cash), exp_pos: money(e.pos), exp_other: money(e.other), cash_out: money(out.t), n_payments: e.n, by_method: rows };

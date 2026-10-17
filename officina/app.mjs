@@ -35,6 +35,7 @@ import { cassaMiddleware, isCassa } from './roles.mjs';
 import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
 import { registerErrorRoutes } from './registro-errori.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
+import { registerAltraRoutes, altraSummary } from './altra.mjs';
 import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 
 import * as CK from './checklists.mjs';
@@ -142,6 +143,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerErrorRoutes(app, h, adminOnly);
   registerRetroRoutes(app, h, adminOnly);
   registerBlackRoutes(app, h, adminOnly);
+  registerAltraRoutes(app, h, adminOnly);
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
@@ -255,7 +257,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.get('/api/customers/:id', h(async (req) => {
     const c = await db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
     if (!c) throw new L.HttpError(404, 'Cliente non trovato');
-    return { ...c, blacklist: await findBlacks({ customer_id: c.id }), repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare('SELECT * FROM sales WHERE customer_id = ? ORDER BY id DESC').all(c.id) };
+    return { ...c, blacklist: await findBlacks({ customer_id: c.id }), repairs: await L.listRepairs({ customer_id: c.id }), sales: await db.prepare("SELECT * FROM sales WHERE customer_id = ? AND entity = 'main' ORDER BY id DESC").all(c.id) };
   }));
   app.post('/api/customers', h(async (req) => {
     const id = await L.upsertCustomer({ ...req.body, id: undefined });
@@ -487,7 +489,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
       let i = 0;
       for (const p of rows) {
         i += 1;
-        await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('repair', req.params.id, rows.length > 1 ? `Acconto ${r.code} · quota ${i}/${rows.length}` : `Acconto ${r.code}`, p.amount, p.method);
+        await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,${NOW})`).run('repair', req.params.id, rows.length > 1 ? `Acconto ${r.code} · quota ${i}/${rows.length}` : `Acconto ${r.code}`, p.amount, p.method, L.entityOf(req.body));
       }
       await db.prepare('UPDATE repairs SET deposit = deposit + ? WHERE id = ?').run(total, req.params.id);
       await L.logEvent(Number(req.params.id), null, `Acconto ricevuto: ${total.toFixed(2)} €.`, 1);
@@ -496,7 +498,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   }));
 
   // Vendite e cassa
-  app.get('/api/sales', h(() => db.prepare('SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id=s.customer_id ORDER BY s.id DESC LIMIT 200').all()));
+  app.get('/api/sales', h(() => db.prepare("SELECT s.*, c.name AS customer_name FROM sales s LEFT JOIN customers c ON c.id=s.customer_id WHERE s.entity = 'main' ORDER BY s.id DESC LIMIT 200").all()));
   app.post('/api/sales', h(async (req) => {
     if (isCassa(req.user) && Array.isArray(req.body.items)) {
       // la cassa non vede i costi dei servizi: il costo vero lo rimette il server (per i guadagni corretti)
@@ -509,7 +511,12 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const sale = await L.createSale(req.body);
     return { ...sale, blacklist_alert: req.body.customer_id ? await findBlacks({ customer_id: req.body.customer_id }) : [] };
   }));
-  app.get('/api/sales/:id', h((req) => L.getSale(req.params.id)));
+  app.get('/api/sales/:id', h(async (req) => {
+    const sale = await L.getSale(req.params.id);
+    // vendita di un'altra attivita': dopo la conferma la Cassa non la rivede (la gestiscono gli amministratori)
+    if (sale.entity === 'altra' && req.user && req.user.role !== 'admin') throw new L.HttpError(404, 'Vendita non trovata');
+    return sale;
+  }));
   app.get('/api/report', h(async (req) => {
     const r = await L.report(str(req.query.from), str(req.query.to));
     return { ...r, by_day: await L.reportByDay(r.from, r.to) };
@@ -522,7 +529,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const items = [...base.items, ...extra].sort((x, y) => rank[x.severity] - rank[y.severity]);
     return { count: items.length, high: items.filter((x) => x.severity === 'high').length, items };
   }));
-  app.get('/api/analytics', h(async (req) => { adminOnly(req); return L.analytics(str(req.query.from), str(req.query.to)); }));
+  app.get('/api/analytics', h(async (req) => { adminOnly(req); const a = await L.analytics(str(req.query.from), str(req.query.to)); return { ...a, other: await altraSummary(a.from, a.to) }; }));
   app.get('/api/stock/summary', h(() => L.stockSummary()));
 
   // Backup: tutte le tabelle in un file JSON scaricabile (D1 non ha VACUUM INTO). Un motore con un backup suo (SQLite locale) lo passa in `backup`.

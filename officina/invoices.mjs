@@ -58,6 +58,7 @@ export async function getInvoice(id, user) {
   const r = await db.prepare(`${BASE} WHERE i.id = ?`).get(id);
   if (!r) throw new HttpError(404, 'Fattura non trovata', { code: 'FATTURA_NON_TROVATA', hint: 'Riapri l’archivio fatture: potrebbe essere stata eliminata.' });
   guard(user, r.direction);
+  if (r.entity === 'altra' && isCassa(user)) throw new HttpError(404, 'Fattura non trovata', { code: 'FATTURA_NON_TROVATA', hint: 'Riapri l’archivio fatture: potrebbe essere stata eliminata.' });
   const today = localDate();
   const payments = await db.prepare('SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY paid_on, id').all(id);
   const credit_notes = await db.prepare("SELECT id, number, issue_date, total FROM invoices WHERE credit_for_id = ? AND doc_type = 'nota_credito' ORDER BY issue_date, id").all(id);
@@ -138,12 +139,20 @@ async function reconcileCash(invoiceId, c, user) {
   return n;
 }
 
+/** Di quale azienda e' la fattura: 'altra' se lo dice un admin, oppure se la vendita/riparazione collegata e' dell'altra attivita'. */
+async function entityFor(b, c, user) {
+  if (b.entity === 'altra' && !isCassa(user)) return 'altra';
+  if (c.sale_id) { const s = await db.prepare('SELECT entity FROM sales WHERE id = ?').get(c.sale_id); if (s?.entity === 'altra') return 'altra'; }
+  if (c.repair_id && await db.prepare("SELECT id FROM payments WHERE kind = 'repair' AND ref_id = ? AND entity = 'altra' LIMIT 1").get(c.repair_id)) return 'altra';
+  return 'main';
+}
+
 export async function createInvoice(b, user) {
   const c = await clean(b, user);
   await assertNoDuplicate(c);
   const retro = c.issue_date < localDate() ? 1 : 0;
-  const r = await db.prepare(`INSERT INTO invoices (direction, doc_type, number, issue_date, due_date, customer_id, supplier_id, party_name, total, vat, credit_for_id, sale_id, repair_id, purchase_id, notes, retro, created_at, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,${NOW},?)`)
-    .run(c.direction, c.doc_type, c.number, c.issue_date, c.due_date, c.customer_id, c.supplier_id, c.party_name, c.total, c.vat, c.credit_for_id, c.sale_id, c.repair_id, c.purchase_id, c.notes, retro, who(user));
+  const r = await db.prepare(`INSERT INTO invoices (direction, doc_type, number, issue_date, due_date, customer_id, supplier_id, party_name, total, vat, credit_for_id, sale_id, repair_id, purchase_id, notes, retro, entity, created_at, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,${NOW},?)`)
+    .run(c.direction, c.doc_type, c.number, c.issue_date, c.due_date, c.customer_id, c.supplier_id, c.party_name, c.total, c.vat, c.credit_for_id, c.sale_id, c.repair_id, c.purchase_id, c.notes, retro, await entityFor(b, c, user), who(user));
   const id = Number(r.lastInsertRowid);
   let linked = 0;
   if (c.direction === 'emessa' && c.doc_type === 'fattura' && (c.sale_id || c.repair_id) && b.reconcile !== false) linked = await reconcileCash(id, c, user);
@@ -155,11 +164,12 @@ export async function updateInvoice(id, b, user) {
   const old = await db.prepare(`${BASE} WHERE i.id = ?`).get(id);
   if (!old) throw new HttpError(404, 'Fattura non trovata', { code: 'FATTURA_NON_TROVATA', hint: 'Riapri l’archivio fatture: potrebbe essere stata eliminata.' });
   guard(user, old.direction);
+  if (old.entity === 'altra' && isCassa(user)) throw new HttpError(404, 'Fattura non trovata', { code: 'FATTURA_NON_TROVATA', hint: 'Riapri l’archivio fatture: potrebbe essere stata eliminata.' });
   const c = await clean(b, user, old);
   await assertNoDuplicate(c, id);
   if (c.doc_type === 'fattura' && c.total < money(old.paid + old.credited) - 0.005) throw new HttpError(400, `Fattura ${old.number}: il nuovo totale è inferiore a quanto risulta già pagato o stornato (${eur(old.paid + old.credited)}).`, { code: 'TOTALE_SOTTO_PAGATO', hint: 'Alza il totale, oppure elimina prima i pagamenti o le note di credito di troppo.' });
-  await db.prepare(`UPDATE invoices SET number=?, issue_date=?, due_date=?, customer_id=?, supplier_id=?, party_name=?, total=?, vat=?, credit_for_id=?, sale_id=?, repair_id=?, purchase_id=?, notes=?, updated_at=${NOW}, updated_by=? WHERE id=?`)
-    .run(c.number, c.issue_date, c.due_date, c.customer_id, c.supplier_id, c.party_name, c.total, c.vat, c.credit_for_id, c.sale_id, c.repair_id, c.purchase_id, c.notes, who(user), id);
+  await db.prepare(`UPDATE invoices SET number=?, issue_date=?, due_date=?, customer_id=?, supplier_id=?, party_name=?, total=?, vat=?, credit_for_id=?, sale_id=?, repair_id=?, purchase_id=?, notes=?, entity=?, updated_at=${NOW}, updated_by=? WHERE id=?`)
+    .run(c.number, c.issue_date, c.due_date, c.customer_id, c.supplier_id, c.party_name, c.total, c.vat, c.credit_for_id, c.sale_id, c.repair_id, c.purchase_id, c.notes, (!isCassa(user) && (b.entity === 'altra' || b.entity === 'main')) ? b.entity : old.entity, who(user), id);
   const ch = [];
   for (const [k, l] of [['number', 'numero'], ['issue_date', 'data'], ['due_date', 'scadenza'], ['party_name', 'intestatario'], ['total', 'totale'], ['vat', 'IVA'], ['notes', 'note']]) if ((old[k] ?? null) !== (c[k] ?? null)) ch.push(`${l}: ${old[k] ?? '—'} → ${c[k] ?? '—'}`);
   await writeAudit({ user, action: 'modifica', type: 'fattura', id, label: `${c.doc_type === 'nota_credito' ? 'Nota di credito' : 'Fattura'} ${c.number} · ${c.party_name}`, detail: ch.join('; ').slice(0, 480) || 'nessun campo cambiato' });
@@ -193,7 +203,7 @@ export async function addInvoicePayment(id, b, user) {
   if (inv.direction === 'emessa') {
     // incasso vero: entra in cassa nel giorno indicato (se e' oggi, con l'ora di adesso)
     const at = paid_on === localDate() ? nowLocal() : `${paid_on} 12:00:00`;
-    const r = await db.prepare('INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,?)').run('fattura', id, `Fattura ${inv.number} · ${inv.party}`.slice(0, 120), amount, method, at);
+    const r = await db.prepare('INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,?)').run('fattura', id, `Fattura ${inv.number} · ${inv.party}`.slice(0, 120), amount, method, inv.entity === 'altra' ? 'altra' : 'main', at);
     payment_id = Number(r.lastInsertRowid);
   } else if (b.as_expense) {
     const e = await createExpense({ spent_on: paid_on, description: `Fattura ${inv.number} ${inv.party}`, category: 'ricambi e merce', vendor: inv.party, amount, vat: 0, method, doc_type: 'fattura', doc_number: inv.number, notes: 'Pagamento registrato dall’archivio fatture' });
@@ -247,7 +257,8 @@ export async function listInvoices(q = {}, user) {
   const where = [];
   const args = [];
   let direction = str(q.direction);
-  if (isCassa(user)) direction = 'emessa';
+  if (isCassa(user)) { direction = 'emessa'; where.push("i.entity = 'main'"); }
+  else if (str(q.entity) === 'altra' || str(q.entity) === 'main') { where.push('i.entity = ?'); args.push(q.entity); }
   if (direction) { where.push('i.direction = ?'); args.push(direction); }
   if (str(q.from)) { where.push('i.issue_date >= ?'); args.push(q.from); }
   if (str(q.to)) { where.push('i.issue_date <= ?'); args.push(q.to); }
