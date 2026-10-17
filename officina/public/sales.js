@@ -1,7 +1,7 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
 import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
-import { retroField, retroVal } from './retro.js';
+import { retroField, retroVal, appesoField, appesoVal } from './retro.js';
 import { blackBanner, showBlackAlert } from './blacks.js';
 import { debtorNotice, mountLedgerSettings } from './dareavere.js'; // Agente C
 import { showDeviceAlerts } from './dispositivi.js';
@@ -55,6 +55,7 @@ export async function salesView(el) {
     const subtotal = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
     const keepDisc = discNow(); // lo sconto digitato non si perde quando cambia il carrello
     const keepRetro = $('#s-retro', el)?.value || ''; // idem la data di un giorno passato e la spunta "stampa"
+    const keepAppeso = $('#s-appeso', el) ? $('#s-appeso', el).checked : false;
     const keepPrint = $('#s-print', el) ? $('#s-print', el).checked : wantPrint();
     const retroOpen = !!$('#s-cart details.retro[open]', el);
     $('#s-cart', el).innerHTML = cart.length
@@ -71,6 +72,7 @@ export async function salesView(el) {
         </div>
         <div class="sec" id="s-settle"></div>
         ${retroField('s-retro')}
+        ${appesoField('s-appeso', keepAppeso)}
         <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${keepPrint ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
@@ -146,7 +148,7 @@ export async function salesView(el) {
       const bad = settle.validate();
       if (bad) return toast(bad, false);
       e.target.disabled = true;
-      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload(), ...retroVal(el, 's-retro') }));
+      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload(), ...retroVal(el, 's-retro'), ...appesoVal(el, 's-appeso') }));
       e.target.disabled = false;
       if (!out) return;
       cart.length = 0; settle.reset(); renderCart(); recent();

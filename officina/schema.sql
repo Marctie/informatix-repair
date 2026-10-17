@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS sales (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   code TEXT NOT NULL UNIQUE, customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
   total REAL NOT NULL, discount REAL NOT NULL DEFAULT 0, method TEXT NOT NULL DEFAULT 'contanti', notes TEXT,
+  entity TEXT NOT NULL DEFAULT 'main',
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS sale_items (
@@ -104,6 +105,7 @@ CREATE TABLE IF NOT EXISTS payments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   kind TEXT NOT NULL, ref_id INTEGER NOT NULL, label TEXT,
   amount REAL NOT NULL, method TEXT NOT NULL DEFAULT 'contanti',
+  entity TEXT NOT NULL DEFAULT 'main',
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_repairs_status ON repairs(status);

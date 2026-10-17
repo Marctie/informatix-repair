@@ -6,7 +6,7 @@ import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagat
 import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts, busy, statusPrereq } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
-import { retroField, retroVal, entryDateField, entryDateInit, entryDateVal, keepRetro } from './retro.js';
+import { retroField, retroVal, entryDateField, entryDateInit, entryDateVal, keepRetro, appesoField, appesoVal } from './retro.js';
 import { showBlackAlert, watchBlack } from './blacks.js';
 
 import { attachModelSuggest } from './modelli.js'; // suggerimenti marca/modello dalla terza lettera
@@ -87,7 +87,7 @@ export function openRepairForm(onDone, preset = {}) {
         <div class="fgrid c4 m2">
           <div class="field"><label class="l" for="rf-quote">Preventivo €</label><input id="rf-quote" inputmode="decimal" placeholder="da definire" /></div>
           <div class="field"><label class="l" for="rf-deposit">Acconto €</label><input id="rf-deposit" inputmode="decimal" placeholder="0" /></div>
-          <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
+          <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select>${appesoField('rf-appeso')}</div>
           <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
         </div>
         ${entryDateField('rf-retro')}
@@ -233,6 +233,7 @@ export function openRepairForm(onDone, preset = {}) {
       quote_agreed: $('#rf-agreed', root).checked,
       deposit: $('#rf-deposit', root).value,
       deposit_method: $('#rf-method', root).value,
+      ...appesoVal(root, 'rf-appeso'),
       ...entryDate,
       eta_date: $('#rf-etadate', root).value,
       urgent: $('#rf-urgent', root).checked,
@@ -397,6 +398,7 @@ export async function openRepairDetail(id, onChange) {
               <div class="stack" style="gap:.5rem"><div class="row" style="flex-wrap:nowrap"><input id="d-dep" inputmode="decimal" placeholder="Nuovo acconto €" aria-label="Nuovo acconto" /><select id="d-depm" aria-label="Pagato con" style="width:auto"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
                 <div class="row" style="flex-wrap:nowrap;display:none" id="d-dep2"><input id="d-dep2a" inputmode="decimal" placeholder="Seconda quota €" aria-label="Seconda quota" /><select id="d-dep2m" aria-label="Seconda quota pagata con" style="width:auto"><option>carta</option><option>contanti</option><option>bonifico</option></select></div>
                 ${retroField('d-dep-retro')}
+                ${appesoField('d-appeso')}
                 <div class="row tight"><button class="btn btn-outline" data-act="deposit">Registra acconto</button><button type="button" class="btn btn-ghost btn-sm" data-act="depsplit">＋ Dividi su un altro metodo</button></div></div>
               <div class="row tight"><button class="btn btn-dark btn-sm" data-act="savequote">Salva preventivo e data</button><button class="btn btn-outline btn-sm" data-act="sendquote">📨 Invia preventivo al cliente</button>${(r.quote != null || r.quote_options.length) && r.status !== 'quote_pending' ? '<button class="btn btn-outline btn-sm" data-act="askquote">Chiedi approvazione</button>' : ''}</div>` : ''}
             <p class="hint">Data di inserimento: <b>${fdt(r.created_at)}</b></p>
@@ -527,7 +529,7 @@ export async function openRepairDetail(id, onChange) {
       case 'deposit': {
         const second = $('#d-dep2', body).style.display !== 'none' && $('#d-dep2a', body).value.trim();
         const payments = [{ method: $('#d-depm', body).value, amount: $('#d-dep', body).value }, ...(second ? [{ method: $('#d-dep2m', body).value, amount: $('#d-dep2a', body).value }] : [])];
-        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments, ...retroVal(body, 'd-dep-retro') }), 'Acconto registrato');
+        return act(() => api('POST', `/api/repairs/${id}/deposit`, { payments, ...retroVal(body, 'd-dep-retro'), ...appesoVal(body, 'd-appeso') }), 'Acconto registrato');
       }
       case 'savetech': return act(() => api('PATCH', `/api/repairs/${id}`, { tech_notes: $('#d-tech', body).value }), 'Note del tecnico salvate');
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
@@ -639,6 +641,7 @@ export function deliverDialog(id, done) {
         </div>
         <div class="sec" id="dl-settle"></div>
         ${retroField('dl-retro')}
+        ${appesoField('dl-appeso')}
         <p class="hint">Garanzia: ${r.warranty_days} giorni dalla consegna.</p>
       </section>`,
       { title: 'Consegna e incasso', footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-green btn-lg" id="dl-ok">Conferma consegna</button>` }
@@ -650,7 +653,7 @@ export function deliverDialog(id, done) {
     $('#dl-ok', m.el).onclick = async () => {
       const bad = settle.validate();
       if (bad) return toast(bad, false);
-      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload(), ...retroVal(m.el, 'dl-retro') }));
+      const out = await safe(() => api('POST', `/api/repairs/${id}/deliver`, { final_price: $('#dl-final', m.el).value, ...settle.payload(), ...retroVal(m.el, 'dl-retro'), ...appesoVal(m.el, 'dl-appeso') }));
       if (!out) return;
       m.close();
       toast(`Consegnata. Incassati ${eur(out.collected)}`);
