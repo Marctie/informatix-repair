@@ -80,3 +80,26 @@ test('note con foto: allega, legge, toglie; nota di sole foto ammessa; massimo 6
   assert.equal((await a('PUT', `/api/note/${n.id}`, { title: '', body: '', items: [] })).status, 200);
   assert.equal((await a('DELETE', `/api/note/${n.id}`)).status, 200);
 });
+
+test('correggere un ricambio usato: prezzo, quantità, costo e giacenza; Cassa non tocca i costi; consegnata no', async () => {
+  const c = (await a('POST', '/api/customers', { name: 'Ricambi', phone: '3390000009' })).data;
+  const r = (await a('POST', '/api/repairs', { customer: { name: 'Ricambi', phone: '3390000009' }, brand_model: 'Galaxy A55', problem: 'Batteria', quote: 80 })).data;
+  const prod = (await a('POST', '/api/products', { name: 'Display A55', price: 90, cost: 40, qty: 5 })).data;
+  let rep = (await a('POST', `/api/repairs/${r.id}/parts`, { name: 'Batteria A55', qty: 1, unit_cost: '12,90', unit_price: 5 })).data;
+  const manual = rep.parts[0];
+  rep = (await a('POST', `/api/repairs/${r.id}/parts`, { product_id: prod.id, qty: 1 })).data;
+  const stock = rep.parts.find((p) => p.product_id);
+  // prezzo sbagliato: si corregge prezzo al cliente e costo (con IVA esclusa)
+  rep = (await a('PATCH', `/api/repairs/${r.id}/parts/${manual.id}`, { unit_price: '35', unit_cost: '15,78', price_mode: 'net', vat_rate: 22, vat_apply: false })).data;
+  const m2 = rep.parts.find((p) => p.id === manual.id);
+  assert.equal(m2.unit_price, 35);
+  assert.equal(m2.unit_cost, 15.78);
+  // articolo di magazzino: la quantità aggiusta la giacenza
+  await a('PATCH', `/api/repairs/${r.id}/parts/${stock.id}`, { qty: 3 });
+  const list = (await a('GET', '/api/products?q=Display A55')).data;
+  assert.equal(list[0].qty, 2);
+  // nome vuoto o prezzo negativo: messaggio chiaro
+  assert.equal((await a('PATCH', `/api/repairs/${r.id}/parts/${manual.id}`, { name: '' })).data.code, 'NOME_MANCANTE');
+  assert.equal((await a('PATCH', `/api/repairs/${r.id}/parts/${manual.id}`, { unit_price: -1 })).data.code, 'IMPORTO_NON_VALIDO');
+  assert.equal((await a('PATCH', `/api/repairs/${r.id}/parts/99999`, { unit_price: 1 })).status, 404);
+});

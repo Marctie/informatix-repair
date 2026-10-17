@@ -420,7 +420,7 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Ricambi usati</h3>
             <div class="plist">
-              ${r.parts.map((p) => `<div><span>${esc(p.name)} ${p.order_state ? `<button type="button" class="badge ${p.order_state === 'arrivato' ? 'bg-emerald-100 text-emerald-700' : p.order_state === 'ordinato' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-800'}" data-pstate="${p.id}" data-pnext="${p.order_state === 'da_ordinare' ? 'ordinato' : p.order_state === 'ordinato' ? 'arrivato' : ''}" title="Tocca per far avanzare lo stato">${p.order_state === 'da_ordinare' ? '📋 Da ordinare' : p.order_state === 'ordinato' ? '📮 Ordinato' : '✅ Arrivato'}</button>` : ''} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
+              ${r.parts.map((p) => `<div><span>${esc(p.name)} ${p.order_state ? `<button type="button" class="badge ${p.order_state === 'arrivato' ? 'bg-emerald-100 text-emerald-700' : p.order_state === 'ordinato' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-800'}" data-pstate="${p.id}" data-pnext="${p.order_state === 'da_ordinare' ? 'ordinato' : p.order_state === 'ordinato' ? 'arrivato' : ''}" title="Tocca per far avanzare lo stato">${p.order_state === 'da_ordinare' ? '📋 Da ordinare' : p.order_state === 'ordinato' ? '📮 Ordinato' : '✅ Arrivato'}</button>` : ''} <span class="hint">×${p.qty}${p.product_id ? '' : canSeeCosts() ? ` · a mano, costo ${eur(p.unit_cost * p.qty)}` : ' · a mano'}</span></span><span>${eur(p.unit_price * p.qty)} ${!p.product_id && canSeeCosts() ? `<button class="xbtn" data-tostock="${p.id}" title="Carica a magazzino" aria-label="Carica a magazzino ${esc(p.name)}">📦</button>` : ''} ${!done ? `<button class="xbtn" data-editpart="${p.id}" title="Modifica" aria-label="Modifica ${esc(p.name)}">✎</button> <button class="xbtn" data-rmpart="${p.id}" title="Rimuovi" aria-label="Rimuovi ${esc(p.name)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessun ricambio registrato.</p>'}
             </div>
             ${!done ? `<div class="relative"><input id="d-part" placeholder="Cerca un ricambio da aggiungere…" autocomplete="off" /><div id="d-part-s" class="suggest card hidden"></div></div>
             <div class="row tight"><button class="btn btn-outline btn-sm" data-act="manualpart">＋ Ricambio non a magazzino</button></div>` : ''}
@@ -511,6 +511,8 @@ export async function openRepairDetail(id, onChange) {
     if (ts) return act(() => api('POST', `/api/repairs/${id}/parts/${ts.dataset.tostock}/stock`), 'Ricambio caricato a magazzino: ora è un articolo a catalogo');
 
     if (await checklistClick(e, body, id, () => { reloadList(); render(); })) return;
+    const ep = e.target.closest('[data-editpart]');
+    if (ep) return editPartDialog(id, cur.parts.find((x) => String(x.id) === ep.dataset.editpart), () => { reloadList(); render(); });
     const rm = e.target.closest('[data-rmpart]');
     if (rm) { if (!(await confirmDelete('questo ricambio', { verb: 'Rimuovere', detail: 'Il magazzino viene ripristinato.' }))) return; return act(() => api('DELETE', `/api/repairs/${id}/parts/${rm.dataset.rmpart}`), 'Ricambio rimosso (magazzino ripristinato)'); }
     const ro = e.target.closest('[data-rmopt]');
@@ -702,21 +704,70 @@ async function editDialog(id, done) {
 }
 
 /** Ricambio non caricato a magazzino: descrizione, quantità, costo d'acquisto e prezzo al cliente (non tocca le giacenze). */
+/** Corregge un ricambio gia' inserito (nome, quantita', prezzo al cliente; per i ricambi a mano anche costo, IVA e fornitore). */
+async function editPartDialog(repairId, p, done) {
+  if (!p) return;
+  const manual = !p.product_id;
+  const cost = canSeeCosts() && manual;
+  if (cost) await ensureVatDefault();
+  const m = openModal(`<div class="fgrid c2">
+      <div class="field" style="grid-column:1/-1"><label class="l" for="ep-name">Descrizione</label><input id="ep-name" value="${esc(p.name)}" /></div>
+      <div class="field"><label class="l" for="ep-qty">Quantità</label><input id="ep-qty" inputmode="numeric" value="${p.qty}" /></div>
+      <div class="field"><label class="l" for="ep-price">Prezzo al cliente € (cad.)</label><input id="ep-price" inputmode="decimal" value="${p.unit_price}" /></div>
+      ${cost ? `<div class="field"><label class="l" for="ep-cost">Prezzo d’acquisto € (cad.)</label><input id="ep-cost" inputmode="decimal" value="${p.cost_net ?? p.unit_cost}" /></div>
+        <div class="field"><label class="l" for="ep-code">Codice fornitore</label><input id="ep-code" value="${esc(p.supplier_code || '')}" /></div>
+        <div style="grid-column:1/-1">${vatBlock('ep')}</div>
+        <div class="field"><label class="l" for="ep-sup">Fornitore</label><input id="ep-sup" list="ep-suplist" autocomplete="off" value="${esc(p.supplier_name || '')}" /><datalist id="ep-suplist"></datalist></div>` : ''}
+    </div>${manual ? '' : '<p class="hint">Articolo di magazzino: se cambi la quantità la giacenza si aggiusta da sola. Il costo resta quello del catalogo.</p>'}`,
+  { title: 'Modifica ricambio', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="ep-ok">Salva</button>' });
+  let vatVals = () => ({});
+  if (cost) {
+    if (p.vat_rate != null) $('#ep-vrate', m.el).value = String(p.vat_rate);
+    $('#ep-vapply', m.el).checked = !!p.vat_applied;
+    vatVals = bindVat(m.el, 'ep', '#ep-cost');
+    safe(() => api('GET', '/api/suppliers')).then((list) => { const dl = $('#ep-suplist', m.el); if (dl && list) dl.innerHTML = list.map((s) => `<option value="${esc(s.name)}"></option>`).join(''); });
+  }
+  $('#ep-ok', m.el).onclick = async () => {
+    const v = (id) => $(`#${id}`, m.el).value;
+    const body = { name: v('ep-name'), qty: v('ep-qty'), unit_price: v('ep-price').replace(',', '.') };
+    if (cost) Object.assign(body, { unit_cost: v('ep-cost').replace(',', '.'), supplier_code: v('ep-code'), supplier_name: v('ep-sup'), ...vatVals() });
+    if (await safe(() => api('PATCH', `/api/repairs/${repairId}/parts/${p.id}`, body))) { m.close(); toast('Ricambio corretto'); done(); }
+  };
+}
+
 async function manualPartDialog(repairId, done) {
   await ensureVatDefault();
   const m = openModal(`<div class="fgrid c2">
-      <div class="field" style="grid-column:1/-1"><label class="l" for="mp-name">Descrizione</label><input id="mp-name" placeholder="es. Display iPhone 12" /></div>
+      <div class="field" style="grid-column:1/-1"><label class="l" for="mp-name">Descrizione</label><input id="mp-name" placeholder="es. Display iPhone 12" autocomplete="off" /><div id="mp-dup" class="hint" style="margin-top:.4rem"></div></div>
       <div class="field"><label class="l" for="mp-qty">Quantità</label><input id="mp-qty" inputmode="numeric" value="1" /></div>
       <div class="field"><label class="l" for="mp-code">Codice fornitore</label><input id="mp-code" /></div>
       ${canSeeCosts() ? `<div class="field"><label class="l" for="mp-cost">Prezzo d’acquisto € (cad.)</label><input id="mp-cost" inputmode="decimal" /></div>` : ""}
       ${canSeeCosts() ? `<div style="grid-column:1/-1">${vatBlock('mp')}</div>` : ''}
       <div class="field"><label class="l" for="mp-price">Prezzo al cliente € (cad.)</label><input id="mp-price" inputmode="decimal" placeholder="0 = incluso nel preventivo" /></div>
-      <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" /></div>
+      <div class="field"><label class="l" for="mp-sup">Fornitore</label><input id="mp-sup" list="mp-suplist" autocomplete="off" placeholder="scrivi o scegli" /><datalist id="mp-suplist"></datalist></div>
       <div class="field"><label class="l" for="mp-date">Data d’acquisto</label><input id="mp-date" type="date" value="${today()}" /></div>
       <label class="field" style="grid-column:1/-1;display:flex;gap:.5rem;align-items:center"><input id="mp-order" type="checkbox" style="width:auto" /> <span>Ancora da ordinare al fornitore (finisce nella lista “Da ordinare”)</span></label>
     </div><p class="hint">Non scala nessuna giacenza. Il costo entra nel guadagno della riparazione.</p>`,
     { title: 'Ricambio non a magazzino', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="mp-ok">Aggiungi</button>' });
   const vatVals = canSeeCosts() ? bindVat(m.el, 'mp', '#mp-cost') : () => ({});
+  // fornitori gia' in anagrafica: li propone mentre scrivi (si puo' scrivere anche un nome nuovo)
+  safe(() => api('GET', '/api/suppliers')).then((list) => { const dl = $('#mp-suplist', m.el); if (dl && list) dl.innerHTML = list.map((s) => `<option value="${esc(s.name)}"></option>`).join(''); });
+  // controllo doppioni: se quello che scrivi e' gia' a magazzino lo dice e propone di usarlo
+  $('#mp-name', m.el).oninput = debounce(async (e) => {
+    const q = e.target.value.trim();
+    const box = $('#mp-dup', m.el);
+    if (!box) return;
+    if (q.length < 3) { box.innerHTML = ''; return; }
+    const list = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
+    if (!box.isConnected) return;
+    box.innerHTML = list?.length ? `<b style="color:var(--red-d)">Già a magazzino?</b> ${list.slice(0, 4).map((p) => `<button type="button" class="btn btn-outline btn-sm" data-usepid="${p.id}" style="margin:.2rem .3rem 0 0">${esc(p.name)} · ${p.qty} pz</button>`).join('')}` : '';
+  }, 250);
+  $('#mp-dup', m.el).onclick = async (e) => {
+    const b = e.target.closest('[data-usepid]');
+    if (!b) return;
+    const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, { product_id: b.dataset.usepid, qty: $('#mp-qty', m.el).value }));
+    if (out) { m.close(); toast('Aggiunto dal magazzino (giacenza scalata)'); done(); }
+  };
   $('#mp-ok', m.el).onclick = async () => {
     const v = (id) => $(`#${id}`, m.el).value;
     const out = await safe(() => api('POST', `/api/repairs/${repairId}/parts`, {

@@ -459,6 +459,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.post('/api/repairs/:id/deliver', h((req) => L.deliverRepair(req.params.id, req.body || {})));
   app.post('/api/repairs/:id/note', h((req) => L.addNote(req.params.id, req.body.note, req.body.public !== false)));
   app.post('/api/repairs/:id/parts', h((req) => L.addPart(req.params.id, req.body)));
+  app.patch('/api/repairs/:id/parts/:partId', h((req) => L.updatePart(req.params.id, req.params.partId, req.body, { canCost: !isCassa(req.user) })));
   app.delete('/api/repairs/:id/parts/:partId', h((req) => L.removePart(req.params.id, req.params.partId)));
   app.put('/api/repairs/:id/checklist', h(async (req) => ({ ok: true, check: await CK.saveRepairCheck(req.params.id, req.body.phase, req.body.items, req.user) })));
   // Firme: scheda di ingresso firmata al banco (tablet/mouse) o richiesta a distanza dal link del cliente
