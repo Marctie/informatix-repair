@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS products (
   cost REAL NOT NULL DEFAULT 0, price REAL NOT NULL DEFAULT 0,
   supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
   location TEXT, notes TEXT, active INTEGER NOT NULL DEFAULT 1,
+  stale_days INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS stock_moves (
@@ -477,6 +478,7 @@ CREATE TABLE IF NOT EXISTS notes (
   items TEXT,                                        -- elenco con caselle: JSON [{"t":"testo","d":0|1}]
   color TEXT NOT NULL DEFAULT 'giallo',
   pinned INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0,
+  photos TEXT,                                       -- chiavi foto (archivio R2): JSON ["note/...jpg"]
   created_by TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))

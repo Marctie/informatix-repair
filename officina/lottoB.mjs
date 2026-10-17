@@ -5,12 +5,12 @@ import { registerExternalRoutes, externalAlerts, EXTERNAL_TABLES } from './ester
 import { registerLoanRoutes, loanAlerts, LOAN_TABLES } from './prestiti.mjs';
 import { registerNoteRoutes, NOTE_TABLES } from './note.mjs';
 
-export function registerLottoB(app, h) {
+export function registerLottoB(app, h, deps = {}) {
   registerModelRoutes(app, h);
   registerStoricoRoutes(app, h);
   registerExternalRoutes(app, h);
   registerLoanRoutes(app, h);
-  registerNoteRoutes(app, h);
+  registerNoteRoutes(app, h, deps);
 }
 
 /** Avvisi di campanella e "Oggi": rientri esterni in ritardo, muletti non rientrati. */

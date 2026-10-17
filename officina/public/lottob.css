@@ -55,3 +55,9 @@
 .ed-item{display:flex;gap:.5rem;align-items:center}
 .ed-item input[type=text]{flex:1 1 auto;min-width:0}
 .ed-item input[type=checkbox]{flex:none;width:1.1rem;height:1.1rem}
+
+.nphotos{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem}
+.note .nphotos img{width:100%;max-height:11rem;object-fit:cover;border-radius:.5rem}
+.nphotos.edit .np{position:relative;display:inline-block}
+.nphotos.edit img{width:5.5rem;height:5.5rem;object-fit:cover;border-radius:.5rem}
+.nphotos.edit .np button{position:absolute;top:.15rem;right:.15rem;width:1.6rem;height:1.6rem;border-radius:50%;border:0;background:rgb(0 0 0/.65);color:#fff;cursor:pointer}

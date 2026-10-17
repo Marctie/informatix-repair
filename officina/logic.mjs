@@ -622,9 +622,9 @@ export async function alerts() {
     const where = p.supplier_name ? ` (fornitore: ${p.supplier_name})` : '';
     if (p.qty <= 0) out.push({ type: 'out_of_stock', severity: 'high', title: `${p.name}: esaurito`, detail: `Da riordinare${where}.`, link: '#/magazzino?tab=reorder', ref: p.id });
     else if (min > 0 && p.qty <= min) out.push({ type: 'low_stock', severity: 'medium', title: `${p.name}: sta per esaurirsi`, detail: `Restano ${p.qty} pezzi (soglia ${min}). Da riordinare${where}.`, link: '#/magazzino?tab=reorder', ref: p.id });
-    else if (staleDays && p.qty > 0) {
+    else if (p.qty > 0 && (p.stale_days == null ? staleDays : Number(p.stale_days)) > 0) {
       const since = ago(p.last_out || p.created_at);
-      if (since != null && since >= staleDays) out.push({ type: 'stale', severity: 'low', title: `${p.name}: fermo da ${since} giorni`, detail: `Giacenza ${p.qty} pezzi, nessuna vendita o uso da ${since} giorni. Valuta un’offerta o controlla il prezzo di vendita (${money(p.price).toFixed(2)} €).`, link: '#/magazzino', ref: p.id });
+      if (since != null && since >= (p.stale_days == null ? staleDays : Number(p.stale_days))) out.push({ type: 'stale', severity: 'low', title: `${p.name}: fermo da ${since} giorni`, detail: `Giacenza ${p.qty} pezzi, nessuna vendita o uso da ${since} giorni. Valuta un’offerta o controlla il prezzo di vendita (${money(p.price).toFixed(2)} €).`, link: '#/magazzino', ref: p.id });
     }
   }
   const open = await listRepairs({ open: true });

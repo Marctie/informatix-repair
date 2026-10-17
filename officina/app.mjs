@@ -353,7 +353,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerLedgerRoutes(app, h, { adminOnly });
   // --- fine Agente C ---
   // ===== Agente B: catalogo modelli, storico, riparazioni esterne, prestiti, note (officina/lottoB.mjs) =====
-  registerLottoB(app, h);
+  registerLottoB(app, h, { media: usati.media || (() => missingMedia()) });
   // ===== fine blocco Agente B =====
 
   // Magazzino
@@ -373,6 +373,13 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     return db.prepare(`SELECT p.*, s.name AS supplier_name FROM products p LEFT JOIN suppliers s ON s.id=p.supplier_id WHERE ${where.join(' AND ')} ORDER BY p.name LIMIT 500`).all(...args);
   }));
   app.get('/api/reorder', h(() => L.lowStock()));
+  /** Soglia "fermo" del singolo articolo: vuoto = quella generale, 0 = mai, altrimenti giorni (1-3650). */
+  const staleOf = (b) => {
+    if (b.stale_days === '' || b.stale_days == null) return null;
+    const n = Math.round(num(b.stale_days, NaN));
+    if (!Number.isFinite(n) || n < 0 || n > 3650) throw new L.HttpError(400, 'I giorni dopo cui l’articolo risulta fermo non sono validi: serve un numero tra 0 e 3650.', { code: 'GIORNI_FERMO_NON_VALIDI', hint: 'Lascia vuoto per usare la soglia generale, scrivi 0 per non avvisare mai per questo articolo.' });
+    return n;
+  };
   app.post('/api/products', h(async (req) => {
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
@@ -380,8 +387,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const qty = Math.round(num(b.qty));
     const id = await tx(async () => {
-      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,${NOW})`)
-        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes));
+      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
+        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b));
       const pid = Number(r.lastInsertRowid);
       if (qty) await L.moveStock(pid, qty, 'carico iniziale', null);
       return pid;
@@ -394,8 +401,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     checkProduct(b);
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
-    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=? WHERE id=?')
-      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), req.params.id);
+    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=? WHERE id=?')
+      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Prodotto non trovato');
     return db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   }));
