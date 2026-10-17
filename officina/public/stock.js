@@ -105,6 +105,7 @@ async function productForm(id, done) {
         <div class="field"><label class="l" for="pf-sku">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
         ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
         <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>
+        <div class="field"><label class="l" for="pf-stale">Fermo dopo (giorni)</label><input id="pf-stale" inputmode="numeric" value="${p?.stale_days ?? ''}" placeholder="generale" /><span class="hint">Vuoto = soglia generale (Impostazioni). 0 = non avvisare mai.</span></div>
         ${canSeeCosts() ? `<div class="field"><label class="l" for="pf-cost">Costo d’acquisto €</label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>` : ""}
         <div class="field"><label class="l" for="pf-price">Prezzo di vendita €</label><input id="pf-price" inputmode="decimal" value="${p?.price ?? ''}" /></div>
         <div class="field"><label class="l" for="pf-sup">Fornitore</label><select id="pf-sup"><option value="">—</option>${suppliers.map((s) => `<option value="${s.id}" ${p?.supplier_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
@@ -123,7 +124,7 @@ async function productForm(id, done) {
   );
   const r = m.el;
   $('#pf-ok', r).onclick = async () => {
-    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, min_qty: $('#pf-min', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
+    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
     if (!id) body.qty = $('#pf-qty', r).value;
     const out = await safe(() => (id ? api('PUT', `/api/products/${id}`, body) : api('POST', '/api/products', body)));
     if (out) { m.close(); toast('Articolo salvato'); done(); }

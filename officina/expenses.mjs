@@ -59,7 +59,8 @@ export async function updateExpense(id, b) {
 }
 
 export async function deleteExpense(id) {
-  await db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
+  const r = await db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
+  if (!r.changes) throw new HttpError(404, 'La spesa da eliminare non esiste (già eliminata?).', { code: 'SPESA_NON_TROVATA', hint: 'Aggiorna l’elenco delle spese: potrebbe essere stata già rimossa.' });
   return { ok: true };
 }
 
