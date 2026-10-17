@@ -337,6 +337,52 @@ export async function addPart(repairId, { product_id, name, qty, unit_price, uni
   });
 }
 
+/**
+ * Corregge un ricambio gia' registrato nella riparazione (nome, quantita', prezzi, fornitore).
+ * Articoli a magazzino: la quantita' aggiusta anche la giacenza; il costo resta quello del catalogo.
+ * Ricambi a mano: il costo si rifa' col blocco IVA come all'inserimento. `canCost` = chi puo' toccare i costi (non la Cassa).
+ */
+export async function updatePart(repairId, partId, b = {}, { canCost = true } = {}) {
+  return tx(async () => {
+    const part = await db.prepare('SELECT * FROM repair_parts WHERE id = ? AND repair_id = ?').get(partId, repairId);
+    if (!part) throw new HttpError(404, 'Questo ricambio non è più presente nella riparazione.', { code: 'RICAMBIO_NON_TROVATO', hint: 'Riapri la scheda: potrebbe essere già stato rimosso.' });
+    const r = await db.prepare('SELECT code, status FROM repairs WHERE id = ?').get(repairId);
+    if (!r) throw new HttpError(404, 'Riparazione non trovata');
+    if (['delivered', 'cancelled'].includes(r.status)) throw new HttpError(409, `La riparazione ${r.code} è ${r.status === 'delivered' ? 'già consegnata' : 'annullata'}: i ricambi non si modificano più.`, { code: 'RIPARAZIONE_CONCLUSA', hint: 'Per correggere un importo dopo la consegna usa il Registro o una nota.' });
+    const name = 'name' in b ? str(b.name) : part.name;
+    if (!name) throw new HttpError(400, 'Il nome del ricambio non può restare vuoto.', { code: 'NOME_MANCANTE', hint: 'Scrivi il nome del ricambio.' });
+    const qty = 'qty' in b ? Math.max(1, Math.round(num(b.qty, part.qty))) : part.qty;
+    const price = 'unit_price' in b ? num(b.unit_price, part.unit_price) : part.unit_price;
+    if (price < 0) throw new HttpError(400, 'Il prezzo al cliente non può essere negativo.', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi un importo maggiore o uguale a zero.' });
+    let { unit_cost: cost, vat_rate, cost_net, cost_vat, vat_applied } = part;
+    let supplier_code = part.supplier_code, supplier_name = part.supplier_name, bought_at = part.bought_at;
+    if (part.product_id) {
+      if (qty !== part.qty) await moveStock(part.product_id, part.qty - qty, 'correzione ricambio', r.code);
+    } else {
+      if (canCost && ('unit_cost' in b || 'vat_rate' in b || 'price_mode' in b || 'vat_apply' in b)) {
+        cost = num(b.unit_cost, part.unit_cost);
+        if (cost < 0) throw new HttpError(400, 'Il costo d’acquisto non può essere negativo.', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi un importo maggiore o uguale a zero.' });
+        if (cost > 0 || b.vat_rate !== undefined || truthy(b.vat_apply) || b.price_mode === 'gross') {
+          const vat = computeVat({ amount: cost, mode: b.price_mode === 'gross' ? 'gross' : 'net', rate: parseRate(b.vat_rate, Number((await getSettings()).vat_rate) || 22), apply: truthy(b.vat_apply) });
+          cost = vat.cost; vat_rate = vat.rate; cost_net = vat.net; cost_vat = vat.vat; vat_applied = vat.applied ? 1 : 0;
+        } else { vat_rate = null; cost_net = null; cost_vat = null; vat_applied = 0; }
+      }
+      if ('supplier_code' in b) supplier_code = str(b.supplier_code);
+      if ('supplier_name' in b) supplier_name = str(b.supplier_name);
+      if ('bought_at' in b) bought_at = str(b.bought_at);
+    }
+    await db.prepare('UPDATE repair_parts SET name=?, qty=?, unit_price=?, unit_cost=?, supplier_code=?, supplier_name=?, bought_at=?, vat_rate=?, cost_net=?, cost_vat=?, vat_applied=? WHERE id=?')
+      .run(name, qty, money(price), money(cost), supplier_code, supplier_name, bought_at, vat_rate, cost_net, cost_vat, vat_applied ? 1 : 0, partId);
+    const ch = [];
+    if (name !== part.name) ch.push(`nome «${part.name}» → «${name}»`);
+    if (qty !== part.qty) ch.push(`quantità ${part.qty} → ${qty}`);
+    if (money(price) !== money(part.unit_price)) ch.push(`prezzo cliente ${money(part.unit_price).toFixed(2)} → ${money(price).toFixed(2)} €`);
+    if (money(cost) !== money(part.unit_cost)) ch.push('costo d’acquisto corretto');
+    await logEvent(repairId, null, `Ricambio corretto: ${name}${ch.length ? ` (${ch.join('; ')})` : ''}.`, 0);
+    return await getRepair(repairId);
+  });
+}
+
 export async function removePart(repairId, partId) {
   return tx(async () => {
     const part = await db.prepare('SELECT * FROM repair_parts WHERE id = ? AND repair_id = ?').get(partId, repairId);

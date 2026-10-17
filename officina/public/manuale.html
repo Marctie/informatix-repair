@@ -1235,6 +1235,67 @@
     <li>Nuovi controlli con messaggio chiaro: vendita con cliente cancellato, articolo con fornitore cancellato, spesa già eliminata; il saldo di un ordine non si incassa due volte nemmeno con due click simultanei.</li>
   </ul>
 </section>
+<section id="s44">
+  <h2><span class="n">44</span>Cosa deve provare Christian</h2>
+  <p>Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco <b>cosa hai visto</b> (meglio con una foto dello schermo). Usa dati di prova (cliente &quot;Prova Prova&quot;) e poi eliminali; non servono dati veri. Dove serve il ruolo Cassa, entra con l&#x27;utente Cassa (info@informatixrepair.it).</p>
+  <h3>A. Pagamento appeso (altra attività) - ruolo Cassa + amministratore</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Cassa - vendita:</b> fai una vendita da 10 € e metti la spunta <i>Pagamento appeso</i> → incassa. La vendita NON deve comparire nell&#x27;elenco vendite, nella Cassa (incassi del giorno) né nei report della Cassa.</li>
+    <li>☐ <b>Cassa - riparazione:</b> nuova riparazione di prova con acconto 20 € e spunta <i>Pagamento appeso</i>. La scheda esiste, il versato è 20 €, ma l&#x27;acconto non compare tra gli incassi della Cassa.</li>
+    <li>☐ <b>Cassa - acconto e consegna:</b> sulla stessa riparazione aggiungi un acconto con la spunta, poi <i>Consegna e incassa</i> con la spunta. Il saldo deve tornare giusto (da saldare 0).</li>
+    <li>☐ <b>Cassa - ordine:</b> nuovo ordine per un cliente con acconto e spunta; poi consegna con incasso e spunta.</li>
+    <li>☐ <b>Amministratore:</b> menu Gestione → <b>Altra attività</b>: devono esserci tutti i pagamenti appesi di prima (vendita, acconti, saldo, ordine) con importi, metodo, cliente.</li>
+    <li>☐ <b>Amministratore - correzioni:</b> su un pagamento prova <i>Modifica</i> (cambia importo), <i>Riporta su Informatix</i> (poi deve comparire nella Cassa normale), <i>Elimina</i> (chiede due conferme). Prova anche <i>＋ Nuovo incasso</i>.</li>
+    <li>☐ <b>Analisi → Incassi:</b> sotto i grafici c&#x27;è il riquadro <i>Altra attività</i> separato (non sommato agli incassi di Informatix).</li>
+    <li>☐ <b>Registro:</b> ogni passo di sopra compare nel Registro (Gestione → Registro).</li>
+    <li>☐ <b>Fatture:</b> da una vendita appesa crea la fattura: deve risultare dell&#x27;<i>Altra attività</i>; con l&#x27;utente Cassa quella fattura NON si vede. Cambia <i>Azienda</i> dal modulo fattura e controlla.</li>
+    <li>☐ <b>Chiusura cassa:</b> con Cassa fai la chiusura del giorno: il contante appeso deve essere incluso nel &quot;contante atteso&quot; (altrimenti il cassetto sembrerebbe in eccesso).</li>
+  </ul>
+  <h3>B. Ricambi nelle riparazioni (richieste del 17/10)</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Fornitore:</b> in <i>Ricambio non a magazzino</i> il campo Fornitore propone i fornitori già in anagrafica mentre scrivi (puoi scriverne uno nuovo).</li>
+    <li>☐ <b>Doppioni:</b> scrivendo il nome del ricambio (almeno 3 lettere) compare &quot;Già a magazzino?&quot; con gli articoli simili: toccandone uno viene aggiunto dal magazzino e la giacenza scala.</li>
+    <li>☐ <b>Modifica ricambio:</b> accanto a ogni ricambio usato c&#x27;è ✎: correggi il prezzo al cliente, il prezzo d&#x27;acquisto (IVA esclusa/inclusa), la quantità, il fornitore. Per un articolo di magazzino cambiando la quantità la giacenza si aggiusta.</li>
+    <li>☐ Dopo la consegna i ricambi non si modificano più (messaggio chiaro).</li>
+  </ul>
+  <h3>C. Riparazioni e preventivi</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Data di inserimento:</b> nuova riparazione con &quot;Automatica (adesso)&quot; → ok. Togli la spunta e scegli un momento passato: con Cassa fino a 3 giorni indietro va, 10 giorni viene rifiutato con spiegazione.</li>
+    <li>☐ <b>Avanza senza preventivo:</b> su una riparazione senza preventivo prova &quot;Avanza&quot; a <i>In attesa di approvazione</i>: deve comparire &quot;Inserisci ora&quot;, non un errore.</li>
+    <li>☐ <b>Preventivo dal link:</b> invia il link a un telefono; spegni internet e firma: la firma resta sul riquadro con &quot;Riprova&quot;; riaccendi e riprova.</li>
+    <li>☐ <b>Colore dispositivo</b> sulle schede stampate; <b>stampa A4</b> scheda cliente (due copie) e scheda laboratorio (una pagina).</li>
+    <li>☐ <b>Dare/avere in scheda:</b> nella scheda riparazione il riquadro <i>Dare/avere di questa riparazione</i>: aggiungi un movimento e controllalo anche nella scheda cliente.</li>
+  </ul>
+  <h3>D. Magazzino, note, avvisi</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Articolo fermo:</b> nella scheda articolo il campo <i>Fermo dopo (giorni)</i>: metti 1 su un articolo con giacenza e controlla l&#x27;avviso (campanella / Analisi → Magazzino). Con 0 non deve avvisare mai.</li>
+    <li>☐ <b>Note con foto:</b> Note → nota completa → <i>📷 Aggiungi foto</i> (da telefono la fotocamera), fino a 6; togli una foto; controlla che compaiano sulla nota.</li>
+    <li>☐ <b>Analisi → Magazzino:</b> più/meno richiesti e ricambi più usati nelle riparazioni.</li>
+  </ul>
+  <h3>E. Cassa e documenti</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Chiusura cassa con foto:</b> crea la chiusura, allega la foto dello scontrino/cassetto, poi blocca; prova la ricerca per periodo e i totali mensili.</li>
+    <li>☐ <b>Archivio fatture:</b> nuova fattura emessa e ricevuta, pagamento parziale, nota di credito, filtri per stato.</li>
+    <li>☐ <b>Dare/avere (menu):</b> movimenti per cliente e avviso &quot;cattivo pagatore&quot; (soglia in Impostazioni).</li>
+    <li>☐ <b>Errori:</b> Gestione → Errori: l&#x27;elenco degli errori recenti con la spiegazione; i messaggi a video devono dire cosa fare.</li>
+  </ul>
+  <h3>F. Hardware (solo tu)</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Pistola/fotocamera</b> per seriali e codici (anche in carico merce).</li>
+    <li>☐ <b>Carta punti NFC</b> con il lettore (crea carta, accredita, prova il PIN).</li>
+    <li>☐ <b>Stampante etichette / ricevute</b> dal gestionale.</li>
+    <li>☐ <b>Firma col dito</b> su tablet/telefono (ingresso e consegna).</li>
+  </ul>
+  <h3>G. Materiale che mi serve da te</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>Una <b>fattura XML vera</b> di un fornitore (per provare <i>Acquisti → Importa</i>).</li>
+    <li>Un <b>DDT/PDF di esempio</b> per fornitore (per tarare l&#x27;import automatico).</li>
+    <li>Il <b>regolamento dei punti</b> (quanti punti per euro, premi, scadenza).</li>
+    <li>Dire se il ruolo Cassa può impostare la data di inserimento oltre i 7 giorni (oggi: no).</li>
+  </ul>
+  <h3>Se qualcosa non va</h3>
+  <p>Scrivi: <i>che schermata</i>, <i>cosa hai premuto</i>, <i>cosa ti aspettavi</i>, <i>cosa è successo</i> e, se c&#x27;è, il <b>codice in rosso</b> (tipo E-7K3QX). Quel codice permette a Marco di trovare l&#x27;errore in un attimo (Gestione → Errori).</p>
+</section>
 <!-- agente D: fine sezioni -->
 
 </main>

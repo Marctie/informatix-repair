@@ -26,6 +26,7 @@ const SUB = {
   'POST deliver': ['pagamento', 'crea', 'consegna e incasso'],
   'POST deposit': ['pagamento', 'crea', 'acconto'],
   'POST parts': ['ricambio', 'crea', 'ricambio aggiunto alla riparazione'],
+  'PATCH parts': ['ricambio', 'modifica', 'ricambio corretto'],
   'DELETE parts': ['ricambio', 'elimina', 'ricambio tolto dalla riparazione'],
   'POST move': ['articolo', 'modifica', 'movimento di magazzino'],
   'POST remove': ['segnalazione', 'elimina', 'segnalazione rimossa dall’elenco Blacks'],
