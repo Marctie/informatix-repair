@@ -362,6 +362,7 @@ export async function addNote(id, note, isPublic) {
 export async function createSale(b) {
   return tx(async () => {
     const items = Array.isArray(b.items) ? b.items : [];
+    if (b.customer_id && !(await db.prepare('SELECT id FROM customers WHERE id = ?').get(b.customer_id))) throw new HttpError(404, 'Il cliente scelto per la vendita non esiste più in anagrafica.', { code: 'CLIENTE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il cliente, oppure vendi senza cliente.' });
     if (!items.length) throw new HttpError(400, 'La vendita non ha nessun articolo: non c’è nulla da registrare.', { code: 'VENDITA_VUOTA', hint: 'Aggiungi almeno un articolo o un servizio e conferma di nuovo.' });
     // 1) si legge tutto e si controlla (nessuna scrittura): totale, buono e quote del pagamento diviso
     const lines = [];

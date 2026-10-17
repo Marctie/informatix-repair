@@ -377,6 +377,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
     checkProduct(b);
+    if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const qty = Math.round(num(b.qty));
     const id = await tx(async () => {
       const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,${NOW})`)
@@ -391,6 +392,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
     checkProduct(b);
+    if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
     const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=? WHERE id=?')
       .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), req.params.id);

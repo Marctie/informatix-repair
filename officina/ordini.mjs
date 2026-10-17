@@ -115,7 +115,14 @@ export async function setOrderStatus(id, status, { collect, method, appeso } = {
     await db.prepare(`UPDATE orders SET status=?, ${col ? `${col}=${NOW},` : ''} updated_at=${NOW} WHERE id=?`).run(status, id);
     if (status === 'consegnato' && collect && o.balance > 0) {
       assertMethod(method);
-      await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,${NOW})`).run('order', id, `Saldo ordine ${o.code}`, o.balance, str(method) || 'contanti', entityOf({ appeso }));
+      const ins = await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,${NOW})`).run('order', id, `Saldo ordine ${o.code}`, o.balance, str(method) || 'contanti', entityOf({ appeso }));
+      // Controllo anti doppio incasso (come per gli acconti): due consegne simultanee non devono incassare il saldo due volte.
+      const tot = (await db.prepare('SELECT COALESCE(SUM(qty * unit_price),0) AS t FROM order_items WHERE order_id = ?').get(id)).t;
+      const paid = (await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind = 'order' AND ref_id = ? AND id <= ?").get(id, Number(ins.lastInsertRowid))).s;
+      if (paid > tot + 0.005) {
+        await db.prepare('DELETE FROM payments WHERE id = ?').run(Number(ins.lastInsertRowid));
+        throw new HttpError(409, `Ordine ${o.code}: nello stesso istante il saldo è stato già incassato da un’altra operazione: il tuo incasso NON è stato registrato.`, { code: 'SALDO_DOPPIO', hint: 'Ricarica l’ordine e controlla gli incassi già presenti.' });
+      }
     }
     return getOrder(id);
   });
