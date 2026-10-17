@@ -99,3 +99,31 @@ test('spostare un pagamento di vendita su Informatix Repair riporta anche la ven
   await a('POST', `/api/altra/payments/${pay.id}/move`, { to: 'main' });
   assert.equal((await a('GET', `/api/sales/${s.id}`, null, 'cassa')).status, 200);
 });
+
+test('acconti e saldo di un ordine appesi: fuori dalla cassa, nell’altra attività', async () => {
+  const o = (await a('POST', '/api/orders', { kind: 'cliente', customer_id: (await a('POST', '/api/customers', { name: 'Ordine Altra', phone: '3394445555' })).data.id, items: [{ description: 'Cover', qty: 1, unit_price: 40 }], deposit: 10, deposit_method: 'contanti', appeso: true }, 'cassa'));
+  assert.equal(o.status, 200, JSON.stringify(o.data));
+  const dep = await a('POST', `/api/orders/${o.data.id}/deposit`, { amount: 10, method: 'carta', appeso: true }, 'cassa');
+  assert.equal(dep.status, 200);
+  const del = await a('POST', `/api/orders/${o.data.id}/status`, { status: 'ordinato' }, 'cassa');
+  assert.equal(del.status, 200);
+  await a('POST', `/api/orders/${o.data.id}/status`, { status: 'arrivato' }, 'cassa');
+  const fin = await a('POST', `/api/orders/${o.data.id}/status`, { status: 'consegnato', collect: true, method: 'contanti', appeso: true }, 'cassa');
+  assert.equal(fin.status, 200);
+  const alt = (await a('GET', `/api/altra?from=${day()}&to=${day()}`)).data;
+  assert.equal(alt.rows.filter((p) => p.kind === 'order').reduce((t, p) => t + p.amount, 0), 40);
+  const rep = (await a('GET', `/api/report?from=${day()}&to=${day()}`, null, 'cassa')).data;
+  assert.ok(!rep.rows.some((p) => p.kind === 'order'));
+});
+
+test('fatture: quella di una vendita appesa è dell’altra azienda; la Cassa non la vede; l’admin può cambiare azienda', async () => {
+  const s = (await sell({ appeso: true, customer_id: (await a('POST', '/api/customers', { name: 'Cliente Fatt', phone: '3396667777' })).data.id })).data;
+  const inv = await a('POST', `/api/invoices/from-sale/${s.id}`, { number: 'F-ALT-1' });
+  assert.equal(inv.status, 200, JSON.stringify(inv.data));
+  assert.equal(inv.data.entity, 'altra');
+  assert.equal((await a('GET', `/api/invoices/${inv.data.id}`, null, 'cassa')).status, 404);
+  assert.ok(!(await a('GET', '/api/invoices?direction=emessa', null, 'cassa')).data.rows.some((i) => i.id === inv.data.id));
+  assert.ok((await a('GET', '/api/invoices?entity=altra')).data.rows.some((i) => i.id === inv.data.id));
+  assert.equal((await a('PUT', `/api/invoices/${inv.data.id}`, { number: 'F-ALT-1', issue_date: inv.data.issue_date, total: inv.data.total, entity: 'main' })).data.entity, 'main');
+  assert.equal((await a('GET', `/api/invoices/${inv.data.id}`, null, 'cassa')).status, 200);
+});

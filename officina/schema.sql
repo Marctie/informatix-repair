@@ -393,6 +393,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   credit_for_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
   sale_id INTEGER, repair_id INTEGER, purchase_id INTEGER,
   notes TEXT, retro INTEGER NOT NULL DEFAULT 0,
+  entity TEXT NOT NULL DEFAULT 'main',
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), created_by TEXT,
   updated_at TEXT, updated_by TEXT
 );
