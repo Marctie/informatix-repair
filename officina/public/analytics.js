@@ -99,7 +99,10 @@ function incomeTab(d) {
         ? `<div class="flex items-end gap-1.5 h-40 overflow-x-auto pb-1">${i.by_day.map((x) => `<div class="flex flex-col items-center justify-end h-full min-w-[2.4rem] flex-1" title="${fdate(x.day)}: ${eur(x.total)}"><span class="text-[10px] text-gray-500 mb-1">${Math.round(x.total)}</span><div class="w-full rounded-t bg-secondary" style="height:${Math.max(4, (x.total / max) * 100)}%"></div><span class="text-[10px] text-gray-500 mt-1">${x.day.slice(8)}</span></div>`).join('')}</div>`
         : '<p class="empty">Nessun incasso nel periodo.</p>'}</section>
       <section class="card panel sec"><h3 class="sec-t">Per metodo di pagamento</h3>${hbars(i.by_method, { value: (x) => x.total, label: (x) => x.method, fmt: eur })}</section>
-    </div>`;
+    </div>
+    ${d.other && d.other.total > 0 ? `<section class="card panel sec"><h3 class="sec-t">Altra attività (pagamenti appesi, non inclusi sopra)</h3>
+      <p><b>${eur(d.other.total)}</b> in ${d.other.n} ${d.other.n === 1 ? 'pagamento' : 'pagamenti'} da fatturare all’altra azienda. Dettaglio e correzioni in <b>Gestione → Altra attività</b>.</p>
+      ${hbars(d.other.by_method, { value: (x) => x.total, label: (x) => x.method, fmt: eur })}</section>` : ''}`;
 }
 
 function salesTab(d) {

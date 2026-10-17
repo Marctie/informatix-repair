@@ -10,6 +10,7 @@ import { usersView } from './users.js';
 import { auditView } from './audit.js';
 import { erroriView } from './errori-vista.js';
 import { analyticsView } from './analytics.js';
+import { altraView } from './altra-vista.js';
 import { usatiView } from './usati.js';
 import { portaleView } from './portale.js';
 import { purchasesView } from './purchases.js';
@@ -62,6 +63,7 @@ const VIEWS = [
   { id: 'buoni', label: 'Buoni', icon: '🎟️', render: buoniView, group: 'negozio' },
   { id: 'blacks', label: 'Blacks', icon: '⛔', render: blacksView, group: 'gestione' },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },
+  { id: 'altra', label: 'Altra attività', icon: '🏢', render: altraView, admin: true, group: 'gestione' },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true, group: 'gestione' },
   // --- Agente B (voci del menu: storico, esterne, note, modelli) ---
   { id: 'storico', label: 'Storico riparazioni', icon: '📋', render: storicoView, group: 'banco' },

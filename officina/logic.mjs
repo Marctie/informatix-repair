@@ -95,11 +95,14 @@ export function assertMethod(method, { allowVoucher = false } = {}) {
   return m;
 }
 
-export async function addPayment(kind, refId, label, amount, method) {
+/** "Pagamento appeso": l'incasso appartiene a un'altra attivita' (fatturato da un'altra azienda). Sempre registrato; lo vedono solo gli amministratori. */
+export const entityOf = (b) => (b && (b.appeso === true || b.appeso === 1 || b.appeso === '1' || b.appeso === 'true') ? 'altra' : 'main');
+
+export async function addPayment(kind, refId, label, amount, method, entity = 'main') {
   if (!amount || amount <= 0) return;
   assertMethod(method, { allowVoucher: true });
-  await db.prepare("INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,datetime('now','localtime'))").run(
-    kind, refId, label, money(amount), method || 'contanti'
+  await db.prepare("INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))").run(
+    kind, refId, label, money(amount), method || 'contanti', entity === 'altra' ? 'altra' : 'main'
   );
 }
 
@@ -160,7 +163,7 @@ export async function createRepair(b) {
     // Registro dispositivi: se il seriale e' segnalato (rubato / da verificare) lo scriviamo nella scheda e lo ritorniamo come avviso
     const deviceAlerts = await deviceHook(b.serial, 'riparazione', `Entrato in riparazione ${code}`);
     for (const a of deviceAlerts) await logEvent(id, null, alertText(a), 0);
-    if (deposit > 0) await addPayment('repair', id, `Acconto ${code}`, deposit, b.deposit_method);
+    if (deposit > 0) await addPayment('repair', id, `Acconto ${code}`, deposit, b.deposit_method, entityOf(b));
     if (b.quote_agreed && quote != null) {
       await db.prepare("UPDATE repairs SET status='approved', quote_decided_at=datetime('now','localtime') WHERE id=?").run(id);
       await logEvent(id, 'approved', 'Preventivo concordato al banco.');
@@ -285,7 +288,7 @@ export async function setStatus(id, status, note, isPublic = true) {
   });
 }
 
-export async function deliverRepair(id, { final_price, method, note, ...pay } = {}) {
+export async function deliverRepair(id, { final_price, method, note, appeso, ...pay } = {}) {
   return tx(async () => {
     const r = await db.prepare('SELECT * FROM repairs WHERE id = ?').get(id);
     if (!r) throw new HttpError(404, 'Riparazione non trovata');
@@ -295,7 +298,7 @@ export async function deliverRepair(id, { final_price, method, note, ...pay } = 
     const due = Math.max(0, money(final - paid));
     // Buono e/o pagamento diviso (buoni.mjs): il piano controlla tutto prima di scrivere; lo sconto del buono riduce il prezzo finale
     const plan = await planSettlement({ ...pay, method }, due);
-    await commitSettlement(plan, { kind: 'repair', refId: id, label: `Saldo ${r.code}` }, addPayment);
+    await commitSettlement(plan, { kind: 'repair', refId: id, label: `Saldo ${r.code}` }, (k, ref, l, a, m) => addPayment(k, ref, l, a, m, entityOf({ appeso })));
     await db.prepare("UPDATE repairs SET status='delivered', final_price=?, delivered_at=datetime('now','localtime') WHERE id=?").run(money(final - plan.discount), id);
     if (plan.voucher) await logEvent(id, null, `Buono ${plan.voucher.code}: ${money(plan.discount + plan.gift).toFixed(2)} €.`, 0);
     await logEvent(id, 'delivered', note || STATUSES.delivered.hint);
@@ -384,8 +387,8 @@ export async function createSale(b) {
     total = money(total - plan.discount);
     // 2) si scrive
     const code = await nextCode('sales', 'V');
-    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, created_at) VALUES (?,?,?,?,?,?,datetime('now','localtime'))").run(
-      code, b.customer_id || null, total, money(baseDiscount + plan.discount), plan.split || plan.gift ? plan.methodLabel : (str(b.method) || plan.methodLabel), str(b.notes)
+    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, entity, created_at) VALUES (?,?,?,?,?,?,?,datetime('now','localtime'))").run(
+      code, b.customer_id || null, total, money(baseDiscount + plan.discount), plan.split || plan.gift ? plan.methodLabel : (str(b.method) || plan.methodLabel), str(b.notes), entityOf(b)
     );
     const saleId = Number(sale.lastInsertRowid);
     const deviceAlerts = [];
@@ -394,7 +397,7 @@ export async function createSale(b) {
       await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(saleId, l.pid, l.name, l.q, money(l.price), money(l.cost));
       if (l.serial) deviceAlerts.push(...await deviceHook(l.serial, 'vendita', `Venduto con ${code}`));
     }
-    await commitSettlement(plan, { kind: 'sale', refId: saleId, label: `Vendita ${code}` }, addPayment);
+    await commitSettlement(plan, { kind: 'sale', refId: saleId, label: `Vendita ${code}` }, (k, ref, l, a, m) => addPayment(k, ref, l, a, m, entityOf(b)));
     return { ...(await getSale(saleId)), device_alerts: deviceAlerts };
   });
 }
@@ -491,7 +494,7 @@ export async function dashboard() {
     waiting_parts: open.filter((r) => r.status === 'waiting_parts'),
     in_progress: open.filter((r) => ['received', 'diagnosing', 'approved', 'repairing'].includes(r.status)),
     low_stock: await lowStock(),
-    cash_today: money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at)=?`).get(today)).s),
+    cash_today: money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE entity='main' AND date(created_at)=?`).get(today)).s),
     today,
   };
 }
@@ -505,17 +508,17 @@ export async function lowStock() {
 export async function report(from, to) {
   const f = from || localDate();
   const t = to || f;
-  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method`).all(f, t);
-  const byKind = await db.prepare(`SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY kind`).all(f, t);
-  const rows = await db.prepare(`SELECT * FROM payments WHERE date(created_at) BETWEEN ? AND ? ORDER BY id DESC`).all(f, t);
-  const cost = (await db.prepare(`SELECT COALESCE(SUM(si.qty*si.unit_cost),0) AS c FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE date(s.created_at) BETWEEN ? AND ?`).get(f, t)).c
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE entity='main' AND date(created_at) BETWEEN ? AND ? GROUP BY method`).all(f, t);
+  const byKind = await db.prepare(`SELECT kind, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE entity='main' AND date(created_at) BETWEEN ? AND ? GROUP BY kind`).all(f, t);
+  const rows = await db.prepare(`SELECT * FROM payments WHERE entity='main' AND date(created_at) BETWEEN ? AND ? ORDER BY id DESC`).all(f, t);
+  const cost = (await db.prepare(`SELECT COALESCE(SUM(si.qty*si.unit_cost),0) AS c FROM sale_items si JOIN sales s ON s.id=si.sale_id WHERE s.entity='main' AND date(s.created_at) BETWEEN ? AND ?`).get(f, t)).c
     + (await db.prepare(`SELECT COALESCE(SUM(rp.qty*rp.unit_cost),0) AS c FROM repair_parts rp JOIN repairs r ON r.id=rp.repair_id WHERE r.delivered_at IS NOT NULL AND date(r.delivered_at) BETWEEN ? AND ?`).get(f, t)).c;
   const total = money(rows.reduce((a, r) => a + r.amount, 0));
   return { from: f, to: t, total, parts_cost: money(cost), by_method: byMethod, by_kind: byKind, rows, vouchers: await voucherUsage(f, t) };
 }
 
 export async function reportByDay(from, to) {
-  return await db.prepare(`SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY day ORDER BY day`).all(from, to);
+  return await db.prepare(`SELECT date(created_at) AS day, ROUND(SUM(amount),2) AS total FROM payments WHERE entity='main' AND date(created_at) BETWEEN ? AND ? GROUP BY day ORDER BY day`).all(from, to);
 }
 
 export async function stockSummary() {
@@ -562,7 +565,7 @@ export async function analytics(from, to) {
   const len = daysBetween(f, t);
   const pf = addDays(f, -len);
   const pt = addDays(f, -1);
-  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE date(created_at) BETWEEN ? AND ?`).get(a, b)).s);
+  const sum = async (a, b) => money((await db.prepare(`SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE entity='main' AND date(created_at) BETWEEN ? AND ?`).get(a, b)).s);
 
   // Riparazioni entrate nel periodo
   const byStatus = await db.prepare('SELECT status, COUNT(*) AS n FROM repairs WHERE date(created_at) BETWEEN ? AND ? GROUP BY status ORDER BY n DESC').all(f, t);
@@ -577,13 +580,13 @@ export async function analytics(from, to) {
   const total = await sum(f, t);
   const prevTotal = await sum(pf, pt);
   const byDay = await reportByDay(f, t);
-  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE date(created_at) BETWEEN ? AND ? GROUP BY method ORDER BY total DESC`).all(f, t);
+  const byMethod = await db.prepare(`SELECT method, ROUND(SUM(amount),2) AS total, COUNT(*) AS n FROM payments WHERE entity='main' AND date(created_at) BETWEEN ? AND ? GROUP BY method ORDER BY total DESC`).all(f, t);
   const rep = await report(f, t);
 
   // Vendite
-  const sales = await db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(total),0) AS s FROM sales WHERE date(created_at) BETWEEN ? AND ?').get(f, t);
+  const sales = await db.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(total),0) AS s FROM sales WHERE entity='main' AND date(created_at) BETWEEN ? AND ?").get(f, t);
   const sold = await db.prepare(`SELECT si.name AS name, SUM(si.qty) AS qty, ROUND(SUM(si.qty*si.unit_price),2) AS revenue
-    FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE date(s.created_at) BETWEEN ? AND ? GROUP BY LOWER(si.name) ORDER BY qty DESC, revenue DESC`).all(f, t);
+    FROM sale_items si JOIN sales s ON s.id = si.sale_id WHERE s.entity='main' AND date(s.created_at) BETWEEN ? AND ? GROUP BY LOWER(si.name) ORDER BY qty DESC, revenue DESC`).all(f, t);
   const used = await db.prepare(`SELECT rp.name AS name, SUM(rp.qty) AS qty FROM repair_parts rp JOIN repairs r ON r.id = rp.repair_id
     WHERE date(r.created_at) BETWEEN ? AND ? GROUP BY LOWER(rp.name) ORDER BY qty DESC`).all(f, t);
 
