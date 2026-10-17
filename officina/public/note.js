@@ -1,5 +1,6 @@
 // Note libere stile Keep, condivise tra gli utenti: note rapide, colori, fissate in alto, elenchi con caselle, archivio, ricerca.
 import { $, $$, esc, fdate, api, toast, safe, debounce, openModal, confirmDelete } from './util.js';
+import { resizePhoto } from './usati.js';
 
 let COLORS = null;
 const dots = (cur, attr = 'data-c') => Object.entries(COLORS).map(([k, n]) => `<button type="button" class="cdot nc-${k} ${cur === k ? 'on' : ''}" ${attr}="${k}" title="${esc(n)}" aria-label="${esc(n)}"></button>`).join('');
@@ -9,6 +10,7 @@ function noteCard(n) {
   const done = n.items.filter((i) => i.d);
   const checks = (arr) => arr.map((i) => `<label class="${i.d ? 'd' : ''}"><input type="checkbox" data-nid="${n.id}" data-idx="${n.items.indexOf(i)}" ${i.d ? 'checked' : ''} /><span>${esc(i.t)}</span></label>`).join('');
   return `<article class="note nc-${n.color} ${n.pinned ? 'pin' : ''}" data-id="${n.id}" tabindex="0" aria-label="Nota ${esc(n.title || '')}">
+    ${n.photo_count ? `<div class="nphotos">${Array.from({ length: n.photo_count }, (_, i) => `<img src="/api/note/${n.id}/photo/${i}" alt="Foto ${i + 1} della nota" loading="lazy" />`).join('')}</div>` : ''}
     ${n.title ? `<h3>${esc(n.title)}</h3>` : ''}${n.body ? `<div class="nb">${esc(n.body)}</div>` : ''}
     ${n.items.length ? `<div class="nitems">${checks(open)}${done.length ? `<div class="hint" style="margin:.25rem 0 0">${done.length} fatt${done.length === 1 ? 'a' : 'e'}</div>${checks(done)}` : ''}</div>` : ''}
     <div class="nfoot"><span>${fdate(n.updated_at)}${n.created_by && n.created_by !== 'locale' ? ` · ${esc(n.created_by.split('@')[0])}` : ''}</span>
@@ -90,6 +92,8 @@ function noteEditor(n, done) {
       <div class="field"><label class="l" for="ne-body">Testo</label><textarea id="ne-body" rows="5" placeholder="Scrivi la nota…">${esc(v.body || '')}</textarea></div>
       <div class="field"><label class="l">Elenco con caselle</label><div id="ne-items" class="sec" style="gap:.5rem">${v.items.map(itemRow).join('')}</div>
         <div class="row tight"><button type="button" class="btn btn-outline btn-sm" id="ne-additem">＋ Aggiungi voce</button></div></div>
+      <div class="field"><label class="l">Foto <span class="hint">(fino a 6)</span></label><div id="ne-photos" class="nphotos edit"></div>
+        <div class="row tight"><label class="btn btn-outline btn-sm" for="ne-file" style="cursor:pointer">📷 Aggiungi foto</label><input type="file" id="ne-file" accept="image/*" capture="environment" style="display:none" /></div></div>
       <div class="field"><label class="l">Colore</label><div class="cdots" id="ne-colors">${dots(color)}</div></div>
       <label class="check box" style="align-self:flex-start"><input type="checkbox" id="ne-pin" ${v.pinned ? 'checked' : ''} /> Fissa in alto</label>
     </div>`,
@@ -110,10 +114,39 @@ function noteEditor(n, done) {
     color = c.dataset.c;
     $$('#ne-colors .cdot', dlg.el).forEach((d) => d.classList.toggle('on', d.dataset.c === color));
   };
+  // Foto: la nota si salva da sé alla prima foto (se è nuova), poi ogni foto va subito sul server
+  let cur = n;
+  const drawPhotos = () => {
+    const cnt = cur?.photo_count || 0;
+    $('#ne-photos', dlg.el).innerHTML = Array.from({ length: cnt }, (_, i) => `<span class="np"><img src="/api/note/${cur.id}/photo/${i}?t=${Date.now()}" alt="Foto ${i + 1}" /><button type="button" data-rmp="${i}" aria-label="Togli la foto ${i + 1}">✕</button></span>`).join('') || '<span class="hint">Nessuna foto.</span>';
+  };
+  drawPhotos();
+  $('#ne-file', dlg.el).onchange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!cur) {
+      cur = await safe(() => api('POST', '/api/note', { title: $('#ne-title', dlg.el).value || 'Foto', body: $('#ne-body', dlg.el).value, color }));
+      if (!cur) return;
+      changed = true;
+    }
+    const out = await safe(async () => { const { image } = await resizePhoto(file); return api('POST', `/api/note/${cur.id}/photo`, { image }); });
+    if (out) { cur = out; changed = true; drawPhotos(); }
+  };
+  $('#ne-photos', dlg.el).onclick = async (e) => {
+    const b = e.target.closest('[data-rmp]');
+    if (!b) return;
+    const out = await safe(() => api('DELETE', `/api/note/${cur.id}/photo/${b.dataset.rmp}`));
+    if (out) { cur = out; changed = true; drawPhotos(); }
+  };
+  let changed = false;
+  const closeOrig = dlg.close;
+  dlg.close = () => { closeOrig(); if (changed) { changed = false; done?.(); } };
+  dlg.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) dlg.close(); }, true);
   $('#ne-ok', dlg.el).onclick = async () => {
     const items = $$('[data-item]', box).map((r) => ({ t: $('input[type=text]', r).value, d: $('input[type=checkbox]', r).checked ? 1 : 0 }));
     const body = { title: $('#ne-title', dlg.el).value, body: $('#ne-body', dlg.el).value, items, color, pinned: $('#ne-pin', dlg.el).checked };
-    const out = await safe(() => (n ? api('PUT', `/api/note/${n.id}`, body) : api('POST', '/api/note', body)));
+    const out = await safe(() => (cur ? api('PUT', `/api/note/${cur.id}`, body) : api('POST', '/api/note', body)));
     if (out) { dlg.close(); toast('Nota salvata'); done?.(); }
   };
   setTimeout(() => $(n ? '#ne-body' : '#ne-title', dlg.el)?.focus(), 50);

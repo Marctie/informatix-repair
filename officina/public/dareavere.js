@@ -154,6 +154,7 @@ function entryForm(pre, done) {
     if (!cid) { sel.innerHTML = '<option value="">— nessuna —</option>'; return; }
     const c = await safe(() => api('GET', `/api/customers/${cid}`));
     if (c) sel.innerHTML = `<option value="">— nessuna —</option>${c.repairs.map((r) => `<option value="${r.id}">${esc(r.code)} · ${esc(r.brand_model)}</option>`).join('')}`;
+    if (pre.repair_id) sel.value = String(pre.repair_id);
     debtorNotice(g('#ef-type').closest('.field'), cid);
   };
   g('#ef-type').onchange = upType; upType();
@@ -166,4 +167,16 @@ function entryForm(pre, done) {
     if (out) { m.close(); toast('Movimento registrato'); done?.(); }
   };
   void inVal;
+}
+
+/** Riquadro "Dare/avere" della scheda riparazione: i movimenti collegati a QUESTA riparazione (se ce ne sono). */
+export async function mountRepairLedger(box, repair, done) {
+  archCss();
+  const d = await safe(() => api('GET', `/api/ledger/repair/${repair.id}`));
+  if (!d || !box.isConnected) return;
+  box.innerHTML = `<h3 class="sec-t">Dare/avere di questa riparazione</h3>
+    ${d.entries.length ? `<div class="ar-box">${d.entries.map((e) => `<div class="ln"><span>${esc(e.type_label)} · ${esc(e.description || '')} <span class="hint">${fdate(e.entry_date)}</span></span><span>${eur(e.amount)}</span></div>`).join('')}
+      <div class="ln tot"><span style="color:inherit">Saldo</span><span>${balTxt(d.balance)}</span></div></div>` : '<p class="hint">Nessun movimento collegato a questa riparazione.</p>'}
+    <div class="row tight"><button class="btn btn-outline btn-sm" id="rl-new">＋ Movimento</button></div>`;
+  $('#rl-new', box).onclick = () => entryForm({ customer_id: repair.customer_id, customer_name: repair.customer_name, repair_id: repair.id }, async () => { await mountRepairLedger(box, repair, done); done?.(); });
 }

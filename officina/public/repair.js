@@ -2,7 +2,7 @@
 import { scanWithCamera } from './scan.js';
 import { showDeviceAlerts } from './dispositivi.js';
 import { createSettlement } from './buoni.js';
-import { debtorNotice } from './dareavere.js'; // Agente C: avviso cattivo pagatore
+import { debtorNotice, mountRepairLedger } from './dareavere.js'; // Agente C: avviso cattivo pagatore
 import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts, busy, statusPrereq } from './util.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
@@ -428,6 +428,8 @@ export async function openRepairDetail(id, onChange) {
         </div>
       </div>
 
+      <section class="sec" id="d-ledger"></section>
+
       <div id="d-extras" class="sec" style="gap:1.6rem"></div>
 
       <section class="sec">
@@ -459,6 +461,7 @@ export async function openRepairDetail(id, onChange) {
       </section>`;
 
     restoreRetro();
+    mountRepairLedger($('#d-ledger', body), r);
     bindChecklistGrids(body);
     // riparazione esterna e muletto collegati a questa scheda (lotto B)
     const extras = $('#d-extras', body);
