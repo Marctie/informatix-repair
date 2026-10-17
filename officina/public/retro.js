@@ -78,7 +78,8 @@ export function keepRetro(root) {
 // ---- "Pagamento appeso": l'incasso appartiene a un'altra attivita' (fatturato da un'altra azienda) ----
 /** Spunta da mettere vicino al pagamento. Dopo la conferma la Cassa non rivede l'operazione; la vedono solo gli amministratori. */
 export function appesoField(id, checked = false) {
-  return `<label class="check box" style="margin-top:.5rem"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} /> Pagamento appeso <span class="hint">(da fatturare all’altra attività)</span></label>`;
+  return `<div class="field appeso" style="grid-column:1/-1"><label class="check box"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} /> Pagamento appeso</label>
+    <span class="hint">Da fatturare all’altra attività: dopo la conferma la Cassa non lo rivede.</span></div>`;
 }
 
 /** { appeso: true } se la spunta è attiva, altrimenti {}. */
