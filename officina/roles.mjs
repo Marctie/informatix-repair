@@ -2,7 +2,7 @@
 // non contengono proprio quei campi (nascondere solo nell'interfaccia non basterebbe).
 
 /** Campi che il ruolo cassa non deve mai ricevere. */
-export const COST_KEYS = new Set(['cost', 'unit_cost', 'parts_cost', 'profit_estimate', 'margin', 'profit', 'value_cost', 'avg_cost', 'last_cost']);
+export const COST_KEYS = new Set(['cost', 'unit_cost', 'parts_cost', 'profit_estimate', 'margin', 'profit', 'value_cost', 'avg_cost', 'last_cost', 'cost_net', 'cost_vat']);
 /** Avvisi che rivelano prezzi d'acquisto (variazioni dei prezzi dei fornitori). */
 const COST_ALERTS = new Set(['price_up', 'price_down']);
 /** Sezioni intere riservate a chi non è cassa (storico acquisti e prezzi, backup completo). */
