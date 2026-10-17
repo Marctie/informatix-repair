@@ -131,6 +131,7 @@ function stockTab(d, sum, items) {
     <div class="an-cols">
       <section class="card panel sec"><h3 class="sec-t">Più richiesti nel periodo</h3>${hbars(d.sales.top.slice(0, 8), { value: (x) => x.qty, fmt: (v) => `${v} pz` })}</section>
       <section class="card panel sec"><h3 class="sec-t">Meno richiesti nel periodo</h3>${d.sales.bottom.length ? hbars(d.sales.bottom, { value: (x) => x.qty, fmt: (v) => `${v} pz` }) : '<p class="empty">Servono più di 10 prodotti diversi venduti per mostrare i meno richiesti.</p>'}</section>
+      <section class="card panel sec"><h3 class="sec-t">Ricambi più usati nelle riparazioni</h3>${d.sales.parts_used?.length ? hbars(d.sales.parts_used, { value: (x) => x.qty, fmt: (v) => `${v} pz` }) : '<p class="empty">Nessun ricambio usato nel periodo.</p>'}</section>
     </div>
     <section class="sec"><h3 class="sec-t">🛑 Esauriti e sotto scorta (${by('out_of_stock').length + by('low_stock').length})</h3>${list([...by('out_of_stock'), ...by('low_stock')], 'Tutte le scorte sono a posto.')}</section>
     <section class="sec"><h3 class="sec-t">🐌 Fermi da troppo tempo (${by('stale').length})</h3>${list(by('stale'), 'Nessun prodotto fermo. La soglia si imposta in Impostazioni → Avvisi.')}</section>`;

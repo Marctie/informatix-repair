@@ -52,3 +52,31 @@ test('due consegne simultanee con saldo: il saldo è incassato una volta sola', 
   const fin = (await a('GET', `/api/orders/${o.id}`)).data;
   assert.equal(fin.paid, 40);
 });
+
+test('soglia "fermo" per articolo: valida, salvata e usata dagli avvisi', async () => {
+  assert.equal((await a('POST', '/api/products', { name: 'Cover', price: 5, stale_days: 'abc' })).data.code, 'GIORNI_FERMO_NON_VALIDI');
+  const p = (await a('POST', '/api/products', { name: 'Cover blu', price: 5, qty: 3, stale_days: 1 })).data;
+  assert.equal(p.stale_days, 1);
+  const z = (await a('POST', '/api/products', { name: 'Cover mai', price: 5, qty: 3, stale_days: 0 })).data;
+  assert.equal(z.stale_days, 0);
+  assert.equal((await a('POST', '/api/products', { name: 'Cover gen', price: 5, qty: 3 })).data.stale_days, null);
+});
+
+test('note con foto: allega, legge, toglie; nota di sole foto ammessa; massimo 6', async () => {
+  process.env.OFFICINA_MEDIA = join(dir, 'media');
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]).toString('base64');
+  const n = (await a('POST', '/api/note', { title: 'Scontrino' })).data;
+  assert.equal(n.photo_count, 0);
+  assert.equal((await a('POST', `/api/note/${n.id}/photo`, { image: 'AAAA' })).data.code, 'FOTO_NON_JPEG');
+  const up = await a('POST', `/api/note/${n.id}/photo`, { image: jpeg });
+  assert.equal(up.status, 200, JSON.stringify(up.data));
+  assert.equal(up.data.photo_count, 1);
+  const img = await fetch(`${A}/api/note/${n.id}/photo/0`);
+  assert.equal(img.status, 200);
+  assert.equal((await img.arrayBuffer()).byteLength, 22);
+  for (let i = 1; i < 6; i += 1) await a('POST', `/api/note/${n.id}/photo`, { image: jpeg });
+  assert.equal((await a('POST', `/api/note/${n.id}/photo`, { image: jpeg })).data.code, 'TROPPE_FOTO');
+  assert.equal((await a('DELETE', `/api/note/${n.id}/photo/0`)).data.photo_count, 5);
+  assert.equal((await a('PUT', `/api/note/${n.id}`, { title: '', body: '', items: [] })).status, 200);
+  assert.equal((await a('DELETE', `/api/note/${n.id}`)).status, 200);
+});
