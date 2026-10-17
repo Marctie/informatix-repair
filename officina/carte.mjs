@@ -360,7 +360,7 @@ export async function cardHistory(id, limit = 100) {
 export async function creditable(customerId) {
   if (!customerId) throw new HttpError(400, 'Non so di quale cliente cercare vendite e riparazioni da premiare: manca il cliente.', { code: 'CLIENTE_MANCANTE', hint: 'Apri la carta dalla scheda del cliente.' });
   const R = await rules();
-  const sales = await db.prepare(`SELECT s.id, s.code, s.total AS amount, s.created_at AS at FROM sales s WHERE s.customer_id = ? AND NOT EXISTS (SELECT 1 FROM loyalty_events e WHERE e.kind='accredito' AND e.ref_kind='sale' AND e.ref_id=s.id) ORDER BY s.id DESC LIMIT 30`).all(customerId);
+  const sales = await db.prepare(`SELECT s.id, s.code, s.total AS amount, s.created_at AS at FROM sales s WHERE s.entity = 'main' AND s.customer_id = ? AND NOT EXISTS (SELECT 1 FROM loyalty_events e WHERE e.kind='accredito' AND e.ref_kind='sale' AND e.ref_id=s.id) ORDER BY s.id DESC LIMIT 30`).all(customerId);
   const repairs = await db.prepare(`SELECT r.id, r.code, COALESCE(r.final_price, r.quote, 0) AS amount, r.delivered_at AS at FROM repairs r WHERE r.customer_id = ? AND r.status='delivered' AND NOT EXISTS (SELECT 1 FROM loyalty_events e WHERE e.kind='accredito' AND e.ref_kind='repair' AND e.ref_id=r.id) ORDER BY r.id DESC LIMIT 30`).all(customerId);
   const f = (kind) => (x) => ({ ref_kind: kind, ref_id: x.id, code: x.code, amount: x.amount, at: x.at, points: Math.floor(x.amount * R.points_per_euro + 1e-9) });
   return [...sales.map(f('sale')), ...repairs.map(f('repair'))].filter((x) => x.points > 0).sort((a, b) => String(b.at).localeCompare(String(a.at)));
