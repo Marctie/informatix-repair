@@ -1,6 +1,6 @@
 // Archivio fatture: emesse (ai clienti) e ricevute (dai fornitori), anche passate.
 // Stati: da pagare / pagata in parte / non pagata (scaduta) / pagata / stornata (nota di credito). Pagamenti con metodo e data, mai nascosti.
-import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, today, addDays, META } from './util.js';
+import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, today, addDays, META, canSeeCosts } from './util.js';
 import { archCss, n2, inVal, kpiTile, csvLink, periods, methodOptions } from './arch-ui.js';
 import { customerField, bindCustomer } from './pickers.js';
 
@@ -155,6 +155,7 @@ async function invoiceForm(inv, pre, done) {
       ${nc ? `<div class="field"><label class="l" for="if-cf">Fattura che storna</label><select id="if-cf"><option value="">— nessuna —</option>${cf ? `<option value="${cf.id}" selected>${esc(cf.number)} · ${eur(cf.total)}</option>` : ''}</select></div>` : '<div></div>'}
     </div>
     <div id="if-links"></div>
+    ${canSeeCosts() ? `<div class="field"><label class="l" for="if-entity">Azienda</label><select id="if-entity"><option value="main" ${inv?.entity !== 'altra' ? 'selected' : ''}>Informatix Repair</option><option value="altra" ${inv?.entity === 'altra' ? 'selected' : ''}>Altra attività</option></select></div>` : ''}
     <div class="field"><label class="l" for="if-notes">Note</label><textarea id="if-notes" rows="2" placeholder="facoltative">${esc(inv?.notes || '')}</textarea></div>
     ${edit || nc ? '' : '<p class="hint">Dopo aver salvato potrai registrare gli incassi/pagamenti, anche con date passate.</p>'}
   </div>`, { title: edit ? `Modifica ${inv.number}` : nc ? 'Nuova nota di credito' : 'Nuova fattura', wide: true, full: true,
@@ -204,6 +205,7 @@ async function invoiceForm(inv, pre, done) {
   });
   g('#if-save').onclick = async () => {
     const body = { direction, doc_type: nc ? 'nota_credito' : 'fattura', number: g('#if-num').value, issue_date: g('#if-date').value, total: g('#if-total').value, vat: g('#if-vat').value, notes: g('#if-notes').value };
+    if (g('#if-entity')) body.entity = g('#if-entity').value;
     if (g('#if-due')) body.due_date = g('#if-due').value;
     if (g('#if-cf')) body.credit_for_id = g('#if-cf').value || null;
     if (direction === 'emessa') { body.customer_id = cust?.value() || null; body.party_name = g('#if-pname')?.value; body.sale_id = g('#if-sale')?.value || null; body.repair_id = g('#if-rep')?.value || null; }

@@ -1,7 +1,7 @@
 // Ordini: cio' che va ordinato al fornitore per un cliente (pellicola per Tizio, case per Caio...) oppure per il negozio.
 // Stati: da_ordinare -> ordinato -> arrivato -> consegnato (oppure annullato). L'acconto e' un incasso normale (tabella payments, kind 'order').
 import { db, tx, nowLocal } from './dbref.mjs';
-import { assertMethod, HttpError, money, localDate } from './logic.mjs';
+import { assertMethod, HttpError, money, localDate, entityOf } from './logic.mjs';
 
 const NOW = "datetime('now','localtime')";
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -49,11 +49,11 @@ async function checkLinks(b) {
   return kind;
 }
 
-async function addDeposit(orderId, code, amount, method) {
+async function addDeposit(orderId, code, amount, method, entity = 'main') {
   const a = money(amount);
   if (!(a > 0)) throw new HttpError(400, 'L’importo dell’acconto non è valido: serve un numero maggiore di zero.', { code: 'ACCONTO_NON_VALIDO', hint: 'Scrivi l’acconto in euro (es. 20,00).' });
   assertMethod(method);
-  const ins = await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('order', orderId, `Acconto ordine ${code}`, a, str(method) || 'contanti');
+  const ins = await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,${NOW})`).run('order', orderId, `Acconto ordine ${code}`, a, str(method) || 'contanti', entity);
   await db.prepare('UPDATE orders SET deposit = deposit + ? WHERE id = ?').run(a, orderId);
   // Controllo anti doppio incasso: due acconti simultanei potrebbero aver superato entrambi il controllo sul residuo.
   const tot = (await db.prepare('SELECT COALESCE(SUM(qty * unit_price),0) AS t FROM order_items WHERE order_id = ?').get(orderId)).t;
@@ -79,7 +79,7 @@ export async function createOrder(b) {
     const id = Number(r.lastInsertRowid);
     for (const i of items) await db.prepare('INSERT INTO order_items (order_id, description, qty, unit_price) VALUES (?,?,?,?)').run(id, i.description, i.qty, i.unit_price);
     if (deposit > 0) {
-      await addDeposit(id, code, deposit, b.deposit_method);
+      await addDeposit(id, code, deposit, b.deposit_method, entityOf(b));
     }
     return getOrder(id);
   });
@@ -105,7 +105,7 @@ export async function updateOrder(id, b) {
 const FLOW = { da_ordinare: ['ordinato', 'annullato'], ordinato: ['arrivato', 'da_ordinare', 'annullato'], arrivato: ['consegnato', 'ordinato', 'annullato'], consegnato: [], annullato: ['da_ordinare'] };
 
 /** Cambia stato. Alla consegna, con `collect` incassa il saldo residuo (tracciato in cassa). */
-export async function setOrderStatus(id, status, { collect, method } = {}) {
+export async function setOrderStatus(id, status, { collect, method, appeso } = {}) {
   const o = await getOrder(id);
   if (!ORDER_STATUS[status]) throw new HttpError(400, `Stato ordine “${status}” non valido: non esiste tra gli stati degli ordini.`, { code: 'STATO_ORDINE_NON_VALIDO', hint: 'Scegli uno degli stati proposti (da ordinare, ordinato, arrivato, consegnato, annullato).' });
   if (status === o.status) return o;
@@ -115,7 +115,7 @@ export async function setOrderStatus(id, status, { collect, method } = {}) {
     await db.prepare(`UPDATE orders SET status=?, ${col ? `${col}=${NOW},` : ''} updated_at=${NOW} WHERE id=?`).run(status, id);
     if (status === 'consegnato' && collect && o.balance > 0) {
       assertMethod(method);
-      await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, created_at) VALUES (?,?,?,?,?,${NOW})`).run('order', id, `Saldo ordine ${o.code}`, o.balance, str(method) || 'contanti');
+      await db.prepare(`INSERT INTO payments (kind, ref_id, label, amount, method, entity, created_at) VALUES (?,?,?,?,?,?,${NOW})`).run('order', id, `Saldo ordine ${o.code}`, o.balance, str(method) || 'contanti', entityOf({ appeso }));
     }
     return getOrder(id);
   });
@@ -178,13 +178,13 @@ export function registerOrderRoutes(app, h) {
   app.get('/api/orders/:id', h((req) => getOrder(req.params.id)));
   app.post('/api/orders', h((req) => createOrder(req.body)));
   app.put('/api/orders/:id', h((req) => updateOrder(req.params.id, req.body)));
-  app.post('/api/orders/:id/status', h((req) => setOrderStatus(req.params.id, req.body.status, { collect: !!req.body.collect, method: req.body.method })));
+  app.post('/api/orders/:id/status', h((req) => setOrderStatus(req.params.id, req.body.status, { collect: !!req.body.collect, method: req.body.method, appeso: req.body.appeso })));
   app.post('/api/orders/:id/deposit', h(async (req) => {
     const o = await getOrder(req.params.id);
     if (['consegnato', 'annullato'].includes(o.status)) throw new HttpError(409, `Ordine ${o.code} già ${o.status_label.toLowerCase()}: non accetta più acconti.`, { code: 'ORDINE_CHIUSO', hint: 'Un acconto si registra solo su ordini ancora aperti.' });
     if (o.kind !== 'cliente') throw new HttpError(400, 'L’acconto non è ammesso: riguarda solo gli ordini presi per i clienti, non quelli al fornitore.', { code: 'ACCONTO_SOLO_CLIENTI', hint: 'Togli l’acconto, oppure cambia il tipo dell’ordine in “cliente”.' });
     if (num(req.body.amount) > o.balance + 0.001) throw new HttpError(400, `Ordine ${o.code}: l’acconto supera il residuo da pagare (${o.balance} €).`, { code: 'ACCONTO_SUPERA_RESIDUO', hint: 'Scrivi un acconto non superiore al residuo, oppure consegna l’ordine incassando il saldo.' });
-    await tx(() => addDeposit(o.id, o.code, num(req.body.amount), req.body.method));
+    await tx(() => addDeposit(o.id, o.code, num(req.body.amount), req.body.method, entityOf(req.body)));
     return getOrder(o.id);
   }));
   app.delete('/api/orders/:id', h(async (req) => {
