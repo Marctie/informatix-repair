@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS customers (
 CREATE TABLE IF NOT EXISTS suppliers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL, phone TEXT, email TEXT, website TEXT, notes TEXT,
+  legal_address TEXT, pickup_address TEXT, vat_number TEXT, payment_terms TEXT, min_order TEXT, delivery_days TEXT,
+  agents TEXT,                                       -- agenti di riferimento: JSON [{name,phone,email,area}]
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS products (

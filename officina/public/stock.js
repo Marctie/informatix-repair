@@ -143,6 +143,7 @@ async function productForm(id, done) {
 }
 
 // ---------- Fornitori ----------
+const agentLine = (s) => { try { const a = JSON.parse(s.agents || '[]')[0]; return a ? `<p class="text-xs text-gray-500">Agente: ${esc(a.name || '')} ${a.phone ? '· ' + esc(a.phone) : ''}</p>` : ''; } catch { return ''; } };
 export async function suppliersView(el) {
   el.innerHTML = `<div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Fornitori</h1>
     <button class="btn btn-primary" id="s-new">＋ Nuovo fornitore</button></div><div class="card overflow-hidden" id="s-list"></div>`;
@@ -150,7 +151,7 @@ export async function suppliersView(el) {
   async function load() {
     const rows = await safe(() => api('GET', '/api/suppliers'));
     list.innerHTML = (rows || []).map((s) => `<div class="row-h flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-id="${s.id}">
-      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(s.name)}</p><p class="text-xs text-gray-500">${esc(s.phone || '')} ${s.email ? '· ' + esc(s.email) : ''} ${s.website ? '· ' + esc(s.website) : ''}</p></div>
+      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(s.name)}</p><p class="text-xs text-gray-500">${esc(s.phone || '')} ${s.email ? '· ' + esc(s.email) : ''} ${s.website ? '· ' + esc(s.website) : ''}</p>${agentLine(s)}</div>
       <span class="text-xs text-gray-500">${s.products_count} articoli</span>
       ${s.phone ? `<a class="btn btn-outline btn-sm" data-stop href="tel:${esc(s.phone)}">📞</a>` : ''}</div>`).join('') || '<p class="empty">Nessun fornitore. Aggiungili per collegarli agli articoli e generare gli ordini.</p>';
     list._rows = rows;
@@ -165,22 +166,41 @@ export async function suppliersView(el) {
 }
 
 function supplierForm(s, done) {
+  let agents = [];
+  try { agents = JSON.parse(s?.agents || '[]'); } catch { agents = []; }
+  const f = (id, label, val, attrs = '', cls = '') => `<div class="field ${cls}"><label class="l" for="${id}">${label}</label><input id="${id}" value="${esc(val || '')}" ${attrs} /></div>`;
+  const agentRow = (a = {}) => `<div class="sec ag-row card panel"><div class="fgrid c2">
+      <div class="field"><label class="l">Nome agente</label><input data-ag="name" value="${esc(a.name || '')}" /></div>
+      <div class="field"><label class="l">Telefono</label><input data-ag="phone" inputmode="tel" value="${esc(a.phone || '')}" /></div>
+      <div class="field"><label class="l">Email</label><input data-ag="email" type="email" value="${esc(a.email || '')}" /></div>
+      <div class="field"><label class="l">Zona / ruolo</label><input data-ag="area" value="${esc(a.area || '')}" placeholder="es. commerciale, assistenza" /></div>
+    </div><button type="button" class="btn btn-ghost btn-sm" data-ag-del>Togli agente</button></div>`;
   const m = openModal(
     `<section class="sec">
-      <div class="field"><label class="l" for="sf-name">Nome *</label><input id="sf-name" value="${esc(s?.name || '')}" /></div>
-      <div class="fgrid c2">
-        <div class="field"><label class="l" for="sf-phone">Telefono / WhatsApp</label><input id="sf-phone" inputmode="tel" value="${esc(s?.phone || '')}" /></div>
-        <div class="field"><label class="l" for="sf-email">Email</label><input id="sf-email" type="email" value="${esc(s?.email || '')}" /></div>
-      </div>
-      <div class="field"><label class="l" for="sf-web">Sito web</label><input id="sf-web" value="${esc(s?.website || '')}" /></div>
-      <div class="field"><label class="l" for="sf-notes">Note</label><textarea id="sf-notes" rows="3" placeholder="Tempi di consegna, minimo d’ordine…">${esc(s?.notes || '')}</textarea></div>
+      ${f('sf-name', 'Nome / ragione sociale *', s?.name)}
+      <div class="fgrid c2">${f('sf-vat', 'Partita IVA', s?.vat_number, 'inputmode="numeric"')}${f('sf-web', 'Sito web', s?.website)}
+        ${f('sf-phone', 'Telefono / WhatsApp', s?.phone, 'inputmode="tel"')}${f('sf-email', 'Email', s?.email, 'type="email"')}
+        ${f('sf-legal', 'Sede legale', s?.legal_address, '', 'span2')}${f('sf-pickup', 'Sede di ritiro operativa', s?.pickup_address, '', 'span2')}</div>
+    </section>
+    <section class="sec"><h3 class="sec-t">Agenti di riferimento</h3><div id="sf-agents" class="sec">${agents.map(agentRow).join('')}</div>
+      <div class="row tight"><button type="button" class="btn btn-outline btn-sm" id="sf-addag">＋ Aggiungi agente</button></div></section>
+    <section class="sec"><h3 class="sec-t">Condizioni</h3><div class="fgrid c2">
+      ${f('sf-pay', 'Modalità di pagamento concordate', s?.payment_terms, 'placeholder="es. bonifico 30 gg, RiBa, contanti"', 'span2')}
+      ${f('sf-min', 'Ordine minimo', s?.min_order, 'placeholder="es. 100 €"')}${f('sf-del', 'Tempi di consegna', s?.delivery_days, 'placeholder="es. 24/48 ore"')}</div>
+      <div class="field"><label class="l" for="sf-notes">Note</label><textarea id="sf-notes" rows="3" placeholder="Orari, referenti, resi…">${esc(s?.notes || '')}</textarea></div>
     </section>`,
-    { title: s ? 'Modifica fornitore' : 'Nuovo fornitore', footer: `${s ? '<button class="btn btn-ghost mr-auto" id="sf-del">Elimina</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="sf-ok">Salva</button>` }
+    { title: s ? 'Modifica fornitore' : 'Nuovo fornitore', wide: true, footer: `${s ? '<button class="btn btn-ghost mr-auto" id="sf-del-btn">Elimina</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="sf-ok">Salva</button>` }
   );
-  $('#sf-ok', m.el).onclick = async () => {
-    const body = { name: $('#sf-name', m.el).value, phone: $('#sf-phone', m.el).value, email: $('#sf-email', m.el).value, website: $('#sf-web', m.el).value, notes: $('#sf-notes', m.el).value };
+  const r = m.el;
+  const box = $('#sf-agents', r);
+  $('#sf-addag', r).onclick = () => { box.insertAdjacentHTML('beforeend', agentRow()); box.lastElementChild.querySelector('input').focus(); };
+  box.onclick = (e) => { const b = e.target.closest('[data-ag-del]'); if (b) b.closest('.ag-row').remove(); };
+  $('#sf-ok', r).onclick = async () => {
+    const val = (id) => $(`#${id}`, r).value;
+    const ag = [...box.querySelectorAll('.ag-row')].map((row) => Object.fromEntries([...row.querySelectorAll('[data-ag]')].map((i) => [i.dataset.ag, i.value])));
+    const body = { name: val('sf-name'), phone: val('sf-phone'), email: val('sf-email'), website: val('sf-web'), notes: val('sf-notes'), vat_number: val('sf-vat'), legal_address: val('sf-legal'), pickup_address: val('sf-pickup'), payment_terms: val('sf-pay'), min_order: val('sf-min'), delivery_days: val('sf-del'), agents: ag };
     const out = await safe(() => (s ? api('PUT', `/api/suppliers/${s.id}`, body) : api('POST', '/api/suppliers', body)));
     if (out) { m.close(); toast('Fornitore salvato'); done(); }
   };
-  if (s) $('#sf-del', m.el).onclick = async () => { if (await confirmDelete('il fornitore')) { await safe(() => api('DELETE', `/api/suppliers/${s.id}`)); m.close(); done(); } };
+  if (s) $('#sf-del-btn', r).onclick = async () => { if (await confirmDelete('il fornitore')) { await safe(() => api('DELETE', `/api/suppliers/${s.id}`)); m.close(); done(); } };
 }

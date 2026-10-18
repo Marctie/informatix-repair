@@ -283,16 +283,21 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   // Fornitori
   app.get('/api/suppliers', h(() => db.prepare(`SELECT s.*, (SELECT COUNT(*) FROM products p WHERE p.supplier_id=s.id AND p.active=1) AS products_count FROM suppliers s ORDER BY s.name`).all()));
+  // anagrafica estesa: sede legale/ritiro, P.IVA, pagamento, ordine minimo, consegna, agenti (elenco JSON ripulito)
+  const supExtra = (b) => {
+    const agents = (Array.isArray(b.agents) ? b.agents : []).map((x) => ({ name: str(x?.name) || '', phone: str(x?.phone) || '', email: str(x?.email) || '', area: str(x?.area) || '' })).filter((x) => x.name || x.phone || x.email).slice(0, 20);
+    return [str(b.legal_address), str(b.pickup_address), str(b.vat_number), str(b.payment_terms), str(b.min_order), str(b.delivery_days), agents.length ? JSON.stringify(agents) : null];
+  };
   app.post('/api/suppliers', h(async (req) => {
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
-    const r = await db.prepare(`INSERT INTO suppliers (name, phone, email, website, notes, created_at) VALUES (?,?,?,?,?,${NOW})`).run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes));
+    const r = await db.prepare(`INSERT INTO suppliers (name, phone, email, website, notes, legal_address, pickup_address, vat_number, payment_terms, min_order, delivery_days, agents, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,${NOW})`).run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), ...supExtra(b));
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(r.lastInsertRowid);
   }));
   app.put('/api/suppliers/:id', h(async (req) => {
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
-    const r = await db.prepare('UPDATE suppliers SET name=?, phone=?, email=?, website=?, notes=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), req.params.id);
+    const r = await db.prepare('UPDATE suppliers SET name=?, phone=?, email=?, website=?, notes=?, legal_address=?, pickup_address=?, vat_number=?, payment_terms=?, min_order=?, delivery_days=?, agents=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), ...supExtra(b), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Fornitore non trovato');
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
   }));

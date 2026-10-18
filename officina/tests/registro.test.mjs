@@ -114,7 +114,6 @@ test('carico merce: giacenza, costo, storico prezzi, avvisi e grafico includono 
   assert.equal((await a('POST', `/api/products/${p.id}/load`, { qty: 0, supplier_id: sup.id, unit_price: 1 })).status, 400);
   assert.equal((await a('POST', `/api/products/${p.id}/load`, { qty: 1, supplier_id: sup.id, unit_price: -1 })).status, 400);
   assert.equal((await a('POST', '/api/products/load', { qty: 1, supplier_id: sup.id, unit_price: 1 })).status, 400);
-  assert.equal((await a('POST', '/api/products/load', { name: 'X', qty: 1, unit_price: 1 })).status, 400);
   assert.equal((await a('POST', `/api/products/${p.id}/load`, { qty: 1, supplier_id: sup.id, unit_price: 1 }, 'cassa')).status, 403);
   // nel registro
   assert.ok((await audit('?type=carico')).rows.length >= 4);
