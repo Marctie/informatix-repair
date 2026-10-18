@@ -353,12 +353,21 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((path === '/api/products/load' || /^\/api\/products\/\d+\/load$/.test(path)) && m === 'POST') {
     if (!isOk) return fail('Carico merce');
     const l = r.loaded || {};
-    return `📥 <b>Carico merce</b>: ${esc(short(r.name, 80))}${l.new_product ? ' (nuovo articolo)' : ''}\n+${esc(l.qty)} pz a ${eur(l.unit_price)} cad.${l.supplier_name ? ` da ${esc(l.supplier_name)}` : ''}${l.doc_number && !/^CARICO-/.test(l.doc_number) ? ` · doc. ${esc(l.doc_number)}` : ''}\nGiacenza ora ${esc(r.qty)} pz · costo medio ${eur(l.avg_cost)}${foot}`;
+    return `📥 <b>Carico merce</b>: ${esc(short(r.name, 80))}${l.new_product ? ' (nuovo articolo)' : ''}\n+${esc(l.qty)} pz a ${eur(l.unit_price)} cad.${l.supplier_name ? ` da ${esc(l.supplier_name)}` : ' (senza fornitore)'}${l.doc_number && !/^CARICO-/.test(l.doc_number) ? ` · doc. ${esc(l.doc_number)}` : ''}\nGiacenza ora ${esc(r.qty)} pz · costo medio ${eur(l.avg_cost)}${foot}`;
   }
   if ((x = path.match(/^\/api\/products\/(\d+)\/move$/)) && m === 'POST') return isOk ? `📦 <b>Movimento di magazzino</b>\n${esc(r.name)} ${Number(body.delta) > 0 ? '+' : ''}${esc(body.delta)} (${esc(body.reason || '—')}) → ora ${esc(r.qty)} pz${foot}` : fail('Movimento di magazzino');
   if (/^\/api\/services/.test(path) && m !== 'GET') {
     const d = m === 'DELETE' ? p : r;
     return isOk ? `🧰 <b>Servizio ${m === 'POST' ? 'aggiunto al listino' : m === 'DELETE' ? 'tolto dal listino' : 'modificato'}</b>: ${esc(short(d.name || '', 80))}${d.price != null ? ` · ${eur(d.price)}` : ''}${foot}` : fail('Listino servizi');
+  }
+
+  // ---- Magazzino: categorie
+  if (path === '/api/categories' && m !== 'GET') {
+    if (!isOk) return fail('Categorie');
+    if (m === 'POST') return `🏷️ <b>Categoria creata</b>: ${esc(short(body.name || '', 60))}${foot}`;
+    if (m === 'PUT') return `🏷️ <b>Categoria ${esc(short(body.name || '', 60))} → ${esc(short(body.new_name || '', 60))}</b>
+(rinominata o unita: gli articoli passano alla nuova)${foot}`;
+    if (m === 'DELETE') return `🗑️ <b>Categoria eliminata</b>: ${esc(short(body.name || '', 60))}${foot}`;
   }
 
   // ---- Anagrafiche e magazzino
@@ -371,7 +380,10 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
         return `🗑️ <b>${label} eliminato</b>: ${esc(short(p.name || `n. ${path.match(/(\d+)$/)?.[1] || '?'}`, 80))}${extra}${foot}`;
       }
       const name = r.name || body.name || '';
-      const extra = label === 'Prodotto' && m === 'POST' ? `\n${esc(r.qty ?? 0)} pz · vendita ${eur(r.price)}` : '';
+      let nAg = 0; try { nAg = label === 'Fornitore' ? JSON.parse(r.agents || '[]').length : 0; } catch { /* elenco agenti non leggibile */ }
+      const extra = label === 'Prodotto' && m === 'POST' ? `
+${esc(r.qty ?? 0)} pz · vendita ${eur(r.price)}` : nAg ? `
+${nAg} agent${nAg === 1 ? 'e' : 'i'} di riferimento` : '';
       return `${ico} <b>${label} ${m === 'POST' ? 'creato' : 'modificato'}</b>${name ? `: ${esc(short(name, 80))}` : ''}${extra}${foot}`;
     }
   }

@@ -50,7 +50,7 @@ export async function categorieView(el) {
       const c = rows[Number(d.dataset.del)];
       confirmDelete(`la categoria “${c.name}”`).then(async (ok) => {
         if (!ok) return;
-        if (await safe(() => api('DELETE', `/api/categories?name=${encodeURIComponent(c.name)}`))) { toast('Categoria eliminata'); await load(); }
+        if (await safe(() => api('DELETE', `/api/categories?name=${encodeURIComponent(c.name)}`, { name: c.name }))) { toast('Categoria eliminata'); await load(); }
       });
     }
   };

@@ -374,3 +374,12 @@ test('importi non numerici non diventano "NaN €"; conversione senza metodo non
   assert.doesNotMatch(t, /NaN/);
   assert.doesNotMatch(t, /\(incassata \)/);
 });
+
+test('notifiche: categorie, fornitore con agenti, carico senza fornitore', async () => {
+  assert.match(text(await call('POST', '/api/categories', { name: 'Cover' })), /Categoria creata.*Cover/s);
+  assert.match(text(await call('PUT', '/api/categories', { name: 'Cover', new_name: 'Custodie' })), /Cover → Custodie/);
+  assert.match(text(await call('DELETE', '/api/categories?name=Custodie', { name: 'Custodie' })), /Categoria eliminata.*Custodie/s);
+  assert.match(text(await call('POST', '/api/suppliers', { name: 'Moon', agents: [{ name: 'Luca', phone: '1' }] })), /Fornitore creato.*Moon.*1 agente di riferimento/s);
+  const l = text(await call('POST', '/api/products/load', { name: 'Kit auto', category: 'Accessori', qty: 1, unit_price: 6 }));
+  assert.match(l, /Carico merce.*Kit auto.*senza fornitore/s);
+});
