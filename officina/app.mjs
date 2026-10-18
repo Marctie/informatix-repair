@@ -361,6 +361,52 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerLottoB(app, h, { media: usati.media || (() => missingMedia()) });
   // ===== fine blocco Agente B =====
 
+  // Categorie del magazzino: elenco = salvate + quelle già usate dagli articoli (senza doppioni di maiuscole)
+  const catName = (v) => {
+    const n = String(v ?? '').replace(/\s+/g, ' ').trim();
+    if (!n) throw new L.HttpError(400, 'Scrivi il nome della categoria.', { code: 'CATEGORIA_NOME_MANCANTE', hint: 'Compila il nome e riprova.' });
+    if (n.length > 40) throw new L.HttpError(400, 'Il nome della categoria è troppo lungo (massimo 40 caratteri).', { code: 'CATEGORIA_NOME_LUNGO', hint: 'Usa un nome più breve.' });
+    return n;
+  };
+  const catList = async () => {
+    const saved = await db.prepare('SELECT name FROM categories').all();
+    const used = await db.prepare("SELECT category AS name, COUNT(*) AS n FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) <> '' GROUP BY category").all();
+    const m = new Map();
+    for (const r of saved) m.set(r.name.toLowerCase(), { name: r.name, count: 0 });
+    for (const r of used) { const k = r.name.toLowerCase(); const e = m.get(k) || { name: r.name, count: 0 }; e.count += r.n; m.set(k, e); }
+    return [...m.values()].sort((x, y) => x.name.localeCompare(y.name, 'it'));
+  };
+  const catAdmin = (req) => { if (isCassa(req.user)) throw new L.HttpError(403, 'Le categorie le gestisce l’amministratore o il tecnico.', { code: 'RUOLO_NON_AMMESSO', hint: 'Accedi come amministratore o tecnico.' }); };
+  app.get('/api/categories', h(() => catList()));
+  app.post('/api/categories', h(async (req) => {
+    catAdmin(req);
+    const name = catName(req.body?.name);
+    if ((await catList()).some((c) => c.name.toLowerCase() === name.toLowerCase())) throw new L.HttpError(409, `La categoria “${name}” esiste già.`, { code: 'CATEGORIA_ESISTENTE', hint: 'Usa quella già presente.' });
+    await db.prepare('INSERT INTO categories (name) VALUES (?)').run(name);
+    return catList();
+  }));
+  // rinomina; se il nuovo nome è di un'altra categoria le unisce (gli articoli passano alla categoria di destinazione)
+  app.put('/api/categories', h(async (req) => {
+    catAdmin(req);
+    const from = catName(req.body?.name); const to = catName(req.body?.new_name);
+    const list = await catList();
+    if (!list.some((c) => c.name.toLowerCase() === from.toLowerCase())) throw new L.HttpError(404, `La categoria “${from}” non esiste più.`, { code: 'CATEGORIA_NON_TROVATA', hint: 'Aggiorna la pagina.' });
+    const target = list.find((c) => c.name.toLowerCase() === to.toLowerCase() && c.name.toLowerCase() !== from.toLowerCase());
+    const finalName = target ? target.name : to;
+    await db.prepare('UPDATE products SET category = ? WHERE LOWER(category) = LOWER(?)').run(finalName, from);
+    await db.prepare('DELETE FROM categories WHERE name = ? COLLATE NOCASE').run(from);
+    await db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(finalName);
+    return catList();
+  }));
+  app.delete('/api/categories', h(async (req) => {
+    catAdmin(req);
+    const name = catName(req.query.name);
+    const n = (await db.prepare('SELECT COUNT(*) AS n FROM products WHERE active = 1 AND LOWER(category) = LOWER(?)').get(name)).n;
+    if (n) throw new L.HttpError(409, `La categoria “${name}” ha ancora ${n} articoli.`, { code: 'CATEGORIA_IN_USO', hint: 'Per toglierla rinominala con il nome di un’altra categoria: gli articoli passano lì.' });
+    await db.prepare('DELETE FROM categories WHERE name = ? COLLATE NOCASE').run(name);
+    return catList();
+  }));
+
   // Magazzino
   const checkProduct = (b) => {
     for (const k of ['cost', 'price', 'min_qty']) {

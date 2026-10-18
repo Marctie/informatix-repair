@@ -1,11 +1,13 @@
 // Carico merce: arrivo di un articolo (esistente o nuovo) con quantità, fornitore, prezzo d'acquisto, data e documento.
 // Aggiorna giacenza, ultimo costo e storico prezzi di Acquisti (grafico e avvisi).
 import { $, esc, eur, api, toast, safe, debounce, openModal, today } from './util.js';
+import { categoryNames } from './categorie.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
 
 /** product = articolo già scelto (da Magazzino); senza: si cerca o si crea un articolo nuovo. */
 export async function loadStockDialog({ product = null, done } = {}) {
   const suppliers = (await safe(() => api('GET', '/api/suppliers'))) || [];
+  const cats = await categoryNames();
   await ensureVatDefault();
   let prod = product;
   const supOpts = (sel) => `<option value="">— nessun fornitore —</option>${suppliers.map((s) => `<option value="${s.id}" ${Number(sel) === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}`;
@@ -15,7 +17,7 @@ export async function loadStockDialog({ product = null, done } = {}) {
       <div id="cl-new" class="sec hidden">
         <div class="fgrid c2">
           <div class="field span2"><label class="l" for="cl-name">Nome del nuovo articolo *</label><input id="cl-name" /></div>
-          <div class="field"><label class="l" for="cl-cat">Categoria</label><input id="cl-cat" list="cl-cats" /><datalist id="cl-cats">${['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'].map((x) => `<option>${x}</option>`).join('')}</datalist></div>
+          <div class="field"><label class="l" for="cl-cat">Categoria</label><input id="cl-cat" list="cl-cats" /><datalist id="cl-cats">${cats.map((x) => `<option>${esc(x)}</option>`).join('')}</datalist></div>
           <div class="field"><label class="l" for="cl-sku">Codice / SKU</label><input id="cl-sku" /></div>
           <div class="field"><label class="l" for="cl-price">Prezzo di vendita €</label><input id="cl-price" inputmode="decimal" /></div>
         </div>

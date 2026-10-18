@@ -14,6 +14,12 @@ CREATE TABLE IF NOT EXISTS suppliers (
   agents TEXT,                                       -- agenti di riferimento: JSON [{name,phone,email,area}]
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+-- categorie del magazzino (migrazione 0037)
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE
+);
+INSERT OR IGNORE INTO categories (name) VALUES ('Ricambi'),('Accessori'),('Cavi e caricatori'),('Usato / ricondizionato'),('Software e servizi'),('Altro');
 CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sku TEXT, name TEXT NOT NULL, category TEXT,
