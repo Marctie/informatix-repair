@@ -400,7 +400,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   }));
   app.delete('/api/categories', h(async (req) => {
     catAdmin(req);
-    const name = catName(req.query.name);
+    const name = catName(req.body?.name ?? req.query.name);
     const n = (await db.prepare('SELECT COUNT(*) AS n FROM products WHERE active = 1 AND LOWER(category) = LOWER(?)').get(name)).n;
     if (n) throw new L.HttpError(409, `La categoria “${name}” ha ancora ${n} articoli.`, { code: 'CATEGORIA_IN_USO', hint: 'Per toglierla rinominala con il nome di un’altra categoria: gli articoli passano lì.' });
     await db.prepare('DELETE FROM categories WHERE name = ? COLLATE NOCASE').run(name);

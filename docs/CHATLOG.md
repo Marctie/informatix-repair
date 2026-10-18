@@ -995,3 +995,4 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - Bug D1 "LIKE or GLOB pattern too complex" (ricerca Magazzino con testo lungo, es. codice incollato): `db-d1.mjs` accorcia i pattern LIKE oltre 50 byte.
 - Test: `officina/tests/fornitori.test.mjs`; officina 270/270.
 - Categorie (migrazione 0037): nuova schermata **Magazzino > Categorie** (crea, rinomina/unisci, elimina se vuota; non per il ruolo Cassa). API `/api/categories`. I suggerimenti del campo Categoria (articolo e carico) e il filtro Aree includono ora anche le categorie create. Test officina 271/271.
+- Avvisi Telegram (`notify.mjs`): categorie create/rinominate/eliminate, fornitore con numero di agenti, carico «senza fornitore». Bot Termux: nessuna modifica (controlla solo servizi, Vetrina, backup, Buongiorno e riepilogo). Regola ferma dell'utente: ogni modifica va riportata anche nel bot e nella documentazione (aggiunta a PARTI-DA-QUI e MEMORY). Test officina 272/272.

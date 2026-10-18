@@ -89,6 +89,7 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 
 ## Direttive di lavoro (utente, 2026-10-13)
 - Commit + push dopo ogni funzionalità completata e testata; tracciare su CHATLOG e MEMORY ogni aggiunta/modifica/eliminazione.
+- **Regola ferma (2026-10-18)**: ogni correzione o aggiunta al gestionale va riportata anche negli avvisi Telegram (`notify.mjs` + test), nel bot di controllo Termux se rilevante e nella documentazione (manuale, CHATLOG, MEMORY, PARTI-DA-QUI). Fatto per: categorie del magazzino (schermata + `/api/categories`, migrazione 0037), anagrafica fornitore estesa con agenti (0036), carico merce con categoria e fornitore facoltativo, fix D1 «LIKE pattern too complex» (`db-d1.mjs`).
 - Cypress (se serve) su branch dedicato sempre vivo, solo per i test; merge in main solo del codice testato.
 - Gestionale: per ora locale e **senza autenticazione** (login rimosso il 2026-10-13). ~~poi auth con il Firebase dell'utente~~ **SUPERATO**: l'autenticazione sarà Cloudflare Access (vedi sezione ONLINE sopra).
 - Bot Telegram: scrivere il codice ma non installarlo/testarlo finché l'utente non ha il telefono e lo chiede. Bot di esempio: `C:\1Marco Peluso\Lavoro da eliminare\Bot Telegram`.

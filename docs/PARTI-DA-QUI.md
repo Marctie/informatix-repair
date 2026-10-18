@@ -17,6 +17,7 @@ Questo file serve a riprendere il lavoro in una **sessione nuova e leggera**. Il
 1. **Test, commit e push a ogni funzionalità completata**; aggiornare CHATLOG e MEMORY.
 2. **Grafica pulita e responsive**: solo il sistema di spaziatura di `officina/public/index.html` (`sec`, `fgrid`, `field`, `row`, `kv`, `panel`…), mai margini a caso; guardare gli screenshot a 320/390/768/1280 e far girare `ui-review`. Non togliere il prefisso `html body input…` (reset di Tailwind).
 3. **Veloce e pratico per Christian** (pochi click). Extra utili e veloci si possono aggiungere, registrandoli.
+6. **Ogni modifica o aggiunta al gestionale va riportata anche in tre posti**: (a) avvisi Telegram del Worker (`officina/notify.mjs` + test in `notifiche.test.mjs`), (b) bot di controllo Termux (`/api/monitor`, solo se la funzione tocca controlli/riepiloghi/Buongiorno), (c) documentazione: `officina/public/manuale.html`, `docs/CHATLOG.md`, `docs/MEMORY.md`, questo file. Poi test, commit, push, migrazioni D1 e deploy.
 4. Le **prove con l'hardware** (pistola, stampante, etichette, fotocamera) le fa Christian: dire cosa provare.
 5. Nessun merge in `main` finché non è tutto finito e testato; poi via libera già dato.
 
