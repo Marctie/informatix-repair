@@ -1,12 +1,15 @@
 // Magazzino (con "Da ordinare") e Fornitori.
 import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts } from './util.js';
 import { loadStockDialog } from './carico.js';
+import { categoryNames } from './categorie.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
 
 export async function stockView(el, params) {
   let tab = params.get('tab') === 'reorder' ? 'reorder' : 'all';
   let q = '';
+  let savedCats = [];
+  categoryNames().then((n) => { savedCats = n; });
   let area = ''; // area (categoria) selezionata: '' = tutte
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
@@ -51,7 +54,7 @@ export async function stockView(el, params) {
   function drawAreas(all) {
     const counts = {};
     all.forEach((p) => { const k = p.category || 'Altro'; counts[k] = (counts[k] || 0) + 1; });
-    const names = [...new Set([...CATEGORIES, ...Object.keys(counts)])];
+    const names = [...new Set([...CATEGORIES, ...savedCats, ...Object.keys(counts)])];
     const sel = $('#p-area', el);
     if (!sel) return; // pagina cambiata nel frattempo
     sel.innerHTML = `<option value="">Aree ▾</option>` + names.map((n) => `<option value="${esc(n)}" ${n === area ? 'selected' : ''}>${esc(n)} (${counts[n] || 0})</option>`).join('');
@@ -95,13 +98,13 @@ export async function stockView(el, params) {
 }
 
 async function productForm(id, done) {
-  const [suppliers, p] = await Promise.all([api('GET', '/api/suppliers'), id ? api('GET', `/api/products?q=`).then((l) => l.find((x) => x.id === id)) : null]);
+  const [suppliers, cats, p] = await Promise.all([api('GET', '/api/suppliers'), categoryNames(), id ? api('GET', `/api/products?q=`).then((l) => l.find((x) => x.id === id)) : null]);
   const moves = id ? await api('GET', `/api/products/${id}/moves`) : [];
   const m = openModal(
     `<section class="sec">
       <div class="field"><label class="l" for="pf-name">Nome articolo *</label><input id="pf-name" value="${esc(p?.name || '')}" /></div>
       <div class="fgrid c2">
-        <div class="field"><label class="l" for="pf-cat">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${CATEGORIES.map((c) => `<option>${c}</option>`).join('')}</datalist></div>
+        <div class="field"><label class="l" for="pf-cat">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${cats.map((c) => `<option>${esc(c)}</option>`).join('')}</datalist></div>
         <div class="field"><label class="l" for="pf-sku">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
         ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
         <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>

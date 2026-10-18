@@ -994,3 +994,4 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - Anagrafica fornitore estesa (migrazione 0036): P.IVA, sede legale, sede di ritiro operativa, agenti di riferimento (elenco JSON con nome/telefono/email/zona), pagamento concordato, ordine minimo, tempi di consegna.
 - Bug D1 "LIKE or GLOB pattern too complex" (ricerca Magazzino con testo lungo, es. codice incollato): `db-d1.mjs` accorcia i pattern LIKE oltre 50 byte.
 - Test: `officina/tests/fornitori.test.mjs`; officina 270/270.
+- Categorie (migrazione 0037): nuova schermata **Magazzino > Categorie** (crea, rinomina/unisci, elimina se vuota; non per il ruolo Cassa). API `/api/categories`. I suggerimenti del campo Categoria (articolo e carico) e il filtro Aree includono ora anche le categorie create. Test officina 271/271.

@@ -44,3 +44,22 @@ test('fornitore: sede, agenti e pagamento si salvano', async () => {
   const u = await a('PUT', `/api/suppliers/${c.data.id}`, { name: 'Moon', agents: [] });
   assert.equal(u.data.agents, null);
 });
+
+test('categorie: crea, doppione, rinomina/unisci, elimina', async () => {
+  const base = (await a('GET', '/api/categories')).data;
+  assert.ok(base.some((c) => c.name === 'Accessori'));
+  assert.equal((await a('POST', '/api/categories', { name: 'Cover' })).status, 200);
+  assert.equal((await a('POST', '/api/categories', { name: 'cover' })).data.code, 'CATEGORIA_ESISTENTE');
+  assert.equal((await a('POST', '/api/categories', { name: ' ' })).data.code, 'CATEGORIA_NOME_MANCANTE');
+  const p = (await a('POST', '/api/products', { name: 'Cover X', category: 'Cover', price: 5 })).data;
+  assert.equal((await a('GET', '/api/categories')).data.find((c) => c.name === 'Cover').count, 1);
+  assert.equal((await a('DELETE', '/api/categories?name=Cover')).data.code, 'CATEGORIA_IN_USO');
+  const r = await a('PUT', '/api/categories', { name: 'Cover', new_name: 'accessori' }); // unione
+  assert.equal(r.status, 200);
+  assert.ok(!r.data.some((c) => c.name === 'Cover'));
+  const prods = (await a('GET', '/api/products?q=Cover X')).data;
+  assert.equal(prods[0].category, 'Accessori');
+  assert.equal((await a('POST', '/api/categories', { name: 'Vuota' })).status, 200);
+  assert.equal((await a('DELETE', '/api/categories?name=Vuota')).status, 200);
+  assert.ok(p.id);
+});
