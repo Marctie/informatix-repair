@@ -2,7 +2,15 @@
 import { setDb, fixSql } from './dbref.mjs';
 
 export function useD1(d1) {
-  const st = (sql, a) => d1.prepare(fixSql(sql)).bind(...a);
+  // D1 rifiuta i pattern LIKE oltre 50 byte ("LIKE or GLOB pattern too complex"): una ricerca lunga (codice incollato...) li accorcia.
+  const enc = new TextEncoder();
+  const clampLike = (v) => {
+    if (typeof v !== 'string' || v.length < 3 || v[0] !== '%' || v[v.length - 1] !== '%' || enc.encode(v).length <= 48) return v;
+    let core = v.slice(1, -1);
+    while (enc.encode(core).length > 46) core = core.slice(0, -1);
+    return `%${core}%`;
+  };
+  const st = (sql, a) => d1.prepare(fixSql(sql)).bind(...(/LIKE/i.test(sql) ? a.map(clampLike) : a));
   setDb({
     get: async (sql, a) => (await st(sql, a).first()) ?? undefined,
     all: async (sql, a) => (await st(sql, a).all()).results,

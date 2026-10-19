@@ -1,16 +1,21 @@
 // Magazzino (con "Da ordinare") e Fornitori.
-import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts } from './util.js';
+import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts, isScanEnter, beep } from './util.js';
+import { openLabelPrint, printLabels, codeHint, lookupCode, looksLikeCode } from './etichette.js';
+import { scanWithCamera, cameraSupported } from './scan.js';
 import { loadStockDialog } from './carico.js';
+import { categoryNames } from './categorie.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
 
 export async function stockView(el, params) {
   let tab = params.get('tab') === 'reorder' ? 'reorder' : 'all';
   let q = '';
+  let savedCats = [];
+  categoryNames().then((n) => { savedCats = n; });
   let area = ''; // area (categoria) selezionata: '' = tutte
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
-      <span class="row tight">${canSeeCosts() ? '<button class="btn btn-outline" id="p-load">📥 Carico merce</button>' : ''}<button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></span></div>
+      <span class="row tight">${canSeeCosts() ? '<button class="btn btn-outline" id="p-load">📥 Carico merce</button>' : ''}<button class="btn btn-outline" id="p-labels">🏷️ Etichette</button><button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></span></div>
     <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
     <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><select id="p-area" class="chip" aria-label="Area del magazzino" style="min-height:44px;font-size:.95rem"></select><span class="chip" data-t="reorder">📉 Da ordinare</span>
       <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
@@ -32,7 +37,7 @@ export async function stockView(el, params) {
       const low = p.min_qty > 0 && p.qty <= p.min_qty;
       return `<span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span>`;
     };
-    const meta = (p) => [p.sku, p.location, p.supplier_name].filter(Boolean).map(esc).join(' · ');
+    const meta = (p) => [p.sku, p.barcode, p.location, p.supplier_name].filter(Boolean).map(esc).join(' · ');
     const stepper = (p) => `<span class="row tight" data-stop><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="-1" aria-label="Togli uno">−1</button><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="1" aria-label="Aggiungi uno">+1</button></span>`;
     const list2 = rows || [];
     if (!list2.length) { list.innerHTML = '<p class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</p>'; return; }
@@ -51,7 +56,7 @@ export async function stockView(el, params) {
   function drawAreas(all) {
     const counts = {};
     all.forEach((p) => { const k = p.category || 'Altro'; counts[k] = (counts[k] || 0) + 1; });
-    const names = [...new Set([...CATEGORIES, ...Object.keys(counts)])];
+    const names = [...new Set([...CATEGORIES, ...savedCats, ...Object.keys(counts)])];
     const sel = $('#p-area', el);
     if (!sel) return; // pagina cambiata nel frattempo
     sel.innerHTML = `<option value="">Aree ▾</option>` + names.map((n) => `<option value="${esc(n)}" ${n === area ? 'selected' : ''}>${esc(n)} (${counts[n] || 0})</option>`).join('');
@@ -89,20 +94,36 @@ export async function stockView(el, params) {
   });
   $('#p-area', el).onchange = (e) => { area = e.target.value; tab = 'all'; load(); };
   $('#p-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load(); });
+  // codice letto con la pistola (o scritto a mano e confermato con Invio): apre l'articolo, oppure propone di crearlo
+  $('#p-q', el).addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    const code = e.target.value.trim();
+    const scanned = isScanEnter(e);
+    if (!code || !(scanned || looksLikeCode(code))) return;
+    const p = await lookupCode(code);
+    if (p === undefined) return;
+    if (p) { beep(true); e.target.value = ''; q = ''; productForm(p.id, load); return; }
+    beep(false);
+    toast(`Nessun articolo ha il codice ${code}.`, false, { ms: 9000, action: { label: 'Crea l’articolo con questo codice', fn: () => productForm(null, load, { barcode: code }) } });
+  });
+  $('#p-labels', el).onclick = () => openLabelPrint();
   $('#p-new', el).onclick = () => productForm(null, load);
   if ($('#p-load', el)) $('#p-load', el).onclick = () => loadStockDialog({ done: load });
   await load();
 }
 
-async function productForm(id, done) {
-  const [suppliers, p] = await Promise.all([api('GET', '/api/suppliers'), id ? api('GET', `/api/products?q=`).then((l) => l.find((x) => x.id === id)) : null]);
+async function productForm(id, done, prefill = {}) {
+  const [suppliers, cats, p] = await Promise.all([api('GET', '/api/suppliers'), categoryNames(), id ? api('GET', `/api/products?q=`).then((l) => l.find((x) => x.id === id)) : null]);
   const moves = id ? await api('GET', `/api/products/${id}/moves`) : [];
   const m = openModal(
     `<section class="sec">
       <div class="field"><label class="l" for="pf-name">Nome articolo *</label><input id="pf-name" value="${esc(p?.name || '')}" /></div>
       <div class="fgrid c2">
-        <div class="field"><label class="l" for="pf-cat">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${CATEGORIES.map((c) => `<option>${c}</option>`).join('')}</datalist></div>
+        <div class="field"><label class="l" for="pf-cat">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${cats.map((c) => `<option>${esc(c)}</option>`).join('')}</datalist></div>
         <div class="field"><label class="l" for="pf-sku">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
+        <div class="field span2"><label class="l" for="pf-bc">Codice a barre</label>
+          <div class="row nowrap"><input id="pf-bc" value="${esc(p?.barcode ?? prefill.barcode ?? '')}" placeholder="Leggilo con la pistola" autocomplete="off" />${cameraSupported() ? '<button class="btn btn-outline btn-icon" id="pf-bc-cam" type="button" aria-label="Leggi con la fotocamera">📷</button>' : ''}</div>
+          <span class="hint" id="pf-bc-hint"></span></div>
         ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
         <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>
         <div class="field"><label class="l" for="pf-stale">Fermo dopo (giorni)</label><input id="pf-stale" inputmode="numeric" value="${p?.stale_days ?? ''}" placeholder="generale" /><span class="hint">Vuoto = soglia generale (Impostazioni). 0 = non avvisare mai.</span></div>
@@ -113,7 +134,10 @@ async function productForm(id, done) {
       </div>
       <div class="field"><label class="l" for="pf-notes">Note</label><input id="pf-notes" value="${esc(p?.notes || '')}" /></div>
     </section>
-    ${id ? `<section class="sec"><h3 class="sec-t">Carico merce</h3>
+    ${id ? `<section class="sec"><h3 class="sec-t">Etichetta</h3>
+      <div class="row nowrap"><input id="pf-lq" type="number" min="1" max="500" inputmode="numeric" value="1" aria-label="Quante etichette" style="max-width:6rem" /><button class="btn btn-outline" id="pf-lprint" type="button">🏷️ Stampa etichetta</button></div>
+      <p class="hint">Si stampa con il template predefinito (Impostazioni → Etichette prodotto). Se l’articolo non ha un codice a barre gliene assegno uno.</p></section>
+    <section class="sec"><h3 class="sec-t">Carico merce</h3>
       ${canSeeCosts()
         ? '<div class="row"><button class="btn btn-outline" id="pf-loadfull" style="max-width:100%;height:auto;white-space:normal;text-align:left;line-height:1.3;padding-block:.6rem">📥 Carico merce con fornitore e prezzo…</button></div><p class="hint">Quantità, fornitore, prezzo d’acquisto, data e documento: aggiorna giacenza, ultimo costo e storico prezzi.</p>'
         : '<div class="row" style="flex-wrap:nowrap"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" style="max-width:12rem" /><button class="btn btn-outline" id="pf-load">Registra carico</button></div>'}</section>
@@ -123,8 +147,19 @@ async function productForm(id, done) {
       footer: `${id ? '<button class="btn btn-ghost mr-auto" id="pf-del">Archivia</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="pf-ok">Salva</button>` }
   );
   const r = m.el;
+  // codice a barre: frase d'aiuto, pistola (Invio non deve salvare) e fotocamera
+  const bc = $('#pf-bc', r);
+  const bcHint = () => { $('#pf-bc-hint', r).textContent = codeHint(bc.value); };
+  bc.addEventListener('input', bcHint);
+  bc.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+  bcHint();
+  if ($('#pf-bc-cam', r)) $('#pf-bc-cam', r).onclick = async () => { const c = await scanWithCamera(); if (c) { bc.value = c; bcHint(); } };
+  if (id && $('#pf-lprint', r)) $('#pf-lprint', r).onclick = (e) => {
+    const n = Math.min(Math.max(Math.round(Number($('#pf-lq', r).value) || 1), 1), 500);
+    printLabels([{ product_id: id, qty: n }]).then((out) => { if (out?.codes?.[id] && !bc.value.trim()) { bc.value = out.codes[id]; bcHint(); } }); // mostra il codice appena assegnato: un "Salva" col campo vuoto lo cancellerebbe
+  };
   $('#pf-ok', r).onclick = async () => {
-    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
+    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, barcode: bc.value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
     if (!id) body.qty = $('#pf-qty', r).value;
     const out = await safe(() => (id ? api('PUT', `/api/products/${id}`, body) : api('POST', '/api/products', body)));
     if (out) { m.close(); toast('Articolo salvato'); done(); }
@@ -143,6 +178,7 @@ async function productForm(id, done) {
 }
 
 // ---------- Fornitori ----------
+const agentLine = (s) => { try { const a = JSON.parse(s.agents || '[]')[0]; return a ? `<p class="text-xs text-gray-500">Agente: ${esc(a.name || '')} ${a.phone ? '· ' + esc(a.phone) : ''}</p>` : ''; } catch { return ''; } };
 export async function suppliersView(el) {
   el.innerHTML = `<div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Fornitori</h1>
     <button class="btn btn-primary" id="s-new">＋ Nuovo fornitore</button></div><div class="card overflow-hidden" id="s-list"></div>`;
@@ -150,7 +186,7 @@ export async function suppliersView(el) {
   async function load() {
     const rows = await safe(() => api('GET', '/api/suppliers'));
     list.innerHTML = (rows || []).map((s) => `<div class="row-h flex items-center gap-3 px-4 py-3 border-b border-line last:border-0 cursor-pointer" data-id="${s.id}">
-      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(s.name)}</p><p class="text-xs text-gray-500">${esc(s.phone || '')} ${s.email ? '· ' + esc(s.email) : ''} ${s.website ? '· ' + esc(s.website) : ''}</p></div>
+      <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(s.name)}</p><p class="text-xs text-gray-500">${esc(s.phone || '')} ${s.email ? '· ' + esc(s.email) : ''} ${s.website ? '· ' + esc(s.website) : ''}</p>${agentLine(s)}</div>
       <span class="text-xs text-gray-500">${s.products_count} articoli</span>
       ${s.phone ? `<a class="btn btn-outline btn-sm" data-stop href="tel:${esc(s.phone)}">📞</a>` : ''}</div>`).join('') || '<p class="empty">Nessun fornitore. Aggiungili per collegarli agli articoli e generare gli ordini.</p>';
     list._rows = rows;
@@ -165,22 +201,41 @@ export async function suppliersView(el) {
 }
 
 function supplierForm(s, done) {
+  let agents = [];
+  try { agents = JSON.parse(s?.agents || '[]'); } catch { agents = []; }
+  const f = (id, label, val, attrs = '', cls = '') => `<div class="field ${cls}"><label class="l" for="${id}">${label}</label><input id="${id}" value="${esc(val || '')}" ${attrs} /></div>`;
+  const agentRow = (a = {}) => `<div class="sec ag-row card panel"><div class="fgrid c2">
+      <div class="field"><label class="l">Nome agente</label><input data-ag="name" value="${esc(a.name || '')}" /></div>
+      <div class="field"><label class="l">Telefono</label><input data-ag="phone" inputmode="tel" value="${esc(a.phone || '')}" /></div>
+      <div class="field"><label class="l">Email</label><input data-ag="email" type="email" value="${esc(a.email || '')}" /></div>
+      <div class="field"><label class="l">Zona / ruolo</label><input data-ag="area" value="${esc(a.area || '')}" placeholder="es. commerciale, assistenza" /></div>
+    </div><button type="button" class="btn btn-ghost btn-sm" data-ag-del>Togli agente</button></div>`;
   const m = openModal(
     `<section class="sec">
-      <div class="field"><label class="l" for="sf-name">Nome *</label><input id="sf-name" value="${esc(s?.name || '')}" /></div>
-      <div class="fgrid c2">
-        <div class="field"><label class="l" for="sf-phone">Telefono / WhatsApp</label><input id="sf-phone" inputmode="tel" value="${esc(s?.phone || '')}" /></div>
-        <div class="field"><label class="l" for="sf-email">Email</label><input id="sf-email" type="email" value="${esc(s?.email || '')}" /></div>
-      </div>
-      <div class="field"><label class="l" for="sf-web">Sito web</label><input id="sf-web" value="${esc(s?.website || '')}" /></div>
-      <div class="field"><label class="l" for="sf-notes">Note</label><textarea id="sf-notes" rows="3" placeholder="Tempi di consegna, minimo d’ordine…">${esc(s?.notes || '')}</textarea></div>
+      ${f('sf-name', 'Nome / ragione sociale *', s?.name)}
+      <div class="fgrid c2">${f('sf-vat', 'Partita IVA', s?.vat_number, 'inputmode="numeric"')}${f('sf-web', 'Sito web', s?.website)}
+        ${f('sf-phone', 'Telefono / WhatsApp', s?.phone, 'inputmode="tel"')}${f('sf-email', 'Email', s?.email, 'type="email"')}
+        ${f('sf-legal', 'Sede legale', s?.legal_address, '', 'span2')}${f('sf-pickup', 'Sede di ritiro operativa', s?.pickup_address, '', 'span2')}</div>
+    </section>
+    <section class="sec"><h3 class="sec-t">Agenti di riferimento</h3><div id="sf-agents" class="sec">${agents.map(agentRow).join('')}</div>
+      <div class="row tight"><button type="button" class="btn btn-outline btn-sm" id="sf-addag">＋ Aggiungi agente</button></div></section>
+    <section class="sec"><h3 class="sec-t">Condizioni</h3><div class="fgrid c2">
+      ${f('sf-pay', 'Modalità di pagamento concordate', s?.payment_terms, 'placeholder="es. bonifico 30 gg, RiBa, contanti"', 'span2')}
+      ${f('sf-min', 'Ordine minimo', s?.min_order, 'placeholder="es. 100 €"')}${f('sf-del', 'Tempi di consegna', s?.delivery_days, 'placeholder="es. 24/48 ore"')}</div>
+      <div class="field"><label class="l" for="sf-notes">Note</label><textarea id="sf-notes" rows="3" placeholder="Orari, referenti, resi…">${esc(s?.notes || '')}</textarea></div>
     </section>`,
-    { title: s ? 'Modifica fornitore' : 'Nuovo fornitore', footer: `${s ? '<button class="btn btn-ghost mr-auto" id="sf-del">Elimina</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="sf-ok">Salva</button>` }
+    { title: s ? 'Modifica fornitore' : 'Nuovo fornitore', wide: true, footer: `${s ? '<button class="btn btn-ghost mr-auto" id="sf-del-btn">Elimina</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="sf-ok">Salva</button>` }
   );
-  $('#sf-ok', m.el).onclick = async () => {
-    const body = { name: $('#sf-name', m.el).value, phone: $('#sf-phone', m.el).value, email: $('#sf-email', m.el).value, website: $('#sf-web', m.el).value, notes: $('#sf-notes', m.el).value };
+  const r = m.el;
+  const box = $('#sf-agents', r);
+  $('#sf-addag', r).onclick = () => { box.insertAdjacentHTML('beforeend', agentRow()); box.lastElementChild.querySelector('input').focus(); };
+  box.onclick = (e) => { const b = e.target.closest('[data-ag-del]'); if (b) b.closest('.ag-row').remove(); };
+  $('#sf-ok', r).onclick = async () => {
+    const val = (id) => $(`#${id}`, r).value;
+    const ag = [...box.querySelectorAll('.ag-row')].map((row) => Object.fromEntries([...row.querySelectorAll('[data-ag]')].map((i) => [i.dataset.ag, i.value])));
+    const body = { name: val('sf-name'), phone: val('sf-phone'), email: val('sf-email'), website: val('sf-web'), notes: val('sf-notes'), vat_number: val('sf-vat'), legal_address: val('sf-legal'), pickup_address: val('sf-pickup'), payment_terms: val('sf-pay'), min_order: val('sf-min'), delivery_days: val('sf-del'), agents: ag };
     const out = await safe(() => (s ? api('PUT', `/api/suppliers/${s.id}`, body) : api('POST', '/api/suppliers', body)));
     if (out) { m.close(); toast('Fornitore salvato'); done(); }
   };
-  if (s) $('#sf-del', m.el).onclick = async () => { if (await confirmDelete('il fornitore')) { await safe(() => api('DELETE', `/api/suppliers/${s.id}`)); m.close(); done(); } };
+  if (s) $('#sf-del-btn', r).onclick = async () => { if (await confirmDelete('il fornitore')) { await safe(() => api('DELETE', `/api/suppliers/${s.id}`)); m.close(); done(); } };
 }

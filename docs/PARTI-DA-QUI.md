@@ -17,6 +17,7 @@ Questo file serve a riprendere il lavoro in una **sessione nuova e leggera**. Il
 1. **Test, commit e push a ogni funzionalità completata**; aggiornare CHATLOG e MEMORY.
 2. **Grafica pulita e responsive**: solo il sistema di spaziatura di `officina/public/index.html` (`sec`, `fgrid`, `field`, `row`, `kv`, `panel`…), mai margini a caso; guardare gli screenshot a 320/390/768/1280 e far girare `ui-review`. Non togliere il prefisso `html body input…` (reset di Tailwind).
 3. **Veloce e pratico per Christian** (pochi click). Extra utili e veloci si possono aggiungere, registrandoli.
+6. **Ogni modifica o aggiunta al gestionale va riportata anche in tre posti**: (a) avvisi Telegram del Worker (`officina/notify.mjs` + test in `notifiche.test.mjs`), (b) bot di controllo Termux (`/api/monitor`, solo se la funzione tocca controlli/riepiloghi/Buongiorno), (c) documentazione: `officina/public/manuale.html`, `docs/CHATLOG.md`, `docs/MEMORY.md`, questo file. Poi test, commit, push, migrazioni D1 e deploy.
 4. Le **prove con l'hardware** (pistola, stampante, etichette, fotocamera) le fa Christian: dire cosa provare.
 5. Nessun merge in `main` finché non è tutto finito e testato; poi via libera già dato.
 
@@ -137,3 +138,10 @@ Agenti: E backend (errori tipizzati con `code`/`hint`, bug), F frontend (prevenz
 4. Piccoli residui: `POST /api/sales` con customer_id inesistente e `POST /api/products` con supplier_id inesistente danno ancora il 409 generico; gara teorica nel saldo alla consegna ordini (`collect`); `DELETE /api/expenses/:id` su id inesistente risponde 200; dare/avere per riparazione non visibile nella scheda riparazione (solo scheda cliente).
 5. Poi: rotazione prodotti, versione vendibile. Note libere con foto (domanda 44) non incluse.
 **Regole**: un giro E2E alla volta (porta 4960); `wrangler` e aggiornamento bot sul Samsung li posso eseguire io (consenso di Marco); mai toccare i dati di Christian.
+
+## RIPARTENZA (aggiornata 2026-10-17, notte) - SOSTITUISCE LE PRECEDENTI
+**Online** (deploy e91a7bb2, D1 fino a 0035): tutto il lavoro di Christian/Marco del 17/10: **Pagamento appeso / Altra attivita'** (spunta su vendita, nuova riparazione, acconto, consegna, ordini; fatture con campo Azienda; vista admin Gestione > Altra attivita'; riquadro in Analisi; Cassa non rivede l'operazione ma il contante entra nel totale atteso della chiusura; tutto nel Registro; migrazioni 0032-0033), residui corretti (404 parlanti, spesa inesistente, saldo ordini anti doppio incasso), dare/avere nella scheda riparazione, soglia "fermo" per articolo (0034), note con foto (0035), ricambi: fornitore con suggerimenti, avviso "Gia' a magazzino?", modifica dei ricambi usati (PATCH parts). Test: officina 267/267; E2E tutti verdi (`cypress-tests` fuso e pushato).
+**Documenti nuovi**: `docs/TEST-DI-CHRISTIAN.md` (30 prove, anche manuale sez. 44), `docs/VERSIONE-VENDIBILE.md` (proposta A installazioni separate / B multi-tenant, in attesa di decisione di Marco).
+**Cosa resta (non dipende da Claude)**: prove di Christian; da Christian: fattura XML vera, DDT/PDF d'esempio, regolamento punti (domanda 21); da Marco: testi legali da far confermare, scelta versione vendibile, routine blog 25/10 (libera).
+**Decisione sul "pagamento appeso"**: accettato perche' e' attribuzione a un'ALTRA azienda di Christian (sempre registrato, visibile agli admin, nel Registro, nel totale cassa); la prima formulazione "non tracciato" resta rifiutata. Non costruire mai incassi senza traccia.
+**Regole**: un giro E2E alla volta (porta 4960); wrangler (migrazioni + deploy) li esegue Claude dopo il via libera di Marco ("lancia/pubblica"); mai toccare i dati di Christian; test+commit+push+manuale+CHATLOG a ogni funzione; pubblicazione unica a fine blocco.

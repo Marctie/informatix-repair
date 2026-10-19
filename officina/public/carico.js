@@ -1,34 +1,38 @@
 // Carico merce: arrivo di un articolo (esistente o nuovo) con quantità, fornitore, prezzo d'acquisto, data e documento.
 // Aggiorna giacenza, ultimo costo e storico prezzi di Acquisti (grafico e avvisi).
 import { $, esc, eur, api, toast, safe, debounce, openModal, today } from './util.js';
+import { categoryNames } from './categorie.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
+import { printLabels } from './etichette.js';
 
 /** product = articolo già scelto (da Magazzino); senza: si cerca o si crea un articolo nuovo. */
 export async function loadStockDialog({ product = null, done } = {}) {
   const suppliers = (await safe(() => api('GET', '/api/suppliers'))) || [];
+  const cats = await categoryNames();
   await ensureVatDefault();
   let prod = product;
-  const supOpts = (sel) => `<option value="">— scegli —</option>${suppliers.map((s) => `<option value="${s.id}" ${Number(sel) === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}`;
+  const supOpts = (sel) => `<option value="">— nessun fornitore —</option>${suppliers.map((s) => `<option value="${s.id}" ${Number(sel) === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}`;
   const m = openModal(
     `<section class="sec">
       <div id="cl-pick" class="sec"></div>
       <div id="cl-new" class="sec hidden">
         <div class="fgrid c2">
           <div class="field span2"><label class="l" for="cl-name">Nome del nuovo articolo *</label><input id="cl-name" /></div>
+          <div class="field"><label class="l" for="cl-cat">Categoria</label><input id="cl-cat" list="cl-cats" /><datalist id="cl-cats">${cats.map((x) => `<option>${esc(x)}</option>`).join('')}</datalist></div>
           <div class="field"><label class="l" for="cl-sku">Codice / SKU</label><input id="cl-sku" /></div>
           <div class="field"><label class="l" for="cl-price">Prezzo di vendita €</label><input id="cl-price" inputmode="decimal" /></div>
         </div>
       </div>
       <div class="fgrid c2">
         <div class="field"><label class="l" for="cl-qty">Quantità arrivata *</label><input id="cl-qty" inputmode="numeric" value="1" /></div>
-        <div class="field"><label class="l" for="cl-sup">Fornitore *</label><select id="cl-sup">${supOpts(prod?.supplier_id)}</select></div>
+        <div class="field"><label class="l" for="cl-sup">Fornitore</label><select id="cl-sup">${supOpts(prod?.supplier_id)}</select></div>
         <div class="field"><label class="l" for="cl-cost">Prezzo d’acquisto € (cad.) *</label><input id="cl-cost" inputmode="decimal" value="${prod?.cost ? prod.cost : ''}" /><span class="hint" id="cl-hint"></span></div>
         <div class="field"><label class="l" for="cl-date">Data</label><input id="cl-date" type="date" value="${today()}" /></div>
         <div class="field"><label class="l" for="cl-code">Codice del fornitore</label><input id="cl-code" /></div>
         <div class="field"><label class="l" for="cl-doc">N. documento (DDT / fattura)</label><input id="cl-doc" /></div>
       </div>
       ${vatBlock('cl')}
-      <p class="hint">Aggiorna la giacenza e l’ultimo costo, e scrive il prezzo nello storico di Acquisti. Con lo stesso n. documento più articoli finiscono nello stesso documento.</p>
+      <p class="hint">Il fornitore è facoltativo: senza, aggiorno solo giacenza e ultimo costo (niente storico prezzi). Con il fornitore scrivo il prezzo nello storico di Acquisti. Con lo stesso n. documento più articoli finiscono nello stesso documento.</p>
     </section>`,
     { title: 'Carico merce', wide: true, footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cl-ok">Registra carico</button>' }
   );
@@ -85,8 +89,14 @@ export async function loadStockDialog({ product = null, done } = {}) {
     const v = (id) => $(`#${id}`, r).value;
     const isNew = !prod;
     const body = { qty: v('cl-qty'), supplier_id: v('cl-sup') || null, unit_price: v('cl-cost').replace(',', '.'), date: v('cl-date'), supplier_code: v('cl-code'), doc_number: v('cl-doc'), ...vatVals() };
-    if (isNew) Object.assign(body, { name: v('cl-name'), sku: v('cl-sku'), price: v('cl-price').replace(',', '.') });
+    if (isNew) Object.assign(body, { name: v('cl-name'), category: v('cl-cat'), sku: v('cl-sku'), price: v('cl-price').replace(',', '.') });
     const out = await safe(() => api('POST', isNew ? '/api/products/load' : `/api/products/${prod.id}/load`, body));
-    if (out) { m.close(); toast(`Caricati ${out.loaded.qty} pz · ora ${out.qty} in magazzino`); done?.(out); }
+    if (out) {
+      m.close();
+      const n = Math.min(Math.max(Math.round(out.loaded.qty), 1), 500);
+      // un'etichetta per ogni pezzo arrivato, subito: il pulsante resta qualche secondo
+      toast(`Caricati ${out.loaded.qty} pz · ora ${out.qty} in magazzino`, true, { ms: 12000, action: { label: `🏷️ Stampa ${n} etichett${n === 1 ? 'a' : 'e'}`, fn: () => printLabels([{ product_id: out.id, qty: n }]) } });
+      done?.(out);
+    }
   };
 }

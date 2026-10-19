@@ -388,22 +388,26 @@ export async function manualLoad(body) {
     if (productId && !prod) throw new HttpError(404, 'L’articolo scelto per il carico non esiste più a magazzino.', { code: 'ARTICOLO_NON_TROVATO', hint: 'Riapri il magazzino e scegli di nuovo l’articolo.' });
     const supplierId = Number(b.supplier_id) || prod?.supplier_id || null;
     const supplier = supplierId ? await db.prepare('SELECT id, name FROM suppliers WHERE id = ?').get(supplierId) : null;
-    if (!supplier) throw new HttpError(400, 'Carico merce non registrato: manca il fornitore da cui arriva la merce.', { code: 'FORNITORE_MANCANTE', hint: 'Scegli il fornitore dall’elenco o creane uno nuovo.' });
+    if (supplierId && !supplier) throw new HttpError(404, 'Il fornitore scelto per il carico non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     if (!prod) { // articolo nuovo
       const name = str(b.name);
       if (!name) throw new HttpError(400, 'Carico merce non registrato: non è stato scelto né scritto l’articolo.', { code: 'ARTICOLO_MANCANTE', hint: 'Scegli un articolo esistente oppure scrivi il nome del nuovo.' });
       const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, created_at) VALUES (?,?,?,0,?,?,?,?,${NOW})`)
-        .run(str(b.sku), name.slice(0, 200), str(b.category), Math.max(0, Math.round(Number(b.min_qty) || 0)), unit, money(Number(String(b.price ?? 0).replace(',', '.')) || 0), supplier.id);
+                .run(str(b.sku), name.slice(0, 200), str(b.category), Math.max(0, Math.round(Number(b.min_qty) || 0)), unit, money(Number(String(b.price ?? 0).replace(',', '.')) || 0), supplier?.id ?? null);
       productId = Number(r.lastInsertRowid);
       prod = await db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
     }
     const code = str(b.supplier_code);
+    let docNo = null; let doc = null; const lineTotal = money(qty * unit); const lineVat = money(qty * vat.vat);
+    if (!supplier) {
+      // senza fornitore (merce di provenienza varia): niente documento d'acquisto né storico prezzi, solo giacenza e ultimo costo
+      docNo = str(b.doc_number);
+      await moveStock(productId, qty, `carico merce${docNo ? ' ' + docNo : ' (senza fornitore)'}`, docNo ? `doc:${docNo}` : null);
+    } else {
     // documento: stesso numero + fornitore + data = stesso documento (se e' manuale); senza numero ne nasce uno automatico
-    const docNo = str(b.doc_number) || `CARICO-${date.replaceAll('-', '')}-${Date.now().toString(36).toUpperCase()}`;
-    let doc = await db.prepare('SELECT id, source, total FROM purchases WHERE supplier_id = ? AND doc_number = ? AND doc_date = ?').get(supplier.id, docNo, date);
+    docNo = str(b.doc_number) || `CARICO-${date.replaceAll('-', '')}-${Date.now().toString(36).toUpperCase()}`;
+    doc = await db.prepare('SELECT id, source, total FROM purchases WHERE supplier_id = ? AND doc_number = ? AND doc_date = ?').get(supplier.id, docNo, date);
     if (doc && doc.source !== 'manuale') throw new HttpError(409, 'Esiste già un documento importato con lo stesso numero di questo carico manuale.', { code: 'NUMERO_DOCUMENTO_DUPLICATO', hint: 'Usa un altro numero oppure lascia il campo vuoto.' });
-    const lineTotal = money(qty * unit);
-    const lineVat = money(qty * vat.vat);
     if (!doc) {
       const r = await db.prepare(`INSERT INTO purchases (supplier_id, doc_type, doc_number, doc_date, total, source, notes, imported_at) VALUES (?,?,?,?,?,?,?,${NOW})`)
         .run(supplier.id, 'CARICO', docNo, date, lineTotal, 'manuale', str(b.notes));
@@ -414,11 +418,12 @@ export async function manualLoad(body) {
     await db.prepare('INSERT INTO price_history (product_id, supplier_id, unit_price, qty, doc_date, purchase_id) VALUES (?,?,?,?,?,?)').run(productId, supplier.id, unit, qty, date, doc.id);
     if (code) await db.prepare('INSERT OR REPLACE INTO supplier_codes (supplier_id, supplier_code, product_id) VALUES (?,?,?)').run(supplier.id, code, productId);
     await moveStock(productId, qty, `carico merce ${docNo}`, `acquisto:${doc.id}`);
+    }
     // ultimo costo (e fornitore abituale se mancava)
-    await db.prepare('UPDATE products SET cost = ?, supplier_id = COALESCE(supplier_id, ?) WHERE id = ?').run(unit, supplier.id, productId);
+    await db.prepare('UPDATE products SET cost = ?, supplier_id = COALESCE(supplier_id, ?) WHERE id = ?').run(unit, supplier?.id ?? null, productId);
     const out = await db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
     const prices = await productPrices(productId);
-    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier.name, doc_number: docNo, purchase_id: doc.id, avg_cost: prices.avg_cost, new_product: !b.product_id, vat: { ...vat, line_vat: lineVat } } };
+    return { ...out, loaded: { qty, unit_price: unit, supplier_name: supplier?.name ?? null, doc_number: docNo, purchase_id: doc?.id ?? null, avg_cost: prices.avg_cost, new_product: !b.product_id, vat: { ...vat, line_vat: lineVat } } };
   });
 }
 

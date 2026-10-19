@@ -5,6 +5,7 @@ import { scanWithCamera } from './scan.js';
 import { openRepairForm, openRepairDetail, deliverDialog } from './repair.js';
 import { customersView, openCustomer } from './customers.js';
 import { stockView, suppliersView } from './stock.js';
+import { categorieView } from './categorie.js';
 import { salesView, cashView, settingsView } from './sales.js';
 import { usersView } from './users.js';
 import { auditView } from './audit.js';
@@ -56,6 +57,7 @@ const VIEWS = [
   { id: 'ordini', label: 'Ordini', icon: '📮', render: ordiniView, group: 'magazzino' },
   { id: 'materiali', label: 'Da ordinare', icon: '📋', render: materialiView, group: 'magazzino' }, // agente D
   { id: 'acquisti', label: 'Acquisti', icon: '🧾', render: purchasesView, group: 'magazzino' },
+  { id: 'categorie', label: 'Categorie', icon: '🏷️', render: categorieView, notCassa: true, group: 'magazzino' },
   { id: 'fornitori', label: 'Fornitori', icon: '🚚', render: suppliersView, group: 'magazzino' },
   { id: 'dispositivi', label: 'Dispositivi', icon: '📱', render: dispositiviView, group: 'magazzino' },
   { id: 'usati', label: 'Vetrina usati', icon: '🏷️', render: usatiView, group: 'negozio' },

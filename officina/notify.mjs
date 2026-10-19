@@ -41,7 +41,7 @@ const SECTIONS = [[/^\/api\/repairs/, 'Riparazioni'], [/^\/api\/track/, 'Traccia
   [/^\/api\/products|^\/api\/stock|^\/api\/reorder/, 'Magazzino'], [/^\/api\/services/, 'Listino servizi'], [/^\/api\/expenses/, 'Spese'], [/^\/api\/usati/, 'Vetrina usati'], [/^\/api\/orders/, 'Ordini'],
   [/^\/api\/quotes/, 'Preventivi'], [/^\/api\/reminders/, 'Promemoria'], [/^\/api\/buoni/, 'Buoni'], [/^\/api\/carte/, 'Carte punti'], [/^\/api\/materiali/, 'Materiali da ordinare'], [/^\/api\/dispositivi/, 'Dispositivi'], [/^\/api\/documenti/, 'Documenti d’identità'],
   [/^\/api\/credenziali/, 'Credenziali fornitori'], [/^\/api\/purchases/, 'Acquisti'], [/^\/api\/users/, 'Utenti'], [/^\/api\/settings|^\/api\/checklists/, 'Impostazioni'], [/^\/api\/audit/, 'Registro'],
-  [/^\/api\/backup/, 'Backup'], [/^\/api\/demo/, 'Dati demo'], [/^\/print\//, 'Stampa']];
+  [/^\/api\/backup/, 'Backup'], [/^\/api\/demo/, 'Dati demo'], [/^\/api\/labels|^\/print\/labels/, 'Etichette prodotto'], [/^\/print\//, 'Stampa']];
 const VERB = { POST: 'registrare', PUT: 'modificare', PATCH: 'modificare', DELETE: 'eliminare', GET: 'aprire' };
 const section = (path) => SECTIONS.find(([re]) => re.test(path))?.[1] || path;
 
@@ -117,6 +117,13 @@ const ACTIONS = [
   ['POST', /^\/api\/orders$/, () => 'creare l’ordine'],
   ['POST', /^\/api\/quotes$/, () => 'creare il preventivo'],
   ['POST', /^\/api\/buoni$/, () => 'creare il buono'],
+  ['POST', /^\/api\/labels\/templates$/, () => 'creare il template dell’etichetta'],
+  ['PUT', /^\/api\/labels\/templates\/\d+$/, () => 'salvare il template dell’etichetta'],
+  ['DELETE', /^\/api\/labels\/templates\/\d+$/, () => 'eliminare il template dell’etichetta'],
+  ['PUT', /^\/api\/labels\/logo$/, () => 'salvare il logo delle etichette'],
+  ['POST', /^\/api\/labels\/prepare$/, () => 'preparare le etichette'],
+  ['POST', /^\/api\/labels\/assign-missing$/, () => 'assegnare i codici a barre'],
+  ['GET', /^\/api\/products\/by-code\//, () => 'cercare l’articolo dal codice a barre'],
 ];
 /** Su cosa si stava operando: "Riparazione R-0123 (Mario Rossi, iPhone 13)", "Cliente Mario Rossi", ... Solo nomi e codici. */
 function entityOf(path, body, p) {
@@ -353,12 +360,21 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((path === '/api/products/load' || /^\/api\/products\/\d+\/load$/.test(path)) && m === 'POST') {
     if (!isOk) return fail('Carico merce');
     const l = r.loaded || {};
-    return `📥 <b>Carico merce</b>: ${esc(short(r.name, 80))}${l.new_product ? ' (nuovo articolo)' : ''}\n+${esc(l.qty)} pz a ${eur(l.unit_price)} cad.${l.supplier_name ? ` da ${esc(l.supplier_name)}` : ''}${l.doc_number && !/^CARICO-/.test(l.doc_number) ? ` · doc. ${esc(l.doc_number)}` : ''}\nGiacenza ora ${esc(r.qty)} pz · costo medio ${eur(l.avg_cost)}${foot}`;
+    return `📥 <b>Carico merce</b>: ${esc(short(r.name, 80))}${l.new_product ? ' (nuovo articolo)' : ''}\n+${esc(l.qty)} pz a ${eur(l.unit_price)} cad.${l.supplier_name ? ` da ${esc(l.supplier_name)}` : ' (senza fornitore)'}${l.doc_number && !/^CARICO-/.test(l.doc_number) ? ` · doc. ${esc(l.doc_number)}` : ''}\nGiacenza ora ${esc(r.qty)} pz · costo medio ${eur(l.avg_cost)}${foot}`;
   }
   if ((x = path.match(/^\/api\/products\/(\d+)\/move$/)) && m === 'POST') return isOk ? `📦 <b>Movimento di magazzino</b>\n${esc(r.name)} ${Number(body.delta) > 0 ? '+' : ''}${esc(body.delta)} (${esc(body.reason || '—')}) → ora ${esc(r.qty)} pz${foot}` : fail('Movimento di magazzino');
   if (/^\/api\/services/.test(path) && m !== 'GET') {
     const d = m === 'DELETE' ? p : r;
     return isOk ? `🧰 <b>Servizio ${m === 'POST' ? 'aggiunto al listino' : m === 'DELETE' ? 'tolto dal listino' : 'modificato'}</b>: ${esc(short(d.name || '', 80))}${d.price != null ? ` · ${eur(d.price)}` : ''}${foot}` : fail('Listino servizi');
+  }
+
+  // ---- Magazzino: categorie
+  if (path === '/api/categories' && m !== 'GET') {
+    if (!isOk) return fail('Categorie');
+    if (m === 'POST') return `🏷️ <b>Categoria creata</b>: ${esc(short(body.name || '', 60))}${foot}`;
+    if (m === 'PUT') return `🏷️ <b>Categoria ${esc(short(body.name || '', 60))} → ${esc(short(body.new_name || '', 60))}</b>
+(rinominata o unita: gli articoli passano alla nuova)${foot}`;
+    if (m === 'DELETE') return `🗑️ <b>Categoria eliminata</b>: ${esc(short(body.name || '', 60))}${foot}`;
   }
 
   // ---- Anagrafiche e magazzino
@@ -371,7 +387,10 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
         return `🗑️ <b>${label} eliminato</b>: ${esc(short(p.name || `n. ${path.match(/(\d+)$/)?.[1] || '?'}`, 80))}${extra}${foot}`;
       }
       const name = r.name || body.name || '';
-      const extra = label === 'Prodotto' && m === 'POST' ? `\n${esc(r.qty ?? 0)} pz · vendita ${eur(r.price)}` : '';
+      let nAg = 0; try { nAg = label === 'Fornitore' ? JSON.parse(r.agents || '[]').length : 0; } catch { /* elenco agenti non leggibile */ }
+      const extra = label === 'Prodotto' && m === 'POST' ? `
+${esc(r.qty ?? 0)} pz · vendita ${eur(r.price)}` : nAg ? `
+${nAg} agent${nAg === 1 ? 'e' : 'i'} di riferimento` : '';
       return `${ico} <b>${label} ${m === 'POST' ? 'creato' : 'modificato'}</b>${name ? `: ${esc(short(name, 80))}` : ''}${extra}${foot}`;
     }
   }
@@ -392,6 +411,27 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (path === '/api/demo' && (m === 'POST' || m === 'DELETE')) return isOk ? `🧪 <b>Dati demo ${m === 'POST' ? 'caricati' : 'eliminati'}</b>${foot}` : fail('Dati demo');
   if (path === '/api/backup/r2' && m === 'POST') return isOk ? `💾 <b>Backup salvato nel cloud</b>\n${esc(r.file || '')}${foot}` : fail('Backup nel cloud');
   if (path === '/api/backup') return isOk ? `💾 <b>Backup scaricato</b>${foot}` : fail('Backup');
+  // ---- Etichette prodotto e codici a barre
+  if (path.startsWith('/api/labels/preview')) return isOk ? null : fail('Anteprima etichetta'); // e' una lettura: non si segnala
+  if (path.startsWith('/api/labels/') && m !== 'GET') {
+    const size = (t) => (t?.width ? ` (${esc(t.width)} × ${esc(t.height)} mm${t.layout === 'sheet' ? ', foglio A4' : ''})` : '');
+    if (path === '/api/labels/templates' && m === 'POST') return isOk ? `🏷️ <b>Template etichetta creato</b>: ${esc(short(r.name, 60))}${size(r)}${foot}` : fail('Nuovo template etichetta');
+    if ((x = path.match(/^\/api\/labels\/templates\/(\d+)$/))) {
+      if (m === 'PUT') return isOk ? `🏷️ <b>Template etichetta modificato</b>: ${esc(short(r.name, 60))}${size(r)}${foot}` : fail('Template etichetta');
+      if (m === 'DELETE') return isOk ? `🗑️ <b>Template etichetta eliminato</b>: ${esc(short(r.name, 60))}${foot}` : fail('Eliminazione template etichetta');
+    }
+    if (/^\/api\/labels\/templates\/\d+\/default$/.test(path) && m === 'POST') return isOk ? `⭐ <b>Template etichetta predefinito</b>: ${esc(short(r.name, 60))}${foot}` : fail('Template predefinito');
+    if (path === '/api/labels/logo') {
+      if (!isOk) return fail('Logo delle etichette');
+      return m === 'PUT' ? `🖼️ <b>Logo delle etichette aggiornato</b> (ora le etichette usano il logo caricato)${foot}` : `🖼️ <b>Logo delle etichette ripristinato</b> (torna il logo Informatix)${foot}`;
+    }
+    if (path === '/api/labels/assign-missing' && m === 'POST') return !isOk ? fail('Codici a barre') : Number(r.assigned) > 0 ? `🔢 <b>Codici a barre assegnati</b> a ${esc(r.assigned)} articol${Number(r.assigned) === 1 ? 'o' : 'i'}${foot}` : null;
+    if (path === '/api/labels/prepare' && m === 'POST') {
+      if (!isOk) return fail('Etichette prodotti');
+      const names = (r.names || []).map((n) => esc(short(n, 40))).join(', ');
+      return `🏷️ <b>Etichette prodotti</b>: ${esc(r.count)} etichett${Number(r.count) === 1 ? 'a' : 'e'} · ${esc(r.articles)} articol${Number(r.articles) === 1 ? 'o' : 'i'}\n${names}${r.articles > (r.names || []).length ? '…' : ''}${Number(r.assigned) > 0 ? `\nCodici a barre nuovi assegnati: ${esc(r.assigned)}` : ''}${r.template ? `\nTemplate: ${esc(short(r.template, 50))}` : ''}${foot}`;
+    }
+  }
   if ((x = path.match(/^\/print\/(\w+)\/(\d+)/))) return isOk ? `🖨️ <b>Stampa ${esc(PRINT[x[1]] || x[1])}</b> ${esc(p.code || `n. ${x[2]}`)}${p.brand_model ? ` · ${esc(p.brand_model)}` : ''}${foot}` : null;
 
   // ---- Acquisti dai fornitori (import fatture)
@@ -414,7 +454,7 @@ ${ch}` : ''}${foot}`;
 export function isQuiet(method, path, status) {
   if (status >= 400 && status !== 401 && status !== 403 && status < 500) return true; // errori di compilazione: li vede gia' chi usa il gestionale
   return /^\/print\//.test(path) || /\/(checklist|photos|note|quote-options|request-signature)(\/|$)/.test(path)
-    || /^\/api\/reminders/.test(path) || /^\/api\/checklists/.test(path) || (method === 'PUT' && /^\/api\/(products|suppliers|customers|services)\//.test(path));
+    || /^\/api\/reminders/.test(path) || /^\/api\/checklists/.test(path) || /^\/api\/labels\/(prepare|logo|assign-missing)/.test(path) || (method === 'PUT' && /^\/api\/(products|suppliers|customers|services)\//.test(path));
 }
 
 // ---- Dati letti dal database prima dell'azione (per nominare cio' che si elimina o si tocca)

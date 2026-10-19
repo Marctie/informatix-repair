@@ -253,6 +253,42 @@ test('pagamenti sempre tracciati: "non tracciato" rifiutato su vendite, acconti,
   assert.equal((await call('POST', `/api/repairs/${r.id}/deliver`, { method: 'contanti' })).status, 200);
 });
 
+test('notifiche: etichette prodotto (template, logo, codici assegnati, etichette preparate) e anteprima muta', async () => {
+  const list = (await call('GET', '/api/labels/templates')).data.templates;
+  assert.equal(list.length, 1);
+  // template creato, modificato, predefinito, eliminato
+  const made = await call('POST', '/api/labels/templates', { ...list[0], name: 'Cavi 50 × 30', width: 50, height: 30 });
+  assert.match(text(made), /Template etichetta creato.*Cavi 50 × 30.*50 × 30 mm/s);
+  const mod = await call('PUT', `/api/labels/templates/${made.data.id}`, { ...made.data, name: 'Cavi rinominato' });
+  assert.match(text(mod), /Template etichetta modificato.*Cavi rinominato/s);
+  assert.match(text(await call('POST', `/api/labels/templates/${made.data.id}/default`)), /Template etichetta predefinito.*Cavi rinominato/s);
+  assert.match(text(await call('DELETE', `/api/labels/templates/${made.data.id}`)), /Template etichetta eliminato.*Cavi rinominato/s);
+  // l'anteprima dell'editor e' una lettura: nessun messaggio
+  const prev = await call('POST', '/api/labels/preview', { template: list[0] });
+  assert.equal(prev.status, 200);
+  assert.equal(prev.msgs.length, 0, 'l’anteprima non deve mandare avvisi');
+  // etichette preparate: conta, articoli, codici nuovi; senza suono
+  const p = (await call('POST', '/api/products', { name: 'Cavo etichettato', qty: 5, price: 9.9 })).data;
+  const prep = await call('POST', '/api/labels/prepare', { items: [{ product_id: p.id, qty: 4 }] });
+  assert.match(text(prep), /Etichette prodotti: 4 etichette · 1 articolo.*Cavo etichettato.*Codici a barre nuovi assegnati: 1/s);
+  assert.equal(prep.msgs[0].disable_notification, true, 'avviso silenzioso');
+  // codici assegnati in blocco: avviso solo se ne ha assegnati
+  await call('POST', '/api/products', { name: 'Altro senza codice', qty: 1, price: 1 });
+  assert.match(text(await call('POST', '/api/labels/assign-missing')), /Codici a barre assegnati a \d+ articol[oi]/);
+  assert.equal((await call('POST', '/api/labels/assign-missing')).msgs.length, 0, 'niente da assegnare: nessun avviso');
+  // logo
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  assert.match(text(await call('PUT', '/api/labels/logo', { data_url: `data:image/png;base64,${png}` })), /Logo delle etichette aggiornato/);
+  assert.match(text(await call('DELETE', '/api/labels/logo')), /Logo delle etichette ripristinato/);
+  // errori: parlanti e con la sezione giusta
+  const bad = await call('POST', '/api/labels/templates', { ...list[0], name: '' });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.data.code, 'ETICHETTA_NOME_MANCANTE');
+  assert.equal((await call('GET', '/print/labels?items=999999:1')).status, 404);
+  // lettura dal codice: nessun avviso
+  assert.equal((await call('GET', `/api/products/by-code/${p.id ? '2000000000000' : ''}`)).msgs.length, 0);
+});
+
 // ---------------- Avvisi di errore chiari, gravita', anti-spam, registro errori (agente G) ----------------
 const { describeEvent, describeFailure, safeTruncate, isQuiet } = await import('../notify.mjs');
 const { db } = await import('../dbref.mjs');
@@ -373,4 +409,20 @@ test('importi non numerici non diventano "NaN €"; conversione senza metodo non
   const t = describeEvent({ method: 'POST', path: '/api/quotes/3/convert', status: 200, user: { email: 'a@b.it' }, body: { to: 'sale' }, result: { quote: { code: 'P-1', total: 'abc', sale_code: 'V-1' } } });
   assert.doesNotMatch(t, /NaN/);
   assert.doesNotMatch(t, /\(incassata \)/);
+});
+
+test('notifiche: categorie, fornitore con agenti, carico senza fornitore', async () => {
+  assert.match(text(await call('POST', '/api/categories', { name: 'Cover' })), /Categoria creata.*Cover/s);
+  assert.match(text(await call('PUT', '/api/categories', { name: 'Cover', new_name: 'Custodie' })), /Cover → Custodie/);
+  assert.match(text(await call('DELETE', '/api/categories?name=Custodie', { name: 'Custodie' })), /Categoria eliminata.*Custodie/s);
+  assert.match(text(await call('POST', '/api/suppliers', { name: 'Moon', agents: [{ name: 'Luca', phone: '1' }] })), /Fornitore creato.*Moon.*1 agente di riferimento/s);
+  const l = text(await call('POST', '/api/products/load', { name: 'Kit auto', category: 'Accessori', qty: 1, unit_price: 6 }));
+  assert.match(l, /Carico merce.*Kit auto.*senza fornitore/s);
+});
+
+test('isQuiet: etichette e codici assegnati senza suono, template normali con suono', () => {
+  assert.equal(isQuiet('POST', '/api/labels/prepare', 200), true);
+  assert.equal(isQuiet('POST', '/api/labels/assign-missing', 200), true);
+  assert.equal(isQuiet('PUT', '/api/labels/logo', 200), true);
+  assert.equal(isQuiet('POST', '/api/labels/templates', 200), false);
 });

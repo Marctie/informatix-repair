@@ -6,7 +6,9 @@ import { blackBanner, showBlackAlert } from './blacks.js';
 import { debtorNotice, mountLedgerSettings } from './dareavere.js'; // Agente C
 import { showDeviceAlerts } from './dispositivi.js';
 import { mountMaterialsSettings } from './materiali.js'; // agente D
-import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts } from './util.js';
+import { $, $$, esc, eur, fdt, fdate, api, toast, safe, debounce, today, addDays, META, loadMeta, openModal, confirmDelete, canSeeCosts, isScanEnter, beep } from './util.js';
+import { lookupCode, looksLikeCode, mountLabelSettings } from './etichette.js'; // etichette prodotto e lettura dei codici a barre
+import { scanWithCamera, cameraSupported } from './scan.js';
 
 export async function salesView(el) {
   const cart = [];
@@ -21,8 +23,8 @@ export async function salesView(el) {
       <section class="card panel sec lg:col-span-3">
         <h2 class="sec-t">Vendita veloce</h2>
         <div class="field">
-          <label class="l" for="s-q">Cerca un articolo</label>
-          <div class="relative"><input id="s-q" type="search" placeholder="Nome o codice dell'articolo" autocomplete="off" /><div id="s-sugg" class="suggest card hidden"></div></div>
+          <label class="l" for="s-q">Cerca un articolo o leggi il codice a barre</label>
+          <div class="row nowrap"><div class="relative grow"><input id="s-q" type="search" placeholder="Nome, codice… oppure spara il codice a barre" autocomplete="off" /><div id="s-sugg" class="suggest card hidden"></div></div>${cameraSupported() ? '<button class="btn btn-outline btn-icon" id="s-cam" type="button" aria-label="Leggi il codice con la fotocamera">📷</button>' : ''}</div>
         </div>
         <div class="field">
           <label class="l">Servizi <button class="btn btn-ghost btn-sm" id="s-svc-edit" type="button">Gestisci listino</button></label>
@@ -65,7 +67,7 @@ export async function salesView(el) {
             <span class="qty"><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="-1" aria-label="Meno">−</button><b>${i.qty}</b><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="1" aria-label="Più">+</button></span>
             <span class="hint">×</span><input style="width:6.5rem" inputmode="decimal" data-p="${idx}" value="${i.unit_price}" aria-label="Prezzo unitario" />
             <span class="sub-total">${eur(i.qty * i.unit_price)}</span>
-          </div><input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
+          </div>${i.product_id && i.stock != null ? `<div class="hint" style="margin-top:.3rem;${i.stock - i.qty < 0 ? 'color:var(--red-d);font-weight:700' : ''}">In magazzino ${i.stock} pz → dopo la vendita ${i.stock - i.qty}${i.stock - i.qty < 0 ? ' (giacenza insufficiente)' : ''}</div>` : ''}<input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
         <div class="fgrid c2" style="align-items:end">
           <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="${esc(String(keepDisc))}" /></div>
           <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc))}</b></div>
@@ -94,11 +96,63 @@ export async function salesView(el) {
 
   $('#s-q', el).oninput = debounce(async (e) => {
     const q = e.target.value.trim();
-    if (q.length < 2) return sugg.classList.add('hidden');
+    if (q.length < 2 || q === lastScan) return sugg.classList.add('hidden');
     const rows = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
-    sugg.innerHTML = (rows || []).map((p) => `<div class="px-3 py-2.5 hover:bg-lightbg cursor-pointer text-sm flex justify-between gap-2 ${p.qty <= 0 ? 'opacity-50' : ''}" data-add="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}"><span class="min-w-0">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz · ${eur(p.price)}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun articolo in magazzino: usa la voce libera.</div>';
+    sugg.innerHTML = (rows || []).map((p) => `<div class="px-3 py-2.5 hover:bg-lightbg cursor-pointer text-sm flex justify-between gap-2 ${p.qty <= 0 ? 'opacity-50' : ''}" data-add="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}" data-qty="${p.qty}"><span class="min-w-0">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz · ${eur(p.price)}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun articolo in magazzino: usa la voce libera.</div>';
     sugg.classList.remove('hidden');
   }, 200);
+
+  /** Aggiunge un articolo al carrello (da elenco, da codice a barre o da fotocamera). p = { id, name, price, qty (giacenza) } */
+  function addToCart(p) {
+    const ex = cart.find((i) => i.product_id === p.id);
+    if (ex) { ex.qty++; ex.stock = p.qty; } else cart.push({ product_id: p.id, name: p.name, qty: 1, unit_price: Number(p.price), stock: p.qty });
+    sugg.classList.add('hidden');
+    $('#s-q', el).value = '';
+    renderCart();
+  }
+  // Codice letto con la pistola (che "scrive" le cifre e preme Invio) oppure con la fotocamera: l'articolo va nel carrello
+  // e la giacenza scende all'incasso. Se il codice non e' nell'anagrafica non si inventa nulla: si avvisa.
+  let lastScan = ''; // il codice appena letto non deve riaprire anche l'elenco dei suggerimenti
+  async function scanCode(code, { scanned }) {
+    const qIn = $('#s-q', el);
+    lastScan = code;
+    const p = await lookupCode(code);
+    sugg.classList.add('hidden');
+    if (p === undefined) { beep(false); qIn.select(); return; } // errore gia' mostrato (rete, articolo archiviato...)
+    if (!p) {
+      beep(false);
+      toast(`Il codice ${code} non è in magazzino.`, false, { ms: 8000, hint: 'Controlla di averlo letto bene, oppure crea l’articolo da Magazzino.' });
+      qIn.select();
+      return;
+    }
+    addToCart({ id: p.id, name: p.name, price: p.price, qty: p.qty });
+    beep(p.qty > 0);
+    const line = cart.find((i) => i.product_id === p.id);
+    if (p.qty <= 0) toast(`${p.name}: giacenza 0, controlla il magazzino.`, false, { ms: 6000 });
+    else if (p.duplicates) toast(`Più articoli hanno il codice ${code}: ho preso “${p.name}”, controlla.`, false, { ms: 6000 });
+    else toast(`✔ ${p.name}${line.qty > 1 ? ` ×${line.qty}` : ''}`, true, { ms: 1500 });
+    if (scanned) $('#s-q', el)?.focus();
+  }
+  $('#s-q', el).addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const code = e.target.value.trim();
+    const scanned = isScanEnter(e);
+    if (!code || !(scanned || looksLikeCode(code))) return; // un nome scritto a mano resta una ricerca normale
+    e.preventDefault();
+    scanCode(code, { scanned });
+  });
+  if ($('#s-cam', el)) $('#s-cam', el).onclick = async () => { const c = await scanWithCamera(); if (c) scanCode(c.trim(), { scanned: false }); };
+  // Con la pistola non serve cliccare prima nel campo: le cifre "a raffica" finiscono comunque nella ricerca
+  const searchBox = $('#s-q', el);
+  const grab = (e) => {
+    if (!searchBox.isConnected) return document.removeEventListener('keydown', grab, true); // la vista e' stata chiusa
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+    if ($('#modal-root')?.children.length) return;
+    if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+    searchBox.focus();
+  };
+  document.addEventListener('keydown', grab, true);
+  if (window.matchMedia?.('(pointer:fine)').matches) $('#s-q', el).focus(); // sul PC il cursore e' gia' pronto per la pistola
 
   $('#s-cust', el).oninput = debounce(async (e) => {
     const q = e.target.value.trim();
@@ -113,11 +167,7 @@ export async function salesView(el) {
 
   el.addEventListener('click', async (e) => {
     const add = e.target.closest('[data-add]');
-    if (add) {
-      const ex = cart.find((i) => i.product_id === Number(add.dataset.add));
-      if (ex) ex.qty++; else cart.push({ product_id: Number(add.dataset.add), name: add.dataset.name, qty: 1, unit_price: Number(add.dataset.price) });
-      sugg.classList.add('hidden'); $('#s-q', el).value = ''; return renderCart();
-    }
+    if (add) return addToCart({ id: Number(add.dataset.add), name: add.dataset.name, price: add.dataset.price, qty: Number(add.dataset.qty) });
     const pick = e.target.closest('[data-cust]');
     if (pick) {
       customer = { id: Number(pick.dataset.cust), name: pick.dataset.name };
@@ -405,6 +455,7 @@ export async function settingsView(el) {
         <div class="row tight" id="st-demo-btns"><span class="hint">Controllo…</span></div>
       </section>
       </div>
+      <section class="card panel sec lg:col-span-3" id="st-labels"></section>
     </div>`;
   const drawDemo = async () => {
     const d = await safe(() => api('GET', '/api/demo'));
@@ -424,6 +475,7 @@ export async function settingsView(el) {
   drawDemo();
   mountLedgerSettings($('#st-demo', el)); // Agente C: soglie del cattivo pagatore
   mountMaterialsSettings($('#st-legal', el)); // agente D: promemoria materiali da ordinare
+  mountLabelSettings($('#st-labels', el)); // template delle etichette prodotto e logo
   // checklist per tipo: tre elenchi modificabili (una voce per riga)
   const ckBox = $('#ck-body', el);
   let ckAll = {};
