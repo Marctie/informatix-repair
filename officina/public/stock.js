@@ -1,5 +1,7 @@
 // Magazzino (con "Da ordinare") e Fornitori.
-import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts } from './util.js';
+import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDelete, waLink, canSeeCosts, isScanEnter, beep } from './util.js';
+import { openLabelPrint, printLabels, codeHint, lookupCode, looksLikeCode } from './etichette.js';
+import { scanWithCamera, cameraSupported } from './scan.js';
 import { loadStockDialog } from './carico.js';
 import { categoryNames } from './categorie.js';
 
@@ -13,7 +15,7 @@ export async function stockView(el, params) {
   let area = ''; // area (categoria) selezionata: '' = tutte
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Magazzino</h1>
-      <span class="row tight">${canSeeCosts() ? '<button class="btn btn-outline" id="p-load">📥 Carico merce</button>' : ''}<button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></span></div>
+      <span class="row tight">${canSeeCosts() ? '<button class="btn btn-outline" id="p-load">📥 Carico merce</button>' : ''}<button class="btn btn-outline" id="p-labels">🏷️ Etichette</button><button class="btn btn-primary" id="p-new">＋ Nuovo articolo</button></span></div>
     <div id="p-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
     <div class="flex gap-3 items-center flex-wrap"><span class="chip" data-t="all">Tutti</span><select id="p-area" class="chip" aria-label="Area del magazzino" style="min-height:44px;font-size:.95rem"></select><span class="chip" data-t="reorder">📉 Da ordinare</span>
       <input id="p-q" type="search" placeholder="Cerca articolo…" class="sm:!w-64 w-full sm:ml-auto" /></div>
@@ -35,7 +37,7 @@ export async function stockView(el, params) {
       const low = p.min_qty > 0 && p.qty <= p.min_qty;
       return `<span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span>`;
     };
-    const meta = (p) => [p.sku, p.location, p.supplier_name].filter(Boolean).map(esc).join(' · ');
+    const meta = (p) => [p.sku, p.barcode, p.location, p.supplier_name].filter(Boolean).map(esc).join(' · ');
     const stepper = (p) => `<span class="row tight" data-stop><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="-1" aria-label="Togli uno">−1</button><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="1" aria-label="Aggiungi uno">+1</button></span>`;
     const list2 = rows || [];
     if (!list2.length) { list.innerHTML = '<p class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</p>'; return; }
@@ -92,12 +94,25 @@ export async function stockView(el, params) {
   });
   $('#p-area', el).onchange = (e) => { area = e.target.value; tab = 'all'; load(); };
   $('#p-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load(); });
+  // codice letto con la pistola (o scritto a mano e confermato con Invio): apre l'articolo, oppure propone di crearlo
+  $('#p-q', el).addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    const code = e.target.value.trim();
+    const scanned = isScanEnter(e);
+    if (!code || !(scanned || looksLikeCode(code))) return;
+    const p = await lookupCode(code);
+    if (p === undefined) return;
+    if (p) { beep(true); e.target.value = ''; q = ''; productForm(p.id, load); return; }
+    beep(false);
+    toast(`Nessun articolo ha il codice ${code}.`, false, { ms: 9000, action: { label: 'Crea l’articolo con questo codice', fn: () => productForm(null, load, { barcode: code }) } });
+  });
+  $('#p-labels', el).onclick = () => openLabelPrint();
   $('#p-new', el).onclick = () => productForm(null, load);
   if ($('#p-load', el)) $('#p-load', el).onclick = () => loadStockDialog({ done: load });
   await load();
 }
 
-async function productForm(id, done) {
+async function productForm(id, done, prefill = {}) {
   const [suppliers, cats, p] = await Promise.all([api('GET', '/api/suppliers'), categoryNames(), id ? api('GET', `/api/products?q=`).then((l) => l.find((x) => x.id === id)) : null]);
   const moves = id ? await api('GET', `/api/products/${id}/moves`) : [];
   const m = openModal(
@@ -106,6 +121,9 @@ async function productForm(id, done) {
       <div class="fgrid c2">
         <div class="field"><label class="l" for="pf-cat">Categoria</label><input id="pf-cat" list="pf-cats" value="${esc(p?.category || '')}" /><datalist id="pf-cats">${cats.map((c) => `<option>${esc(c)}</option>`).join('')}</datalist></div>
         <div class="field"><label class="l" for="pf-sku">Codice / SKU</label><input id="pf-sku" value="${esc(p?.sku || '')}" /></div>
+        <div class="field span2"><label class="l" for="pf-bc">Codice a barre</label>
+          <div class="row nowrap"><input id="pf-bc" value="${esc(p?.barcode ?? prefill.barcode ?? '')}" placeholder="Leggilo con la pistola" autocomplete="off" />${cameraSupported() ? '<button class="btn btn-outline btn-icon" id="pf-bc-cam" type="button" aria-label="Leggi con la fotocamera">📷</button>' : ''}</div>
+          <span class="hint" id="pf-bc-hint"></span></div>
         ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
         <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>
         <div class="field"><label class="l" for="pf-stale">Fermo dopo (giorni)</label><input id="pf-stale" inputmode="numeric" value="${p?.stale_days ?? ''}" placeholder="generale" /><span class="hint">Vuoto = soglia generale (Impostazioni). 0 = non avvisare mai.</span></div>
@@ -116,7 +134,10 @@ async function productForm(id, done) {
       </div>
       <div class="field"><label class="l" for="pf-notes">Note</label><input id="pf-notes" value="${esc(p?.notes || '')}" /></div>
     </section>
-    ${id ? `<section class="sec"><h3 class="sec-t">Carico merce</h3>
+    ${id ? `<section class="sec"><h3 class="sec-t">Etichetta</h3>
+      <div class="row nowrap"><input id="pf-lq" type="number" min="1" max="500" inputmode="numeric" value="1" aria-label="Quante etichette" style="max-width:6rem" /><button class="btn btn-outline" id="pf-lprint" type="button">🏷️ Stampa etichetta</button></div>
+      <p class="hint">Si stampa con il template predefinito (Impostazioni → Etichette prodotto). Se l’articolo non ha un codice a barre gliene assegno uno.</p></section>
+    <section class="sec"><h3 class="sec-t">Carico merce</h3>
       ${canSeeCosts()
         ? '<div class="row"><button class="btn btn-outline" id="pf-loadfull" style="max-width:100%;height:auto;white-space:normal;text-align:left;line-height:1.3;padding-block:.6rem">📥 Carico merce con fornitore e prezzo…</button></div><p class="hint">Quantità, fornitore, prezzo d’acquisto, data e documento: aggiorna giacenza, ultimo costo e storico prezzi.</p>'
         : '<div class="row" style="flex-wrap:nowrap"><input id="pf-add" inputmode="numeric" placeholder="Quantità arrivata" style="max-width:12rem" /><button class="btn btn-outline" id="pf-load">Registra carico</button></div>'}</section>
@@ -126,8 +147,19 @@ async function productForm(id, done) {
       footer: `${id ? '<button class="btn btn-ghost mr-auto" id="pf-del">Archivia</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="pf-ok">Salva</button>` }
   );
   const r = m.el;
+  // codice a barre: frase d'aiuto, pistola (Invio non deve salvare) e fotocamera
+  const bc = $('#pf-bc', r);
+  const bcHint = () => { $('#pf-bc-hint', r).textContent = codeHint(bc.value); };
+  bc.addEventListener('input', bcHint);
+  bc.addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+  bcHint();
+  if ($('#pf-bc-cam', r)) $('#pf-bc-cam', r).onclick = async () => { const c = await scanWithCamera(); if (c) { bc.value = c; bcHint(); } };
+  if (id && $('#pf-lprint', r)) $('#pf-lprint', r).onclick = (e) => {
+    const n = Math.min(Math.max(Math.round(Number($('#pf-lq', r).value) || 1), 1), 500);
+    printLabels([{ product_id: id, qty: n }]).then((out) => { if (out?.codes?.[id] && !bc.value.trim()) { bc.value = out.codes[id]; bcHint(); } }); // mostra il codice appena assegnato: un "Salva" col campo vuoto lo cancellerebbe
+  };
   $('#pf-ok', r).onclick = async () => {
-    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
+    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, barcode: bc.value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
     if (!id) body.qty = $('#pf-qty', r).value;
     const out = await safe(() => (id ? api('PUT', `/api/products/${id}`, body) : api('POST', '/api/products', body)));
     if (out) { m.close(); toast('Articolo salvato'); done(); }

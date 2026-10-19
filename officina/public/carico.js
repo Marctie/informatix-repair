@@ -3,6 +3,7 @@
 import { $, esc, eur, api, toast, safe, debounce, openModal, today } from './util.js';
 import { categoryNames } from './categorie.js';
 import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
+import { printLabels } from './etichette.js';
 
 /** product = articolo già scelto (da Magazzino); senza: si cerca o si crea un articolo nuovo. */
 export async function loadStockDialog({ product = null, done } = {}) {
@@ -90,6 +91,12 @@ export async function loadStockDialog({ product = null, done } = {}) {
     const body = { qty: v('cl-qty'), supplier_id: v('cl-sup') || null, unit_price: v('cl-cost').replace(',', '.'), date: v('cl-date'), supplier_code: v('cl-code'), doc_number: v('cl-doc'), ...vatVals() };
     if (isNew) Object.assign(body, { name: v('cl-name'), category: v('cl-cat'), sku: v('cl-sku'), price: v('cl-price').replace(',', '.') });
     const out = await safe(() => api('POST', isNew ? '/api/products/load' : `/api/products/${prod.id}/load`, body));
-    if (out) { m.close(); toast(`Caricati ${out.loaded.qty} pz · ora ${out.qty} in magazzino`); done?.(out); }
+    if (out) {
+      m.close();
+      const n = Math.min(Math.max(Math.round(out.loaded.qty), 1), 500);
+      // un'etichetta per ogni pezzo arrivato, subito: il pulsante resta qualche secondo
+      toast(`Caricati ${out.loaded.qty} pz · ora ${out.qty} in magazzino`, true, { ms: 12000, action: { label: `🏷️ Stampa ${n} etichett${n === 1 ? 'a' : 'e'}`, fn: () => printLabels([{ product_id: out.id, qty: n }]) } });
+      done?.(out);
+    }
   };
 }

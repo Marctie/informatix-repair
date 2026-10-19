@@ -1,0 +1,41 @@
+/* Etichette prodotto: editor del template, finestra di stampa, logo. Stessa scala di spaziature del resto del gestionale (.5 / .85 / 1.25 / 1.6 rem). */
+
+.modal-panel.lb-wide{max-width:68rem}
+.lb-ed{display:grid;gap:1.6rem;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){
+  .lb-ed{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start}
+  .lb-pv{position:sticky;top:0}
+}
+.lb-pv,.lb-ct{display:flex;flex-direction:column;gap:1.6rem;min-width:0}
+.lb-pv{gap:.85rem}
+
+/* anteprima: foglio bianco con l'etichetta disegnata dal server e, sopra, i riquadri da trascinare */
+.lb-stage{background:#E5E7EB;border-radius:.85rem;padding:12px;display:flex;justify-content:center;align-items:center;overflow:hidden;min-height:8rem}
+.lb-paper{position:relative;background:#fff;box-shadow:0 2px 10px rgb(0 0 0/.25);flex:none}
+.lb-scale{position:absolute;left:0;top:0;overflow:hidden}
+.lb-ov{position:absolute;inset:0}
+.lb-box{position:absolute;box-sizing:border-box;border:1px dashed rgb(220 38 38/.55);cursor:move;touch-action:none}
+.lb-box.sel{border:2px solid var(--red);background:rgb(220 38 38/.08)}
+.lb-box .h{position:absolute;right:-8px;bottom:-8px;width:16px;height:16px;background:var(--red);border:2px solid #fff;border-radius:4px;cursor:nwse-resize;display:none}
+.lb-box.sel .h{display:block}
+.lb-warn{display:flex;flex-direction:column;gap:.4rem}
+.lb-warn:empty{display:none}
+.lb-w{background:#FEF3C7;color:#92400E;border-radius:.6rem;padding:.5rem .75rem;font-size:.82rem;line-height:1.4}
+
+/* elenco "cosa mostrare" */
+.lb-els{display:flex;flex-direction:column;gap:.4rem}
+.lb-el{display:flex;align-items:center;gap:.7rem;min-height:var(--ctl);padding:0 .95rem;border:1px solid var(--bd);border-radius:.7rem;background:#fff;cursor:pointer;font-size:.88rem;font-weight:600;color:#374151;user-select:none}
+.lb-el:hover{border-color:#6B7280}
+.lb-el.sel{border-color:var(--red);background:#FEF2F2;color:var(--red-d)}
+.lb-el input{flex:none;width:1.2rem;min-height:0;height:1.2rem}
+
+/* logo nelle Impostazioni */
+.lb-logo-prev{display:flex;align-items:center;justify-content:center;width:9rem;height:4.5rem;border:1px solid var(--line);border-radius:.7rem;background:#fff;padding:.4rem;flex:none}
+.lb-logo-prev img{max-width:100%;max-height:100%;object-fit:contain}
+
+/* elenco template nelle Impostazioni: scheda per template, i pulsanti vanno a capo sul telefono */
+.lb-tpls{display:flex;flex-direction:column}
+.lb-tpl{display:flex;flex-direction:column;gap:.6rem;padding:.85rem 0;border-bottom:1px solid var(--line);font-size:.9rem;min-width:0}
+.lb-tpl:last-child{border-bottom:0}
+.lb-tpl-i{min-width:0;overflow-wrap:anywhere}
+@media (min-width:720px){ .lb-tpl{flex-direction:row;justify-content:space-between;align-items:center;gap:1rem} .lb-tpl .row{flex:none} }

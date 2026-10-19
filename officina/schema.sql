@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS products (
   supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
   location TEXT, notes TEXT, active INTEGER NOT NULL DEFAULT 1,
   stale_days INTEGER,
+  barcode TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS stock_moves (
@@ -564,3 +565,18 @@ CREATE TABLE IF NOT EXISTS error_log (
 );
 CREATE INDEX IF NOT EXISTS idx_error_log_at ON error_log(at);
 CREATE INDEX IF NOT EXISTS idx_error_log_fp ON error_log(fingerprint, last_at);
+
+-- Etichette prodotto: template (misura + elementi in JSON) e immagini (logo personalizzato). Il codice a barre sta in products.barcode.
+CREATE TABLE IF NOT EXISTS label_templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  width_mm REAL NOT NULL, height_mm REAL NOT NULL,
+  config TEXT NOT NULL DEFAULT '{}',
+  is_default INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS label_assets (
+  key TEXT PRIMARY KEY, mime TEXT NOT NULL, data TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
