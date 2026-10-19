@@ -103,6 +103,7 @@ export async function stockView(el, params) {
     const p = await lookupCode(code);
     if (p === undefined) return;
     if (p) { beep(true); e.target.value = ''; q = ''; productForm(p.id, load); return; }
+    if (/\s/.test(code)) return; // con spazi e' un nome scritto in fretta, non un codice: resta la ricerca normale
     beep(false);
     toast(`Nessun articolo ha il codice ${code}.`, false, { ms: 9000, action: { label: 'Crea l’articolo con questo codice', fn: () => productForm(null, load, { barcode: code }) } });
   });
