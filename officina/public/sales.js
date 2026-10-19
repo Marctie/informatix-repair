@@ -115,10 +115,11 @@ export async function salesView(el) {
   let lastScan = ''; // il codice appena letto non deve riaprire anche l'elenco dei suggerimenti
   async function scanCode(code, { scanned }) {
     const qIn = $('#s-q', el);
-    lastScan = code;
     const p = await lookupCode(code);
+    if (p === undefined) { sugg.classList.add('hidden'); beep(false); qIn.select(); return; } // errore gia' mostrato (rete, articolo archiviato...)
+    if (!p && /\s/.test(code)) { qIn.dispatchEvent(new Event('input', { bubbles: true })); return; } // con spazi non e' un codice: e' un nome scritto in fretta, ricerca normale
+    lastScan = code;
     sugg.classList.add('hidden');
-    if (p === undefined) { beep(false); qIn.select(); return; } // errore gia' mostrato (rete, articolo archiviato...)
     if (!p) {
       beep(false);
       toast(`Il codice ${code} non è in magazzino.`, false, { ms: 8000, hint: 'Controlla di averlo letto bene, oppure crea l’articolo da Magazzino.' });
