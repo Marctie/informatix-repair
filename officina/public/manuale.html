@@ -148,6 +148,7 @@
   <a href="#s30">39 · Quando qualcosa non va: gli avvisi</a>
   <a href="#errori-parlanti">40 · Messaggi e codice errore</a>
   <a href="#errori-vista">41 · Errori: pagine del cliente e registro</a>
+  <a href="#etichette">45 · Etichette e codici a barre</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -163,6 +164,7 @@
     <div class="box"><b><span class="k">4</span>Avvisa con WhatsApp</b>Il tasto 💬 apre WhatsApp con il messaggio già scritto (preventivo, pronto, ritardo). Tu premi solo invio.</div>
     <div class="box"><b><span class="k">5</span>Consegna e incassa</b>Quando è pronto, tasto <b>Consegnato →</b>: controlla il totale, scegli come ha pagato, conferma. Parte la garanzia.</div>
     <div class="box"><b><span class="k">★</span>Pistola codici a barre</b>Nella nuova riparazione spara sull'IMEI: finisce nella casella giusta. In qualsiasi altro momento, spara sul codice dell'etichetta (o sull'IMEI): si apre la riparazione.</div>
+    <div class="box"><b><span class="k">7</span>Etichette e cassa con la pistola</b><i>Magazzino → 🏷️ Etichette</i>: scegli gli articoli e quante etichette, poi stampa. In <i>Vendite</i> spara il codice a barre: l'articolo va nel carrello e la giacenza scende quando incassi. Logo e misure dell'etichetta si cambiano in <i>Impostazioni</i>.</div>
     <div class="box"><b><span class="k">6</span>Ogni settimana</b><i>Impostazioni → Scarica backup</i> e copialo su chiavetta o cloud (il sistema salva già da solo ogni notte). Sono tutti i tuoi dati.</div>
   </div>
   <div class="call warn" style="margin-top:1rem"><b>Da ricordare</b>Il link/QR del cliente, per ora, si apre <u>solo se il suo telefono è collegato al Wi-Fi del negozio</u>. Fuori dal negozio non funziona finché il sistema non sarà messo online: nel frattempo avvisalo con WhatsApp (tasto 💬).</div>
@@ -1207,6 +1209,27 @@
 <tr><td><code>SEGNALAZIONE_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
 <tr><td><code>SEGNALAZIONE_GIA_RIMOSSA</code></td><td>Aggiorna l’elenco.</td></tr>
 <tr><td><code>SEGNALAZIONE_GIA_ATTIVA</code></td><td>Aggiorna l’elenco.</td></tr>
+<tr><th colspan="2">Etichette e codici a barre</th></tr>
+<tr><td><code>ETICHETTA_NOME_MANCANTE</code></td><td>Scrivi un nome per riconoscere il template (es. «Cavi 62 × 30»).</td></tr>
+<tr><td><code>ETICHETTA_NOME_LUNGO</code></td><td>Accorcia il nome: al massimo 60 caratteri.</td></tr>
+<tr><td><code>ETICHETTA_MISURE_NON_VALIDE</code></td><td>Scrivi larghezza e altezza in millimetri (larghezza da 15 a 250, altezza da 10 a 250).</td></tr>
+<tr><td><code>ETICHETTA_FOGLIO_NON_VALIDO</code></td><td>Le etichette non stanno nel foglio A4: riduci colonne, righe, misure o margini.</td></tr>
+<tr><td><code>ETICHETTA_VALORE_NON_VALIDO</code></td><td>Correggi il numero indicato e salva di nuovo.</td></tr>
+<tr><td><code>ETICHETTA_ELEMENTO_NON_VALIDO</code></td><td>Ricarica la pagina (Ctrl+F5) e riprova.</td></tr>
+<tr><td><code>ETICHETTA_TROPPI_ELEMENTI</code></td><td>Togli gli elementi che non servono (massimo 24).</td></tr>
+<tr><td><code>ETICHETTA_VUOTA</code></td><td>Accendi almeno il nome, il prezzo o il codice a barre.</td></tr>
+<tr><td><code>ETICHETTA_NON_TROVATA</code></td><td>Aggiorna la pagina e scegli un altro template: potrebbe essere stato eliminato.</td></tr>
+<tr><td><code>ETICHETTA_ULTIMA</code></td><td>Crea prima un altro template, poi elimina questo.</td></tr>
+<tr><td><code>ETICHETTE_TROPPI_TEMPLATE</code></td><td>Ci sono già 30 template: elimina quelli che non usi.</td></tr>
+<tr><td><code>ETICHETTE_ELENCO_NON_VALIDO</code></td><td>Riapri «Etichette» dal Magazzino e scegli di nuovo gli articoli.</td></tr>
+<tr><td><code>ETICHETTE_NESSUN_ARTICOLO</code></td><td>Metti almeno un’etichetta a un articolo.</td></tr>
+<tr><td><code>ETICHETTE_TROPPE</code></td><td>Stampa a gruppi più piccoli (massimo 300 articoli e 2000 etichette per volta).</td></tr>
+<tr><td><code>LOGO_NON_VALIDO</code></td><td>Scegli un’immagine (PNG, JPG o SVG): la preparo io in bianco e nero.</td></tr>
+<tr><td><code>LOGO_TROPPO_PESANTE</code></td><td>Usa un’immagine più piccola (massimo 300 KB dopo la preparazione).</td></tr>
+<tr><td><code>CODICE_NON_VALIDO</code></td><td>Scrivi di nuovo il codice (massimo 40 caratteri, solo lettere, numeri e simboli normali) oppure leggilo con la pistola.</td></tr>
+<tr><td><code>CODICE_GIA_USATO</code></td><td>Il codice è già di un altro articolo: controlla il codice, oppure toglilo all’altro articolo.</td></tr>
+<tr><td><code>CODICE_NON_TROVATO</code></td><td>Nessun articolo ha quel codice: controlla la lettura, oppure crea l’articolo e scrivi il codice nel campo «Codice a barre».</td></tr>
+<tr><td><code>ARTICOLO_ARCHIVIATO</code></td><td>L’articolo con quel codice è archiviato: ripristinalo dal Magazzino oppure usa un altro articolo.</td></tr>
 </tbody>
 </table>
 
@@ -1296,8 +1319,56 @@
     <li>Il <b>regolamento dei punti</b> (quanti punti per euro, premi, scadenza).</li>
     <li>Dire se il ruolo Cassa può impostare la data di inserimento oltre i 7 giorni (oggi: no).</li>
   </ul>
+  <h3>H. Etichette e cassa con la pistola (richiesta del 19/10)</h3>
+  <ul style="list-style:none;padding-left:0">
+    <li>☐ <b>Template:</b> Impostazioni → Etichette prodotto → <i>Modifica</i>: l&#x27;anteprima mostra logo, nome, prezzo e codice a barre. Sposta il prezzo trascinandolo, rimettilo a posto, salva.</li>
+    <li>☐ <b>Stampa di prova</b> (tasto 🖨️ del template): esce un&#x27;etichetta 62 × 30 dalla stampante delle etichette? Nella finestra di stampa: margini &quot;nessuno&quot;, scala 100%. Logo e barre sono nitidi?</li>
+    <li>☐ <b>Lettura con la pistola:</b> attacca l&#x27;etichetta a un pezzo e spara: legge tutto il numero? Se no, allarga il riquadro del codice a barre nel template (compare anche un avviso giallo).</li>
+    <li>☐ <b>Magazzino → 🏷️ Etichette:</b> scegli 2 articoli (3 + 1 etichette), premi Anteprima e poi Stampa.</li>
+    <li>☐ <b>Cassa:</b> in Vendite spara l&#x27;etichetta: l&#x27;articolo entra nel carrello col &quot;bip&quot;; spara ancora (quantità 2); incassa; in Magazzino la giacenza è scesa di 2.</li>
+    <li>☐ <b>Codice del produttore:</b> su un articolo con il codice sulla confezione, spara nel campo <i>Codice a barre</i> della scheda e salva; stampa l&#x27;etichetta. In cassa devono funzionare sia l&#x27;etichetta nuova sia la confezione.</li>
+    <li>☐ <b>Carico merce:</b> dopo il carico compare <i>Stampa N etichette</i> (una per pezzo arrivato).</li>
+    <li>☐ <b>Foglio A4 adesivo</b> (solo se lo usi): crea un template &quot;Foglio A4 adesivo&quot;, stampa e controlla che le etichette cadano giuste sul foglio.</li>
+  </ul>
   <h3>Se qualcosa non va</h3>
   <p>Scrivi: <i>che schermata</i>, <i>cosa hai premuto</i>, <i>cosa ti aspettavi</i>, <i>cosa è successo</i> e, se c&#x27;è, il <b>codice in rosso</b> (tipo E-7K3QX). Quel codice permette a Marco di trovare l&#x27;errore in un attimo (Gestione → Errori).</p>
+</section>
+<section id="etichette">
+  <h2><span class="n">45</span>Etichette e codici a barre</h2>
+  <p>Per ogni articolo in vendita puoi stampare un’etichetta con <b>logo, nome, prezzo e codice a barre</b>. Con lo stesso codice, in cassa basta <b>sparare con la pistola</b>: l’articolo va nel carrello e, quando incassi, la giacenza scende da sola.</p>
+  <h3>Stampare le etichette</h3>
+  <ul>
+    <li><b>Magazzino → 🏷️ Etichette:</b> scrivi quante etichette servono per ogni articolo (0 = nessuna). Scorciatoie: <i>1 per ogni articolo qui sotto</i>, <i>Quanti ne ho in magazzino</i>, filtro <i>Senza codice</i>. <b>Anteprima</b> mostra la pagina senza stampare; <b>Stampa</b> apre la finestra di stampa: scegli la stampante delle etichette, margini «nessuno», scala 100%.</li>
+    <li><b>Dalla scheda dell’articolo:</b> sezione <i>Etichetta</i>, scrivi quante e premi <i>Stampa etichetta</i>.</li>
+    <li><b>Dopo un carico merce:</b> compare il pulsante <i>🏷️ Stampa N etichette</i> (una per ogni pezzo arrivato); resta visibile qualche secondo.</li>
+    <li>Se l’articolo non ha ancora un codice a barre, gliene assegno uno io (un numero di 13 cifre che inizia per 2, valido solo nel tuo negozio). Se la confezione ha già il suo codice (EAN), scrivilo o sparalo nel campo <b>Codice a barre</b> della scheda articolo: l’etichetta userà quello.</li>
+    <li>Un codice già dato a un altro articolo viene rifiutato con il nome dell’altro articolo. Le etichette già stampate restano sempre valide, anche se in seguito cambi il codice dell’articolo.</li>
+  </ul>
+  <h3>Il template (Impostazioni → Etichette prodotto, solo amministratore)</h3>
+  <ul>
+    <li>Il primo template è già pronto: rotolo 62 × 30 mm con la scritta Informatix Repair, prezzo grande, nome (anche su due righe), codice a barre e numero.</li>
+    <li><b>Modifica:</b> a sinistra l’anteprima (identica alla stampa), a destra misura, elementi e proprietà. <b>Trascina</b> un elemento per spostarlo e il quadratino rosso per ridimensionarlo. Si può scegliere fra 12 misure (Brother QL, DYMO, generiche, foglio A4 adesivo 70 × 37) o scrivere la propria; cambiando misura gli elementi si adattano da soli.</li>
+    <li><b>Cosa mostrare:</b> logo, prezzo, nome, codice a barre, numero, categoria, codice articolo, nome del negozio e un testo libero (es. «Garanzia 24 mesi»). Se un nome è troppo lungo il carattere si rimpicciolisce da solo.</li>
+    <li><b>Avvisi in giallo</b> sotto l’anteprima: elemento fuori dai bordi, testo troppo lungo, <b>codice a barre troppo stretto</b> (la pistola farebbe fatica a leggerlo: allarga il riquadro o usa un’etichetta più larga).</li>
+    <li><b>Foglio A4:</b> scegli «Foglio A4 adesivo», colonne, righe e margini; alla stampa puoi indicare da quale posizione iniziare, per riusare un foglio già in parte staccato.</li>
+    <li><b>Logo:</b> la stampante stampa solo in nero, quindi il logo è in bianco e nero: <i>solo la scritta</i> oppure <i>il logo completo</i>. Con <i>Carica il tuo logo</i> scegli un’immagine e regoli la soglia del nero; poi puoi usarlo in tutti i template.</li>
+    <li><b>Più template</b> (duplica, predefinito ★, prova di stampa 🖨️, elimina): per esempio uno per i cavetti piccoli e uno per le scatole. L’ultimo template non si può eliminare.</li>
+    <li><b>Assegna il codice agli articoli che non ce l’hanno:</b> lo fa in un colpo solo per tutto il magazzino.</li>
+  </ul>
+  <h3>In cassa con la pistola</h3>
+  <ul>
+    <li>In <b>Vendite</b> il cursore è già nel campo di ricerca (sul PC): <b>spara il codice</b>. Anche se il cursore è altrove, le cifre della pistola finiscono nella ricerca. L’articolo entra nel carrello con un «bip»; sparandolo ancora la quantità sale di uno.</li>
+    <li>Nel carrello vedi <b>quanti ne hai in magazzino e quanti ne restano dopo la vendita</b> (in rosso se non bastano). La giacenza scende quando premi <b>Incassa</b>, come sempre.</li>
+    <li>Il codice si cerca fra: codice a barre assegnato, codice SKU, codice del fornitore (letto dalle fatture) e codice interno. Un codice sconosciuto non inventa nulla: compare l’avviso «non è in magazzino».</li>
+    <li>Sul telefono c’è il pulsante 📷 per leggere il codice con la fotocamera (serve la connessione sicura https).</li>
+    <li><b>Magazzino:</b> sparando nella ricerca si apre l’articolo; con un codice nuovo il gestionale propone <i>Crea l’articolo con questo codice</i>.</li>
+    <li>Un nome scritto a mano (con spazi) resta una ricerca normale.</li>
+  </ul>
+  <h3>Ruoli e avvisi</h3>
+  <ul>
+    <li><b>Cassa</b> può stampare le etichette e leggere i codici, ma non cambia template, logo e codici in blocco (solo amministratore) e non vede i costi.</li>
+    <li>Su Telegram arrivano: template creato, modificato o eliminato, logo cambiato, codici assegnati, etichette preparate (queste ultime senza suono). Tutto resta nel Registro (Gestione → Registro). Template e logo sono nel backup.</li>
+  </ul>
 </section>
 <!-- agente D: fine sezioni -->
 
