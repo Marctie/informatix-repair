@@ -50,5 +50,15 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 - Il **regolamento dei punti** (quanti punti per euro, premi, scadenza).
 - Dire se il ruolo Cassa può impostare la data di inserimento oltre i 7 giorni (oggi: no).
 
+## H. Etichette e cassa con la pistola (richiesta del 19/10)
+31. [ ] **Template:** Impostazioni → *Etichette prodotto* → *Modifica*: l'anteprima mostra logo, nome, prezzo e codice a barre. Sposta il prezzo trascinandolo, rimettilo a posto, salva.
+32. [ ] **Stampa di prova** (tasto 🖨️ del template): esce un'etichetta 62 × 30 dalla stampante delle etichette? Nella finestra di stampa: margini "nessuno", scala 100%. Logo e barre sono nitidi?
+33. [ ] **Lettura con la pistola:** attacca l'etichetta a un pezzo e spara: legge tutto il numero? Se no, allarga il riquadro del codice a barre nel template (compare anche un avviso giallo).
+34. [ ] **Magazzino → 🏷️ Etichette:** scegli 2 articoli (3 + 1 etichette), premi *Anteprima* e poi *Stampa*.
+35. [ ] **Cassa:** in Vendite spara l'etichetta: l'articolo entra nel carrello col "bip"; spara ancora (quantità 2); incassa; in Magazzino la giacenza è scesa di 2.
+36. [ ] **Codice del produttore:** su un articolo con il codice sulla confezione, spara nel campo *Codice a barre* della scheda e salva; stampa l'etichetta. In cassa devono funzionare sia l'etichetta nuova sia la confezione.
+37. [ ] **Carico merce:** dopo il carico compare *Stampa N etichette* (una per pezzo arrivato).
+38. [ ] **Foglio A4 adesivo** (solo se lo usi): crea un template "Foglio A4 adesivo", stampa e controlla che le etichette cadano giuste sul foglio.
+
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).
