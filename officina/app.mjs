@@ -37,6 +37,7 @@ import { registerErrorRoutes } from './registro-errori.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
 import { registerAltraRoutes, altraSummary } from './altra.mjs';
 import { registerBlackRoutes, findBlacks } from './blacks.mjs';
+import { registerLabelRoutes, LABEL_TABLES, cleanBarcode } from './etichette.mjs'; // etichette prodotto + codici a barre
 
 import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
@@ -144,6 +145,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerRetroRoutes(app, h, adminOnly);
   registerBlackRoutes(app, h, adminOnly);
   registerAltraRoutes(app, h, adminOnly);
+  registerLabelRoutes(app, h, page, adminOnly, { getSettings });
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
@@ -283,16 +285,21 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
 
   // Fornitori
   app.get('/api/suppliers', h(() => db.prepare(`SELECT s.*, (SELECT COUNT(*) FROM products p WHERE p.supplier_id=s.id AND p.active=1) AS products_count FROM suppliers s ORDER BY s.name`).all()));
+  // anagrafica estesa: sede legale/ritiro, P.IVA, pagamento, ordine minimo, consegna, agenti (elenco JSON ripulito)
+  const supExtra = (b) => {
+    const agents = (Array.isArray(b.agents) ? b.agents : []).map((x) => ({ name: str(x?.name) || '', phone: str(x?.phone) || '', email: str(x?.email) || '', area: str(x?.area) || '' })).filter((x) => x.name || x.phone || x.email).slice(0, 20);
+    return [str(b.legal_address), str(b.pickup_address), str(b.vat_number), str(b.payment_terms), str(b.min_order), str(b.delivery_days), agents.length ? JSON.stringify(agents) : null];
+  };
   app.post('/api/suppliers', h(async (req) => {
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
-    const r = await db.prepare(`INSERT INTO suppliers (name, phone, email, website, notes, created_at) VALUES (?,?,?,?,?,${NOW})`).run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes));
+    const r = await db.prepare(`INSERT INTO suppliers (name, phone, email, website, notes, legal_address, pickup_address, vat_number, payment_terms, min_order, delivery_days, agents, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,${NOW})`).run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), ...supExtra(b));
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(r.lastInsertRowid);
   }));
   app.put('/api/suppliers/:id', h(async (req) => {
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
-    const r = await db.prepare('UPDATE suppliers SET name=?, phone=?, email=?, website=?, notes=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), req.params.id);
+    const r = await db.prepare('UPDATE suppliers SET name=?, phone=?, email=?, website=?, notes=?, legal_address=?, pickup_address=?, vat_number=?, payment_terms=?, min_order=?, delivery_days=?, agents=? WHERE id=?').run(str(b.name), str(b.phone), str(b.email), str(b.website), str(b.notes), ...supExtra(b), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Fornitore non trovato');
     return db.prepare('SELECT * FROM suppliers WHERE id = ?').get(req.params.id);
   }));
@@ -356,6 +363,52 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerLottoB(app, h, { media: usati.media || (() => missingMedia()) });
   // ===== fine blocco Agente B =====
 
+  // Categorie del magazzino: elenco = salvate + quelle già usate dagli articoli (senza doppioni di maiuscole)
+  const catName = (v) => {
+    const n = String(v ?? '').replace(/\s+/g, ' ').trim();
+    if (!n) throw new L.HttpError(400, 'Scrivi il nome della categoria.', { code: 'CATEGORIA_NOME_MANCANTE', hint: 'Compila il nome e riprova.' });
+    if (n.length > 40) throw new L.HttpError(400, 'Il nome della categoria è troppo lungo (massimo 40 caratteri).', { code: 'CATEGORIA_NOME_LUNGO', hint: 'Usa un nome più breve.' });
+    return n;
+  };
+  const catList = async () => {
+    const saved = await db.prepare('SELECT name FROM categories').all();
+    const used = await db.prepare("SELECT category AS name, COUNT(*) AS n FROM products WHERE active = 1 AND category IS NOT NULL AND TRIM(category) <> '' GROUP BY category").all();
+    const m = new Map();
+    for (const r of saved) m.set(r.name.toLowerCase(), { name: r.name, count: 0 });
+    for (const r of used) { const k = r.name.toLowerCase(); const e = m.get(k) || { name: r.name, count: 0 }; e.count += r.n; m.set(k, e); }
+    return [...m.values()].sort((x, y) => x.name.localeCompare(y.name, 'it'));
+  };
+  const catAdmin = (req) => { if (isCassa(req.user)) throw new L.HttpError(403, 'Le categorie le gestisce l’amministratore o il tecnico.', { code: 'RUOLO_NON_AMMESSO', hint: 'Accedi come amministratore o tecnico.' }); };
+  app.get('/api/categories', h(() => catList()));
+  app.post('/api/categories', h(async (req) => {
+    catAdmin(req);
+    const name = catName(req.body?.name);
+    if ((await catList()).some((c) => c.name.toLowerCase() === name.toLowerCase())) throw new L.HttpError(409, `La categoria “${name}” esiste già.`, { code: 'CATEGORIA_ESISTENTE', hint: 'Usa quella già presente.' });
+    await db.prepare('INSERT INTO categories (name) VALUES (?)').run(name);
+    return catList();
+  }));
+  // rinomina; se il nuovo nome è di un'altra categoria le unisce (gli articoli passano alla categoria di destinazione)
+  app.put('/api/categories', h(async (req) => {
+    catAdmin(req);
+    const from = catName(req.body?.name); const to = catName(req.body?.new_name);
+    const list = await catList();
+    if (!list.some((c) => c.name.toLowerCase() === from.toLowerCase())) throw new L.HttpError(404, `La categoria “${from}” non esiste più.`, { code: 'CATEGORIA_NON_TROVATA', hint: 'Aggiorna la pagina.' });
+    const target = list.find((c) => c.name.toLowerCase() === to.toLowerCase() && c.name.toLowerCase() !== from.toLowerCase());
+    const finalName = target ? target.name : to;
+    await db.prepare('UPDATE products SET category = ? WHERE LOWER(category) = LOWER(?)').run(finalName, from);
+    await db.prepare('DELETE FROM categories WHERE name = ? COLLATE NOCASE').run(from);
+    await db.prepare('INSERT OR IGNORE INTO categories (name) VALUES (?)').run(finalName);
+    return catList();
+  }));
+  app.delete('/api/categories', h(async (req) => {
+    catAdmin(req);
+    const name = catName(req.body?.name ?? req.query.name);
+    const n = (await db.prepare('SELECT COUNT(*) AS n FROM products WHERE active = 1 AND LOWER(category) = LOWER(?)').get(name)).n;
+    if (n) throw new L.HttpError(409, `La categoria “${name}” ha ancora ${n} articoli.`, { code: 'CATEGORIA_IN_USO', hint: 'Per toglierla rinominala con il nome di un’altra categoria: gli articoli passano lì.' });
+    await db.prepare('DELETE FROM categories WHERE name = ? COLLATE NOCASE').run(name);
+    return catList();
+  }));
+
   // Magazzino
   const checkProduct = (b) => {
     for (const k of ['cost', 'price', 'min_qty']) {
@@ -368,7 +421,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const q = str(req.query.q);
     const where = ['p.active = 1'];
     const args = [];
-    if (q) { where.push('(p.name LIKE ? OR p.sku LIKE ? OR p.category LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+    if (q) { where.push('(p.name LIKE ? OR p.sku LIKE ? OR p.category LIKE ? OR p.barcode LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
     if (req.query.low) where.push('p.min_qty > 0 AND p.qty <= p.min_qty');
     return db.prepare(`SELECT p.*, s.name AS supplier_name FROM products p LEFT JOIN suppliers s ON s.id=p.supplier_id WHERE ${where.join(' AND ')} ORDER BY p.name LIMIT 500`).all(...args);
   }));
@@ -386,9 +439,10 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     checkProduct(b);
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const qty = Math.round(num(b.qty));
+    const barcode = await cleanBarcode(b.barcode);
     const id = await tx(async () => {
-      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
-        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b));
+      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, barcode, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
+        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode);
       const pid = Number(r.lastInsertRowid);
       if (qty) await L.moveStock(pid, qty, 'carico iniziale', null);
       return pid;
@@ -401,8 +455,10 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     checkProduct(b);
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
-    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=? WHERE id=?')
-      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), req.params.id);
+    // il codice a barre cambia solo se arriva nella richiesta (i vecchi client non lo mandano: resta quello che c'e')
+    const barcode = 'barcode' in b ? await cleanBarcode(b.barcode, { exceptId: Number(req.params.id) }) : ((await db.prepare('SELECT barcode FROM products WHERE id = ?').get(req.params.id))?.barcode ?? null);
+    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=?, barcode=? WHERE id=?')
+      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode, req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Prodotto non trovato');
     return db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   }));
@@ -574,7 +630,7 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES, ...LABEL_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   for (const t of LOTTO_B_TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all(); // Agente B
   return dump;
 }

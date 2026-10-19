@@ -39,6 +39,11 @@ const VERB = { POST: 'crea', PUT: 'modifica', PATCH: 'modifica', DELETE: 'elimin
 export function classify(method, path) {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return null;
   if (path === '/api/settings' && method === 'PUT') return { type: 'impostazioni', action: 'modifica', detail: 'impostazioni del negozio' };
+  // etichette prodotto: template, logo e codici a barre assegnati in blocco (anteprime e stampe non si registrano)
+  if (/^\/api\/labels\/(templates|logo|assign-missing)(\/|$)/.test(path)) {
+    const what = path.includes('/templates') ? 'template delle etichette prodotto' : path.includes('/logo') ? 'logo delle etichette prodotto' : 'codici a barre assegnati agli articoli';
+    return { type: 'impostazioni', action: method === 'DELETE' ? 'elimina' : method === 'POST' && !/\/default$/.test(path) ? 'crea' : 'modifica', detail: what };
+  }
   if (path === '/api/purchases/confirm') return { type: 'acquisto', action: 'crea', detail: 'documento di acquisto importato' };
   if (path === '/api/demo') return { type: 'dati demo', action: method === 'POST' ? 'crea' : 'elimina', detail: method === 'POST' ? 'caricati i dati demo' : 'cancellati i dati demo' };
   if (/^\/api\/repairs\/\d+\/parts\/\d+\/stock$/.test(path) && method === 'POST') return { kind: KINDS.repairs, id: path.split('/')[3], type: 'articolo', action: 'crea', detail: 'ricambio a mano caricato a magazzino' };
