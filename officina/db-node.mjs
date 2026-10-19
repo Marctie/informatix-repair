@@ -37,6 +37,8 @@ addColumn('repair_parts', 'ordered_at', 'TEXT');
 addColumn('quotes', 'sent_at', 'TEXT');
 for (const c of ['legal_address', 'pickup_address', 'vat_number', 'payment_terms', 'min_order', 'delivery_days', 'agents']) addColumn('suppliers', c, 'TEXT');
 addColumn('quotes', 'sent_via', 'TEXT');
+addColumn('products', 'barcode', 'TEXT');
+raw.exec('CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)'); // dopo addColumn: su un database vecchio la colonna prima non c'e'
 
 let depth = 0;
 setDb({

@@ -227,6 +227,23 @@ document.addEventListener('keydown', (e) => {
 /** Vero se questo Invio è la chiusura di una lettura con la pistola (almeno 4 caratteri a raffica appena prima). */
 export const isScanEnter = (e) => e.key === 'Enter' && scanRun >= 4 && performance.now() - scanLast < 150;
 
+let audioCtx = null;
+/** Breve "bip" di conferma (ok) o di errore: in cassa conferma che il codice letto e' stato riconosciuto. Muto se il browser non lo permette. */
+export function beep(ok = true) {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'square';
+    o.frequency.value = ok ? 1500 : 280;
+    g.gain.value = 0.05;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + (ok ? 0.09 : 0.28));
+  } catch { /* nessun audio disponibile */ }
+}
+
 /** Controllo IMEI (15 cifre, algoritmo di Luhn). */
 export function imeiCheck(s) {
   const v = String(s || '').trim();

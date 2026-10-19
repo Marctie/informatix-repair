@@ -37,6 +37,7 @@ import { registerErrorRoutes } from './registro-errori.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
 import { registerAltraRoutes, altraSummary } from './altra.mjs';
 import { registerBlackRoutes, findBlacks } from './blacks.mjs';
+import { registerLabelRoutes, LABEL_TABLES, cleanBarcode } from './etichette.mjs'; // etichette prodotto + codici a barre
 
 import * as CK from './checklists.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
@@ -144,6 +145,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerRetroRoutes(app, h, adminOnly);
   registerBlackRoutes(app, h, adminOnly);
   registerAltraRoutes(app, h, adminOnly);
+  registerLabelRoutes(app, h, page, adminOnly, { getSettings });
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));
@@ -419,7 +421,7 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const q = str(req.query.q);
     const where = ['p.active = 1'];
     const args = [];
-    if (q) { where.push('(p.name LIKE ? OR p.sku LIKE ? OR p.category LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+    if (q) { where.push('(p.name LIKE ? OR p.sku LIKE ? OR p.category LIKE ? OR p.barcode LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`); }
     if (req.query.low) where.push('p.min_qty > 0 AND p.qty <= p.min_qty');
     return db.prepare(`SELECT p.*, s.name AS supplier_name FROM products p LEFT JOIN suppliers s ON s.id=p.supplier_id WHERE ${where.join(' AND ')} ORDER BY p.name LIMIT 500`).all(...args);
   }));
@@ -437,9 +439,10 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     checkProduct(b);
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const qty = Math.round(num(b.qty));
+    const barcode = await cleanBarcode(b.barcode);
     const id = await tx(async () => {
-      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
-        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b));
+      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, barcode, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
+        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode);
       const pid = Number(r.lastInsertRowid);
       if (qty) await L.moveStock(pid, qty, 'carico iniziale', null);
       return pid;
@@ -452,8 +455,10 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     checkProduct(b);
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
-    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=? WHERE id=?')
-      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), req.params.id);
+    // il codice a barre cambia solo se arriva nella richiesta (i vecchi client non lo mandano: resta quello che c'e')
+    const barcode = 'barcode' in b ? await cleanBarcode(b.barcode, { exceptId: Number(req.params.id) }) : ((await db.prepare('SELECT barcode FROM products WHERE id = ?').get(req.params.id))?.barcode ?? null);
+    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=?, barcode=? WHERE id=?')
+      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode, req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Prodotto non trovato');
     return db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   }));
@@ -625,7 +630,7 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES, ...LABEL_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   for (const t of LOTTO_B_TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all(); // Agente B
   return dump;
 }
