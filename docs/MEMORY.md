@@ -126,3 +126,11 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 ## Etichette prodotto e codici a barre (2026-10-19)
 - Template di etichetta gestiti da **Impostazioni → Etichette prodotto** (misura, elementi trascinabili, logo in solo nero, rotolo o foglio A4); stampa da Magazzino → Etichette, scheda articolo, carico merce. Codice a barre dell'articolo in `products.barcode` (EAN del produttore, altrimenti codice interno EAN-13 `2`+id+controllo assegnato alla prima stampa). In cassa la pistola trova l'articolo da barcode/SKU/codice fornitore/codice interno (`GET /api/products/by-code/:code`); lo scarico resta all'incasso. Migrazione 0038. Dettagli: CHATLOG 2026-10-19; manuale sez. 45.
 - Prove hardware di Christian ancora da fare (stampante etichette, pistola): TEST-DI-CHRISTIAN sez. H.
+
+## Confronto con altri gestionali (2026-10-19)
+- Report in `docs/CONFRONTO-GESTIONALI.md`: Fix-Book (mattina) ed e-Share (www.e-share.me, e-Pol SRL Piacenza, sera). Da consultare quando Christian chiede modifiche, per prendere spunto. Idee non ancora decise: IVA a margine + permuta usato, proposta d'ordine calcolata, invio ricevuta/OTP via WhatsApp, differenze ordine/arrivo, tecnico assegnato, multi-negozio. Fonte solo sito pubblico (testo in gran parte immagini, niente prezzi).
+- Confronto Fixh IT (fixh.it, 19/10 sera): in `docs/CONFRONTO-GESTIONALI.md` sez. 3, con piani e prezzi (9,99 / 24,99 / 59,99 EUR al mese, fattura SdI 0,15 EUR). Nuove idee: estensione garanzia/assicurazione, listino pubblico riparazioni, pagamento online, scarico documenti dal portale, stampa diretta, API/SdI per versione vendibile.
+- PDF riassuntivo dei 3 confronti: docs/CONFRONTO-GESTIONALI.pdf (matrice funzioni + differenze).
+
+## Sicurezza del sito (2026-10-23)
+- Il log Cloudflare mostra solo scansioni automatiche respinte (404/403). Aggiunto `public/_headers` in `main` (nosniff, frame, referrer, permissions, HSTS, COOP). Restano da fare: WAF/Bot Fight Mode e regola di blocco percorsi nel pannello Cloudflare (Marco), eventuale CSP e controllo header del Worker (Claude). Dettagli: CHATLOG 2026-10-23.
