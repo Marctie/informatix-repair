@@ -4,7 +4,7 @@ import { db, tx, getSettings, nowLocal } from './dbref.mjs';
 import { cleanImage, clientIp } from './signatures.mjs';
 import { HttpError, money, localDate, upsertCustomer, createRepair, createSale, newToken } from './logic.mjs';
 import { nextDocCode } from './ordini.mjs';
-import { parseRate, parseMode, quoteTotals } from './iva.mjs';
+import { parseRate, parseMode, quoteTotals, applyDiscount } from './iva.mjs';
 
 const NOW = "datetime('now','localtime')";
 const str = (v) => (v == null ? null : String(v).trim() || null);
@@ -61,9 +61,15 @@ async function prepare(b, cur) {
   const days = Math.max(1, Math.round(num(settings.quote_valid_days, DEFAULT_VALID_DAYS)) || DEFAULT_VALID_DAYS);
   const valid_until = str(b.valid_until) || cur?.valid_until || addDays(localDate(), days);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(valid_until)) throw new HttpError(400, 'La data di validità del preventivo non è valida (formato atteso AAAA-MM-GG).', { code: 'PREVENTIVO_VALIDITA_NON_VALIDA', hint: 'Scegli una data dal calendario.' });
-  const discount = Math.max(0, num(b.discount, cur?.discount ?? 0));
   const items = b.items ? cleanItems(b.items) : null;
   const total = (items || cur?.items || []).reduce((s, i) => s + i.qty * i.unit_price, 0);
+  // sconto in euro o in percentuale: la percentuale resta legata alle voci (se cambiano, lo sconto si ricalcola); un importo in euro scritto a mano la sostituisce
+  const pctGiven = 'discount_pct' in b && b.discount_pct !== '' && b.discount_pct !== null;
+  const eurGiven = 'discount' in b && !pctGiven;
+  const pctNow = pctGiven ? b.discount_pct : eurGiven ? null : cur?.discount_pct ?? null;
+  const dd = pctNow != null ? applyDiscount({ amount: total, pct: pctNow }) : null;
+  const discount = dd ? dd.discount : Math.max(0, num(eurGiven ? b.discount : cur?.discount ?? 0, 0));
+  const discount_pct = dd ? dd.pct : null;
   if (discount > total + 0.001) throw new HttpError(400, 'Lo sconto indicato è più alto del totale delle voci del preventivo.', { code: 'SCONTO_SUPERA_TOTALE', hint: 'Abbassa lo sconto oppure controlla i prezzi delle voci.' });
   const vat_mode = parseMode(b.vat_mode, cur?.vat_mode ?? 'gross');
   const vat_rate = parseRate(b.vat_rate, cur?.vat_rate ?? (Number(settings.vat_rate) || 22));
@@ -76,7 +82,7 @@ async function prepare(b, cur) {
   }
   let terms = 'terms' in b ? str(b.terms) : cur?.terms ?? null;
   if (!terms || terms === TERMS.gross || terms === TERMS.net) terms = TERMS[vat_mode]; // condizioni di serie: seguono IVA inclusa/esclusa; quelle scritte a mano restano
-  return { customer_id, name: customer_id ? null : name, phone: customer_id ? null : ('customer_phone' in b ? str(b.customer_phone) : cur?.customer_phone ?? null), valid_until, discount, items, vat_mode, vat_rate, tradein_value, tradein_desc: tradein_value > 0 ? tradein_desc : null,
+  return { customer_id, name: customer_id ? null : name, phone: customer_id ? null : ('customer_phone' in b ? str(b.customer_phone) : cur?.customer_phone ?? null), valid_until, discount, discount_pct, items, vat_mode, vat_rate, tradein_value, tradein_desc: tradein_value > 0 ? tradein_desc : null,
     notes: 'notes' in b ? str(b.notes) : cur?.notes ?? null, terms };
 }
 
@@ -86,8 +92,8 @@ export async function createQuote(b) {
   const items = p.items || cleanItems(b.items);
   return tx(async () => {
     const code = await nextDocCode('quotes', 'P');
-    const r = await db.prepare(`INSERT INTO quotes (code, customer_id, customer_name, customer_phone, status, valid_until, discount, notes, terms, vat_mode, vat_rate, tradein_desc, tradein_value, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,${NOW},${NOW})`)
-      .run(code, p.customer_id, p.name, p.phone, 'bozza', p.valid_until, money(p.discount), p.notes, p.terms, p.vat_mode, p.vat_rate, p.tradein_desc, p.tradein_value);
+    const r = await db.prepare(`INSERT INTO quotes (code, customer_id, customer_name, customer_phone, status, valid_until, discount, notes, terms, vat_mode, vat_rate, tradein_desc, tradein_value, discount_pct, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,${NOW},${NOW})`)
+      .run(code, p.customer_id, p.name, p.phone, 'bozza', p.valid_until, money(p.discount), p.notes, p.terms, p.vat_mode, p.vat_rate, p.tradein_desc, p.tradein_value, p.discount_pct);
     const id = Number(r.lastInsertRowid);
     for (const i of items) await db.prepare('INSERT INTO quote_items (quote_id, description, qty, unit_price) VALUES (?,?,?,?)').run(id, i.description, i.qty, i.unit_price);
     return getQuote(id);
@@ -99,8 +105,8 @@ export async function updateQuote(id, b) {
   if (cur.status === 'convertito') throw new HttpError(409, `Preventivo ${cur.code} già convertito in riparazione o vendita: non si modifica più.`, { code: 'PREVENTIVO_GIA_CONVERTITO', hint: 'Modifica la riparazione o la vendita nata dal preventivo, oppure fai un nuovo preventivo.' });
   const p = await prepare(b, cur);
   return tx(async () => {
-    await db.prepare(`UPDATE quotes SET customer_id=?, customer_name=?, customer_phone=?, valid_until=?, discount=?, notes=?, terms=?, vat_mode=?, vat_rate=?, tradein_desc=?, tradein_value=?, updated_at=${NOW} WHERE id=?`)
-      .run(p.customer_id, p.name, p.phone, p.valid_until, money(p.discount), p.notes, p.terms, p.vat_mode, p.vat_rate, p.tradein_desc, p.tradein_value, id);
+    await db.prepare(`UPDATE quotes SET customer_id=?, customer_name=?, customer_phone=?, valid_until=?, discount=?, notes=?, terms=?, vat_mode=?, vat_rate=?, tradein_desc=?, tradein_value=?, discount_pct=?, updated_at=${NOW} WHERE id=?`)
+      .run(p.customer_id, p.name, p.phone, p.valid_until, money(p.discount), p.notes, p.terms, p.vat_mode, p.vat_rate, p.tradein_desc, p.tradein_value, p.discount_pct, id);
     if (p.items) {
       await db.prepare('DELETE FROM quote_items WHERE quote_id = ?').run(id);
       for (const i of p.items) await db.prepare('INSERT INTO quote_items (quote_id, description, qty, unit_price) VALUES (?,?,?,?)').run(id, i.description, i.qty, i.unit_price);
@@ -178,7 +184,7 @@ export async function quoteView(token) {
   return {
     code: q.code, who: q.who, status: q.status, status_view: q.status_view, status_label: q.status_label, decision: q.status === 'accettato' ? 'accettato' : q.status === 'rifiutato' ? 'rifiutato' : null,
     valid_until: q.valid_until, expired: q.expired, days_left: q.days_left, items: items.map((i) => ({ ...i, total: money(i.qty * i.unit_price) })),
-    subtotal: q.subtotal, discount: q.discount, total: q.total, vat_mode: q.vat_mode, vat_rate: q.vat_rate, net: q.net, vat: q.vat, tradein_desc: q.tradein_value > 0 ? q.tradein_desc : null, tradein_value: q.tradein_value, due: q.due, notes: q.notes, terms: q.terms || TERMS[q.vat_mode],
+    subtotal: q.subtotal, discount: q.discount, discount_pct: q.discount_pct ?? null, total: q.total, vat_mode: q.vat_mode, vat_rate: q.vat_rate, net: q.net, vat: q.vat, tradein_desc: q.tradein_value > 0 ? q.tradein_desc : null, tradein_value: q.tradein_value, due: q.due, notes: q.notes, terms: q.terms || TERMS[q.vat_mode],
     can_answer: q.status === 'inviato' && !q.expired,
     signed: sig ? { kind: sig.kind, signed_at: sig.signed_at } : null,
     shop: { name: s.shop_name, address: s.shop_address, phone: s.shop_phone },
@@ -245,7 +251,7 @@ function printQuote(q, s, { noprint } = {}) {
   <p style="margin-top:16px"><span class="muted">Per</span><br><b style="font-size:15px">${esc(q.who)}</b>${q.who_phone ? `<br>Tel. ${esc(q.who_phone)}` : ''}${q.who_email ? ` · ${esc(q.who_email)}` : ''}</p>
   <div class="valid">Preventivo valido fino al <b>${dIt(q.valid_until)}</b></div>
   <table><tr><th>Descrizione</th><th style="text-align:center">Q.tà</th><th style="text-align:right">Prezzo${q.vat_mode === 'net' ? ' (IVA escl.)' : ''}</th><th style="text-align:right">Totale${q.vat_mode === 'net' ? ' (IVA escl.)' : ''}</th></tr>${rows}</table>
-  <div class="tot">${q.discount ? `<div class="muted">Sconto: -${eur(q.discount)}</div>` : ''}${q.vat_mode === 'net' ? `<div class="muted">Imponibile (prezzi IVA esclusa): ${eur(q.net)}</div><div class="muted">IVA ${q.vat_rate}%: ${eur(q.vat)}</div>` : ''}${q.tradein_value > 0 ? `<div class="muted">Totale preventivo${q.vat_mode === 'net' ? ' IVA inclusa' : ''}: ${eur(q.total)}</div><div class="muted">Permuta (${esc(q.tradein_desc)}): -${eur(q.tradein_value)}</div><div class="big">Da pagare ${eur(q.due)}</div>` : `<div class="big">Totale ${q.vat_mode === 'net' ? 'IVA inclusa ' : ''}${eur(q.total)}</div>`}</div>
+  <div class="tot">${q.discount ? `<div class="muted">Sconto${q.discount_pct != null ? ` ${q.discount_pct}%` : ''}: -${eur(q.discount)}</div>` : ''}${q.vat_mode === 'net' ? `<div class="muted">Imponibile (prezzi IVA esclusa): ${eur(q.net)}</div><div class="muted">IVA ${q.vat_rate}%: ${eur(q.vat)}</div>` : ''}${q.tradein_value > 0 ? `<div class="muted">Totale preventivo${q.vat_mode === 'net' ? ' IVA inclusa' : ''}: ${eur(q.total)}</div><div class="muted">Permuta (${esc(q.tradein_desc)}): -${eur(q.tradein_value)}</div><div class="big">Da pagare ${eur(q.due)}</div>` : `<div class="big">Totale ${q.vat_mode === 'net' ? 'IVA inclusa ' : ''}${eur(q.total)}</div>`}</div>
   ${q.notes ? `<p style="margin-top:14px"><b>Note:</b> ${esc(q.notes)}</p>` : ''}
   <p class="terms">${esc(q.terms || TERMS[q.vat_mode])}</p>
   <div class="sign"><div>Firma del cliente per accettazione</div><div>Data</div></div>${auto}</body></html>`;

@@ -2,6 +2,7 @@
 import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, waLink, addDays, META } from './util.js';
 import { customerField, bindCustomer, itemsEditor, methodSelect } from './pickers.js';
 import { openRepairDetail } from './repair.js';
+import { discountField, discountVals, discountEuro } from './iva.js';
 
 const STATUS = {
   bozza: { cls: 'bg-gray-100 text-gray-700', next: 'inviato', nextLabel: 'Segna inviato' },
@@ -78,7 +79,7 @@ export async function openQuote(id, done) {
         ${q.notes ? `<dt>Note</dt><dd>${esc(q.notes)}</dd>` : ''}<dt>Creato</dt><dd>${fdate(q.created_at)}</dd></dl></section>
     <section class="sec"><h3 class="sec-t">Voci${q.vat_mode === 'net' ? ' (prezzi IVA esclusa)' : ''}</h3>
       <div class="plist">${q.items.map((i) => `<div><span>${i.qty}× ${esc(i.description)}</span><b>${eur(i.qty * i.unit_price)}</b></div>`).join('')}</div>
-      <dl class="kv">${q.discount ? `<dt>Sconto</dt><dd>-${eur(q.discount)}</dd>` : ''}${q.vat_mode === 'net' ? `<dt>Imponibile</dt><dd>${eur(q.net)}</dd><dt>IVA ${q.vat_rate}%</dt><dd>${eur(q.vat)}</dd>` : ''}<dt>Totale${q.vat_mode === 'net' ? ' IVA inclusa' : ''}</dt><dd><b>${eur(q.total)}</b></dd>${q.tradein_value > 0 ? `<dt>Permuta: ${esc(q.tradein_desc)}</dt><dd>-${eur(q.tradein_value)}</dd><dt>Da pagare</dt><dd><b>${eur(q.due)}</b></dd>` : ''}</dl></section>
+      <dl class="kv">${q.discount ? `<dt>Sconto${q.discount_pct != null ? ` ${q.discount_pct}%` : ''}</dt><dd>-${eur(q.discount)}</dd>` : ''}${q.vat_mode === 'net' ? `<dt>Imponibile</dt><dd>${eur(q.net)}</dd><dt>IVA ${q.vat_rate}%</dt><dd>${eur(q.vat)}</dd>` : ''}<dt>Totale${q.vat_mode === 'net' ? ' IVA inclusa' : ''}</dt><dd><b>${eur(q.total)}</b></dd>${q.tradein_value > 0 ? `<dt>Permuta: ${esc(q.tradein_desc)}</dt><dd>-${eur(q.tradein_value)}</dd><dt>Da pagare</dt><dd><b>${eur(q.due)}</b></dd>` : ''}</dl></section>
     <section class="sec"><div class="row">
       <a class="btn btn-outline btn-sm" href="/print/quote/${q.id}" target="_blank" rel="noopener">🖨️ Stampa / PDF</a>
       ${wa ? `<a class="btn btn-green btn-sm" id="qd-wa" target="_blank" rel="noopener" href="${wa}">💬 WhatsApp</a>` : ''}
@@ -146,7 +147,7 @@ export async function quoteForm(q, done, preset = {}) {
       </div>
       <div class="fgrid c2"><div class="field"><label class="l" for="qf-valid">Valido fino al *</label><input id="qf-valid" type="date" value="${esc(q?.valid_until || addDays(meta?.valid_days || 15))}" />
         <span class="hint">Proposta: ${meta?.valid_days || 15} giorni da oggi.</span></div>
-        <div class="field"><label class="l" for="qf-disc">Sconto (€)</label><input id="qf-disc" type="number" min="0" step="0.01" inputmode="decimal" value="${q?.discount || ''}" placeholder="0" /><span class="hint" id="qf-dischint"></span></div></div>
+        ${discountField('qf', { discount: q?.discount, pct: q?.discount_pct })}</div>
       <div class="fgrid c2"><div class="field"><label class="l" for="qf-vmode">I prezzi che scrivo sono</label><select id="qf-vmode"><option value="gross">IVA inclusa</option><option value="net">IVA esclusa (l’IVA si aggiunge al totale)</option></select></div>
         <div class="field"><label class="l" for="qf-vrate">Aliquota IVA %</label><input id="qf-vrate" inputmode="decimal" value="${esc(String(q?.vat_rate ?? meta?.vat_rate ?? 22))}" /></div></div>
     </div>
@@ -166,11 +167,11 @@ export async function quoteForm(q, done, preset = {}) {
   // riepilogo in diretta: stessa formula del server (officina/iva.mjs, quoteTotals)
   const sum = () => {
     const mode = $('#qf-vmode', m.el).value, rate = Number(String($('#qf-vrate', m.el).value).replace(',', '.')) || 0;
-    const base = Math.max(0, items.total() - (Number($('#qf-disc', m.el).value) || 0));
+    const sub = items.total();
+    const base = Math.max(0, sub - discountEuro(m.el, 'qf', sub));
     const net = mode === 'net' ? base : base / (1 + rate / 100);
     const total = mode === 'net' ? base * (1 + rate / 100) : base;
     const tin = Number($('#qf-tval', m.el).value) || 0;
-    $('#qf-dischint', m.el).textContent = mode === 'net' ? 'Si toglie prima dell’IVA' : '';
     $('#qf-sum', m.el).textContent = `${mode === 'net' ? `Imponibile ${eur(net)} + IVA ${rate}% ${eur(total - net)} = ` : ''}Totale ${eur(total)}${tin > 0 ? ` − permuta ${eur(tin)} = Da pagare ${eur(Math.max(0, total - tin))}` : ''}`;
   };
   m.el.addEventListener('input', sum);
@@ -184,7 +185,7 @@ export async function quoteForm(q, done, preset = {}) {
   });
   sum();
   $('#qf-ok', m.el).onclick = async () => {
-    const body = { customer_id: cust.value(), customer_name: $('#qf-name', m.el).value, customer_phone: $('#qf-phone', m.el).value, valid_until: $('#qf-valid', m.el).value, discount: $('#qf-disc', m.el).value,
+    const body = { customer_id: cust.value(), customer_name: $('#qf-name', m.el).value, customer_phone: $('#qf-phone', m.el).value, valid_until: $('#qf-valid', m.el).value, ...discountVals(m.el, 'qf', { eur: 'discount', pct: 'discount_pct' }),
       vat_mode: $('#qf-vmode', m.el).value, vat_rate: $('#qf-vrate', m.el).value.replace(',', '.'), tradein_desc: $('#qf-tdesc', m.el).value, tradein_value: $('#qf-tval', m.el).value,
       items: items.value(), notes: $('#qf-notes', m.el).value, terms: $('#qf-terms', m.el).value };
     const out = await safe(() => (q ? api('PUT', `/api/quotes/${q.id}`, body) : api('POST', '/api/quotes', body)));

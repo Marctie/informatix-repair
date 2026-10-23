@@ -38,7 +38,7 @@ function render(d) {
   }
   app.innerHTML = `<div class="card"><h1>Preventivo ${esc(d.code)}</h1><div class="status">${esc(d.who)}</div>${badge}${valid}
       <table class="items" style="margin-top:12px"><tbody>${d.items.map((i) => `<tr><td>${i.qty > 1 ? `${i.qty} × ` : ''}${esc(i.description)}</td><td>${eur(i.total)}</td></tr>`).join('')}</tbody></table>
-      ${d.discount ? `<div class="tot"><span>Sconto</span><span>-${eur(d.discount)}</span></div>` : ''}
+      ${d.discount ? `<div class="tot"><span>Sconto${d.discount_pct != null ? ` ${d.discount_pct}%` : ''}</span><span>-${eur(d.discount)}</span></div>` : ''}
       ${d.vat_mode === 'net' ? `<div class="tot"><span>Imponibile</span><span>${eur(d.net)}</span></div><div class="tot"><span>IVA ${d.vat_rate}%</span><span>${eur(d.vat)}</span></div>` : ''}
       <div class="tot"><span>Totale${d.vat_mode === 'net' ? ' IVA inclusa' : ''}</span><b>${eur(d.total)}</b></div>
       ${d.tradein_value > 0 ? `<div class="tot"><span>Permuta: ${esc(d.tradein_desc)}</span><span>-${eur(d.tradein_value)}</span></div><div class="tot"><span>Da pagare</span><b>${eur(d.due)}</b></div>` : ''}

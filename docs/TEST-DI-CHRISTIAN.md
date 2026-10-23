@@ -67,6 +67,10 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 42. [ ] **Riparazione:** nuova riparazione con preventivo 100 e *Il prezzo è IVA esclusa*: la scheda deve avere totale 122; apri il link del cliente e controlla il testo.
 43. [ ] **Soluzioni:** aggiungi due soluzioni, una IVA esclusa e una inclusa; dal link scegline una e firma.
 44. [ ] **Vecchi preventivi:** apri un preventivo già esistente: deve essere rimasto uguale (IVA inclusa).
+45. [ ] **Sconto in %:** nel preventivo autonomo scrivi un sconto del 10 con il menu su %: il totale scende del 10%. Cambia una voce: lo sconto si ricalcola.
+46. [ ] **Sconto riparazione:** scheda con preventivo 200 e sconto 10%: il totale è 180 e il riepilogo lo spiega; apri il link del cliente e controlla *prezzo, sconto, totale*.
+47. [ ] **Soluzioni con sconto:** aggiungi una soluzione con sconto e controllala dal link del cliente.
+48. [ ] **Invio con soluzioni:** su una scheda con sole soluzioni (come R-2026-0016) premi *Invia preventivo al cliente > WhatsApp*: deve aprirsi WhatsApp con le soluzioni e il link.
 
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).

@@ -81,3 +81,27 @@ export function optionView(o) {
   const v = showPrice(o.amount, o.amount_net, rate, mode);
   return { ...o, mode, vat_rate: rate, net: v.net, vat: v.vat };
 }
+
+// ---------- Sconti ----------
+/**
+ * Sconto su un importo scritto (nella stessa base del prezzo: IVA inclusa o esclusa). `pct` (0-100) ha la precedenza sull'importo in euro.
+ * @returns {{list, discount, pct, price}} list = prezzo prima dello sconto, price = prezzo scontato (da cui si ricava il totale)
+ */
+export function applyDiscount({ amount, discount, pct }) {
+  const list = r2(Number(amount));
+  const hasPct = pct !== undefined && pct !== null && pct !== '';
+  let p = null;
+  let d = 0;
+  if (hasPct) {
+    p = Number(String(pct).replace(',', '.'));
+    if (!Number.isFinite(p) || p < 0 || p > 100) throw new HttpError(400, 'Lo sconto in percentuale non è valido: scrivi un numero da 0 a 100.', { code: 'SCONTO_NON_VALIDO', hint: 'Esempio: 10 per il 10%.' });
+    d = r2(list * p / 100);
+    if (d === 0) p = null;
+  } else if (discount !== undefined && discount !== null && discount !== '') {
+    d = Number(String(discount).replace(',', '.'));
+    if (!Number.isFinite(d) || d < 0) throw new HttpError(400, 'Lo sconto indicato non è valido: scrivi un importo uguale o maggiore di zero.', { code: 'SCONTO_NON_VALIDO', hint: 'Scrivi lo sconto in euro (es. 10,00) oppure in percentuale.' });
+    d = r2(d);
+  }
+  if (d > list + 0.001) throw new HttpError(400, 'Lo sconto è più alto del prezzo: non resterebbe nulla da pagare.', { code: 'SCONTO_SUPERA_IMPORTO', hint: 'Abbassa lo sconto oppure controlla il prezzo.' });
+  return { list, discount: d, pct: p, price: r2(Math.max(0, list - d)) };
+}

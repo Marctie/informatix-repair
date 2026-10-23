@@ -1,6 +1,6 @@
 // Logica di dominio del gestionale officina (stati, progressi, codici, viste pubbliche).
 import { db, getSettings, tx, nowLocal } from './dbref.mjs';
-import { computeVat, parseRate, truthy, parseMode, priceFrom, showPrice, optionView } from './iva.mjs';
+import { computeVat, parseRate, truthy, parseMode, priceFrom, showPrice, optionView, applyDiscount } from './iva.mjs';
 import { cleanCustomer, CUSTOMER_COLS } from './clienti.mjs';
 import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
@@ -146,20 +146,26 @@ export async function createRepair(b) {
     const quoteMode = parseMode(b.quote_mode, 'gross');
     const quoteRate = parseRate(b.quote_vat_rate, Number(settings.vat_rate) || 22);
     let quoteNet = null;
-    if (quote != null) { const pf = priceFrom({ amount: quote, mode: quoteMode, rate: quoteRate }); quote = pf.gross; quoteNet = pf.net; }
+    let quoteDisc = { list: null, discount: 0, pct: null };
+    if (quote != null) {
+      const dd = applyDiscount({ amount: quote, discount: b.quote_discount, pct: b.quote_discount_pct }); // sconto sul preventivo (in euro o in %)
+      const pf = priceFrom({ amount: dd.price, mode: quoteMode, rate: quoteRate });
+      quote = pf.gross; quoteNet = pf.net;
+      quoteDisc = { list: dd.discount > 0 ? dd.list : null, discount: dd.discount, pct: dd.pct };
+    }
     const code = await nextCode('repairs', 'R');
     const token = newToken();
     const r = await db.prepare(
       `INSERT INTO repairs (code, token, customer_id, device_type, brand_model, serial, problem, accessories,
-        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent, color, quote_vat_mode, quote_vat_rate, quote_net, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))`
+        condition_notes, passcode, quote, deposit, eta_date, warranty_days, quote_decision, urgent, color, quote_vat_mode, quote_vat_rate, quote_net, quote_list, quote_discount, quote_discount_pct, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))`
     ).run(
       code, token, customerId, str(b.device_type) || 'smartphone', need(b.brand_model, 'Dispositivo'), str(b.serial),
       need(b.problem, 'Problema segnalato'), str(b.accessories), str(b.condition_notes), str(b.passcode),
       quote, money(deposit), str(b.eta_date), num(b.warranty_days, Number(settings.default_warranty_days) || 90),
       // se il preventivo è già concordato al banco lo consideriamo approvato dal cliente
       b.quote_agreed && quote != null ? 'accepted' : null,
-      b.urgent ? 1 : 0, str(b.color), quote != null ? quoteMode : 'gross', quoteRate, quoteNet
+      b.urgent ? 1 : 0, str(b.color), quote != null ? quoteMode : 'gross', quoteRate, quoteNet, quoteDisc.list, quoteDisc.discount, quoteDisc.pct
     );
     const id = Number(r.lastInsertRowid);
     await logEvent(id, 'received', 'Dispositivo ricevuto in laboratorio.');
@@ -189,6 +195,12 @@ export async function getRepair(id) {
   return await decorateRepair(r, true);
 }
 
+/** Preventivo come lo vede chi legge: totale IVA compresa, imponibile/IVA e, se c'e', prezzo prima dello sconto e sconto. */
+function quotePriceView(r) {
+  const v = showPrice(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode);
+  return v && { ...v, list: r.quote_list ?? null, discount: r.quote_discount || 0, discount_pct: r.quote_discount_pct ?? null };
+}
+
 async function decorateRepair(r, full = false) {
   const st = STATUSES[r.status];
   const out = {
@@ -211,8 +223,8 @@ async function decorateRepair(r, full = false) {
     }
     // firme raccolte (senza l'immagine, che si legge a parte): tipo, quando, come
     out.signatures = await db.prepare('SELECT id, kind, signer_name, choice, option_id, via, ip, by_user, signed_at FROM repair_signatures WHERE repair_id = ? ORDER BY id').all(r.id);
-    out.quote_options = (await db.prepare('SELECT id, label, amount, description, amount_net, vat_rate FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id)).map(optionView);
-    out.quote_price = showPrice(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode);
+    out.quote_options = (await db.prepare('SELECT id, label, amount, description, amount_net, vat_rate, list_amount, discount, discount_pct FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id)).map(optionView);
+    out.quote_price = quotePriceView(r);
     out.parts_cost = money(out.parts.reduce((a, p) => a + p.qty * p.unit_cost, 0));
     out.profit_estimate = (r.final_price ?? r.quote) == null ? null : money((r.final_price ?? r.quote) - out.parts_cost);
     out.paid = money((await db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM payments WHERE kind='repair' AND ref_id=?").get(r.id)).s);
@@ -249,10 +261,12 @@ export async function updateRepair(id, b) {
     if ('quote' in b) {
       const typed = num(b.quote);
       if (typed != null && typed < 0) throw new HttpError(400, 'Gli importi non possono essere negativi');
-      const pf = typed == null ? null : priceFrom({ amount: typed, mode: parseMode(b.quote_mode, r.quote_vat_mode || 'gross'), rate: parseRate(b.quote_vat_rate, r.quote_vat_rate ?? (Number((await getSettings()).vat_rate) || 22)) });
+      // lo sconto (in euro o in %) si toglie dal prezzo scritto; senza indicazioni lo sconto e' zero (il prezzo scritto e' quello finale)
+      const dd = typed == null ? null : applyDiscount({ amount: typed, discount: b.quote_discount, pct: b.quote_discount_pct });
+      const pf = dd == null ? null : priceFrom({ amount: dd.price, mode: parseMode(b.quote_mode, r.quote_vat_mode || 'gross'), rate: parseRate(b.quote_vat_rate, r.quote_vat_rate ?? (Number((await getSettings()).vat_rate) || 22)) });
       newQuote = pf ? pf.gross : null;
-      sets.push('quote_vat_mode = ?', 'quote_vat_rate = ?', 'quote_net = ?');
-      args.push(pf ? pf.mode : 'gross', pf ? pf.rate : r.quote_vat_rate ?? 22, pf ? pf.net : null);
+      sets.push('quote_vat_mode = ?', 'quote_vat_rate = ?', 'quote_net = ?', 'quote_list = ?', 'quote_discount = ?', 'quote_discount_pct = ?');
+      args.push(pf ? pf.mode : 'gross', pf ? pf.rate : r.quote_vat_rate ?? 22, pf ? pf.net : null, dd && dd.discount > 0 ? dd.list : null, dd ? dd.discount : 0, dd ? dd.pct : null);
     }
     for (const k of EDITABLE) {
       if (!(k in b)) continue;
@@ -496,7 +510,7 @@ export async function publicView(token) {
   const st = STATUSES[r.status];
   const intakeSig = await db.prepare("SELECT signed_at FROM repair_signatures WHERE repair_id = ? AND kind = 'intake' ORDER BY id DESC LIMIT 1").get(r.id);
   // preventivo a distanza: opzioni fra cui scegliere, testi da mostrare e, a risposta data, l'esito firmato
-  const options = (await db.prepare('SELECT id, label, amount, description, amount_net, vat_rate FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id)).map(optionView);
+  const options = (await db.prepare('SELECT id, label, amount, description, amount_net, vat_rate, list_amount, discount, discount_pct FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(r.id)).map(optionView);
   const awaiting = r.status === 'quote_pending' && (r.quote != null || options.length > 0) && r.quote_decision !== 'declined';
   const qsig = await db.prepare("SELECT kind, choice, option_id, signed_at FROM repair_signatures WHERE repair_id = ? AND kind IN ('quote_accept','quote_decline') ORDER BY id DESC LIMIT 1").get(r.id);
   const myOpt = qsig?.option_id ? await db.prepare('SELECT label FROM quote_options WHERE id = ?').get(qsig.option_id) : null;
@@ -520,7 +534,7 @@ export async function publicView(token) {
     },
     customer: { name: r.customer_name, phone: maskPhone(r.customer_phone), email: maskEmail(r.customer_email) },
     quote: r.quote,
-    quote_price: showPrice(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode),
+    quote_price: quotePriceView(r),
     final_price: r.final_price,
     deposit: r.deposit,
     paid,

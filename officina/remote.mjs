@@ -6,7 +6,7 @@ import { db, tx, getSettings, nowLocal } from './dbref.mjs';
 import { HttpError, logEvent, publicView, localDate } from './logic.mjs';
 import { addSignature, cleanImage, clientIp } from './signatures.mjs';
 import { fillText, quoteVars, storageDays, storageFee, priceText } from './legal.mjs';
-import { parseMode, parseRate, priceFrom, optionView } from './iva.mjs';
+import { parseMode, parseRate, priceFrom, optionView, applyDiscount } from './iva.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const money = (v) => Math.round(Number(v) * 100) / 100;
@@ -26,8 +26,9 @@ export async function addOption(repairId, b) {
   if (n >= 6) throw new HttpError(400, 'Opzione non aggiunta: questa riparazione ha già 6 opzioni, il massimo.', { code: 'TROPPE_OPZIONI', hint: 'Elimina un’opzione prima di aggiungerne un’altra.' });
   // prezzo scritto IVA esclusa o inclusa: `amount` e' sempre il totale da pagare (IVA compresa), l'imponibile scritto si conserva
   const rate = parseRate(b.vat_rate, Number((await getSettings()).vat_rate) || 22);
-  const pf = priceFrom({ amount, mode: parseMode(b.price_mode, 'gross'), rate });
-  await db.prepare('INSERT INTO quote_options (repair_id, label, amount, description, sort, amount_net, vat_rate) VALUES (?,?,?,?,?,?,?)').run(repairId, label.slice(0, 120), pf.gross, str(b.description)?.slice(0, 300) || null, n, pf.net, rate);
+  const dd = applyDiscount({ amount, discount: b.discount, pct: b.discount_pct }); // sconto sulla soluzione (in euro o in %)
+  const pf = priceFrom({ amount: dd.price, mode: parseMode(b.price_mode, 'gross'), rate });
+  await db.prepare('INSERT INTO quote_options (repair_id, label, amount, description, sort, amount_net, vat_rate, list_amount, discount, discount_pct) VALUES (?,?,?,?,?,?,?,?,?,?)').run(repairId, label.slice(0, 120), pf.gross, str(b.description)?.slice(0, 300) || null, n, pf.net, rate, dd.discount > 0 ? dd.list : null, dd.discount, dd.pct);
   return listOptions(repairId);
 }
 
@@ -80,7 +81,7 @@ export async function customerDecision(token, b, c) {
   const amountText = opt ? priceText(opt.amount, opt.amount_net, opt.vat_rate, opt.mode) : priceText(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode);
   const shown = `${fillText(s.quote_accept_text, quoteVars(s, r, amount, amountText))}${opt ? `\nSoluzione scelta: ${opt.label} (${amountText}).` : ''}\n${s.quote_sign_text}`;
   await tx(async () => {
-    await db.prepare("UPDATE repairs SET status='approved', quote_decision='accepted', quote_decided_at=datetime('now','localtime'), quote = ?, quote_option_id = ?, quote_vat_mode = ?, quote_vat_rate = ?, quote_net = ? WHERE id=?").run(amount, opt ? opt.id : null, opt ? opt.mode : r.quote_vat_mode, opt ? opt.vat_rate : r.quote_vat_rate, opt ? opt.amount_net : r.quote_net, r.id);
+    await db.prepare("UPDATE repairs SET status='approved', quote_decision='accepted', quote_decided_at=datetime('now','localtime'), quote = ?, quote_option_id = ?, quote_vat_mode = ?, quote_vat_rate = ?, quote_net = ?, quote_list = ?, quote_discount = ?, quote_discount_pct = ? WHERE id=?").run(amount, opt ? opt.id : null, opt ? opt.mode : r.quote_vat_mode, opt ? opt.vat_rate : r.quote_vat_rate, opt ? opt.amount_net : r.quote_net, opt ? opt.list_amount : r.quote_list, opt ? opt.discount : r.quote_discount, opt ? opt.discount_pct : r.quote_discount_pct, r.id);
     await addSignature(r.id, { kind: 'quote_accept', image: b.image, signer_name: name, choice: opt ? 'option' : 'accept', option_id: opt ? opt.id : null, text_shown: shown, via: 'link', c });
     await logEvent(r.id, 'approved', opt ? `Preventivo approvato dal cliente online: ${opt.label} (${opt.amount.toFixed(2)} €), firmato.` : 'Preventivo approvato dal cliente online (firmato).', 1);
     await logEvent(r.id, null, `Conferma del preventivo firmata da link: IP ${ip}.`, 0);

@@ -46,19 +46,48 @@ export function bindVat(root, p, priceSel) {
 /** Menu "il prezzo e'": con IVA esclusa l'IVA si somma al totale (il server salva sempre il totale IVA compresa). */
 export const priceModeSelect = (id, mode = 'gross') => `<select id="${id}" aria-label="Il prezzo scritto è"><option value="gross" ${mode === 'gross' ? 'selected' : ''}>IVA inclusa</option><option value="net" ${mode === 'net' ? 'selected' : ''}>IVA esclusa</option></select>`;
 
-/** Riga di riepilogo: vuota se il prezzo e' IVA inclusa o non scritto. Stessa formula del server (officina/iva.mjs, priceFrom). */
-export function priceNote(amount, mode, rate) {
-  const a = Number(String(amount ?? '').replace(',', '.'));
-  if (mode !== 'net' || !String(amount ?? '').trim() || !Number.isFinite(a) || a < 0) return '';
-  const r = Number(rate) || 0;
-  const gross = Math.round(a * (1 + r / 100) * 100) / 100;
-  return `Imponibile ${eur(a)} + IVA ${r}% ${eur(gross - a)} = ${eur(gross)} IVA inclusa`;
+/** Campo sconto: importo + menu euro/percentuale. `d` = { discount, pct } gia' salvati (per riaprire una scheda). */
+export const discountField = (p, d = {}) => `<div class="field"><label class="l" for="${p}-disc">Sconto</label><div class="row nowrap"><input id="${p}-disc" inputmode="decimal" placeholder="0" value="${d.pct != null ? d.pct : d.discount || ''}" /><select id="${p}-dtype" style="width:auto;flex:none" aria-label="Sconto in euro o in percentuale"><option value="eur">€</option><option value="pct" ${d.pct != null ? 'selected' : ''}>%</option></select></div></div>`;
+
+/** Valori dello sconto da inviare al server: `keys` dice come si chiamano i due campi (euro e percentuale). */
+export function discountVals(root, p, keys = { eur: 'quote_discount', pct: 'quote_discount_pct' }) {
+  const v = $(`#${p}-disc`, root).value.trim().replace(',', '.');
+  const out = { [keys.eur]: '', [keys.pct]: '' };
+  if (v) out[$(`#${p}-dtype`, root).value === 'pct' ? keys.pct : keys.eur] = v;
+  return out;
 }
 
-/** Collega campo importo + menu IVA a una riga di riepilogo. */
-export function bindPriceNote(root, amountSel, modeSel, noteSel, rate) {
-  const upd = () => { const n = $(noteSel, root); if (n) n.textContent = priceNote($(amountSel, root).value, $(modeSel, root).value, typeof rate === 'function' ? rate() : rate); };
-  for (const sel of [amountSel, modeSel]) $(sel, root)?.addEventListener('input', upd);
+/** Sconto in euro dai due campi (se in %, calcolato sul prezzo scritto). */
+export function discountEuro(root, p, amount) {
+  const v = Number($(`#${p}-disc`, root)?.value.trim().replace(',', '.')) || 0;
+  const a = Number(String(amount ?? '').replace(',', '.')) || 0;
+  return $(`#${p}-dtype`, root)?.value === 'pct' ? Math.round(a * v) / 100 : v;
+}
+
+/** Riga di riepilogo (prezzo, sconto, IVA): vuota se non c'e' nulla da spiegare. Stessa formula del server (officina/iva.mjs). */
+export function priceNote(amount, mode, rate, disc = 0) {
+  const a = Number(String(amount ?? '').replace(',', '.'));
+  if (!String(amount ?? '').trim() || !Number.isFinite(a) || a < 0) return '';
+  const d = Math.min(Math.max(0, Number(disc) || 0), a);
+  if (mode !== 'net' && !(d > 0)) return '';
+  const base = a - d;
+  const r = Number(rate) || 0;
+  const parts = [];
+  if (d > 0) parts.push(`Prezzo ${eur(a)} − sconto ${eur(d)} = ${eur(base)}`);
+  if (mode === 'net') { const gross = Math.round(base * (1 + r / 100) * 100) / 100; parts.push(`Imponibile ${eur(base)} + IVA ${r}% ${eur(gross - base)} = ${eur(gross)} IVA inclusa`); }
+  return parts.join(' · ');
+}
+
+/** Collega campo importo + menu IVA (+ sconto, se c'e') a una riga di riepilogo. `disc` = prefisso id del campo sconto. */
+export function bindPriceNote(root, amountSel, modeSel, noteSel, rate, disc = null) {
+  const upd = () => {
+    const n = $(noteSel, root);
+    if (!n) return;
+    const amt = $(amountSel, root).value;
+    n.textContent = priceNote(amt, $(modeSel, root).value, typeof rate === 'function' ? rate() : rate, disc ? discountEuro(root, disc, amt) : 0);
+  };
+  const sels = [amountSel, modeSel, ...(disc ? [`#${disc}-disc`, `#${disc}-dtype`] : [])];
+  for (const sel of sels) $(sel, root)?.addEventListener('input', upd);
   upd();
   return upd;
 }

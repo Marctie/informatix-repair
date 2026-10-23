@@ -145,3 +145,43 @@ test('preventivo online dalla riparazione IVA esclusa: stesse cifre della scheda
   assert.equal(out.quote.total, 366);
   assert.equal(out.quote.total, rep.quote);
 });
+
+test('sconto in percentuale o in euro sul preventivo autonomo: la percentuale segue le voci', async () => {
+  const c = (await a('POST', '/api/customers', { name: 'Sara Lilla', phone: '3338880000' })).data;
+  const q = (await a('POST', '/api/quotes', { customer_id: c.id, valid_until: future(), discount_pct: 10, items: [{ description: 'Notebook', qty: 1, unit_price: 500 }] })).data;
+  assert.deepEqual([q.discount, q.discount_pct, q.total], [50, 10, 450]);
+  // cambiano le voci: il 10% si ricalcola
+  const q2 = (await a('PUT', `/api/quotes/${q.id}`, { items: [{ description: 'Notebook', qty: 1, unit_price: 600 }] })).data;
+  assert.deepEqual([q2.discount, q2.discount_pct, q2.total], [60, 10, 540]);
+  // uno sconto in euro scritto a mano sostituisce la percentuale
+  const q3 = (await a('PUT', `/api/quotes/${q.id}`, { discount: 25 })).data;
+  assert.deepEqual([q3.discount, q3.discount_pct, q3.total], [25, null, 575]);
+  assert.equal((await a('POST', '/api/quotes', { customer_id: c.id, valid_until: future(), discount_pct: 150, items: [{ description: 'x', unit_price: 10 }] })).status, 400);
+  assert.equal((await a('POST', '/api/quotes', { customer_id: c.id, valid_until: future(), discount: 99, items: [{ description: 'x', unit_price: 10 }] })).status, 400);
+  // con IVA esclusa lo sconto si toglie prima dell'IVA
+  const q4 = (await a('POST', '/api/quotes', { customer_id: c.id, valid_until: future(), vat_mode: 'net', discount_pct: 10, items: [{ description: 'PC', qty: 1, unit_price: 1000 }] })).data;
+  assert.deepEqual([q4.net, q4.vat, q4.total], [900, 198, 1098]);
+});
+
+test('sconto sul preventivo della riparazione e sulle soluzioni: totale scontato, prezzo prima dello sconto conservato', async () => {
+  const c = (await a('POST', '/api/customers', { name: 'Omar Teal', phone: '3339990000' })).data;
+  const rep = (await a('POST', '/api/repairs', { customer: { id: c.id }, brand_model: 'Mac', problem: 'ssd', quote: 200, quote_discount_pct: 10 })).data;
+  assert.deepEqual([rep.quote, rep.quote_list, rep.quote_discount, rep.quote_discount_pct], [180, 200, 20, 10]);
+  assert.deepEqual([rep.quote_price.list, rep.quote_price.discount, rep.quote_price.total], [200, 20, 180]);
+  // IVA esclusa + sconto in euro: sconto sull'imponibile, poi l'IVA
+  const up = (await a('PATCH', `/api/repairs/${rep.id}`, { quote: '100', quote_mode: 'net', quote_discount: '10' })).data;
+  assert.deepEqual([up.quote, up.quote_net, up.quote_list, up.quote_discount], [109.8, 90, 100, 10]);
+  // senza indicazioni lo sconto si azzera: il prezzo scritto e' quello finale
+  const plain = (await a('PATCH', `/api/repairs/${rep.id}`, { quote: '100', quote_mode: 'gross' })).data;
+  assert.deepEqual([plain.quote, plain.quote_list, plain.quote_discount], [100, null, 0]);
+  assert.equal((await a('PATCH', `/api/repairs/${rep.id}`, { quote: '100', quote_discount: '500' })).status, 400);
+  // soluzioni
+  const list = (await a('POST', `/api/repairs/${rep.id}/quote-options`, { label: 'Display originale', amount: 300, discount_pct: 20 })).data;
+  assert.deepEqual([list[0].amount, list[0].list_amount, list[0].discount, list[0].discount_pct], [240, 300, 60, 20]);
+  await a('POST', `/api/repairs/${rep.id}/status`, { status: 'quote_pending' });
+  const v = (await p('GET', `/api/track/${rep.token}`)).data;
+  assert.deepEqual([v.quote_flow.options[0].list_amount, v.quote_flow.options[0].discount], [300, 60]);
+  await p('POST', `/api/track/${rep.token}/decision`, { action: 'option', option_id: list[0].id, image: SIG, signer_name: 'Omar' });
+  const r = (await a('GET', `/api/repairs/${rep.id}`)).data;
+  assert.deepEqual([r.quote, r.quote_list, r.quote_discount], [240, 300, 60]);
+});
