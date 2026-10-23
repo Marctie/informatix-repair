@@ -2,7 +2,8 @@
 // con validita' in giorni (predefinita da Impostazioni, modificabile) e il link /p/<codice> da mandare per WhatsApp, email o a mano.
 // Riusa il preventivo autonomo (preventivi.mjs): firma, accettazione/rifiuto e scadenza sono quelli di sempre.
 import { db, getSettings } from './dbref.mjs';
-import { HttpError, money, localDate, getRepair } from './logic.mjs';
+import { HttpError, money, localDate, getRepair, setStatus } from './logic.mjs';
+import { listOptions } from './remote.mjs';
 import { createQuote, updateQuote, shareQuote, getQuote, DEFAULT_VALID_DAYS } from './preventivi.mjs';
 
 const NOW = "datetime('now','localtime')";
@@ -57,9 +58,27 @@ async function describe(q, repair, base) {
   return { quote: q, url, text, phone: q.who_phone || null, email: q.who_email || null, subject: `Preventivo ${q.code} - ${settings.shop_name || 'Informatix Repair'}` };
 }
 
+/**
+ * Riparazione con SOLUZIONI alternative (e senza un preventivo online gia' fatto): non c'e' un importo unico da mettere in un preventivo.
+ * Il cliente sceglie e firma dal suo link di tracciamento (/t/<codice>), quindi si manda quello, con le soluzioni scritte nel messaggio.
+ */
+async function optionsInfo(repair, base) {
+  const options = await listOptions(repair.id);
+  if (!options.length || (await activeQuoteId(repair.id))) return null;
+  const settings = await getSettings();
+  const shop = settings.shop_name || 'Informatix Repair';
+  const url = base ? `${base}/t/${repair.token}` : null;
+  const first = String(repair.customer_name || '').split(' ')[0];
+  const list = options.map((o, i) => `${i + 1}) ${o.label}: ${eur(o.amount)}${o.mode === 'net' ? ' IVA inclusa' : ''}`).join('\n');
+  const text = url ? `Buongiorno${first ? ` ${first}` : ''}, da ${shop}: per la riparazione ${repair.brand_model} (${repair.code}) ti proponiamo queste soluzioni:\n${list}\nScegli quella che preferisci e conferma dal telefono qui: ${url}` : null;
+  return { mode: 'options', quote: null, options, items: [], url, text, phone: repair.customer_phone || null, email: repair.customer_email || null, subject: `Soluzioni per la tua riparazione ${repair.code} - ${shop}`, default_days: await validityDays(), status: repair.status };
+}
+
 /** Il preventivo online della riparazione (se c'e') con link e testi pronti. */
 export async function repairQuoteInfo(repairId, base) {
   const repair = await getRepair(repairId);
+  const opt = await optionsInfo(repair, base);
+  if (opt) return opt;
   const id = await activeQuoteId(repair.id);
   if (!id) return { quote: null, url: null, text: null, phone: repair.customer_phone || null, email: repair.customer_email || null, default_days: await validityDays(), items: itemsFromRepair(repair) };
   return { ...(await describe(await getQuote(id), repair, base)), default_days: await validityDays() };
@@ -72,6 +91,12 @@ export async function sendRepairQuote(repairId, b, base) {
   if (!repair.customer_id) throw new HttpError(400, `Riparazione ${repair.code}: manca il cliente, quindi non so a chi mandare il preventivo.`, { code: 'CLIENTE_MANCANTE', hint: 'Collega la scheda a un cliente e riprova.' });
   const via = str(b.via);
   if (via && !SEND_VIA.includes(via)) throw new HttpError(400, 'Il canale scelto per l’invio non è tra quelli previsti.', { code: 'CANALE_NON_VALIDO', hint: 'Scegli uno dei canali proposti (WhatsApp, SMS, email…).' });
+  // con le soluzioni il "preventivo" e' la scelta dal link di tracciamento: la scheda passa a "Preventivo da approvare" e si manda quel link
+  const opt = await optionsInfo(repair, base);
+  if (opt) {
+    if (['received', 'diagnosing'].includes(repair.status)) await setStatus(repair.id, 'quote_pending', 'Ti abbiamo proposto più soluzioni: scegli quella che preferisci.');
+    return { ...opt, status: repair.status === 'received' || repair.status === 'diagnosing' ? 'quote_pending' : repair.status };
+  }
   const days = await validityDays(b.valid_days);
   const explicit = str(b.valid_until);
   const hasValidity = b.valid_days !== undefined && b.valid_days !== '' || !!explicit;
