@@ -18,7 +18,7 @@ const validity = (q) => {
   if (q.expired) return `scaduto il ${fdate(q.valid_until)}`;
   return q.days_left === 0 ? 'scade oggi' : q.days_left === 1 ? 'scade domani' : q.days_left <= 7 ? `scade tra ${q.days_left} giorni` : `valido fino al ${fdate(q.valid_until)}`;
 };
-const waText = (q) => `Ciao ${String(q.who || '').split(' ')[0]}, da ${shop()}: ecco il preventivo ${q.code}${q.items.length ? ` (${q.items.map((i) => i.description).slice(0, 3).join(', ')}${q.items.length > 3 ? '…' : ''})` : ''}, totale ${eur(q.total)}. È valido fino al ${fdate(q.valid_until)}. Per accettare rispondi a questo messaggio o passa in negozio.`;
+const waText = (q) => `Ciao ${String(q.who || '').split(' ')[0]}, da ${shop()}: ecco il preventivo ${q.code}${q.items.length ? ` (${q.items.map((i) => i.description).slice(0, 3).join(', ')}${q.items.length > 3 ? '…' : ''})` : ''}, totale ${eur(q.due)}${q.vat_mode === 'net' ? ' IVA inclusa' : ''}${q.tradein_value > 0 ? ` (permuta ${q.tradein_desc} già scalata)` : ''}. È valido fino al ${fdate(q.valid_until)}. Per accettare rispondi a questo messaggio o passa in negozio.`;
 
 function quoteRow(q) {
   const st = STATUS[q.status_view];
@@ -28,7 +28,7 @@ function quoteRow(q) {
         ${!q.expired && ['bozza', 'inviato'].includes(q.status) && q.days_left <= 3 ? '<span class="badge bg-amber-100 text-amber-800">⏰ In scadenza</span>' : ''}</div>
       <p class="text-xs text-gray-500 truncate">${esc(q.code)} · ${esc(validity(q))}${q.repair_code ? ` · rip. ${esc(q.repair_code)}` : ''}${q.sale_code ? ` · vendita ${esc(q.sale_code)}` : ''}</p>
     </div>
-    <div class="flex items-center gap-1.5 shrink-0" data-stop><span class="text-sm font-semibold">${eur(q.total)}</span>
+    <div class="flex items-center gap-1.5 shrink-0" data-stop><span class="text-sm font-semibold">${eur(q.due)}</span>
       ${q.status_view === 'bozza' ? `<button class="btn btn-dark btn-sm" data-adv="${q.id}" data-next="inviato">${st.nextLabel} →</button>` : ''}
       ${q.status_view === 'inviato' ? `<button class="btn btn-dark btn-sm" data-adv="${q.id}" data-next="accettato">Accettato →</button>` : ''}
     </div></div>`;
@@ -76,9 +76,9 @@ export async function openQuote(id, done) {
         ${q.repair_code ? `<dt>Riparazione</dt><dd>${esc(q.repair_code)}</dd>` : ''}${q.sale_code ? `<dt>Vendita</dt><dd>${esc(q.sale_code)}</dd>` : ''}
         ${q.signature ? `<dt>Risposta online</dt><dd>${q.signature.kind === 'accept' ? '✅ Accettato' : '❌ Rifiutato'} e firmato${q.signature.signer_name ? ` da ${esc(q.signature.signer_name)}` : ''} il ${esc(fdate(q.signature.signed_at))}${q.signature.ip ? ` <span class="hint">(IP ${esc(q.signature.ip)})</span>` : ''}</dd>` : ''}
         ${q.notes ? `<dt>Note</dt><dd>${esc(q.notes)}</dd>` : ''}<dt>Creato</dt><dd>${fdate(q.created_at)}</dd></dl></section>
-    <section class="sec"><h3 class="sec-t">Voci</h3>
+    <section class="sec"><h3 class="sec-t">Voci${q.vat_mode === 'net' ? ' (prezzi IVA esclusa)' : ''}</h3>
       <div class="plist">${q.items.map((i) => `<div><span>${i.qty}× ${esc(i.description)}</span><b>${eur(i.qty * i.unit_price)}</b></div>`).join('')}</div>
-      <dl class="kv">${q.discount ? `<dt>Sconto</dt><dd>-${eur(q.discount)}</dd>` : ''}<dt>Totale</dt><dd><b>${eur(q.total)}</b></dd></dl></section>
+      <dl class="kv">${q.discount ? `<dt>Sconto</dt><dd>-${eur(q.discount)}</dd>` : ''}${q.vat_mode === 'net' ? `<dt>Imponibile</dt><dd>${eur(q.net)}</dd><dt>IVA ${q.vat_rate}%</dt><dd>${eur(q.vat)}</dd>` : ''}<dt>Totale${q.vat_mode === 'net' ? ' IVA inclusa' : ''}</dt><dd><b>${eur(q.total)}</b></dd>${q.tradein_value > 0 ? `<dt>Permuta: ${esc(q.tradein_desc)}</dt><dd>-${eur(q.tradein_value)}</dd><dt>Da pagare</dt><dd><b>${eur(q.due)}</b></dd>` : ''}</dl></section>
     <section class="sec"><div class="row">
       <a class="btn btn-outline btn-sm" href="/print/quote/${q.id}" target="_blank" rel="noopener">🖨️ Stampa / PDF</a>
       ${wa ? `<a class="btn btn-green btn-sm" id="qd-wa" target="_blank" rel="noopener" href="${wa}">💬 WhatsApp</a>` : ''}
@@ -101,7 +101,7 @@ export async function openQuote(id, done) {
     if (!out) return;
     const url = `${META.track_base}/p/${out.token}`;
     try { await navigator.clipboard.writeText(url); toast('Link copiato: incollalo dove vuoi'); } catch { window.prompt('Copia questo link:', url); }
-    const w = waLink(q.who_phone, `Buongiorno, ecco il preventivo ${q.code} (${eur(q.total)}): puoi leggerlo e accettarlo dal telefono qui: ${url}`);
+    const w = waLink(q.who_phone, `Buongiorno, ecco il preventivo ${q.code} (${eur(q.due)}): puoi leggerlo e accettarlo dal telefono qui: ${url}`);
     if (w && window.confirm('Link pronto e copiato. Aprire WhatsApp col messaggio già scritto?')) window.open(w, '_blank', 'noopener');
     again();
   };
@@ -115,7 +115,7 @@ export async function openQuote(id, done) {
 }
 
 function convertToRepair(q, done) {
-  const m = openModal(`<div class="sec"><p class="text-sm">Il preventivo <b>${esc(q.code)}</b> (${eur(q.total)}) diventa una riparazione${q.status === 'accettato' ? ' già <b>approvata</b>' : ''}.</p>
+  const m = openModal(`<div class="sec"><p class="text-sm">Il preventivo <b>${esc(q.code)}</b> (${eur(q.due)}) diventa una riparazione${q.status === 'accettato' ? ' già <b>approvata</b>' : ''}.</p>
     <div class="fgrid"><div class="field"><label class="l" for="cr-model">Dispositivo *</label><input id="cr-model" placeholder="Es. iPhone 13, Asus ROG…" /></div>
       <div class="field"><label class="l" for="cr-problem">Problema / lavoro</label><input id="cr-problem" value="${esc(q.items.map((i) => i.description).join(', '))}" /></div></div></div>`,
   { title: 'Converti in riparazione', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cr-ok">Crea riparazione</button>' });
@@ -126,7 +126,7 @@ function convertToRepair(q, done) {
 }
 
 function convertToSale(q, done) {
-  const m = openModal(`<div class="sec"><p class="text-sm">Il preventivo <b>${esc(q.code)}</b> diventa una <b>vendita da ${eur(q.total)}</b>: l'incasso viene registrato in cassa adesso.</p>
+  const m = openModal(`<div class="sec"><p class="text-sm">Il preventivo <b>${esc(q.code)}</b> diventa una <b>vendita da ${eur(q.due)}</b>: l'incasso viene registrato in cassa adesso.</p>
     <div class="field"><label class="l" for="cs-method">Incassato con</label>${methodSelect('cs-method')}</div></div>`,
   { title: 'Converti in vendita', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="cs-ok">Registra la vendita</button>' });
   $('#cs-ok', m.el).onclick = async () => {
@@ -146,17 +146,46 @@ export async function quoteForm(q, done, preset = {}) {
       </div>
       <div class="fgrid c2"><div class="field"><label class="l" for="qf-valid">Valido fino al *</label><input id="qf-valid" type="date" value="${esc(q?.valid_until || addDays(meta?.valid_days || 15))}" />
         <span class="hint">Proposta: ${meta?.valid_days || 15} giorni da oggi.</span></div>
-        <div class="field"><label class="l" for="qf-disc">Sconto (€)</label><input id="qf-disc" type="number" min="0" step="0.01" inputmode="decimal" value="${q?.discount || ''}" placeholder="0" /></div></div>
+        <div class="field"><label class="l" for="qf-disc">Sconto (€)</label><input id="qf-disc" type="number" min="0" step="0.01" inputmode="decimal" value="${q?.discount || ''}" placeholder="0" /><span class="hint" id="qf-dischint"></span></div></div>
+      <div class="fgrid c2"><div class="field"><label class="l" for="qf-vmode">I prezzi che scrivo sono</label><select id="qf-vmode"><option value="gross">IVA inclusa</option><option value="net">IVA esclusa (l’IVA si aggiunge al totale)</option></select></div>
+        <div class="field"><label class="l" for="qf-vrate">Aliquota IVA %</label><input id="qf-vrate" inputmode="decimal" value="${esc(String(q?.vat_rate ?? meta?.vat_rate ?? 22))}" /></div></div>
     </div>
     <div class="sec"><h3 class="sec-t">Voci del preventivo</h3><div id="qf-items"></div></div>
+    <div class="sec"><h3 class="sec-t">Permuta (facoltativa)</h3>
+      <div class="fgrid c2"><div class="field"><label class="l" for="qf-tdesc">Cosa ritiri in permuta</label><input id="qf-tdesc" value="${esc(q?.tradein_desc || '')}" placeholder="Es. iPhone 12 128 GB" /></div>
+        <div class="field"><label class="l" for="qf-tval">Valore della permuta (€)</label><input id="qf-tval" type="number" min="0" step="0.01" inputmode="decimal" value="${q?.tradein_value || ''}" placeholder="0" /></div></div>
+      <p class="hint">Il valore si toglie dal totale già comprensivo di IVA.</p>
+      <p class="font-semibold" id="qf-sum" aria-live="polite"></p></div>
     <div class="sec"><div class="field"><label class="l" for="qf-notes">Note per il cliente</label><textarea id="qf-notes" rows="2" placeholder="Es. tempi di consegna, garanzia…">${esc(q?.notes || '')}</textarea></div>
       <div class="field"><label class="l" for="qf-terms">Condizioni stampate sul preventivo</label><textarea id="qf-terms" rows="3">${esc(q?.terms || meta?.terms || '')}</textarea></div></div>`,
     { title: q ? `Modifica ${q.code}` : 'Nuovo preventivo', wide: true, footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="qf-ok">Salva preventivo</button>' }
   );
   const cust = bindCustomer(m.el, 'qf-customer', q?.customer_id || preset.customer_id || null);
   const items = itemsEditor(m.el, 'qf-items', q?.items || preset.items || []);
+  $('#qf-vmode', m.el).value = q?.vat_mode || 'gross';
+  // riepilogo in diretta: stessa formula del server (officina/iva.mjs, quoteTotals)
+  const sum = () => {
+    const mode = $('#qf-vmode', m.el).value, rate = Number(String($('#qf-vrate', m.el).value).replace(',', '.')) || 0;
+    const base = Math.max(0, items.total() - (Number($('#qf-disc', m.el).value) || 0));
+    const net = mode === 'net' ? base : base / (1 + rate / 100);
+    const total = mode === 'net' ? base * (1 + rate / 100) : base;
+    const tin = Number($('#qf-tval', m.el).value) || 0;
+    $('#qf-dischint', m.el).textContent = mode === 'net' ? 'Si toglie prima dell’IVA' : '';
+    $('#qf-sum', m.el).textContent = `${mode === 'net' ? `Imponibile ${eur(net)} + IVA ${rate}% ${eur(total - net)} = ` : ''}Totale ${eur(total)}${tin > 0 ? ` − permuta ${eur(tin)} = Da pagare ${eur(Math.max(0, total - tin))}` : ''}`;
+  };
+  m.el.addEventListener('input', sum);
+  m.el.addEventListener('items-change', sum);
+  // le condizioni di serie seguono IVA inclusa/esclusa; quelle scritte a mano restano
+  let lastMode = $('#qf-vmode', m.el).value;
+  $('#qf-vmode', m.el).addEventListener('change', () => {
+    const t = $('#qf-terms', m.el), cur = t.value.trim();
+    if (!cur || cur === meta?.terms_gross || cur === meta?.terms_net) t.value = $('#qf-vmode', m.el).value === 'net' ? meta?.terms_net || '' : meta?.terms_gross || '';
+    lastMode = $('#qf-vmode', m.el).value;
+  });
+  sum();
   $('#qf-ok', m.el).onclick = async () => {
     const body = { customer_id: cust.value(), customer_name: $('#qf-name', m.el).value, customer_phone: $('#qf-phone', m.el).value, valid_until: $('#qf-valid', m.el).value, discount: $('#qf-disc', m.el).value,
+      vat_mode: $('#qf-vmode', m.el).value, vat_rate: $('#qf-vrate', m.el).value.replace(',', '.'), tradein_desc: $('#qf-tdesc', m.el).value, tradein_value: $('#qf-tval', m.el).value,
       items: items.value(), notes: $('#qf-notes', m.el).value, terms: $('#qf-terms', m.el).value };
     const out = await safe(() => (q ? api('PUT', `/api/quotes/${q.id}`, body) : api('POST', '/api/quotes', body)));
     if (out) { m.close(); toast(q ? 'Preventivo aggiornato' : `Preventivo ${out.code} creato`); done?.(); if (!q) openQuote(out.id, done); }

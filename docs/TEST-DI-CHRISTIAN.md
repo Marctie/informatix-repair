@@ -60,5 +60,13 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 37. [ ] **Carico merce:** dopo il carico compare *Stampa N etichette* (una per pezzo arrivato).
 38. [ ] **Foglio A4 adesivo** (solo se lo usi): crea un template "Foglio A4 adesivo", stampa e controlla che le etichette cadano giuste sul foglio.
 
+## I. Preventivi con IVA inclusa/esclusa e permuta (richiesta del 23/10)
+39. [ ] **Preventivo IVA esclusa:** Preventivi > Nuovo, scegli *IVA esclusa*, scrivi una voce da 100 euro: sotto devi vedere *Imponibile 100 + IVA 22% 22 = Totale 122*. Salva, apri e controlla anche la stampa.
+40. [ ] **Link del cliente:** manda/apri il link del preventivo IVA esclusa: il cliente vede imponibile, IVA e totale.
+41. [ ] **Permuta:** nello stesso preventivo scrivi *iPhone 12* e valore 50: il *Da pagare* scende di 50. Prova a scrivere un valore più alto del totale (deve rifiutare) e a lasciare la descrizione vuota (deve rifiutare).
+42. [ ] **Riparazione:** nuova riparazione con preventivo 100 e *Il prezzo è IVA esclusa*: la scheda deve avere totale 122; apri il link del cliente e controlla il testo.
+43. [ ] **Soluzioni:** aggiungi due soluzioni, una IVA esclusa e una inclusa; dal link scegline una e firma.
+44. [ ] **Vecchi preventivi:** apri un preventivo già esistente: deve essere rimasto uguale (IVA inclusa).
+
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).

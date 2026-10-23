@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS repairs (
   problem TEXT NOT NULL, accessories TEXT, condition_notes TEXT, passcode TEXT,
   status TEXT NOT NULL DEFAULT 'received', urgent INTEGER NOT NULL DEFAULT 0, color TEXT,
   quote REAL, deposit REAL NOT NULL DEFAULT 0, final_price REAL,
+  quote_vat_mode TEXT NOT NULL DEFAULT 'gross', quote_vat_rate REAL NOT NULL DEFAULT 22, quote_net REAL,
   eta_date TEXT, warranty_days INTEGER NOT NULL DEFAULT 90,
   quote_decision TEXT, quote_decided_at TEXT,
   tech_notes TEXT, customer_note TEXT,
@@ -73,7 +74,8 @@ CREATE INDEX IF NOT EXISTS idx_signatures_repair ON repair_signatures(repair_id)
 CREATE TABLE IF NOT EXISTS quote_options (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   repair_id INTEGER NOT NULL REFERENCES repairs(id) ON DELETE CASCADE,
-  label TEXT NOT NULL, amount REAL NOT NULL, description TEXT, sort INTEGER NOT NULL DEFAULT 0
+  label TEXT NOT NULL, amount REAL NOT NULL, description TEXT, sort INTEGER NOT NULL DEFAULT 0,
+  amount_net REAL, vat_rate REAL
 );
 CREATE INDEX IF NOT EXISTS idx_quote_options_repair ON quote_options(repair_id);
 CREATE TABLE IF NOT EXISTS repair_events (
@@ -239,6 +241,8 @@ CREATE TABLE IF NOT EXISTS quotes (
   customer_name TEXT, customer_phone TEXT,          -- per chi non e' ancora in anagrafica (es. assemblaggio PC)
   status TEXT NOT NULL DEFAULT 'bozza',            -- bozza | inviato | accettato | rifiutato | convertito  (scaduto = calcolato dalla data)
   valid_until TEXT NOT NULL, discount REAL NOT NULL DEFAULT 0, notes TEXT, terms TEXT,
+  vat_mode TEXT NOT NULL DEFAULT 'gross', vat_rate REAL NOT NULL DEFAULT 22,   -- prezzi scritti IVA inclusa (gross) o esclusa (net)
+  tradein_desc TEXT, tradein_value REAL NOT NULL DEFAULT 0,                    -- permuta: cosa si ritira e quanto vale (scalato dal totale)
   repair_id INTEGER REFERENCES repairs(id) ON DELETE SET NULL,
   sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,
   sent_at TEXT, sent_via TEXT,                      -- ultimo invio al cliente (whatsapp | email | link)

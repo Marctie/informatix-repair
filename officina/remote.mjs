@@ -5,13 +5,14 @@
 import { db, tx, getSettings, nowLocal } from './dbref.mjs';
 import { HttpError, logEvent, publicView, localDate } from './logic.mjs';
 import { addSignature, cleanImage, clientIp } from './signatures.mjs';
-import { fillText, quoteVars, storageDays, storageFee } from './legal.mjs';
+import { fillText, quoteVars, storageDays, storageFee, priceText } from './legal.mjs';
+import { parseMode, parseRate, priceFrom, optionView } from './iva.mjs';
 
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const money = (v) => Math.round(Number(v) * 100) / 100;
 
 // ---------- Opzioni di preventivo (facoltative) ----------
-export const listOptions = (repairId) => db.prepare('SELECT * FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(repairId);
+export const listOptions = async (repairId) => (await db.prepare('SELECT * FROM quote_options WHERE repair_id = ? ORDER BY sort, id').all(repairId)).map(optionView);
 
 export async function addOption(repairId, b) {
   const r = await db.prepare('SELECT status, quote_decision FROM repairs WHERE id = ?').get(repairId);
@@ -23,7 +24,10 @@ export async function addOption(repairId, b) {
   if (!Number.isFinite(amount) || amount < 0) throw new HttpError(400, 'Opzione di preventivo non salvata: l’importo non è valido (non numerico o negativo).', { code: 'IMPORTO_NON_VALIDO', hint: 'Scrivi l’importo in euro.' });
   const n = (await db.prepare('SELECT COUNT(*) AS n FROM quote_options WHERE repair_id = ?').get(repairId)).n;
   if (n >= 6) throw new HttpError(400, 'Opzione non aggiunta: questa riparazione ha già 6 opzioni, il massimo.', { code: 'TROPPE_OPZIONI', hint: 'Elimina un’opzione prima di aggiungerne un’altra.' });
-  await db.prepare('INSERT INTO quote_options (repair_id, label, amount, description, sort) VALUES (?,?,?,?,?)').run(repairId, label.slice(0, 120), money(amount), str(b.description)?.slice(0, 300) || null, n);
+  // prezzo scritto IVA esclusa o inclusa: `amount` e' sempre il totale da pagare (IVA compresa), l'imponibile scritto si conserva
+  const rate = parseRate(b.vat_rate, Number((await getSettings()).vat_rate) || 22);
+  const pf = priceFrom({ amount, mode: parseMode(b.price_mode, 'gross'), rate });
+  await db.prepare('INSERT INTO quote_options (repair_id, label, amount, description, sort, amount_net, vat_rate) VALUES (?,?,?,?,?,?,?)').run(repairId, label.slice(0, 120), pf.gross, str(b.description)?.slice(0, 300) || null, n, pf.net, rate);
   return listOptions(repairId);
 }
 
@@ -73,9 +77,10 @@ export async function customerDecision(token, b, c) {
     if (r.quote == null) throw new HttpError(409, 'Per questa riparazione non c’è nessun preventivo in attesa della tua risposta.', { code: 'PREVENTIVO_NON_IN_ATTESA', hint: 'Contatta il negozio se pensi sia un errore.' });
   }
   const amount = opt ? opt.amount : r.quote;
-  const shown = `${fillText(s.quote_accept_text, quoteVars(s, r, amount))}${opt ? `\nSoluzione scelta: ${opt.label} (${opt.amount.toFixed(2)} €).` : ''}\n${s.quote_sign_text}`;
+  const amountText = opt ? priceText(opt.amount, opt.amount_net, opt.vat_rate, opt.mode) : priceText(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode);
+  const shown = `${fillText(s.quote_accept_text, quoteVars(s, r, amount, amountText))}${opt ? `\nSoluzione scelta: ${opt.label} (${amountText}).` : ''}\n${s.quote_sign_text}`;
   await tx(async () => {
-    await db.prepare("UPDATE repairs SET status='approved', quote_decision='accepted', quote_decided_at=datetime('now','localtime'), quote = ?, quote_option_id = ? WHERE id=?").run(amount, opt ? opt.id : null, r.id);
+    await db.prepare("UPDATE repairs SET status='approved', quote_decision='accepted', quote_decided_at=datetime('now','localtime'), quote = ?, quote_option_id = ?, quote_vat_mode = ?, quote_vat_rate = ?, quote_net = ? WHERE id=?").run(amount, opt ? opt.id : null, opt ? opt.mode : r.quote_vat_mode, opt ? opt.vat_rate : r.quote_vat_rate, opt ? opt.amount_net : r.quote_net, r.id);
     await addSignature(r.id, { kind: 'quote_accept', image: b.image, signer_name: name, choice: opt ? 'option' : 'accept', option_id: opt ? opt.id : null, text_shown: shown, via: 'link', c });
     await logEvent(r.id, 'approved', opt ? `Preventivo approvato dal cliente online: ${opt.label} (${opt.amount.toFixed(2)} €), firmato.` : 'Preventivo approvato dal cliente online (firmato).', 1);
     await logEvent(r.id, null, `Conferma del preventivo firmata da link: IP ${ip}.`, 0);

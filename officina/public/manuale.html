@@ -149,6 +149,7 @@
   <a href="#errori-parlanti">40 · Messaggi e codice errore</a>
   <a href="#errori-vista">41 · Errori: pagine del cliente e registro</a>
   <a href="#etichette">45 · Etichette e codici a barre</a>
+  <a href="#preventivi-iva">46 · Preventivi: IVA inclusa o esclusa e permuta</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -1368,6 +1369,28 @@
   <ul>
     <li><b>Cassa</b> può stampare le etichette e leggere i codici, ma non cambia template, logo e codici in blocco (solo amministratore) e non vede i costi.</li>
     <li>Su Telegram arrivano: template creato, modificato o eliminato, logo cambiato, codici assegnati, etichette preparate (queste ultime senza suono). Tutto resta nel Registro (Gestione → Registro). Template e logo sono nel backup.</li>
+  </ul>
+</section>
+<section id="preventivi-iva">
+  <h2><span class="n">46</span>Preventivi: IVA inclusa o esclusa e permuta</h2>
+  <p>In ogni preventivo scegli tu come scrivi i prezzi: <b>IVA inclusa</b> (come sempre) oppure <b>IVA esclusa</b>. Con IVA esclusa scrivi l’imponibile e <b>l’IVA si somma nel totale</b>. Il cliente vede sempre il <b>totale da pagare</b> e, se il prezzo è IVA esclusa, anche imponibile e IVA. Incassi, acconti e saldi lavorano come prima, sempre sul totale IVA compresa.</p>
+  <h3>Dove si sceglie</h3>
+  <ul>
+    <li><b>Preventivo autonomo</b> (menu Preventivi): menu <i>I prezzi che scrivo sono</i> (IVA inclusa / IVA esclusa) e <i>Aliquota IVA %</i> (22 se non cambi nulla). Sotto le voci vedi subito <i>Imponibile + IVA = Totale</i>. Lo sconto si toglie prima dell’IVA. Le condizioni stampate cambiano da sole (“IVA inclusa” / “IVA esclusa”), a meno che tu le abbia scritte a mano.</li>
+    <li><b>Riparazione</b>: accanto a <i>Preventivo €</i> (nuova riparazione e scheda) c’è <i>Il prezzo è</i>. Vale anche per ogni <i>soluzione</i> fra cui il cliente sceglie: ognuna ha il suo menu. Riscrivere lo stesso importo con lo stesso menu non chiede una nuova approvazione.</li>
+    <li>I preventivi già fatti restano <b>IVA inclusa</b>: non cambia nulla.</li>
+  </ul>
+  <h3>Permuta</h3>
+  <ul>
+    <li>Nel preventivo autonomo, sezione <i>Permuta</i>: scrivi <b>cosa ritiri</b> (es. iPhone 12 128 GB) e il <b>valore</b>. Il valore si toglie dal totale già comprensivo di IVA: <b>Da pagare = totale − permuta</b>.</li>
+    <li>La descrizione è obbligatoria e il valore non può superare il totale. Compare nel link del cliente, nella stampa e nel testo firmato.</li>
+    <li>Se lo trasformi in <b>vendita</b> si incassa solo il “da pagare” e la permuta resta scritta nelle note della vendita; in <b>riparazione</b> il preventivo è il “da pagare”.</li>
+  </ul>
+  <h3>Telegram e firma</h3>
+  <ul>
+    <li>Gli avvisi dicono quando un preventivo è IVA esclusa (con imponibile e aliquota) e quando c’è una permuta (valore e da pagare).</li>
+    <li>Il testo che il cliente firma riporta totale, imponibile, IVA e permuta, così resta tutto scritto.</li>
+    <li>Fatture e scontrini non cambiano: lavorano come prima sul totale.</li>
   </ul>
 </section>
 <!-- agente D: fine sezioni -->

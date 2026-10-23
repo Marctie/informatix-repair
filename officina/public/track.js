@@ -88,11 +88,11 @@ function decisionCard(d) {
     if (f.options.length) {
       return `<div class="card ask"><h2>Scegli come procedere</h2>
         <p style="margin:0 0 10px">Per la riparazione ci sono più soluzioni: scegli quella che preferisci, poi confermi e firmi.</p>
-        <div class="stack">${f.options.map((o, i) => `<label class="opt"><input type="radio" name="qopt" value="${o.id}" ${i === 0 ? 'checked' : ''}><span><b>${esc(o.label)} · ${eur(o.amount)}</b>${o.description ? esc(o.description) : ''}</span></label>`).join('')}</div>
+        <div class="stack">${f.options.map((o, i) => `<label class="opt"><input type="radio" name="qopt" value="${o.id}" ${i === 0 ? 'checked' : ''}><span><b>${esc(o.label)} · ${eur(o.amount)}</b>${o.mode === 'net' ? `<small>Imponibile ${eur(o.net)} + IVA ${o.vat_rate}% ${eur(o.vat)} = ${eur(o.amount)} IVA inclusa</small>` : ''}${o.description ? esc(o.description) : ''}</span></label>`).join('')}</div>
         <div class="btns"><button class="yes" data-act="option">Scelgo questa soluzione</button><button class="no" data-act="decline">No, grazie</button></div></div>`;
     }
     return `<div class="card ask"><h2>Serve la tua conferma</h2>
-        <p style="margin:0">Il preventivo per la riparazione è di <b>${eur(d.quote)}</b>. Vuoi procedere?</p>
+        <p style="margin:0">Il preventivo per la riparazione è di <b>${eur(d.quote)}</b>${d.quote_price?.mode === 'net' ? ` IVA inclusa (imponibile ${eur(d.quote_price.net)} + IVA ${d.quote_price.rate}% ${eur(d.quote_price.vat)})` : ''}. Vuoi procedere?</p>
         <div class="btns"><button class="yes" data-act="accept">Sì, procedi</button><button class="no" data-act="decline">No, grazie</button></div></div>`;
   }
   const m = d.my_decision;
@@ -181,8 +181,8 @@ function askIntake(d) {
 function askAccept(d, optionId) {
   const f = d.quote_flow;
   const opt = optionId ? f.options.find((o) => String(o.id) === String(optionId)) : null;
-  const amount = opt ? opt.amount : d.quote;
-  const text = f.accept.text.replace('{importo}', eur(amount)) + (opt ? `\n\nSoluzione scelta: ${opt.label}.` : '');
+  const amountText = opt ? opt.amount_text : f.quote_text;
+  const text = f.accept.text.replace('{importo}', amountText) + (opt ? `\n\nSoluzione scelta: ${opt.label}.` : '');
   openSheet(`<h3>${esc(f.accept.title)}</h3>${legalBox(text)}
     <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back">Torna indietro</button><button class="yes" id="sh-next">Conferma</button></div>`);
   document.getElementById('sh-back').onclick = closeSheet;

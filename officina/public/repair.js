@@ -5,7 +5,7 @@ import { createSettlement } from './buoni.js';
 import { debtorNotice, mountRepairLedger } from './dareavere.js'; // Agente C: avviso cattivo pagatore
 import { sendQuoteDialog } from './preventivo-rip.js'; // agente D
 import { isScanEnter, imeiCheck, $, $$, esc, eur, fdate, fdt, api, toast, safe, debounce, openModal, confirmDelete, META, statusBadge, progressBar, waLink, waMessage, today, addDays, trackUrl, canSeeCosts, busy, statusPrereq } from './util.js';
-import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
+import { vatBlock, bindVat, ensureVatDefault, priceModeSelect, bindPriceNote } from './iva.js';
 import { retroField, retroVal, entryDateField, entryDateInit, entryDateVal, keepRetro, appesoField, appesoVal } from './retro.js';
 import { showBlackAlert, watchBlack } from './blacks.js';
 
@@ -85,7 +85,8 @@ export function openRepairForm(onDone, preset = {}) {
       <section class="sec">
         <h3 class="sec-t">Preventivo e tempi</h3>
         <div class="fgrid c4 m2">
-          <div class="field"><label class="l" for="rf-quote">Preventivo €</label><input id="rf-quote" inputmode="decimal" placeholder="da definire" /></div>
+          <div class="field"><label class="l" for="rf-quote">Preventivo €</label><input id="rf-quote" inputmode="decimal" placeholder="da definire" /><span class="hint" id="rf-qsum" aria-live="polite"></span></div>
+          <div class="field"><label class="l" for="rf-qmode">Il prezzo è</label>${priceModeSelect('rf-qmode')}</div>
           <div class="field"><label class="l" for="rf-deposit">Acconto €</label><input id="rf-deposit" inputmode="decimal" placeholder="0" /></div>
           <div class="field"><label class="l" for="rf-method">Pagato con</label><select id="rf-method"><option>contanti</option><option>carta</option><option>bonifico</option></select></div>
           <div class="field"><label class="l">&nbsp;</label><label class="check box"><input type="checkbox" id="rf-agreed" /> Già concordato</label></div>
@@ -105,6 +106,7 @@ export function openRepairForm(onDone, preset = {}) {
     { title: 'Nuova riparazione', wide: true, footer: `<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-outline btn-lg" id="rf-save">Salva</button><button class="btn btn-primary btn-lg" id="rf-save-print">🖨️ Salva e stampa</button>` }
   );
   const root = m.el;
+  bindPriceNote(root, '#rf-quote', '#rf-qmode', '#rf-qsum', () => META.settings?.vat_rate ?? 22);
   entryDateInit(root, 'rf-retro');
   let customerId = null;
   // marca e modello: dalla terza lettera i suggerimenti del catalogo; scegliendo si imposta anche il tipo di dispositivo
@@ -231,6 +233,7 @@ export function openRepairForm(onDone, preset = {}) {
       condition_notes: [...cond, note].filter(Boolean).join(', '),
       passcode: $('#rf-pass', root).value,
       quote: $('#rf-quote', root).value,
+      quote_mode: $('#rf-qmode', root).value,
       quote_agreed: $('#rf-agreed', root).checked,
       deposit: $('#rf-deposit', root).value,
       deposit_method: $('#rf-method', root).value,
@@ -388,9 +391,11 @@ export async function openRepairDetail(id, onChange) {
           <section class="sec">
             <h3 class="sec-t">Preventivo e pagamenti</h3>
             <div class="fgrid c2 m2">
-              <div class="field"><label class="l" for="d-quote">Preventivo €</label><input id="d-quote" inputmode="decimal" value="${r.quote ?? ''}" ${done ? 'disabled' : ''} /></div>
+              <div class="field"><label class="l" for="d-quote">Preventivo €</label><input id="d-quote" inputmode="decimal" value="${r.quote_vat_mode === 'net' && r.quote_net != null ? r.quote_net : r.quote ?? ''}" ${done ? 'disabled' : ''} /></div>
+              <div class="field"><label class="l" for="d-qmode">Il prezzo è</label>${priceModeSelect('d-qmode', r.quote_vat_mode)}</div>
               <div class="field"><label class="l" for="d-eta">Consegna stimata</label><input id="d-eta" type="date" value="${r.eta_date || ''}" ${done ? 'disabled' : ''} /></div>
             </div>
+            <p class="hint" id="d-qsum" aria-live="polite"></p>
             <div class="total-box">
               <span>Versato <b>${eur(r.paid)}</b></span>
               <span>${done ? 'Totale' : 'Da saldare'} <b style="font-size:1.1rem">${eur(done ? total : due)}</b></span>
@@ -409,9 +414,11 @@ export async function openRepairDetail(id, onChange) {
           ${!done || r.quote_options.length ? `<section class="sec">
             <h3 class="sec-t">Soluzioni fra cui il cliente sceglie</h3>
             <p class="sec-sub">Facoltativo: se ci sono più strade (es. display compatibile o originale) il cliente le vede dal suo link, ne sceglie una e firma.</p>
-            <div class="plist">${r.quote_options.map((o) => `<div><span>${esc(o.label)}${o.description ? ` <span class="hint">· ${esc(o.description)}</span>` : ''}${r.quote_option_id === o.id ? ' <span class="badge bg-emerald-100 text-emerald-700">scelta</span>' : ''}</span><span>${eur(o.amount)} ${!done ? `<button class="xbtn" data-rmopt="${o.id}" title="Togli" aria-label="Togli ${esc(o.label)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessuna soluzione: il cliente vede solo il preventivo.</p>'}</div>
+            <div class="plist">${r.quote_options.map((o) => `<div><span>${esc(o.label)}${o.description ? ` <span class="hint">· ${esc(o.description)}</span>` : ''}${r.quote_option_id === o.id ? ' <span class="badge bg-emerald-100 text-emerald-700">scelta</span>' : ''}</span><span>${eur(o.amount)}${o.mode === 'net' ? ` <span class="hint">(imponibile ${eur(o.net)} + IVA ${o.vat_rate}%)</span>` : ''} ${!done ? `<button class="xbtn" data-rmopt="${o.id}" title="Togli" aria-label="Togli ${esc(o.label)}">✕</button>` : ''}</span></div>`).join('') || '<p class="hint" style="padding:.3rem 0">Nessuna soluzione: il cliente vede solo il preventivo.</p>'}</div>
             ${!done ? `<div class="fgrid c2"><div class="field"><label class="l" for="qo-label">Soluzione</label><input id="qo-label" placeholder="es. Display originale, garanzia 12 mesi" /></div>
-              <div class="field"><label class="l" for="qo-amount">Importo €</label><input id="qo-amount" inputmode="decimal" /></div></div>
+              <div class="field"><label class="l" for="qo-amount">Importo €</label><input id="qo-amount" inputmode="decimal" /></div>
+              <div class="field"><label class="l" for="qo-mode">Il prezzo è</label>${priceModeSelect('qo-mode', r.quote_vat_mode)}</div></div>
+              <p class="hint" id="qo-sum" aria-live="polite"></p>
               <div class="row tight"><button class="btn btn-outline btn-sm" data-act="addopt">＋ Aggiungi soluzione</button></div>` : ''}
           </section>` : ''}
 
@@ -463,6 +470,9 @@ export async function openRepairDetail(id, onChange) {
 
     restoreRetro();
     mountRepairLedger($('#d-ledger', body), r);
+    const vatRate = () => r.quote_vat_rate ?? META.settings?.vat_rate ?? 22;
+    if ($('#d-quote', body)) bindPriceNote(body, '#d-quote', '#d-qmode', '#d-qsum', vatRate);
+    if ($('#qo-amount', body)) bindPriceNote(body, '#qo-amount', '#qo-mode', '#qo-sum', vatRate);
     bindChecklistGrids(body);
     // riparazione esterna e muletto collegati a questa scheda (lotto B)
     const extras = $('#d-extras', body);
@@ -528,7 +538,7 @@ export async function openRepairDetail(id, onChange) {
       case 'manualpart': return manualPartDialog(id, () => { reloadList(); render(); });
       case 'advance': if (blocked(cur?.next_status)) return; return act(() => api('POST', `/api/repairs/${id}/advance`), 'Stato aggiornato');
       case 'deliver': return deliverDialog(id, () => { reloadList(); render(); });
-      case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
+      case 'savequote': return act(() => api('PATCH', `/api/repairs/${id}`, { quote: $('#d-quote', body).value, quote_mode: $('#d-qmode', body).value, eta_date: $('#d-eta', body).value }), 'Salvato');
       case 'sendquote': return sendQuoteDialog(id, () => { reloadList(); render(); });
       case 'askquote': return act(() => api('POST', `/api/repairs/${id}/status`, { status: 'quote_pending' }), 'Il cliente può ora approvare dal link');
       case 'depsplit': { const r2 = $('#d-dep2', body); r2.style.display = r2.style.display === 'none' ? '' : 'none'; return; }
@@ -541,7 +551,7 @@ export async function openRepairDetail(id, onChange) {
       case 'urgent': return act(() => api('PATCH', `/api/repairs/${id}`, { urgent: !b.classList.contains('on') }), 'Priorità aggiornata');
       case 'savecnote': return act(() => api('PATCH', `/api/repairs/${id}`, { customer_note: $('#d-cnote', body).value }), 'Messaggio aggiornato');
       case 'note': { const t = $('#d-note', body).value; if (!t.trim()) return; return act(() => api('POST', `/api/repairs/${id}/note`, { note: t, public: $('#d-notepub', body).checked }), 'Nota aggiunta'); }
-      case 'addopt': return act(() => api('POST', `/api/repairs/${id}/quote-options`, { label: $('#qo-label', body).value, amount: $('#qo-amount', body).value }), 'Soluzione aggiunta');
+      case 'addopt': return act(() => api('POST', `/api/repairs/${id}/quote-options`, { label: $('#qo-label', body).value, amount: $('#qo-amount', body).value, price_mode: $('#qo-mode', body).value }), 'Soluzione aggiunta');
       case 'signdisposal': return signDisposal(id, () => { reloadList(); render(); });
       case 'restartfate': return act(() => api('POST', `/api/repairs/${id}/fate`, { fate: 'giacenza', restart: true }), 'Conteggio ripartito da oggi');
       case 'waStorage': { const rep = await api('GET', `/api/repairs/${id}`); const l = waLink(rep.customer_phone, waMessage('storage', rep)); if (l) window.open(l, '_blank', 'noopener'); return; }

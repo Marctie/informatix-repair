@@ -38,6 +38,15 @@ addColumn('quotes', 'sent_at', 'TEXT');
 for (const c of ['legal_address', 'pickup_address', 'vat_number', 'payment_terms', 'min_order', 'delivery_days', 'agents']) addColumn('suppliers', c, 'TEXT');
 addColumn('quotes', 'sent_via', 'TEXT');
 addColumn('products', 'barcode', 'TEXT');
+addColumn('quotes', 'vat_mode', "TEXT NOT NULL DEFAULT 'gross'");
+addColumn('quotes', 'vat_rate', 'REAL NOT NULL DEFAULT 22');
+addColumn('quotes', 'tradein_desc', 'TEXT');
+addColumn('quotes', 'tradein_value', 'REAL NOT NULL DEFAULT 0');
+addColumn('repairs', 'quote_vat_mode', "TEXT NOT NULL DEFAULT 'gross'");
+addColumn('repairs', 'quote_vat_rate', 'REAL NOT NULL DEFAULT 22');
+addColumn('repairs', 'quote_net', 'REAL');
+addColumn('quote_options', 'amount_net', 'REAL');
+addColumn('quote_options', 'vat_rate', 'REAL');
 raw.exec('CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)'); // dopo addColumn: su un database vecchio la colonna prima non c'e'
 
 let depth = 0;
