@@ -160,5 +160,5 @@ Agenti: E backend (errori tipizzati con `code`/`hint`, bug), F frontend (prevenz
 1. Marco, pannello Cloudflare: WAF managed rules + Bot Fight Mode; regola WAF che blocca `/.env*`, `/.git*`, `/wp-*`, `/xmlrpc.php`, `*.php`, `/.aws*`; controllare la politica di Cloudflare Access del gestionale.
 2. Claude: verificare con `curl -I` gli header online dopo il deploy; valutare CSP (attenzione alla mappa Google in contatti); header di sicurezza anche sul Worker del gestionale.
 
-## URGENTE (2026-10-23): deploy Worker per correggere i link cliente
+## RISOLTO (2026-10-23, deploy 201ff162): link cliente bloccati in caricamento
 Link `/t/` e `/p/` bloccati in caricamento (manca `/cliente-errori.js` nell'elenco dell'host pubblico). Correzione fatta e testata in `officina/public-assets.mjs`; manca il deploy (`npx wrangler deploy --config officina/wrangler.jsonc`). Poi verificare: `curl -I https://riparazioni.informatixrepair.com/cliente-errori.js` deve dare 200.
