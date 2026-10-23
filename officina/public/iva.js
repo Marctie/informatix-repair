@@ -41,3 +41,24 @@ export function bindVat(root, p, priceSel) {
   upd();
   return () => ({ price_mode: $(`#${p}-vmode`, root).value, vat_rate: $(`#${p}-vrate`, root).value.replace(',', '.'), vat_apply: $(`#${p}-vapply`, root).checked });
 }
+
+// ---------- Preventivi: prezzo scritto IVA inclusa o esclusa ----------
+/** Menu "il prezzo e'": con IVA esclusa l'IVA si somma al totale (il server salva sempre il totale IVA compresa). */
+export const priceModeSelect = (id, mode = 'gross') => `<select id="${id}" aria-label="Il prezzo scritto è"><option value="gross" ${mode === 'gross' ? 'selected' : ''}>IVA inclusa</option><option value="net" ${mode === 'net' ? 'selected' : ''}>IVA esclusa</option></select>`;
+
+/** Riga di riepilogo: vuota se il prezzo e' IVA inclusa o non scritto. Stessa formula del server (officina/iva.mjs, priceFrom). */
+export function priceNote(amount, mode, rate) {
+  const a = Number(String(amount ?? '').replace(',', '.'));
+  if (mode !== 'net' || !String(amount ?? '').trim() || !Number.isFinite(a) || a < 0) return '';
+  const r = Number(rate) || 0;
+  const gross = Math.round(a * (1 + r / 100) * 100) / 100;
+  return `Imponibile ${eur(a)} + IVA ${r}% ${eur(gross - a)} = ${eur(gross)} IVA inclusa`;
+}
+
+/** Collega campo importo + menu IVA a una riga di riepilogo. */
+export function bindPriceNote(root, amountSel, modeSel, noteSel, rate) {
+  const upd = () => { const n = $(noteSel, root); if (n) n.textContent = priceNote($(amountSel, root).value, $(modeSel, root).value, typeof rate === 'function' ? rate() : rate); };
+  for (const sel of [amountSel, modeSel]) $(sel, root)?.addEventListener('input', upd);
+  upd();
+  return upd;
+}

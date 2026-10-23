@@ -27,10 +27,14 @@ export async function validityDays(requested) {
 /** Voci del preventivo ricavate dalla riparazione: ricambi con prezzo + manodopera (importo del preventivo meno i ricambi), oppure una voce unica. */
 export function itemsFromRepair(r) {
   const lines = [];
+  // preventivo scritto IVA esclusa: le voci si mostrano in imponibile (ricambi scorporati, manodopera = il resto) e il totale torna identico
+  const net = r.quote_vat_mode === 'net' && r.quote_net != null;
+  const k = 1 + (Number(r.quote_vat_rate ?? 22) / 100);
+  const conv = (x) => (net ? Math.round((x / k) * 100) / 100 : x);
   const parts = (r.parts || []).filter((p) => p.unit_price > 0);
-  for (const p of parts) lines.push({ description: p.name, qty: p.qty, unit_price: p.unit_price });
-  const partsTotal = parts.reduce((s, p) => s + p.qty * p.unit_price, 0);
-  const quote = r.quote == null ? null : Number(r.quote);
+  for (const p of parts) lines.push({ description: p.name, qty: p.qty, unit_price: conv(p.unit_price) });
+  const partsTotal = parts.reduce((s, p) => s + p.qty * conv(p.unit_price), 0);
+  const quote = net ? Number(r.quote_net) : r.quote == null ? null : Number(r.quote);
   if (quote != null && quote > 0) {
     const rest = money(quote - partsTotal);
     if (!lines.length) lines.push({ description: `Riparazione ${r.brand_model}${r.problem ? `: ${r.problem}` : ''}`.slice(0, 200), qty: 1, unit_price: money(quote) });
@@ -77,7 +81,8 @@ export async function sendRepairQuote(repairId, b, base) {
   if (!id) {
     const items = wanted || itemsFromRepair(repair);
     if (!items.length) throw new HttpError(400, `Riparazione ${repair.code}: non c’è nessuna voce da far vedere al cliente (manca l’importo o i ricambi con prezzo).`, { code: 'PREVENTIVO_VUOTO', hint: 'Scrivi l’importo del preventivo nella scheda (o aggiungi ricambi con prezzo) e riprova.' });
-    const q = await createQuote({ customer_id: repair.customer_id, valid_until, items, notes: str(b.notes) || `Riparazione ${repair.code} · ${repair.brand_model}` });
+    const net = repair.quote_vat_mode === 'net' && repair.quote_net != null;
+    const q = await createQuote({ customer_id: repair.customer_id, valid_until, items, vat_mode: net && !wanted ? 'net' : 'gross', vat_rate: repair.quote_vat_rate, notes: str(b.notes) || `Riparazione ${repair.code} · ${repair.brand_model}` });
     id = q.id;
     await db.prepare('UPDATE quotes SET repair_id = ? WHERE id = ?').run(repair.id, id);
   } else {

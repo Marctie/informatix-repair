@@ -39,7 +39,9 @@ function render(d) {
   app.innerHTML = `<div class="card"><h1>Preventivo ${esc(d.code)}</h1><div class="status">${esc(d.who)}</div>${badge}${valid}
       <table class="items" style="margin-top:12px"><tbody>${d.items.map((i) => `<tr><td>${i.qty > 1 ? `${i.qty} × ` : ''}${esc(i.description)}</td><td>${eur(i.total)}</td></tr>`).join('')}</tbody></table>
       ${d.discount ? `<div class="tot"><span>Sconto</span><span>-${eur(d.discount)}</span></div>` : ''}
-      <div class="tot"><span>Totale</span><b>${eur(d.total)}</b></div>
+      ${d.vat_mode === 'net' ? `<div class="tot"><span>Imponibile</span><span>${eur(d.net)}</span></div><div class="tot"><span>IVA ${d.vat_rate}%</span><span>${eur(d.vat)}</span></div>` : ''}
+      <div class="tot"><span>Totale${d.vat_mode === 'net' ? ' IVA inclusa' : ''}</span><b>${eur(d.total)}</b></div>
+      ${d.tradein_value > 0 ? `<div class="tot"><span>Permuta: ${esc(d.tradein_desc)}</span><span>-${eur(d.tradein_value)}</span></div><div class="tot"><span>Da pagare</span><b>${eur(d.due)}</b></div>` : ''}
       ${d.notes ? `<p class="hint" style="margin-top:10px"><b>Note:</b> ${esc(d.notes)}</p>` : ''}</div>
     ${ask}
     <div class="card"><h2>Condizioni</h2><p class="hint">${esc(d.terms)}</p></div>`;
@@ -61,7 +63,9 @@ function startPad(ready) {
 
 function ask(action) {
   const yes = action === 'accept';
-  const text = yes ? `Accetto il preventivo ${DATA.code} di ${eur(DATA.total)}, valido fino al ${fdate(DATA.valid_until)}, alle condizioni indicate.` : `Non accetto il preventivo ${DATA.code} di ${eur(DATA.total)}.`;
+  const tot0 = DATA.vat_mode === 'net' ? `${eur(DATA.total)} (imponibile ${eur(DATA.net)} + IVA ${DATA.vat_rate}% ${eur(DATA.vat)})` : eur(DATA.total);
+  const tot = DATA.tradein_value > 0 ? `${tot0}, con permuta di ${DATA.tradein_desc} valutata ${eur(DATA.tradein_value)}: da pagare ${eur(DATA.due)}` : tot0;
+  const text = yes ? `Accetto il preventivo ${DATA.code} di ${tot}, valido fino al ${fdate(DATA.valid_until)}, alle condizioni indicate.` : `Non accetto il preventivo ${DATA.code} di ${tot}.`;
   openSheet(`<h3>${yes ? 'Conferma e firma' : 'Rifiuta il preventivo'}</h3><div class="legal"><div>${esc(text)}</div>${yes ? `<small>${esc(DATA.terms)}</small>` : ''}</div>${yes ? '' : '<div><label class="lbl" for="sg-why">Vuoi dirci il motivo? (facoltativo)</label><input class="inp" id="sg-why" maxlength="300" placeholder="es. prezzo troppo alto, ho trovato altrove…"></div>'}${padHtml(DATA.who)}
     <div id="sh-err"></div><div class="btns"><button class="no" id="sh-back">Annulla</button><button class="yes" id="sh-go" disabled>${yes ? 'Firma e accetta' : 'Firma e rifiuta'}</button></div>`);
   const go = document.getElementById('sh-go');

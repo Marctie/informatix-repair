@@ -426,3 +426,12 @@ test('isQuiet: etichette e codici assegnati senza suono, template normali con su
   assert.equal(isQuiet('PUT', '/api/labels/logo', 200), true);
   assert.equal(isQuiet('POST', '/api/labels/templates', 200), false);
 });
+
+test('notifiche: preventivo IVA esclusa e permuta dichiarati nel messaggio', async () => {
+  const q = await call('POST', '/api/quotes', { customer_name: 'Rita Gialli', customer_phone: '3331234567', vat_mode: 'net', tradein_desc: 'iPhone 12', tradein_value: 100, items: [{ description: 'iPhone 15', qty: 1, unit_price: 800 }] });
+  assert.match(text(q), /Nuovo preventivo.*Totale.*IVA esclusa: imponibile.*IVA 22%.*permuta iPhone 12.*da pagare/s);
+  const r = await call('POST', '/api/repairs', { customer: { name: 'Teo Verdi', phone: '3337654321' }, brand_model: 'Acer', problem: 'lento', quote: 100, quote_mode: 'net' });
+  assert.match(text(r), /Preventivo.*IVA esclusa: imponibile/s);
+  const o = await call('POST', `/api/repairs/${r.data.id}/quote-options`, { label: 'SSD', amount: 80, price_mode: 'net' });
+  assert.match(text(o), /SSD.*\(IVA esclusa\)/s);
+});

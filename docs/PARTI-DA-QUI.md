@@ -162,3 +162,6 @@ Agenti: E backend (errori tipizzati con `code`/`hint`, bug), F frontend (prevenz
 
 ## RISOLTO (2026-10-23, deploy 201ff162): link cliente bloccati in caricamento
 Link `/t/` e `/p/` bloccati in caricamento (manca `/cliente-errori.js` nell'elenco dell'host pubblico). Correzione fatta e testata in `officina/public-assets.mjs`; manca il deploy (`npx wrangler deploy --config officina/wrangler.jsonc`). Poi verificare: `curl -I https://riparazioni.informatixrepair.com/cliente-errori.js` deve dare 200.
+
+## Fatto il 23/10: preventivi con IVA inclusa/esclusa e permuta
+Online (migrazione D1 0039). Prove di Christian: TEST-DI-CHRISTIAN sez. I (39-44). Possibili sviluppi: IVA esclusa su ricambi/vendite/fatture, permuta sul preventivo della riparazione e in cassa (IVA a margine per l'usato: vedi CONFRONTO-GESTIONALI), aliquota per voce.

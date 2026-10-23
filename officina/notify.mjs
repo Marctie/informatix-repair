@@ -11,6 +11,9 @@ import { recordError } from './registro-errori.mjs';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const SECRET_KEYS = /pass|pin|token|secret|password|cookie/i;
 const eur = (n) => (n == null || n === '' || !Number.isFinite(Number(n)) ? '—' : `${Number(n).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`);
+/** Preventivo scritto IVA esclusa e/o con permuta: lo si dice negli avvisi (l'importo grande resta il totale IVA compresa). */
+const netTag = (net, rate) => ` · IVA esclusa: imponibile ${eur(net)} + IVA ${rate}%`;
+const quoteTag = (q) => `${q.vat_mode === 'net' ? netTag(q.net, q.vat_rate) : ''}${Number(q.tradein_value) > 0 ? ` · permuta ${esc(short(q.tradein_desc, 40))} -${eur(q.tradein_value)} = da pagare ${eur(q.due)}` : ''}`;
 const short = (s, n = 80) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
 const maskPhone = (p) => (p ? String(p).replace(/\s/g, '').replace(/.(?=.{3})/g, '•') : '');
 const join = (...a) => a.filter((x) => x != null && x !== '').join(' · ');
@@ -195,7 +198,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   let x;
   if (m === 'POST' && path === '/api/repairs') {
     if (!isOk) return fail('Nuova riparazione');
-    const money = [r.quote != null ? `Preventivo ${eur(r.quote)}` : 'Preventivo da fare', Number(r.deposit) > 0 ? `acconto ${eur(r.deposit)}${body.deposit_method ? ` (${esc(body.deposit_method)})` : ''}` : ''];
+    const money = [r.quote != null ? `Preventivo ${eur(r.quote)}${r.quote_vat_mode === 'net' && r.quote_net != null ? netTag(r.quote_net, r.quote_vat_rate) : ''}` : 'Preventivo da fare', Number(r.deposit) > 0 ? `acconto ${eur(r.deposit)}${body.deposit_method ? ` (${esc(body.deposit_method)})` : ''}` : ''];
     return `🛠️ <b>Nuova riparazione ${esc(r.code)}</b>${r.urgent ? ' · 🔥 URGENTE' : ''}\n${esc(r.brand_model)} — ${esc(short(r.problem || body.problem, 120))}\nCliente: ${esc(r.customer_name)} ${esc(maskPhone(r.customer_phone))}\n${join(...money)}${r.status === 'approved' ? '\n✅ Preventivo concordato al banco' : ''}${alerts(r.device_alerts)}${blk(r.blacklist_alert)}${foot}`;
   }
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/status$/)) && m === 'POST') return isOk ? `🔄 <b>${esc(r.code)}</b> → ${esc(STATUS[r.status] || r.status)}\n${join(esc(r.brand_model), esc(r.customer_name))}${r.status === 'cancelled' && r.device_fate ? `\n📦 Dispositivo ${esc(FATE[r.device_fate] || r.device_fate)}` : ''}${body.note ? `\nNota: ${esc(short(body.note, 150))}` : ''}${foot}` : fail('Cambio stato');
@@ -223,7 +226,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     if (!isOk) return fail('Modifica riparazione');
     const f = fields(body);
     if (!f) return null; // solo campi riservati (es. PIN): niente da dire
-    return `✏️ <b>Riparazione ${esc(r.code)} modificata</b>\n${join(esc(r.brand_model), esc(r.customer_name))}\nCampi: ${esc(f)}${body.quote != null ? `\nPreventivo: ${eur(body.quote)}` : ''}${body.final_price != null ? `\nPrezzo finale: ${eur(body.final_price)}` : ''}${alerts(r.device_alerts)}${foot}`;
+    return `✏️ <b>Riparazione ${esc(r.code)} modificata</b>\n${join(esc(r.brand_model), esc(r.customer_name))}\nCampi: ${esc(f)}${body.quote != null && body.quote !== '' ? `\nPreventivo: ${eur(body.quote)}${body.quote_mode === 'net' ? ' (IVA esclusa)' : ''}` : ''}${body.final_price != null ? `\nPrezzo finale: ${eur(body.final_price)}` : ''}${alerts(r.device_alerts)}${foot}`;
   }
   if ((x = path.match(/^\/api\/repairs\/(\d+)$/)) && m === 'DELETE') {
     if (!isOk) return fail('Eliminazione riparazione');
@@ -244,13 +247,13 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
       const by = String(body.signer_name || '').trim();
       return `❌ <b>PREVENTIVO RIFIUTATO dal cliente</b> (firmato dal link)\n🧾 ${esc(r.code)} · ${esc(r.who)} · totale ${eur(r.total)}${by ? `\nFirmato da: ${esc(short(by, 60))}` : ''}${why ? `\nMotivo: ${esc(short(why, 200))}` : '\nMotivo: non indicato'}\n📞 Ricontattalo: forse con uno sconto o un'alternativa si recupera.${foot}`;
     }
-    return `${yes ? '✅' : '❌'} <b>Il cliente ha ${yes ? 'ACCETTATO' : 'RIFIUTATO'} il preventivo ${esc(r.code)}</b> (firmato dal link)\n${join(esc(r.who), `totale ${eur(r.total)}`)}${yes ? '\nPuoi convertirlo in riparazione o in vendita.' : ''}${foot}`;
+    return `${yes ? '✅' : '❌'} <b>Il cliente ha ${yes ? 'ACCETTATO' : 'RIFIUTATO'} il preventivo ${esc(r.code)}</b> (firmato dal link)\n${join(esc(r.who), `totale ${eur(r.total)}${quoteTag(r)}`)}${yes ? '\nPuoi convertirlo in riparazione o in vendita.' : ''}${foot}`;
   }
   if ((x = path.match(/^\/api\/track\/([^/]+)\/sign$/)) && m === 'POST') return isOk ? `✍️ <b>Scheda di ingresso FIRMATA dal cliente</b> (da link)\n${esc(r.code || '')}${foot}` : fail('Firma della scheda di ingresso');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/signature$/)) && m === 'POST') return isOk ? `✍️ <b>${body.kind === 'disposal' ? 'Cessione del dispositivo firmata' : 'Scheda di ingresso firmata al banco'}</b>\n${repLine(r, p)}${body.signer_name ? `\nFirma: ${esc(short(body.signer_name, 60))}` : ''}${foot}` : fail('Firma');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/request-signature$/)) && m === 'POST') return isOk ? `📲 <b>Firma a distanza richiesta</b>\n${repLine(r, p)}${foot}` : fail('Richiesta di firma');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/fate$/)) && m === 'POST') return isOk ? `📦 <b>Destino del dispositivo</b>: ${esc(FATE[body.fate] || body.fate)}\n${repLine(r, p)}${body.note ? `\nNota: ${esc(short(body.note, 120))}` : ''}${foot}` : fail('Destino del dispositivo');
-  if ((x = path.match(/^\/api\/repairs\/(\d+)\/quote-options/)) && m !== 'GET') return isOk ? `🧾 <b>Opzione di preventivo ${m === 'DELETE' ? 'tolta' : 'aggiunta'}</b>\n${repLine(r, p)}${m === 'POST' ? `\n${esc(short(body.label, 80))} · ${eur(body.amount)}` : ''}${foot}` : fail('Opzioni di preventivo');
+  if ((x = path.match(/^\/api\/repairs\/(\d+)\/quote-options/)) && m !== 'GET') return isOk ? `🧾 <b>Opzione di preventivo ${m === 'DELETE' ? 'tolta' : 'aggiunta'}</b>\n${repLine(r, p)}${m === 'POST' ? `\n${esc(short(body.label, 80))} · ${eur(body.amount)}${body.price_mode === 'net' ? ' (IVA esclusa)' : ''}` : ''}${foot}` : fail('Opzioni di preventivo');
   if ((x = path.match(/^\/api\/repairs\/(\d+)\/checklist$/)) && m === 'PUT') {
     if (!isOk) return fail('Controllo');
     const items = r.check?.items || [];
@@ -298,12 +301,12 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if (/^\/api\/quotes/.test(path) && m !== 'GET') {
     const q = r.quote || r;
     const head = `${esc(q.code)}${q.who || q.customer_name ? ` · ${esc(q.who || q.customer_name)}` : ''}`;
-    if (path === '/api/quotes' && m === 'POST') return isOk ? `🧾 <b>Nuovo preventivo ${head}</b>\nTotale ${eur(q.total)}${q.discount ? ` (sconto ${eur(q.discount)})` : ''} · valido fino al ${esc(dmy(q.valid_until))}${foot}` : fail('Nuovo preventivo');
+    if (path === '/api/quotes' && m === 'POST') return isOk ? `🧾 <b>Nuovo preventivo ${head}</b>\nTotale ${eur(q.total)}${quoteTag(q)}${q.discount ? ` (sconto ${eur(q.discount)})` : ''} · valido fino al ${esc(dmy(q.valid_until))}${foot}` : fail('Nuovo preventivo');
     if (/\/link$/.test(path)) return isOk ? `🔗 <b>Link online creato</b> per il preventivo ${esc(p.code)}${p.who ? ` · ${esc(p.who)}` : ''}\n(il cliente potrà accettarlo e firmarlo dal telefono)${foot}` : fail('Link del preventivo');
     if (/\/status$/.test(path)) return isOk ? `🧾 <b>Preventivo ${head}</b> → ${esc(cap(q.status))}\nTotale ${eur(q.total)}${foot}` : fail('Stato del preventivo');
     if (/\/convert$/.test(path)) return isOk ? `🔁 <b>Preventivo ${head} convertito</b> in ${q.sale_code ? `vendita ${esc(q.sale_code)} ${body.method ? `(incassata in ${esc(body.method)})` : ''}` : q.repair_code ? `riparazione ${esc(q.repair_code)}` : esc(body.to)}\nTotale ${eur(q.total)}${foot}` : fail('Conversione del preventivo');
     if (m === 'DELETE') return isOk ? `🗑️ <b>Preventivo eliminato</b>: ${esc(p.code || path.split('/').pop())}${foot}` : fail('Eliminazione preventivo');
-    return isOk ? `✏️ <b>Preventivo ${head} modificato</b>\nTotale ${eur(q.total)}${foot}` : fail('Modifica preventivo');
+    return isOk ? `✏️ <b>Preventivo ${head} modificato</b>\nTotale ${eur(q.total)}${quoteTag(q)}${foot}` : fail('Modifica preventivo');
   }
 
   // ---- Promemoria

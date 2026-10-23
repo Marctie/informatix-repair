@@ -27,13 +27,15 @@ export const LEGAL_DEFAULTS = {
 export const fillText = (tpl, vars = {}) => String(tpl ?? '').replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null && vars[k] !== '' ? String(vars[k]) : m));
 
 const eurIt = (n) => Number(n).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+/** Importo come lo vede il cliente: IVA inclusa = solo il totale (come sempre); IVA esclusa = totale con imponibile e IVA. */
+export const priceText = (gross, net, rate, mode) => (gross == null ? '' : mode === 'net' && net != null ? `${eurIt(gross)} IVA inclusa (imponibile ${eurIt(net)} + IVA ${rate ?? 22}% ${eurIt(Math.round((gross - net) * 100) / 100)})` : eurIt(gross));
 const dateIt = (ymd) => (ymd ? new Date(`${ymd}T00:00:00`).toLocaleDateString('it-IT') : '');
 
 /** Variabili dei testi per una riparazione (importo e' un numero: si passa a parte quando cambia con l'opzione scelta). */
-export function quoteVars(s, r, amount = r.quote) {
+export function quoteVars(s, r, amount = r.quote, text = null) {
   return {
     negozio: s.shop_name, garanzia: r.warranty_days, codice: r.code, dispositivo: r.brand_model,
-    importo: amount != null ? eurIt(amount) : '',
+    importo: text ?? (amount != null && amount === r.quote ? priceText(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode) : amount != null ? eurIt(amount) : ''),
     consegna: r.eta_date ? `, con consegna stimata il ${dateIt(r.eta_date)}` : '',
     giorni: storageDays(s), tariffa: storageFee(s),
   };
@@ -43,7 +45,8 @@ export function quoteVars(s, r, amount = r.quote) {
 export function buildQuoteFlow(s, r, options = []) {
   const v = { ...quoteVars(s, r), importo: '{importo}' };
   return {
-    options: options.map((o) => ({ id: o.id, label: o.label, amount: o.amount, description: o.description || '' })),
+    options: options.map((o) => ({ id: o.id, label: o.label, amount: o.amount, description: o.description || '', mode: o.mode || 'gross', net: o.net ?? null, vat: o.vat ?? null, vat_rate: o.vat_rate ?? 22, amount_text: priceText(o.amount, o.amount_net, o.vat_rate, o.mode) })),
+    quote_text: priceText(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode),
     accept: { title: s.quote_accept_title, text: fillText(s.quote_accept_text, v) },
     decline: { title: s.quote_decline_title, text: fillText(s.quote_decline_text, v), pickup: fillText(s.quote_decline_pickup, v), cede: fillText(s.quote_decline_cede, v) },
     sign_text: s.quote_sign_text,
