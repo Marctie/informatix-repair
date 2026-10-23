@@ -151,3 +151,11 @@ Agenti: E backend (errori tipizzati con `code`/`hint`, bug), F frontend (prevenz
 **Cosa resta (non dipende da Claude)**: prove hardware di Christian su etichette e pistola (TEST-DI-CHRISTIAN sez. H, prove 31-38) oltre alle 30 precedenti; fattura XML vera, DDT/PDF d'esempio, regolamento punti; testi legali da far confermare; scelta versione vendibile.
 **Possibili sviluppi (dal confronto con Fix-Book, 19/10)**: lavagna a colonne con stati personalizzabili, messaggi WhatsApp per ogni stato, calendario appuntamenti, export Excel, ruoli con permessi personalizzabili, IVA sul margine per l'usato, assistente AI su Telegram: decidere con Marco.
 **Regole**: invariate (test, commit, push, migrazioni, deploy e documentazione a ogni funzione; un giro E2E alla volta; mai toccare i dati di Christian).
+
+**Confronto e-Share (19/10, sera)**: report in `docs/CONFRONTO-GESTIONALI.md` (con Fix-Book). Spunti da decidere con Marco: IVA a margine + permuta, proposta d'ordine, invio ricevuta/OTP WhatsApp, differenze ordine/arrivo, tecnico assegnato, multi-negozio. Nessuna modifica al codice.
+
+**Confronto Fixh IT (19/10, sera)**: sez. 3 di `docs/CONFRONTO-GESTIONALI.md` (piani e prezzi inclusi). Spunti da decidere con Marco: estensione garanzia/assicurazione, listino pubblico riparazioni, pagamento online acconto/saldo, scarico documenti dal portale, stampa diretta, API e invio SdI (versione vendibile). Nessuna modifica al codice.
+
+## DA FARE - sicurezza (2026-10-23)
+1. Marco, pannello Cloudflare: WAF managed rules + Bot Fight Mode; regola WAF che blocca `/.env*`, `/.git*`, `/wp-*`, `/xmlrpc.php`, `*.php`, `/.aws*`; controllare la politica di Cloudflare Access del gestionale.
+2. Claude: verificare con `curl -I` gli header online dopo il deploy; valutare CSP (attenzione alla mappa Google in contatti); header di sicurezza anche sul Worker del gestionale.

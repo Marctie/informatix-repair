@@ -1011,3 +1011,17 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - **Da provare con l'hardware (Christian)**: stampa vera sulla stampante delle etichette (margini "nessuno", scala 100%), lettura delle etichette con la pistola, cassa con la pistola, eventuale foglio A4. Non verificabile da qui: la resa reale su carta e la lettura reale della pistola.
 - **Trucchi nuovi**: in `notifiche.test.mjs` un hook `after` chiude il DB prima degli ultimi test (gli `await import` a meta' file): i test che usano il DB vanno messi PRIMA della riga con `await import('../notify.mjs')`. In Git Bash `node -e` e `sed` mangiano i backslash delle regex: usare lo strumento Edit. Browser pilotabile per i controlli grafici: `puppeteer-core` in una cartella temporanea puntato a Edge (`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`).
 - **Online**: migrazione D1 0038 applicata e deploy Worker versione 8359f000 (19/10).
+
+## Sessione 2026-10-19 (sera) - Confronto con e-Share
+- Richiesta di Marco: confrontare www.e-share.me col nostro gestionale, fare un report e tenerne memoria come per Fix-Book. Letta la home pubblica (funzioni, flusso a 15 passaggi, E-Race); niente demo/prezzi. Report: `docs/CONFRONTO-GESTIONALI.md`. Nessuna modifica a codice, Telegram o bot Termux (solo documentazione).
+
+## Sessione 2026-10-19 (sera) - Confronto con Fixh IT
+- Richiesta di Marco: stesso confronto per https://fixh.it. Home vuota (app JS): lette /features, /pricing e le FAQ nei dati strutturati. Report aggiunto come sez. 3 di `docs/CONFRONTO-GESTIONALI.md`. Nessuna modifica a codice, Telegram o bot Termux.
+- Generato docs/CONFRONTO-GESTIONALI.pdf (Informatix vs Fix-Book, e-Share, Fixh IT).
+
+## Sessione 2026-10-23 - Log Cloudflare e sicurezza del sito
+- Marco ha inviato il log Cloudflare del 22/10: solo scanner automatici (`.env`, `.git`, `phpinfo`, `wp-login`, `xmlrpc`, chiavi AWS/GCP/Firebase/OpenAI/Anthropic/Bedrock, terraform). Nessun file sensibile servito: tutti 404/403. Il gestionale e' dietro Cloudflare Access (302 senza login), `riparazioni.` risponde 404 ai percorsi non pubblici, nessuna source map pubblica. Le richieste da 79.42.14.224 sono l'uso normale del gestionale (`/api/reminders/tick` ogni minuto).
+- Fatto: `public/_headers` sul sito (branch `main`, commit 34b8b72 dopo rebase): nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, Permissions-Policy, HSTS, COOP. Nessuna CSP (rischio per la mappa Google in contatti).
+- Da fare (Marco, pannello Cloudflare): attivare WAF managed rules e Bot Fight Mode; regola WAF personalizzata che blocca `/.env*`, `/.git*`, `/wp-*`, `/xmlrpc.php`, `*.php`, `/.aws*`; verificare la politica di Cloudflare Access sul gestionale (solo email autorizzate).
+- Da fare (Claude): valutare una Content-Security-Policy dopo averla provata su contatti/mappa; verificare con `curl -I` che gli header siano online; ripassare headers anche per il Worker del gestionale (`officina/`), se non gia' presenti.
+- Nessuna modifica a Telegram o bot Termux.
