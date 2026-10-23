@@ -88,11 +88,11 @@ function decisionCard(d) {
     if (f.options.length) {
       return `<div class="card ask"><h2>Scegli come procedere</h2>
         <p style="margin:0 0 10px">Per la riparazione ci sono più soluzioni: scegli quella che preferisci, poi confermi e firmi.</p>
-        <div class="stack">${f.options.map((o, i) => `<label class="opt"><input type="radio" name="qopt" value="${o.id}" ${i === 0 ? 'checked' : ''}><span><b>${esc(o.label)} · ${eur(o.amount)}</b>${o.mode === 'net' ? `<small>Imponibile ${eur(o.net)} + IVA ${o.vat_rate}% ${eur(o.vat)} = ${eur(o.amount)} IVA inclusa</small>` : ''}${o.description ? esc(o.description) : ''}</span></label>`).join('')}</div>
+        <div class="stack">${f.options.map((o, i) => `<label class="opt"><input type="radio" name="qopt" value="${o.id}" ${i === 0 ? 'checked' : ''}><span><b>${esc(o.label)} · ${eur(o.amount)}</b>${o.discount > 0 ? `<small>Prezzo ${eur(o.list_amount)}, sconto ${o.discount_pct != null ? `${o.discount_pct}% ` : ''}-${eur(o.discount)}</small>` : ''}${o.mode === 'net' ? `<small>Imponibile ${eur(o.net)} + IVA ${o.vat_rate}% ${eur(o.vat)} = ${eur(o.amount)} IVA inclusa</small>` : ''}${o.description ? esc(o.description) : ''}</span></label>`).join('')}</div>
         <div class="btns"><button class="yes" data-act="option">Scelgo questa soluzione</button><button class="no" data-act="decline">No, grazie</button></div></div>`;
     }
     return `<div class="card ask"><h2>Serve la tua conferma</h2>
-        <p style="margin:0">Il preventivo per la riparazione è di <b>${eur(d.quote)}</b>${d.quote_price?.mode === 'net' ? ` IVA inclusa (imponibile ${eur(d.quote_price.net)} + IVA ${d.quote_price.rate}% ${eur(d.quote_price.vat)})` : ''}. Vuoi procedere?</p>
+        <p style="margin:0">Il preventivo per la riparazione è di <b>${eur(d.quote)}</b>${d.quote_price?.discount > 0 ? ` (prezzo ${eur(d.quote_price.list)}, sconto ${d.quote_price.discount_pct != null ? `${d.quote_price.discount_pct}% ` : ''}-${eur(d.quote_price.discount)})` : ''}${d.quote_price?.mode === 'net' ? ` IVA inclusa (imponibile ${eur(d.quote_price.net)} + IVA ${d.quote_price.rate}% ${eur(d.quote_price.vat)})` : ''}. Vuoi procedere?</p>
         <div class="btns"><button class="yes" data-act="accept">Sì, procedi</button><button class="no" data-act="decline">No, grazie</button></div></div>`;
   }
   const m = d.my_decision;

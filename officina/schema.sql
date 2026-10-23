@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS repairs (
   status TEXT NOT NULL DEFAULT 'received', urgent INTEGER NOT NULL DEFAULT 0, color TEXT,
   quote REAL, deposit REAL NOT NULL DEFAULT 0, final_price REAL,
   quote_vat_mode TEXT NOT NULL DEFAULT 'gross', quote_vat_rate REAL NOT NULL DEFAULT 22, quote_net REAL,
+  quote_list REAL, quote_discount REAL NOT NULL DEFAULT 0, quote_discount_pct REAL,   -- sconto sul preventivo (prezzo prima dello sconto, sconto in euro e in %)
   eta_date TEXT, warranty_days INTEGER NOT NULL DEFAULT 90,
   quote_decision TEXT, quote_decided_at TEXT,
   tech_notes TEXT, customer_note TEXT,
@@ -75,7 +76,8 @@ CREATE TABLE IF NOT EXISTS quote_options (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   repair_id INTEGER NOT NULL REFERENCES repairs(id) ON DELETE CASCADE,
   label TEXT NOT NULL, amount REAL NOT NULL, description TEXT, sort INTEGER NOT NULL DEFAULT 0,
-  amount_net REAL, vat_rate REAL
+  amount_net REAL, vat_rate REAL,
+  list_amount REAL, discount REAL NOT NULL DEFAULT 0, discount_pct REAL
 );
 CREATE INDEX IF NOT EXISTS idx_quote_options_repair ON quote_options(repair_id);
 CREATE TABLE IF NOT EXISTS repair_events (
@@ -242,6 +244,7 @@ CREATE TABLE IF NOT EXISTS quotes (
   status TEXT NOT NULL DEFAULT 'bozza',            -- bozza | inviato | accettato | rifiutato | convertito  (scaduto = calcolato dalla data)
   valid_until TEXT NOT NULL, discount REAL NOT NULL DEFAULT 0, notes TEXT, terms TEXT,
   vat_mode TEXT NOT NULL DEFAULT 'gross', vat_rate REAL NOT NULL DEFAULT 22,   -- prezzi scritti IVA inclusa (gross) o esclusa (net)
+  discount_pct REAL,                                                          -- sconto in % (NULL = in euro)
   tradein_desc TEXT, tradein_value REAL NOT NULL DEFAULT 0,                    -- permuta: cosa si ritira e quanto vale (scalato dal totale)
   repair_id INTEGER REFERENCES repairs(id) ON DELETE SET NULL,
   sale_id INTEGER REFERENCES sales(id) ON DELETE SET NULL,

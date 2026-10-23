@@ -435,3 +435,12 @@ test('notifiche: preventivo IVA esclusa e permuta dichiarati nel messaggio', asy
   const o = await call('POST', `/api/repairs/${r.data.id}/quote-options`, { label: 'SSD', amount: 80, price_mode: 'net' });
   assert.match(text(o), /SSD.*\(IVA esclusa\)/s);
 });
+
+test('notifiche: sconto sul preventivo dichiarato nel messaggio', async () => {
+  const r = await call('POST', '/api/repairs', { customer: { name: 'Pia Neri', phone: '3330001122' }, brand_model: 'Lenovo', problem: 'lento', quote: 200, quote_discount_pct: 10 });
+  assert.match(text(r), /Preventivo.*sconto 10%/s);
+  const o = await call('POST', `/api/repairs/${r.data.id}/quote-options`, { label: 'SSD', amount: 100, discount: 15 });
+  assert.match(text(o), /SSD.*sconto/s);
+  const q = await call('POST', '/api/quotes', { customer_name: 'Gigi Blu', customer_phone: '3334445566', discount_pct: 5, items: [{ description: 'Cuffie', qty: 1, unit_price: 100 }] });
+  assert.match(text(q), /sconto 5% = /);
+});

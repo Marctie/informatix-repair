@@ -45,7 +45,7 @@ export function quoteVars(s, r, amount = r.quote, text = null) {
 export function buildQuoteFlow(s, r, options = []) {
   const v = { ...quoteVars(s, r), importo: '{importo}' };
   return {
-    options: options.map((o) => ({ id: o.id, label: o.label, amount: o.amount, description: o.description || '', mode: o.mode || 'gross', net: o.net ?? null, vat: o.vat ?? null, vat_rate: o.vat_rate ?? 22, amount_text: priceText(o.amount, o.amount_net, o.vat_rate, o.mode) })),
+    options: options.map((o) => ({ id: o.id, label: o.label, amount: o.amount, description: o.description || '', mode: o.mode || 'gross', list_amount: o.list_amount ?? null, discount: o.discount || 0, discount_pct: o.discount_pct ?? null, net: o.net ?? null, vat: o.vat ?? null, vat_rate: o.vat_rate ?? 22, amount_text: priceText(o.amount, o.amount_net, o.vat_rate, o.mode) })),
     quote_text: priceText(r.quote, r.quote_net, r.quote_vat_rate, r.quote_vat_mode),
     accept: { title: s.quote_accept_title, text: fillText(s.quote_accept_text, v) },
     decline: { title: s.quote_decline_title, text: fillText(s.quote_decline_text, v), pickup: fillText(s.quote_decline_pickup, v), cede: fillText(s.quote_decline_cede, v) },
