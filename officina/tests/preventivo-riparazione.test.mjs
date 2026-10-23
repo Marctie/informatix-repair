@@ -96,3 +96,23 @@ test('preventivo dalla riparazione: crea e collega, validita\' predefinita o sce
   await a('POST', `/api/repairs/${rep2.id}/status`, { status: 'cancelled' });
   assert.equal((await a('POST', `/api/repairs/${rep2.id}/online-quote`, {})).status, 409);
 });
+
+test('riparazione con soluzioni e senza importo unico: si invia il link di tracciamento, non un preventivo vuoto (caso R-2026-0016)', async () => {
+  const cust = (await a('POST', '/api/customers', { name: 'Luisa Senatore', phone: '3335550009' })).data;
+  const rep = (await a('POST', '/api/repairs', { customer: { id: cust.id }, brand_model: 'HP Pavilion 15', problem: 'lento' })).data;
+  await a('POST', `/api/repairs/${rep.id}/quote-options`, { label: 'SSD 480 + batteria', amount: 220 });
+  await a('POST', `/api/repairs/${rep.id}/quote-options`, { label: 'SSD 1TB + batteria', amount: 300, price_mode: 'net' });
+  const info = (await a('GET', `/api/repairs/${rep.id}/online-quote`)).data;
+  assert.equal(info.mode, 'options');
+  assert.equal(info.options.length, 2);
+  const out = await a('POST', `/api/repairs/${rep.id}/online-quote`, { via: 'whatsapp' });
+  assert.equal(out.status, 200);
+  assert.equal(out.data.mode, 'options');
+  assert.match(out.data.url, new RegExp(`/t/${rep.token}$`));
+  assert.match(out.data.text, /1\) SSD 480 \+ batteria/);
+  assert.match(out.data.text, /2\) SSD 1TB \+ batteria.*IVA inclusa/s);
+  assert.match(out.data.text, new RegExp(rep.token));
+  const after = (await a('GET', `/api/repairs/${rep.id}`)).data;
+  assert.equal(after.status, 'quote_pending'); // il cliente puo' ora scegliere dal link
+  assert.equal((await a('GET', `/api/quotes`)).data.filter((q) => q.repair_id === rep.id).length, 0, 'nessun preventivo online creato');
+});

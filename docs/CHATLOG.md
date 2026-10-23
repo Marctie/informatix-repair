@@ -1042,3 +1042,8 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - **Telegram** (`notify.mjs`): avvisi con "IVA esclusa: imponibile + IVA" e permuta/da pagare. **Bot Termux**: nessuna modifica.
 - **Migrazione D1 0039** (additiva). Test: `preventivi-iva.test.mjs` (8) + 1 in `notifiche.test.mjs`. Manuale sez. 46; `TEST-DI-CHRISTIAN.md` sez. I (prove 39-44).
 - **Non incluso (per ora)**: IVA esclusa/permuta su ricambi, vendite in cassa e fatture; permuta sul preventivo della riparazione; aliquote diverse per voce (una sola aliquota per preventivo).
+
+## 2026-10-23 - Bottone "Invia preventivo" (WhatsApp) che non funzionava
+- **Segnalazione di Christian.** Dal registro errori: 12 volte `PREVENTIVO_VUOTO` (400) su `POST /api/repairs/17/online-quote`, cioe' la scheda R-2026-0016.
+- **Causa**: la scheda ha 4 SOLUZIONI alternative e nessun importo unico (`quote` vuoto). "Invia preventivo" cerca di creare un preventivo online (/p/) dalle voci della scheda, che per le sole soluzioni sono zero: errore "non c'e' nessuna voce da far vedere". Con le soluzioni il cliente sceglie e firma dal link di tracciamento (/t/), che funzionava gia'.
+- **Correzione**: con soluzioni e senza preventivo online (`preventivo-riparazione.mjs`, `optionsInfo`) la finestra "Invia preventivo" manda il link di tracciamento con un messaggio che elenca le soluzioni (e la scheda passa a "Preventivo da approvare" se era in ricevuto/diagnosi); niente validita' in giorni. Test aggiunto in `preventivo-riparazione.test.mjs`. Telegram e bot Termux: nessuna modifica.
