@@ -8,6 +8,7 @@ import { createAdminApp, createPublicApp, dumpAll } from './app.mjs';
 import { accessAuth } from './access.mjs';
 import { sendTelegram } from './notify.mjs';
 import { toResponse } from './errori.mjs';
+import { PUBLIC_ASSETS } from './public-assets.mjs';
 import { notifyDueReminders } from './promemoria.mjs';
 import { notifyMaterialsDue } from './materiali.mjs';
 import { purgeErrors } from './registro-errori.mjs';
@@ -57,7 +58,7 @@ app.use('*', async (c, next) => {
   if (path.startsWith('/api/')) return publicApp.fetch(c.req.raw, c.env, c.executionCtx);
   if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track');
   if (path.startsWith('/p/')) return serveAsset(c.env, c.req.raw, '/preventivo');
-  if (path === '/track.js' || path === '/sigpad.js' || path === '/preventivo.js') return serveAsset(c.env, c.req.raw, path);
+  if (PUBLIC_ASSETS.has(path)) return serveAsset(c.env, c.req.raw, path);
   return c.text('Non trovato', 404);
 });
 

@@ -1025,3 +1025,9 @@ Lavoro nel worktree `agent-aa483f48...` (ramo `worktree-agent-aa483f48a0790b4fc`
 - Da fare (Marco, pannello Cloudflare): attivare WAF managed rules e Bot Fight Mode; regola WAF personalizzata che blocca `/.env*`, `/.git*`, `/wp-*`, `/xmlrpc.php`, `*.php`, `/.aws*`; verificare la politica di Cloudflare Access sul gestionale (solo email autorizzate).
 - Da fare (Claude): valutare una Content-Security-Policy dopo averla provata su contatti/mappa; verificare con `curl -I` che gli header siano online; ripassare headers anche per il Worker del gestionale (`officina/`), se non gia' presenti.
 - Nessuna modifica a Telegram o bot Termux.
+
+## 2026-10-23 - Link cliente (/t/ e /p/) bloccati in "caricamento": causa e correzione
+- **Sintomo**: il link di tracciamento/preventivo mandato da Christian non si apriva per il cliente. L'API (`/api/track/<token>`) rispondeva 200: il problema era la pagina.
+- **Causa**: il 16/10 (agente J, "errori parlanti lato cliente") `track.html` e `preventivo.html` hanno iniziato a caricare `/cliente-errori.js`, ma il dominio pubblico `riparazioni.` serve SOLO un elenco fisso di file (`worker.mjs`) che non lo comprendeva: risposta 404, `window.ClientErr` indefinito, `track.js` si ferma subito e resta il "Caricamento". I test non lo vedevano perche' non passano dal filtro dell'host pubblico. Non e' stato un errore di Christian.
+- **Correzione**: elenco spostato in `officina/public-assets.mjs` (con `/cliente-errori.js`), usato da `worker.mjs`; nuovo test `tests/pagine-pubbliche.test.mjs` che controlla che ogni script delle pagine pubbliche sia nell'elenco e che i file esistano. Test officina 291/291.
+- **Telegram / bot Termux**: nessuna modifica. **Deploy**: DA FARE (`npx wrangler deploy --config officina/wrangler.jsonc`), bloccato dal sistema di permessi: serve il via libera di Marco.
