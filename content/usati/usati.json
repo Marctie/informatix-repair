@@ -194,7 +194,9 @@
           "Original box"
         ]
       ],
-      "category": "smartphone"
+      "category": "smartphone",
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "iphone-15-128-giallo",
