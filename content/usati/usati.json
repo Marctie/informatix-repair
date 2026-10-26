@@ -333,7 +333,9 @@
           "5.8 inches"
         ]
       ],
-      "category": "smartphone"
+      "category": "smartphone",
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "macbook-air-13-2020-i7-8-256",
