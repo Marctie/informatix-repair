@@ -405,7 +405,9 @@
         ]
       ],
       "category": "computer",
-      "contact": true
+      "contact": true,
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "samsung-galaxy-tab-a11-plus-5g",
