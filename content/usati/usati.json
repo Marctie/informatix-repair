@@ -512,7 +512,9 @@
         ]
       ],
       "category": "smartphone",
-      "contact": true
+      "contact": true,
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "airpods-4-cancellazione-rumore",
