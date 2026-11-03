@@ -3,9 +3,18 @@
 // Maggiore/minore cambiano per scelte grosse (nuova area, riscrittura). Aggiungi la nuova voce IN CIMA a NOTES e aggiorna VERSION.
 import { esc, openModal } from './util.js';
 
-export const VERSION = '1.0.3.0';
+export const VERSION = '1.0.4.0';
 
 export const NOTES = [
+  { v: '1.0.4.0', date: '2026-11-03', type: 'funzione', items: [
+    'Assistente: risposte istantanee (senza aspettare il modello) per le richieste ricorrenti: articoli sotto scorta, ordini sotto scorta, com’è andata oggi, riparazioni in ritardo o pronte, preventivi da approvare, controllo dati, articoli fermi. I suggerimenti «Per te adesso» e gli esempi completi partono con un clic.',
+    'Assistente: nuove funzioni. Dettatura a voce (🎤), suggerimenti «Per te adesso» calcolati dai dati (articoli sotto scorta, riparazioni pronte o in ritardo…) e il pannello «Cosa posso fare per te» con esempi cliccabili per ogni funzione, compreso l’inserimento dei dati.',
+    'Messaggi pronti per il cliente (riparazione pronta, ritardo, preventivo) con il pulsante «Apri su WhatsApp».',
+    'Promemoria, nuovo fornitore, nuova spesa, ordini al fornitore (anche in automatico per gli articoli sotto scorta, uno per fornitore) e preventivi scritti a frase.',
+    'Carico da documento del fornitore con costo, storico prezzi e avvisi sugli aumenti (come il carico a mano di Magazzino).',
+    'Controllo dei dati (clienti doppi, articoli senza prezzo, vetrina senza foto) e «Com’è andata oggi?».',
+    'Preferenze: «d’ora in poi arrotonda i prezzi a 9» e l’assistente le rispetta sempre (le toglie l’amministratore dalla pagina). L’assistente usa anche il ricarico abituale per categoria, calcolato dai dati veri, per consigliare i prezzi.',
+  ] },
   { v: '1.0.3.0', date: '2026-11-03', type: 'funzione', items: [
     'Assistente (menu Portale › Assistente): scrivi in italiano normale cosa ti serve — caricare pezzi a magazzino, cambiare lo stato di una riparazione, aggiungere un articolo in vetrina, creare una scheda di riparazione — oppure chiedi consigli e informazioni (scorte basse, riparazioni ferme, che prezzo mettere).',
     'Puoi allegare l’ordine di un fornitore (foto, PDF o CSV): l’assistente prepara i carichi di magazzino e gli articoli nuovi.',

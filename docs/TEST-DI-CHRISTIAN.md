@@ -87,6 +87,14 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 58. [ ] **Ordine fornitore:** allega un PDF/foto/CSV vero e controlla righe, quantita' e costi del riepilogo; i prezzi di vendita li scrivi tu.
 59. [ ] **Richieste che non deve fare:** «elimina l'articolo X» o «incassa la [codice]»: deve rifiutare e dire dove farlo.
 60. [ ] **PC spento:** con il PC dell'LLM spento la richiesta resta *in coda* e parte quando si riaccende (dopo 10 minuti Marco riceve un avviso Telegram).
+61. [ ] **Cosa posso fare per te:** apri il riquadro, clicca un esempio e completalo; guarda anche «Per te adesso».
+62. [ ] **Voce:** premi il microfono e detta una richiesta.
+63. [ ] **Messaggio al cliente:** «scrivi il messaggio per [cliente]: la [codice] e' pronta»: il pulsante apre WhatsApp col testo gia' scritto.
+64. [ ] **Promemoria, spesa, fornitore:** «ricordami di [cosa] domani alle 10», «spesa: [cosa] [importo] euro», «nuovo fornitore [nome]».
+65. [ ] **Ordini sotto scorta:** «prepara gli ordini per gli articoli sotto scorta»: un ordine per fornitore in Ordini.
+66. [ ] **Preventivo a frase:** «preventivo per [cliente] [telefono]: [voce] [prezzo] euro, valido 7 giorni».
+67. [ ] **Carico da fornitore:** allega una bolla/CSV vero: costo, fornitore e storico prezzi in Acquisti.
+68. [ ] **Controllo dati e preferenze:** «fai un controllo dei dati»; «d'ora in poi arrotonda i prezzi di vendita a 9».
 
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).

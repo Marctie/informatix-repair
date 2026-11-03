@@ -20,6 +20,7 @@ const OLLAMA = String(process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replac
 const TEXT_MODEL = process.env.ASSISTANT_MODEL || 'gemma3:12b';
 const VISION_MODEL = process.env.ASSISTANT_VISION_MODEL || 'qwen2.5vl:7b';
 const NUM_CTX = Number(process.env.ASSISTANT_NUM_CTX) || 16384;
+const KEEP_ALIVE = process.env.ASSISTANT_KEEP_ALIVE || '30m'; // il modello resta in memoria tra una richiesta e l'altra (evita 1-2 minuti di caricamento dopo una pausa)
 const POLL_MS = Number(process.env.ASSISTANT_POLL_MS) || 5000; // ogni richiesta al gestionale conta nei limiti gratuiti di Cloudflare: 5 s bastano
 const LLM_TIMEOUT_MS = 8 * 60 * 1000; // il primo messaggio carica il modello in memoria: puo' volerci qualche minuto
 
@@ -62,7 +63,7 @@ async function callOllama(model, job, images) {
   const res = await fetch(`${OLLAMA}/api/chat`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     body: JSON.stringify({
-      model, stream: true, format: job.schema, keep_alive: '10m', options: { temperature: 0.2, num_ctx: NUM_CTX },
+      model, stream: true, format: job.schema, keep_alive: KEEP_ALIVE, options: { temperature: 0.2, num_ctx: NUM_CTX },
       messages: [{ role: 'system', content: job.system }, { role: 'user', content: job.user, ...(images.length ? { images } : {}) }],
     }),
   });
@@ -85,6 +86,14 @@ async function callOllama(model, job, images) {
   if (buf.trim()) { const j = JSON.parse(buf); content += j.message?.content || ''; last = j; }
   if (last.prompt_eval_count) log(`  ${last.prompt_eval_count} token letti, ${last.eval_count || 0} scritti`);
   return { content, ms: Date.now() - t0 };
+}
+
+/** Carica il modello di testo in memoria senza fare domande (la prima richiesta della giornata non aspetta il caricamento). */
+async function warmUp() {
+  try {
+    const r = await fetch(`${OLLAMA}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: TEXT_MODEL, keep_alive: KEEP_ALIVE }), signal: AbortSignal.timeout(5 * 60 * 1000) });
+    if (r.ok) log(`Modello ${TEXT_MODEL} caricato in memoria (resta ${KEEP_ALIVE}).`);
+  } catch { /* se non riesce, si carichera' alla prima richiesta */ }
 }
 
 async function handle(job) {
@@ -114,7 +123,7 @@ for (;;) {
     const models = await ollamaModels();
     const missing = models && [TEXT_MODEL, VISION_MODEL].filter((m) => !models.includes(m));
     const note = models === null ? 'Ollama non risponde: avvialo (le richieste restano in coda).' : missing.length ? `Modelli mancanti in Ollama: ${missing.join(', ')} (ollama pull …).` : '';
-    if (note !== warned) { if (note) log(`⚠ ${note}`); else log('Ollama pronto.'); warned = note; }
+    if (note !== warned) { if (note) log(`⚠ ${note}`); else { log('Ollama pronto.'); if (models?.includes(TEXT_MODEL)) warmUp(); } warned = note; }
     const r = await api('POST', '/api/assistant-agent/claim', { ollama: models !== null, models: models || [] });
     if (r.status === 200) {
       // mentre il modello lavora (anche minuti) si continua a dire al gestionale "sono qui e sto lavorando"
