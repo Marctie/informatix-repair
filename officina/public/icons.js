@@ -48,6 +48,7 @@ const P = {
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1-3-5-3.5-5-1.2C7 8.5 9 8 12 8zm0 0c1-3 5-3.5 5-1.2 0 1.7-2 1.2-5 1.2z"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
   split: '<path d="M12 4v16M5 12h14"/><circle cx="12" cy="12" r="9"/>',
+  sparkles: '<path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/>',
 };
 
 // carattere/emoji -> icona
@@ -58,7 +59,7 @@ const MAP = {
   '✋': 'hand', '📉': 'trend', '💾': 'download', '🔒': 'lock', '✉️': 'mail', '✉': 'mail', '📝': 'note', '🔫': 'barcode',
   '✔': 'check', '✓': 'check', '＋': 'plus', '☰': 'menu', '✕': 'x', '⚠': 'alert', '⚠️': 'alert', '🎉': 'party',
   '👥': 'users', '📊': 'chart', '🧭': 'compass', '📮': 'inbox', '🧾': 'receipt', '🔑': 'key', '📜': 'scroll', '🔔': 'bell',
-  '📱': 'smartphone', '🎟️': 'ticket', '🎟': 'ticket', '🪪': 'idcard', '🔐': 'lock', '🎁': 'gift', '🌐': 'globe', '➗': 'split',
+  '📱': 'smartphone', '🎟️': 'ticket', '🎟': 'ticket', '🪪': 'idcard', '🔐': 'lock', '🎁': 'gift', '🌐': 'globe', '➗': 'split', '✨': 'sparkles',
 };
 const RE = new RegExp(Object.keys(MAP).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
 

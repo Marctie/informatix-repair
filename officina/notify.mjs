@@ -381,6 +381,46 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     if (m === 'DELETE') return `🗑️ <b>Categoria eliminata</b>: ${esc(short(body.name || '', 60))}${foot}`;
   }
 
+  // ---- Assistente (richieste in linguaggio normale). L'esecuzione passa dalle stesse rotte dell'interfaccia: ogni operazione ha gia' il suo avviso;
+  // qui arriva il riepilogo di cosa e' stato chiesto e confermato. I messaggi, gli annullamenti e le letture non fanno rumore.
+  if (path.startsWith('/api/assistant')) {
+    if (m === 'GET') return null;
+    if (/^\/api\/assistant\/requests\/\d+\/confirm$/.test(path)) {
+      if (!isOk) return fail('Assistente');
+      const lines = (r.results || []).map((x) => `${x.ok ? '✅' : '❌'} ${esc(short(x.title, 90))}${x.ok ? '' : ` — ${esc(short(x.message, 160))}`}`).join('\n');
+      return `🤖 <b>Assistente: richiesta #${esc(path.match(/requests\/(\d+)/)[1])} confermata</b> (${r.done || 0} eseguite${r.failed ? `, ${r.failed} non riuscite` : ''})\n«${esc(short(r.text, 200))}»\n${lines}${foot}`;
+    }
+    if (m === 'POST' && path === '/api/assistant/message') return isOk ? null : fail('Assistente');
+    return null;
+  }
+
+  // ---- Segnalazioni e richieste (task aperti da Christian per Marco)
+  if (path.startsWith('/api/tickets') && m !== 'GET') {
+    if (!isOk) return fail('Segnalazione');
+    const code = r.code || p.code || '';
+    const KIND = { errore: '🐞 Errore', miglioria: '🔧 Da migliorare', nuova: '✨ Funzione nuova', domanda: '❓ Domanda' };
+    const PRIO = { bassa: 'bassa', normale: 'normale', alta: 'ALTA', urgente: '🔥 URGENTE' };
+    if (m === 'POST' && path === '/api/tickets') {
+      return `📣 <b>Nuova segnalazione ${esc(code)}</b> · ${KIND[r.kind] || esc(r.kind)} · priorità ${PRIO[r.priority] || esc(r.priority)}
+<b>${esc(short(r.title, 120))}</b>
+${esc(short(r.description, 400))}${r.page ? `
+Sezione: ${esc(short(r.page, 60))}` : ''}${r.path_text ? `
+Percorso: ${esc(short(r.path_text, 200))}` : ''}${r.photo_count ? `
+🖼️ ${esc(r.photo_count)} immagin${r.photo_count === 1 ? 'e' : 'i'} allegat${r.photo_count === 1 ? 'a' : 'e'}` : ''}${foot}`;
+    }
+    if (/\/comments$/.test(path)) return `💬 <b>Commento su ${esc(code)}</b> · ${esc(short(r.title, 100))}
+${esc(short(r.comment || body.body, 500))}${r.reopened ? `
+↩️ Era in attesa di risposta: torna «Nuova»` : ''}${foot}`;
+    if (/\/photo/.test(path)) return null; // le immagini aggiunte dopo non meritano un avviso a parte
+    if (m === 'PUT') {
+      const changed = r.prev_status && r.prev_status !== r.status;
+      return `${changed ? '🔄' : '✏️'} <b>${esc(code)} ${changed ? 'aggiornata' : 'modificata'}</b> · ${esc(short(r.title, 100))}${changed ? `
+Stato: ${esc(r.status_label)}` : ''}${r.note ? `
+${esc(short(r.note, 400))}` : ''}${foot}`;
+    }
+    if (m === 'DELETE') return `🗑️ <b>Segnalazione eliminata</b>: ${esc(r.code || '')} ${esc(short(r.title || '', 100))}${foot}`;
+  }
+
   // ---- Anagrafiche e magazzino
   const CRUD = [[/^\/api\/customers/, '👤', 'Cliente'], [/^\/api\/suppliers/, '🚚', 'Fornitore'], [/^\/api\/products/, '📦', 'Prodotto']];
   for (const [re, ico, label] of CRUD) {
@@ -533,6 +573,22 @@ export function safeTruncate(html, max = 3900) {
   }
   cut += '…';
   return cut + open.reverse().map((t) => `</${t}>`).join('');
+}
+
+/** Cron al minuto: se ci sono richieste all'assistente ferme da oltre 10 minuti perche' il PC con l'LLM e' spento, un solo avviso (poi tace finche' non ne arrivano di nuove). */
+export async function notifyAssistantBacklog(env, fetcher = globalThis.fetch) {
+  const { stuckRequests } = await import('./assistente.mjs'); // import tardivo: evita un giro circolare tra moduli
+  const { st, rows } = await stuckRequests(10);
+  const key = 'backlog_notified';
+  const prev = JSON.parse((await db.prepare('SELECT value FROM assistant_state WHERE key = ?').get(key))?.value || '[]');
+  const ids = rows.map((x) => x.id);
+  if (!ids.length) { if (prev.length) await db.prepare('DELETE FROM assistant_state WHERE key = ?').run(key); return false; }
+  if (ids.every((i) => prev.includes(i))) return false;
+  await db.prepare('INSERT INTO assistant_state (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, JSON.stringify(ids));
+  const list = rows.slice(0, 5).map((x) => `• ${esc(x.user_name || x.user_email)}: «${esc(short(x.text, 80)) || 'allegato'}» (${esc(dmy(x.created_at))})`).join('\n');
+  const when = st.agent_seen_secs == null ? 'mai collegato' : `ultimo segnale ${st.agent_seen_secs >= 3600 ? `${Math.round(st.agent_seen_secs / 3600)} ore` : `${Math.round(st.agent_seen_secs / 60)} min`} fa`;
+  await sendTelegram(env, `⏳ <b>Assistente: ${ids.length} richiest${ids.length === 1 ? 'a' : 'e'} in attesa</b>\nIl PC con l’LLM è spento o il programma non è avviato (${when}). Le richieste partiranno da sole appena lo riaccendi (AVVIA-ASSISTENTE.bat).\n${list}`, fetcher);
+  return true;
 }
 
 /** Invia un messaggio al proprietario. Non lancia mai errori. `silent`: arriva senza suono. */

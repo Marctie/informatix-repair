@@ -5,6 +5,7 @@
 //  - Cassa/Magazzino: GET /api/products/by-code/:code trova l'articolo da barcode, SKU, codice del fornitore o codice interno.
 import { db } from './dbref.mjs';
 import { HttpError } from './logic.mjs';
+import { writeAudit } from './audit.mjs';
 import { internalEan, idFromInternalEan, barcodeBoxSvg } from './barcode.mjs';
 import { LOGO_FULL, LOGO_WORD } from './etichette-logo.mjs';
 
@@ -18,11 +19,13 @@ const NOW = "datetime('now','localtime')";
 /** Misure proposte nell'editor (rotoli per stampanti termiche e un formato per fogli adesivi A4). */
 export const PRESETS = [
   { id: '62x30', label: 'Rotolo 62 × 30 mm (come l’etichetta delle riparazioni)', w: 62, h: 30 },
-  { id: '62x29', label: 'Brother QL 62 × 29 mm', w: 62, h: 29 },
-  { id: '100x62', label: 'Brother QL 100 × 62 mm', w: 100, h: 62 },
-  { id: '90x38', label: 'Brother QL 90 × 38 mm', w: 90, h: 38 },
-  { id: '90x29', label: 'Brother QL 90 × 29 mm', w: 90, h: 29 },
-  { id: '54x17', label: 'Brother QL 54 × 17 mm (piccola)', w: 54, h: 17 },
+  { id: '62x29', label: 'Brother QL-800 / QL-1100 · 62 × 29 mm (DK-11209)', w: 62, h: 29 },
+  { id: '100x62', label: 'Brother QL-800 / QL-1100 · 100 × 62 mm (DK-11202)', w: 100, h: 62 },
+  { id: '90x38', label: 'Brother QL-800 / QL-1100 · 90 × 38 mm (DK-11208)', w: 90, h: 38 },
+  { id: '90x29', label: 'Brother QL-800 / QL-1100 · 90 × 29 mm (DK-11201)', w: 90, h: 29 },
+  { id: '54x17', label: 'Brother QL-800 / QL-1100 · 54 × 17 mm (DK-11204, piccola)', w: 54, h: 17 },
+  { id: '102x51', label: 'Brother QL-1100 · 102 × 51 mm (DK-11240)', w: 102, h: 51 },
+  { id: '152x102', label: 'Brother QL-1100 · 152 × 102 mm (DK-11241)', w: 152, h: 102 },
   { id: '57x32', label: 'DYMO 57 × 32 mm', w: 57, h: 32 },
   { id: '89x28', label: 'DYMO 89 × 28 mm', w: 89, h: 28 },
   { id: '54x25', label: 'DYMO 54 × 25 mm', w: 54, h: 25 },
@@ -220,8 +223,10 @@ export function printPage(t, labels, { logoVer = 0, noprint = false, skip = 0 } 
     body = sheets.map((s) => `<div class="sheet">${s}</div>`).join('');
     pageCss = `@page{size:A4;margin:0}.sheet{width:210mm;height:297mm;padding:${t.sheet.top}mm 0 0 ${t.sheet.left}mm;display:grid;grid-template-columns:repeat(${t.sheet.cols},${t.width}mm);grid-auto-rows:${t.height}mm;gap:${t.sheet.gap_y}mm ${t.sheet.gap_x}mm;align-content:start;justify-content:start;break-after:page;page-break-after:always;overflow:hidden}.sheet:last-child{break-after:auto;page-break-after:auto}`;
   } else {
-    body = htmls.map((x) => x.html).join('');
-    pageCss = `@page{size:${t.width}mm ${t.height}mm;margin:0}.lab{break-after:page;page-break-after:always}.lab:last-child{break-after:auto;page-break-after:auto}`;
+    // Ogni etichetta sta in una pagina di 0,4 mm piu' bassa: i driver Brother arrotondano la pagina (es. 28,9 mm)
+    // e un contenuto di 29 mm esatti produrrebbe una pagina in piu' = un'etichetta bianca dopo ogni stampa.
+    body = htmls.map((x) => `<div class="pg">${x.html}</div>`).join('');
+    pageCss = `@page{size:${t.width}mm ${t.height}mm;margin:0}.pg{width:${t.width}mm;height:${r1(t.height - 0.4)}mm;overflow:hidden;break-inside:avoid;break-after:page;page-break-after:always}.pg:last-child{break-after:auto;page-break-after:auto}`;
   }
   const info = `${labels.length} etichett${labels.length === 1 ? 'a' : 'e'} · ${esc(t.name)} · ${t.width} × ${t.height} mm${t.layout === 'sheet' ? ' su fogli A4' : ''}`;
   return `<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Etichette prodotti</title><style>${LABEL_CSS}${pageCss}
@@ -230,7 +235,7 @@ html,body{background:#fff}body{font-family:Arial,Helvetica,sans-serif}
 .bar button{padding:8px 14px;font-weight:700;cursor:pointer}.bar .w{color:#92400e;flex-basis:100%}
 @media screen{.lab{outline:1px dashed #9ca3af;margin:8px 14px}.sheet{margin:8px auto;outline:1px solid #d1d5db}}
 @media print{.bar{display:none}}
-</style></head><body><div class="bar"><button onclick="window.print()">🖨️ Stampa</button><span>${info}</span><span>Nella finestra di stampa scegli la stampante delle etichette, margini “nessuno” e scala 100%.</span>${warnings.map((w) => `<span class="w">⚠️ ${esc(w)}</span>`).join('')}</div>${body}${noprint ? '' : '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},250)})</script>'}</body></html>`;
+</style></head><body><div class="bar"><button onclick="window.print()">🖨️ Stampa</button><span>${info}</span><span>Nella finestra di stampa scegli la stampante delle etichette, formato carta uguale all’etichetta (Brother QL: ${t.width} × ${t.height} mm), margini “nessuno” e scala 100%.</span>${warnings.map((w) => `<span class="w">⚠️ ${esc(w)}</span>`).join('')}</div>${body}${noprint ? '' : '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},250)})</script>'}</body></html>`;
 }
 
 // ---------- Template: archivio ----------
@@ -464,6 +469,8 @@ export function registerLabelRoutes(app, h, page, adminOnly, { getSettings }) {
       labels = items.filter((x) => byId.has(x.id)).flatMap((x) => Array.from({ length: x.qty }, () => labelData(byId.get(x.id), s.shop_name)));
       if (!labels.length) throw new HttpError(404, 'Gli articoli da stampare non esistono più (o sono archiviati).', { code: 'ARTICOLO_NON_TROVATO', hint: 'Aggiorna il Magazzino e scegli di nuovo.' });
     }
+    // Traccia ogni apertura della pagina di stampa (misura, numero, browser): serve a capire gli errori del driver della stampante.
+    try { await writeAudit({ user: c.get?.('user'), action: 'stampa', type: 'etichetta', label: `${labels.length} etichette · ${t.name} ${t.width}×${t.height} mm`, detail: `${q.noprint === '1' ? 'anteprima' : 'stampa'} · ${String(c.req.header('user-agent') || '').slice(0, 90)}` }); } catch { /* il log non deve bloccare la stampa */ }
     return c.html(printPage(t, labels, { logoVer: await logoVersion(), noprint: q.noprint === '1', skip: Number(q.skip) || 0 }));
   }));
 }

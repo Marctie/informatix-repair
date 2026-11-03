@@ -72,5 +72,21 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 47. [ ] **Soluzioni con sconto:** aggiungi una soluzione con sconto e controllala dal link del cliente.
 48. [ ] **Invio con soluzioni:** su una scheda con sole soluzioni (come R-2026-0016) premi *Invia preventivo al cliente > WhatsApp*: deve aprirsi WhatsApp con le soluzioni e il link.
 
+## J. Segnalazioni e richieste (26/10)
+49. [ ] **Pulsante 📣:** in alto, da una qualsiasi pagina: apri una segnalazione *Qualcosa non funziona* con titolo, descrizione e percorso fatto; la sezione e' gia' quella in cui eri.
+50. [ ] **Immagini:** incolla una schermata con Ctrl+V (o scegline una): compare l'anteprima; premi *Invia a Marco*. Marco riceve l'avviso su Telegram.
+51. [ ] **Funzione nuova:** apri una segnalazione di tipo *Funzione nuova da aggiungere*: le domande cambiano.
+52. [ ] **Commenti:** da Gestione -> Segnalazioni apri la segnalazione e scrivi un commento.
+53. [ ] **Risposta:** quando Marco ti fa una domanda (*In attesa di risposta*) compare nella campanella; rispondendo torna *Nuova*.
+
+## K. Assistente (03/11)
+54. [ ] **Domanda:** Portale -> Assistente: «quali articoli sono sotto scorta?» deve rispondere con l'elenco vero e dare dei suggerimenti.
+55. [ ] **Carico:** «carica 2 [un tuo articolo]»: nel riepilogo compare *Giacenza: prima -> dopo*; controlla in Magazzino il numero PRIMA di confermare, poi conferma e ricontrolla.
+56. [ ] **Annulla:** chiedi un'altra cosa e premi *Annulla*: non deve cambiare niente.
+57. [ ] **Stato riparazione:** «la [codice] e' pronta»: riepilogo, conferma, controlla scheda e Registro.
+58. [ ] **Ordine fornitore:** allega un PDF/foto/CSV vero e controlla righe, quantita' e costi del riepilogo; i prezzi di vendita li scrivi tu.
+59. [ ] **Richieste che non deve fare:** «elimina l'articolo X» o «incassa la [codice]»: deve rifiutare e dire dove farlo.
+60. [ ] **PC spento:** con il PC dell'LLM spento la richiesta resta *in coda* e parte quando si riaccende (dopo 10 minuti Marco riceve un avviso Telegram).
+
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).

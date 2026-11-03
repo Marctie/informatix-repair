@@ -15,6 +15,8 @@ import { purgeErrors } from './registro-errori.mjs';
 import { createPublisher } from './publisher.mjs';
 import { r2Media } from './media.mjs';
 import { storageDigest } from './remote.mjs';
+import { purgeAssistant } from './assistente.mjs';
+import { notifyAssistantBacklog } from './notify.mjs';
 
 // Vetrina Usati: pubblicazione su GitHub se c'e' GITHUB_TOKEN (altrimenti bozza); foto nel bucket R2 con binding MEDIA (se manca: errore chiaro)
 const adminApp = createAdminApp({
@@ -22,7 +24,7 @@ const adminApp = createAdminApp({
   trackBaseFallback: () => globalThis.__PUBLIC_BASE__,
   usati: { publisher: (c) => createPublisher(c.env), media: (c) => r2Media(c.env.MEDIA), siteUrl: (c) => c.env.SITE_URL },
 });
-const publicApp = createPublicApp();
+const publicApp = createPublicApp({ media: (c) => r2Media(c.env.MEDIA) });
 
 const NO_STORE = { 'Cache-Control': 'no-cache' };
 const serveAsset = async (env, request, path) => {
@@ -102,10 +104,12 @@ export default {
     if (event.cron === '* * * * *') {
       try { await notifyDueReminders(env); } catch (e) { console.error('promemoria', e); }
       try { await notifyMaterialsDue(env); } catch (e) { console.error('materiali da ordinare', e); } // una volta al giorno all'orario scelto
+      try { await notifyAssistantBacklog(env); } catch (e) { console.error('assistente in coda', e); } // richieste ferme perche' il PC con l'LLM e' spento
       return;
     }
     try {
       try { await purgeErrors(); } catch (e) { console.error('pulizia registro errori', e); } // retention 90 giorni
+      try { await purgeAssistant(r2Media(env.MEDIA)); } catch (e) { console.error('pulizia cronologia assistente', e); } // retention 30 giorni
       const key = await saveBackup(env);
       // dispositivi non riparati con la giacenza scaduta: un promemoria al giorno finche' non si decide (smaltire o deposito)
       await sendTelegram(env, await storageDigest().catch(() => null));

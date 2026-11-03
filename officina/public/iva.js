@@ -91,3 +91,58 @@ export function bindPriceNote(root, amountSel, modeSel, noteSel, rate, disc = nu
   upd();
   return upd;
 }
+
+// ---------- Prezzo di vendita / costo: campo gemello "senza IVA" ----------
+/** Aggiunge sotto il campo `sel` un campo gemello: si scrive in uno e l'altro si calcola (aliquota dalle Impostazioni).
+ *  dir 'toNet' (prezzo di vendita, scritto IVA inclusa): il gemello e' "senza IVA". dir 'toGross' (costo, salvato senza IVA): il gemello e' "con IVA". */
+export function bindNetTwin(root, sel, label = 'Senza IVA €', dir = 'toNet') {
+  const main = $(sel, root);
+  if (!main) return;
+  const f = main.closest('.field');
+  const id = `${main.id}-net`;
+  const twin = document.createElement('div');
+  twin.className = 'field';
+  twin.innerHTML = `<label class="l" for="${id}">${esc(label)}</label><input id="${id}" inputmode="decimal" placeholder="${dir === 'toGross' ? 'con IVA' : 'senza IVA'}" /><span class="hint" id="${id}-h"></span>`;
+  f.after(twin);
+  const other = $(`#${id}`, root), hint = $(`#${id}-h`, root);
+  const num = (v) => { const n = Number(String(v).replace(',', '.')); return String(v).trim() !== '' && Number.isFinite(n) && n >= 0 ? n : null; };
+  const k = () => 1 + defaultRate / 100;
+  const to = dir === 'toGross' ? (v) => v * k() : (v) => v / k();
+  const back = dir === 'toGross' ? (v) => v / k() : (v) => v * k();
+  const fmt = (n) => (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
+  const show = () => { hint.textContent = `IVA ${defaultRate}%: scrivi uno dei due prezzi, l’altro si calcola.`; };
+  let typing = false; // mentre si scrive nel gemello non si riscrive il gemello stesso
+  const fromMain = () => { if (typing) return; const g = num(main.value); other.value = g == null ? '' : fmt(to(g)); };
+  main.addEventListener('input', fromMain);
+  other.addEventListener('input', () => { const n = num(other.value); main.value = n == null ? '' : fmt(back(n)); typing = true; main.dispatchEvent(new Event('input')); typing = false; });
+  ensureVatDefault().then(() => { show(); if (num(main.value) != null) fromMain(); });
+  show();
+  if (num(main.value) != null) fromMain();
+  return twin;
+}
+
+/** Guadagno di un articolo: costo salvato senza IVA, prezzo di vendita IVA inclusa (si toglie l'IVA prima di confrontarli). */
+export function marginOf(cost, price, rate = defaultRate) {
+  const c = Number(String(cost ?? '').replace(',', '.')), p = Number(String(price ?? '').replace(',', '.'));
+  if (!Number.isFinite(c) || !Number.isFinite(p) || p <= 0 || c <= 0) return null;
+  const net = p / (1 + rate / 100), gain = net - c;
+  return { gain, pct: (gain / net) * 100, markup: (gain / c) * 100, net };
+}
+
+/** Riga "Guadagno" sotto il prezzo: si aggiorna mentre si scrive. */
+export function bindMargin(root, costSel, priceSel, afterEl) {
+  const costEl = $(costSel, root), priceEl = $(priceSel, root);
+  if (!costEl || !priceEl || !afterEl) return;
+  const row = document.createElement('div');
+  row.className = 'field span2';
+  row.innerHTML = '<span class="l">Guadagno</span><p class="hint" id="pf-margin" aria-live="polite" style="margin:0"></p>';
+  afterEl.after(row);
+  const out = $('#pf-margin', row);
+  const upd = () => {
+    const m = marginOf(costEl.value, priceEl.value);
+    out.innerHTML = m ? `<b style="color:${m.gain < 0 ? '#B91C1C' : '#047857'}">${eur(m.gain)}</b> a pezzo (IVA esclusa) · margine <b>${m.pct.toFixed(1).replace('.', ',')}%</b> sul prezzo · ricarico ${m.markup.toFixed(1).replace('.', ',')}% sul costo` : 'Scrivi costo e prezzo di vendita per vedere il guadagno.';
+  };
+  costEl.addEventListener('input', upd); priceEl.addEventListener('input', upd);
+  ensureVatDefault().then(upd);
+  upd();
+}

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS products (
   location TEXT, notes TEXT, active INTEGER NOT NULL DEFAULT 1,
   stale_days INTEGER,
   barcode TEXT,
+  price_friend REAL, price_reseller REAL,
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 CREATE TABLE IF NOT EXISTS stock_moves (
@@ -586,4 +587,74 @@ CREATE TABLE IF NOT EXISTS label_templates (
 CREATE TABLE IF NOT EXISTS label_assets (
   key TEXT PRIMARY KEY, mime TEXT NOT NULL, data TEXT NOT NULL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
+-- Segnalazioni e richieste: chi usa il gestionale apre un task (errore, miglioria, nuova funzione, domanda) con testo, percorso fatto e foto.
+-- Solo tabelle nuove: nulla di esistente viene toccato.
+CREATE TABLE IF NOT EXISTS tickets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL DEFAULT 'errore',        -- errore | miglioria | nuova | domanda
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  page TEXT,                                  -- sezione del gestionale (es. riparazioni)
+  path_text TEXT,                             -- percorso fatto / passaggi per ripetere il problema
+  expected TEXT,                              -- come dovrebbe funzionare / cosa si vorrebbe
+  priority TEXT NOT NULL DEFAULT 'normale',   -- bassa | normale | alta | urgente
+  status TEXT NOT NULL DEFAULT 'nuova',       -- nuova | in_corso | in_attesa | da_verificare | risolta | rifiutata
+  photos TEXT,                                -- chiavi dell'archivio foto (JSON)
+  context TEXT,                               -- dati automatici (pagina, dispositivo, errori recenti) in JSON
+  created_by TEXT NOT NULL DEFAULT 'locale',
+  created_by_name TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  closed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
+CREATE TABLE IF NOT EXISTS ticket_comments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL DEFAULT 'commento',      -- commento | stato
+  body TEXT NOT NULL,
+  author TEXT NOT NULL DEFAULT 'locale',
+  author_name TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket ON ticket_comments(ticket_id);
+
+-- Assistente (migrazione 0043)
+CREATE TABLE IF NOT EXISTS assistant_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  text TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'queued',      -- queued | processing | awaiting_confirm | done | cancelled | error
+  user_email TEXT NOT NULL DEFAULT 'locale',
+  user_name TEXT,
+  user_role TEXT,
+  context TEXT,                               -- istantanea dei dati vista dall'LLM (senza costi per il ruolo cassa)
+  attachment_name TEXT,
+  attachment_kind TEXT,                       -- image | pdf | text
+  attachment_key TEXT,                        -- chiave nell'archivio R2 (immagini e PDF)
+  doc_text TEXT,                              -- testo di un allegato TXT/CSV
+  reply TEXT,
+  suggestions TEXT,                           -- JSON
+  raw_actions TEXT,                           -- JSON: azioni proposte dall'LLM, come le ha scritte
+  actions TEXT,                               -- JSON: azioni verificate dal server (riepilogo mostrato)
+  signature TEXT,                             -- impronta dei dati su cui il riepilogo e' stato verificato
+  results TEXT,                               -- JSON: esito di ogni operazione dopo la conferma
+  error TEXT,
+  note TEXT,
+  model TEXT,
+  duration_ms INTEGER,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  retry_at TEXT,
+  claimed_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  confirmed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_assistant_status ON assistant_requests(status);
+CREATE INDEX IF NOT EXISTS idx_assistant_user ON assistant_requests(user_email, id);
+-- Ultimo segnale del programma sul PC (mostra "PC collegato" / "PC spento")
+CREATE TABLE IF NOT EXISTS assistant_state (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );

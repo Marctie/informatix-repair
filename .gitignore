@@ -22,3 +22,7 @@ __pycache__/
 
 .claude/worktrees/
 .claude/
+
+# Assistente: chiave e configurazione del PC (mai su GitHub)
+/assistente-pc/.env
+/assistente-pc/*.log

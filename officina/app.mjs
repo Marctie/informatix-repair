@@ -36,6 +36,8 @@ import { auditMiddleware, registerAuditRoutes } from './audit.mjs';
 import { registerErrorRoutes } from './registro-errori.mjs';
 import { retroMiddleware, registerRetroRoutes } from './retro.mjs';
 import { registerAltraRoutes, altraSummary } from './altra.mjs';
+import { registerTicketRoutes, ticketAlerts, TICKET_TABLES } from './segnalazioni.mjs';
+import { registerAssistantRoutes, registerAssistantAgentRoutes, ASSISTANT_TABLES } from './assistente.mjs';
 import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 import { registerLabelRoutes, LABEL_TABLES, cleanBarcode } from './etichette.mjs'; // etichette prodotto + codici a barre
 
@@ -55,6 +57,7 @@ import { registerLoyaltyRoutes, LOYALTY_SETTING_KEYS, validateLoyaltySettings, L
 
 const EXTRA_ALERTS = [orderAlerts, quoteAlerts, reminderAlertsNotify, materialsAlerts, invoiceAlerts, ledgerAlerts];
 EXTRA_ALERTS.push(lottoBAlerts); // Agente B
+EXTRA_ALERTS.push(ticketAlerts);
 const str = (v) => (v == null ? null : String(v).trim() || null);
 const num = (v, d = 0) => (v === '' || v == null ? d : Number(String(v).replace(',', '.')));
 const NOW = "datetime('now','localtime')";
@@ -100,7 +103,7 @@ const page = (fn) => async (c) => {
 export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
 
 // ---------- Pubblico ----------
-export function createPublicApp() {
+export function createPublicApp({ media } = {}) {
   const app = new Hono();
   app.onError((e, c) => errorReply(c, e)); // eccezioni fuori dai gestori h(): stesso formato e log con contesto
   app.use('/api/track/*', notifyMiddleware);
@@ -116,6 +119,8 @@ export function createPublicApp() {
   registerPublicQuoteRoutes(app, h);
   // Bot di controllo sul telefono: riepilogo numerico, solo con la chiave MONITOR_TOKEN (altrimenti 404)
   registerMonitorRoutes(app, { env: (c) => ({ ...(typeof process !== 'undefined' ? process.env : {}), ...(c.env || {}) }) });
+  // Programma dell'assistente sul PC con l'LLM: chiama il Worker (coda in D1), solo con la chiave ASSISTANT_TOKEN (altrimenti 404)
+  registerAssistantAgentRoutes(app, h, { env: (c) => ({ ...(typeof process !== 'undefined' ? process.env : {}), ...(c.env || {}) }), media: media || (() => missingMedia()) });
   return app;
 }
 
@@ -145,6 +150,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerRetroRoutes(app, h, adminOnly);
   registerBlackRoutes(app, h, adminOnly);
   registerAltraRoutes(app, h, adminOnly);
+  registerTicketRoutes(app, h, adminOnly, { media: usati.media || (() => missingMedia()) });
+  registerAssistantRoutes(app, h, adminOnly, { media: usati.media || (() => missingMedia()), dispatchApp: () => app }); // assistente: sempre con riepilogo e conferma
   registerLabelRoutes(app, h, page, adminOnly, { getSettings });
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
@@ -433,6 +440,13 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     if (!Number.isFinite(n) || n < 0 || n > 3650) throw new L.HttpError(400, 'I giorni dopo cui l’articolo risulta fermo non sono validi: serve un numero tra 0 e 3650.', { code: 'GIORNI_FERMO_NON_VALIDI', hint: 'Lascia vuoto per usare la soglia generale, scrivi 0 per non avvisare mai per questo articolo.' });
     return n;
   };
+  /** Prezzo di un listino (amico/rivenditore): vuoto = non impostato; altrimenti un importo >= 0. */
+  const listinoOf = (b, key, label) => {
+    if (b[key] === '' || b[key] == null) return null;
+    const n = num(b[key], NaN);
+    if (!Number.isFinite(n) || n < 0 || n > 1000000) throw new L.HttpError(400, `Il ${label} non è valido: serve un importo (o lascia vuoto).`, { code: 'LISTINO_NON_VALIDO', hint: 'Scrivi solo il numero, per esempio 12,50, oppure svuota il campo.' });
+    return n;
+  };
   app.post('/api/products', h(async (req) => {
     const b = req.body;
     if (!str(b.name)) throw new L.HttpError(400, 'Manca il nome: non posso salvare senza.', { code: 'NOME_MANCANTE', hint: 'Compila il campo Nome e salva di nuovo.' });
@@ -441,8 +455,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     const qty = Math.round(num(b.qty));
     const barcode = await cleanBarcode(b.barcode);
     const id = await tx(async () => {
-      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, barcode, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
-        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode);
+      const r = await db.prepare(`INSERT INTO products (sku, name, category, qty, min_qty, cost, price, supplier_id, location, notes, stale_days, barcode, price_friend, price_reseller, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,${NOW})`)
+        .run(str(b.sku), str(b.name), str(b.category), 0, Math.round(num(b.min_qty)), isCassa(req.user) ? 0 : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode, listinoOf(b, 'price_friend', 'prezzo amico'), listinoOf(b, 'price_reseller', 'prezzo rivenditore'));
       const pid = Number(r.lastInsertRowid);
       if (qty) await L.moveStock(pid, qty, 'carico iniziale', null);
       return pid;
@@ -455,10 +469,11 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
     checkProduct(b);
     if (b.supplier_id && !(await db.prepare('SELECT id FROM suppliers WHERE id = ?').get(b.supplier_id))) throw new L.HttpError(404, 'Il fornitore scelto per l’articolo non esiste più in anagrafica.', { code: 'FORNITORE_NON_TROVATO', hint: 'Aggiorna la pagina e scegli di nuovo il fornitore, oppure lascia il campo vuoto.' });
     const old = isCassa(req.user) ? await db.prepare('SELECT cost FROM products WHERE id = ?').get(req.params.id) : null;
+    const lst = await db.prepare('SELECT price_friend, price_reseller FROM products WHERE id = ?').get(req.params.id); // i vecchi client non mandano i listini: restano quelli salvati
     // il codice a barre cambia solo se arriva nella richiesta (i vecchi client non lo mandano: resta quello che c'e')
     const barcode = 'barcode' in b ? await cleanBarcode(b.barcode, { exceptId: Number(req.params.id) }) : ((await db.prepare('SELECT barcode FROM products WHERE id = ?').get(req.params.id))?.barcode ?? null);
-    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=?, barcode=? WHERE id=?')
-      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode, req.params.id);
+    const r = await db.prepare('UPDATE products SET sku=?, name=?, category=?, min_qty=?, cost=?, price=?, supplier_id=?, location=?, notes=?, stale_days=?, barcode=?, price_friend=?, price_reseller=? WHERE id=?')
+      .run(str(b.sku), str(b.name), str(b.category), Math.round(num(b.min_qty)), old ? old.cost : num(b.cost), num(b.price), b.supplier_id || null, str(b.location), str(b.notes), staleOf(b), barcode, ...(['price_friend', 'price_reseller'].map((k, i) => (k in b ? listinoOf(b, k, i ? 'prezzo rivenditore' : 'prezzo amico') : lst?.[k] ?? null))), req.params.id);
     if (!r.changes) throw new L.HttpError(404, 'Prodotto non trovato');
     return db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
   }));
@@ -630,7 +645,7 @@ const TABLES = ['settings', 'users', 'customers', 'suppliers', 'products', 'stoc
 /** Copia di tutte le tabelle (usata dal backup JSON e dal backup giornaliero). */
 export async function dumpAll() {
   const dump = { created_at: nowLocal(), tables: {} };
-  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES, ...LABEL_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
+  for (const t of [...TABLES, ...PURCHASE_TABLES, ...DEVICE_TABLES, ...VOUCHER_TABLES, ...LOYALTY_TABLES, ...DOCUMENT_TABLES, ...CREDENTIAL_TABLES, ...CLOSING_TABLES, ...INVOICE_TABLES, ...LEDGER_TABLES, ...LABEL_TABLES, ...TICKET_TABLES, ...ASSISTANT_TABLES]) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all();
   for (const t of LOTTO_B_TABLES) dump.tables[t] = await db.prepare(`SELECT * FROM ${t}`).all(); // Agente B
   return dump;
 }

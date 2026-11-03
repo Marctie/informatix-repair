@@ -165,3 +165,11 @@ Link `/t/` e `/p/` bloccati in caricamento (manca `/cliente-errori.js` nell'elen
 
 ## Fatto il 23/10: preventivi con IVA inclusa/esclusa e permuta
 Online (migrazione D1 0039). Prove di Christian: TEST-DI-CHRISTIAN sez. I (39-44). Possibili sviluppi: IVA esclusa su ricambi/vendite/fatture, permuta sul preventivo della riparazione e in cassa (IVA a margine per l'usato: vedi CONFRONTO-GESTIONALI), aliquota per voce.
+
+## Fatto il 26/10: Segnalazioni e bot spostato
+- **Segnalazioni** (task di Christian per Marco): online (migrazione 0041, deploy 26d21dec). Codice in `officina/segnalazioni.mjs` e `public/segnalazioni.js`; per leggere i task usare *Report di tutte le aperte* (Markdown con immagini). Test officina 310/310.
+- **Bot Termux spostato** in `C:/1Marco Peluso/Lavoro da eliminare/Bot Telegram/informatix-bot` (non piu in `termux-bot/` del repo).
+- Non fatto: commit/push (modifiche ancora non committate); numero segnalazioni aperte nel Buongiorno del bot (da decidere).
+
+## Fatto il 03/11: Assistente (menu Portale)
+Online (migrazione D1 0043). Il PC di Marco deve avere Ollama acceso (`gemma3:12b`, `qwen2.5vl:7b`) e il programma `AVVIA-ASSISTENTE.bat` aperto: senza, le richieste restano in coda. Prove di Christian: TEST-DI-CHRISTIAN sez. K (54-60). Da fare/decidere: provarlo con un PDF/DDT vero di un fornitore; togliere il codice finito per errore in `main` (commit 117ea56, cartella `admin/`); se il modello locale sbaglia troppo valutare un modello piu' grande o le API Claude (cambia solo la chiamata in `assistente-pc/agente.mjs`).

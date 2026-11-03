@@ -62,7 +62,7 @@ export function createApps({ usati, auth } = {}) {
       } finally { rmSync(file, { force: true }); }
     },
   });
-  const pubApi = createPublicApp();
+  const pubApi = createPublicApp({ media: () => fsMedia(process.env.OFFICINA_MEDIA || join(HERE, 'data', 'media')) });
 
   const admin = new Hono();
   admin.use('*', noCache);
