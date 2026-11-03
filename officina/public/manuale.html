@@ -1253,6 +1253,7 @@
 <tr><td><code>ARCHIVIO_NON_COLLEGATO</code></td><td>Avvisa Marco: manca il bucket R2 «officina-media».</td></tr>
 <tr><td><code>RICHIESTA_NON_CONFERMABILE</code> / <code>GIA_CONFERMATA</code></td><td>È già stata eseguita o annullata: aggiorna la pagina.</td></tr>
 <tr><td><code>DATI_CAMBIATI</code></td><td>Nel frattempo i dati sono cambiati: ricontrolla il nuovo riepilogo e conferma di nuovo.</td></tr>
+<tr><td><code>PREFERENZA_MANCANTE</code> / <code>TROPPE_PREFERENZE</code> / <code>PREFERENZA_NON_TROVATA</code></td><td>Scrivi una frase chiara; massimo 12 preferenze (toglierne una dalla pagina Assistente).</td></tr>
 <tr><td><code>PREZZO_NON_VALIDO</code></td><td>Scrivi solo il numero, per esempio 249,90.</td></tr>
 <tr><td><code>RICHIESTA_NON_ANNULLABILE</code> / <code>RICHIESTA_NON_RIPROVABILE</code></td><td>Aggiorna la pagina per vedere com&#x27;è finita.</td></tr>
 </table>
@@ -1372,6 +1373,13 @@
     <li>☐ <b>Richieste che non deve fare:</b> «elimina l&#x27;articolo X» o «incassa la [codice]»: deve rifiutare e dirti dove farlo.</li>
     <li>☐ <b>PC spento:</b> spegni (o chiedi a Marco di spegnere) il PC con l&#x27;LLM, scrivi una richiesta: resta «in coda» e parte quando si riaccende.</li>
     <li>☐ <b>Cronologia:</b> le richieste dei giorni scorsi restano nell&#x27;elenco (30 giorni).</li>
+    <li>☐ <b>Cosa posso fare per te:</b> apri il riquadro, clicca un esempio, sostituisci le parti tra [parentesi] e invia. Controlla anche i suggerimenti «Per te adesso».</li>
+    <li>☐ <b>Voce:</b> premi 🎤, dì «carica due display iPhone 12» e controlla il testo.</li>
+    <li>☐ <b>Messaggio al cliente:</b> «scrivi il messaggio per [cliente]: la [codice] è pronta» → <i>Apri su WhatsApp</i> deve aprire la chat con il testo già scritto.</li>
+    <li>☐ <b>Promemoria e spesa:</b> «ricordami di [cosa] domani alle 10», «spesa: [cosa] [importo] euro»; controlla in Promemoria e Spese dopo la conferma.</li>
+    <li>☐ <b>Ordini sotto scorta:</b> «prepara gli ordini per gli articoli sotto scorta»; controlla in Ordini che ci sia un ordine per fornitore.</li>
+    <li>☐ <b>Carico da fornitore:</b> allega una bolla o un CSV vero: costo, quantità e fornitore devono comparire nello storico di Acquisti.</li>
+    <li>☐ <b>Controllo dati e preferenze:</b> «fai un controllo dei dati»; poi «d&#x27;ora in poi arrotonda i prezzi di vendita a 9» e verifica che compaia tra le preferenze.</li>
   </ul>
   <h3>Se qualcosa non va</h3>
   <p>Scrivi: <i>che schermata</i>, <i>cosa hai premuto</i>, <i>cosa ti aspettavi</i>, <i>cosa è successo</i> e, se c&#x27;è, il <b>codice in rosso</b> (tipo E-7K3QX). Quel codice permette a Marco di trovare l&#x27;errore in un attimo (Gestione → Errori).</p>
@@ -1492,6 +1500,20 @@
     <li>Il <b>prezzo</b> si può correggere nella scheda prima di confermare.</li>
     <li>Se nel frattempo i dati cambiano (es. qualcuno scarica lo stesso articolo) il gestionale rifà il riepilogo e ti chiede di ricontrollare.</li>
     <li>L&#x27;esecuzione passa dagli <b>stessi controlli</b> di quando fai le cose a mano: stesso ruolo (la Cassa non vede costi), stesso <b>Registro</b>, stessi <b>avvisi Telegram</b>.</li>
+  </ul>
+  <h3>Altre funzioni (dal 03/11)</h3>
+  <ul>
+    <li><b>Risposte istantanee ⚡</b>: queste richieste hanno la risposta subito, senza aspettare il modello e anche se il PC è spento: «quali articoli sono sotto scorta?», «prepara gli ordini per gli articoli sotto scorta» (con conferma), «com&#x27;è andata oggi?», «quali riparazioni sono in ritardo / pronte da ritirare?», «quali preventivi sono da approvare?», «fai un controllo dei dati», «quali articoli sono fermi da tempo?». Se nella frase aggiungi altro (un nome, un codice, un numero) la richiesta passa al modello e ci vuole circa un minuto. Gli esempi senza [parentesi] e i suggerimenti «Per te adesso» partono con un solo clic.</li>
+    <li><b>Cosa posso fare per te</b>: il riquadro sopra la chat elenca tutto quello che si può chiedere, con esempi da cliccare (si scrivono nella casella, tu sostituisci le parti tra [parentesi] e premi Invia). Sopra c&#x27;è <b>Per te adesso</b>: suggerimenti calcolati dai dati (articoli sotto scorta, riparazioni pronte da ritirare, preventivi da approvare, ritardi, vetrina senza foto).</li>
+    <li><b>Voce 🎤</b>: tieni il browser su Chrome o Edge, premi il microfono e parla; il testo compare nella casella e lo puoi correggere prima di inviare.</li>
+    <li><b>Messaggi ai clienti</b>: «scrivi il messaggio per Rossi: la R-2026-0016 è pronta». Compare il testo con <i>Apri su WhatsApp</i> (numero già compilato) e <i>Copia il testo</i>. Non invia nulla da solo.</li>
+    <li><b>Promemoria</b>: «ricordami di chiamare Rossi domani alle 10» (arriva anche su Telegram a Marco).</li>
+    <li><b>Fornitori e spese</b>: «nuovo fornitore Mobilax 02 1234567», «spesa: bolletta luce 182,50 euro con carta».</li>
+    <li><b>Ordini</b>: «ordina 4 display iPhone 12 a TechWholesale» oppure «prepara gli ordini per gli articoli sotto scorta» (un ordine per fornitore, fino al doppio della scorta minima, senza ripetere quelli già ordinati).</li>
+    <li><b>Preventivi</b>: «preventivo per Anna Verdi 340 1112233: sostituzione batteria 70 euro, valido 7 giorni» (anche con sconto).</li>
+    <li><b>Carico da documento del fornitore</b>: con foto, PDF o CSV allegato. Registra il costo, il documento e lo storico prezzi come il carico a mano; non per il ruolo Cassa.</li>
+    <li><b>Controllo dei dati</b>: «fai un controllo dei dati» (clienti con lo stesso telefono, articoli senza prezzo o codice a barre, vetrina senza foto). <b>Domande</b>: «com&#x27;è andata oggi?», «cosa ha portato Rossi?», «quali articoli sono fermi da tempo?».</li>
+    <li><b>Preferenze</b>: «d&#x27;ora in poi arrotonda i prezzi di vendita a 9». L&#x27;assistente non impara da solo: legge queste frasi a ogni richiesta (massimo 12); l&#x27;amministratore le toglie da <i>Cosa posso fare per te → Preferenze</i>. Per consigliare i prezzi usa anche il ricarico abituale per categoria, calcolato dai dati veri.</li>
   </ul>
   <h3>Cosa NON fa</h3>
   <ul>

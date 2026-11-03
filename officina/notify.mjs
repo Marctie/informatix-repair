@@ -396,6 +396,10 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
       return `🤖 <b>Assistente: nuova richiesta #${esc(r.id)}</b>\n«${esc(short(body.text || '(solo allegato)', 400))}»${att}${r.status?.agent_online === false ? '\n⏳ PC con l’LLM spento: resta in coda' : ''}${foot}`;
     }
     if (/\/cancel$/.test(path)) return isOk ? `🤖 <b>Assistente: richiesta #${esc(path.match(/requests\/(\d+)/)[1])} annullata</b>${foot}` : fail('Assistente');
+    if (/^\/api\/assistant\/prefs/.test(path)) {
+      if (!isOk) return fail('Assistente');
+      return m === 'DELETE' ? `📝 <b>Assistente: preferenza tolta</b>${foot}` : `📝 <b>Assistente: nuova preferenza salvata</b>\n«${esc(short(body.note, 250))}»\nDa ora la rispetta in tutte le risposte.${foot}`;
+    }
     return null;
   }
 

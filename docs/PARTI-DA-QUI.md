@@ -173,3 +173,4 @@ Online (migrazione D1 0039). Prove di Christian: TEST-DI-CHRISTIAN sez. I (39-44
 
 ## Fatto il 03/11: Assistente (menu Portale)
 Online (migrazione D1 0043). Il PC di Marco deve avere Ollama acceso (`gemma3:12b`, `qwen2.5vl:7b`) e il programma `AVVIA-ASSISTENTE.bat` aperto: senza, le richieste restano in coda. Prove di Christian: TEST-DI-CHRISTIAN sez. K (54-60). Da fare/decidere: provarlo con un PDF/DDT vero di un fornitore; togliere il codice finito per errore in `main` (commit 117ea56, cartella `admin/`); se il modello locale sbaglia troppo valutare un modello piu' grande o le API Claude (cambia solo la chiamata in `assistente-pc/agente.mjs`).
+Assistente v1.0.4.0 (03/11 sera): funzioni aggiuntive (voce, WhatsApp, promemoria, ordini, preventivi, carico da documento, controllo dati, preferenze). Prove di Christian: TEST-DI-CHRISTIAN 61-68. Idee ancora non fatte: stampa etichette da richiesta, note libere, cassa/vendite (fuori perimetro per sicurezza).

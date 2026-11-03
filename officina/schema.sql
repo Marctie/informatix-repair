@@ -658,3 +658,12 @@ CREATE TABLE IF NOT EXISTS assistant_state (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- Assistente: preferenze (migrazione 0044)
+CREATE TABLE IF NOT EXISTS assistant_prefs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  note TEXT NOT NULL,
+  created_by TEXT NOT NULL DEFAULT 'locale',
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  active INTEGER NOT NULL DEFAULT 1
+);

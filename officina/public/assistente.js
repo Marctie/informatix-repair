@@ -7,9 +7,20 @@ const STATUS = {
   awaiting_confirm: ['Da confermare', 'bg-indigo-100 text-indigo-700'], executing: ['Eseguo…', 'bg-sky-100 text-sky-700'],
   done: ['Completata', 'bg-emerald-100 text-emerald-700'], cancelled: ['Annullata', 'bg-gray-200 text-gray-600'], error: ['Errore', 'bg-red-100 text-red-700'],
 };
-const ICON = { new_customer: '👤', new_repair: '🛠️', repair_status: '🔄', repair_note: '📝', new_product: '📦', update_product: '✏️', stock_move: '📥', usato_add: '🏷️', usato_update: '✏️', usato_sold: '💰', usato_unsold: '↩️', search: '🔎' };
+const ICON = { new_customer: '👤', new_repair: '🛠️', repair_status: '🔄', repair_note: '📝', new_product: '📦', update_product: '✏️', stock_move: '📥', usato_add: '🏷️', usato_update: '✏️', usato_sold: '💰', usato_unsold: '↩️', search: '🔎', new_supplier: '🚚', new_expense: '🧾', new_reminder: '⏰', new_order: '📋', reorder_low: '📋', new_quote: '📄', purchase_load: '📥', draft_message: '💬', data_check: '🔍', remember: '🧠' };
 const EXAMPLES = ['Quali articoli sono sotto scorta?', 'Quali riparazioni sono ferme da più giorni?', 'Carica 3 display iPhone 12 a magazzino', 'Che prezzo mi consigli per un iPhone 13 usato?'];
 const MAX_FILE = 7_500_000;
+// Tutto quello che si puo' chiedere (anche l'inserimento dei dati). Le parti tra [parentesi] si sostituiscono.
+const CAPS = [
+  ['📥 Inserire dati', ['Carica 3 [articolo] a magazzino', 'Nuovo articolo: [nome], [n] pezzi, costo [x] euro, prezzo [y] euro', 'Nuova riparazione: [cliente] [telefono], [dispositivo], [problema]', 'Nuovo cliente [nome] [telefono]', 'Nuovo fornitore [nome] [telefono]', 'Spesa: [descrizione] [importo] euro', 'Metti in vetrina [modello] [memoria] [colore] a [prezzo] euro', 'Ricordami di [cosa] [domani] alle [ora]']],
+  ['✏️ Modificare', ['Porta il prezzo di [articolo] a [x] euro', 'La [codice] è pronta', 'Aggiungi una nota alla [codice]: [testo]', 'Segna venduto [articolo della vetrina]']],
+  ['🧾 Ordine del fornitore', ['Carica questo ordine del fornitore [allega il file con la graffetta 📎]']],
+  ['💬 Messaggi ai clienti', ['Scrivi il messaggio per [cliente]: la [codice] è pronta', 'Scrivi un messaggio di ritardo per la [codice]', 'Scrivi il messaggio per [cliente]: ricordagli il preventivo']],
+  ['📊 Domande e consigli', ['Quali articoli sono sotto scorta?', 'Com\'è andata oggi?', 'Quali riparazioni sono in ritardo?', 'Quali riparazioni sono pronte da ritirare?', 'Quali preventivi sono da approvare?', 'Quali articoli sono fermi da tempo?', 'Cosa ha portato [cliente]?', 'Che prezzo metto a [articolo]?']],
+  ['📋 Ordini e preventivi', ['Prepara gli ordini per gli articoli sotto scorta', 'Ordina [n] [articolo] a [fornitore]', 'Preventivo per [cliente]: [voce] [prezzo] euro, valido [7] giorni']],
+  ['🔍 Controlli', ['Fai un controllo dei dati']],
+  ['🧠 Preferenze', ['D\'ora in poi arrotonda i prezzi di vendita a [9]', 'Ricorda che [regola]']],
+];
 
 const dayLabel = (iso) => {
   const d = new Date(String(iso).replace(' ', 'T'));
@@ -49,6 +60,7 @@ function actionHtml(a, i, r) {
     ${(a.lines || []).map((l) => `<p class="as-line">${esc(l)}</p>`).join('')}
     ${(a.warnings || []).map((w) => `<p class="as-line as-warn">⚠ ${esc(w)}</p>`).join('')}
     ${(a.errors || []).map((e) => `<p class="as-line as-err">✗ ${esc(e)}</p>`).join('')}
+    ${a.message ? `<div class="row tight as-wa">${a.link ? `<a class="btn btn-primary btn-sm" href="${esc(a.link)}" target="_blank" rel="noopener">Apri su WhatsApp</a>` : ''}<button type="button" class="btn btn-outline btn-sm" data-copy="${esc(a.message)}">Copia il testo</button></div>` : ''}
     ${done ? `<p class="as-line ${done.ok ? 'as-ok' : 'as-err'}">${done.ok ? '✓' : '✗'} ${esc(done.message)}</p>` : ''}
     ${editable ? `<div class="as-price"><label class="l" for="as-p-${r.id}-${i}">Prezzo € <span class="hint">(puoi correggerlo prima di confermare)</span></label><input id="as-p-${r.id}-${i}" class="as-pi" data-i="${i}" inputmode="decimal" value="${a.fields?.price ?? ''}" placeholder="vuoto" /></div>` : ''}
   </div>`;
@@ -76,7 +88,7 @@ function requestHtml(r, me) {
   }
   return `<div class="as-item" data-rid="${r.id}">
     <div class="as-me"><div class="as-bubble-me"><p>${esc(r.text) || '<i>(solo allegato)</i>'}</p>${r.attachment ? `<p class="as-att">📎 ${esc(r.attachment.name)}</p>` : ''}<p class="as-time">${other ? `${esc(r.user_name || r.user_email)} · ` : ''}${fdt(r.created_at)}</p></div></div>
-    <div class="as-bot"><div class="as-bubble-bot"><div class="row tight"><span class="badge ${cls}">${label}</span>${r.duration_ms ? `<span class="hint">${Math.round(r.duration_ms / 1000)} s · ${esc(r.model || '')}</span>` : ''}</div>${bot}</div></div>
+    <div class="as-bot"><div class="as-bubble-bot"><div class="row tight"><span class="badge ${cls}">${label}</span>${r.model === 'istantanea' ? '<span class="hint">⚡ risposta istantanea</span>' : r.duration_ms ? `<span class="hint">${Math.round(r.duration_ms / 1000)} s · ${esc(r.model || '')}</span>` : ''}</div>${bot}</div></div>
   </div>`;
 }
 
@@ -87,6 +99,8 @@ export async function assistenteView(el, params, ME) {
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Assistente</h1><span class="hint" id="as-status">Controllo…</span></div>
     <p class="hint">Scrivi come parleresti a un collega: «carica 3 display iPhone 12», «la R-2026-0016 è pronta», «che prezzo metto a un iPhone 13 usato?». Puoi allegare l’ordine di un fornitore (foto, PDF, CSV).
       L’assistente <b>propone</b> e ti mostra un riepilogo: non cambia nulla finché non premi «Conferma». Non incassa, non consegna e non elimina. Cronologia conservata 30 giorni. Invio per mandare, Maiusc+Invio per andare a capo.</p>
+    <div id="as-ideas" class="as-ideas" hidden><p class="hint">💡 Per te adesso</p><div class="row tight" id="as-ideas-row"></div></div>
+    <details class="card as-help" id="as-help"><summary>💡 Cosa posso fare per te <span class="hint">(clic su un esempio: se è completo parte subito, se ha [parti] lo compili e premi Invia)</span></summary><div id="as-help-body"></div></details>
     <div class="row tight chips-scroll" id="as-chips"></div>
     <div id="as-feed"></div>
     <div id="as-empty" class="empty card" hidden><p><b>Come posso aiutarti?</b></p><p class="hint">Qualche idea:</p><div class="row tight" style="justify-content:center" id="as-ex"></div></div>
@@ -94,6 +108,7 @@ export async function assistenteView(el, params, ME) {
       <div id="as-att" class="as-attbar" hidden><span id="as-att-name"></span> <button type="button" class="btn btn-ghost btn-sm" id="as-att-x">× Togli</button></div>
       <div class="as-compose-row">
         <label class="btn btn-outline" for="as-file" title="Allega una foto, un PDF, un TXT o un CSV" style="cursor:pointer">📎</label>
+        <button type="button" class="btn btn-outline" id="as-mic" title="Detta a voce" aria-label="Detta a voce" hidden>🎤</button>
         <input type="file" id="as-file" accept="image/*,.pdf,.txt,.csv,.tsv" hidden />
         <textarea id="as-text" rows="1" maxlength="4000" aria-label="Scrivi all’assistente" placeholder="Scrivi qui…"></textarea>
         <button class="btn btn-primary" id="as-send" type="submit">Invia</button>
@@ -185,5 +200,50 @@ export async function assistenteView(el, params, ME) {
       await load(true);
     });
   });
+  // ---- cosa posso fare + idee dai dati + preferenze + voce
+  $('#as-help-body', el).innerHTML = CAPS.map(([t, list]) => `<div class="as-cap"><p class="as-cap-t">${esc(t)}</p><div class="row tight">${list.map((x) => `<button type="button" class="chip as-ex" data-fill="${esc(x)}">${esc(x)}</button>`).join('')}</div></div>`).join('')
+    + '<div class="as-cap" id="as-prefs"></div>';
+  const fill = (text) => { ta.value = text; ta.focus(); ta.dispatchEvent(new Event('input')); const i = text.indexOf('['); if (i >= 0) ta.setSelectionRange(i, text.indexOf(']', i) + 1); };
+  // una frase completa (senza [parti da sostituire]) parte subito; con le parentesi si compila la casella
+  const pick = (b) => { const t = b.dataset.fill; if (t.includes('[') || b.dataset.instant === '0') fill(t); else send(t); };
+  $('#as-help', el).addEventListener('click', (e) => { const b = e.target.closest('[data-fill]'); if (b) pick(b); });
+  $('#as-ideas', el).addEventListener('click', (e) => { const b = e.target.closest('[data-fill]'); if (b) pick(b); });
+  feed.addEventListener('click', async (e) => { const c = e.target.closest('[data-copy]'); if (c) { try { await navigator.clipboard.writeText(c.dataset.copy); toast('Testo copiato.'); } catch { toast('Non riesco a copiare: seleziona il testo a mano.', false); } } });
+  async function paintPrefs() {
+    const d = await safe(() => api('GET', '/api/assistant/prefs'));
+    const box = $('#as-prefs', el);
+    if (!d || !box) return;
+    const admin = !ME || ME.role === 'admin';
+    box.innerHTML = `<p class="as-cap-t">🧠 Preferenze che rispetto sempre</p>${d.prefs.length ? d.prefs.map((p) => `<p class="as-pref">«${esc(p.note)}»${admin ? ` <button type="button" class="btn btn-ghost btn-sm" data-pref-del="${p.id}" title="Togli questa preferenza">× togli</button>` : ''}</p>`).join('') : '<p class="hint">Nessuna. Scrivimi «d\'ora in poi …» per aggiungerne una.</p>'}`;
+  }
+  $('#as-help', el).addEventListener('toggle', (e) => { if (e.target.open) paintPrefs(); });
+  $('#as-help', el).addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-pref-del]');
+    if (!b) return;
+    await busy(b, async () => { const r = await safe(() => api('DELETE', `/api/assistant/prefs/${b.dataset.prefDel}`)); if (r) { toast('Preferenza tolta.'); await paintPrefs(); } });
+  });
+  async function paintIdeas() {
+    const d = await safe(() => api('GET', '/api/assistant/ideas'));
+    if (!d || !$('#as-ideas', el)) return;
+    $('#as-ideas', el).hidden = !d.ideas.length;
+    $('#as-ideas-row', el).innerHTML = d.ideas.map((i) => `<button type="button" class="chip as-idea" data-fill="${esc(i.prompt)}" title="${esc(i.prompt)}">${esc(i.icon)} ${esc(i.label)}</button>`).join('');
+  }
+  paintIdeas();
+  const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  if (SR) {
+    const mic = $('#as-mic', el);
+    mic.hidden = false;
+    let rec = null; let base = '';
+    mic.onclick = () => {
+      if (rec) { rec.stop(); return; }
+      rec = new SR(); rec.lang = 'it-IT'; rec.interimResults = true; rec.continuous = false;
+      base = ta.value ? `${ta.value.trim()} ` : '';
+      rec.onresult = (ev) => { ta.value = base + [...ev.results].map((r) => r[0].transcript).join(' '); ta.dispatchEvent(new Event('input')); };
+      rec.onerror = (ev) => { toast(ev.error === 'not-allowed' ? 'Microfono non consentito: abilitalo nel browser.' : 'Non riesco a sentire: riprova.', false); };
+      rec.onend = () => { rec = null; mic.classList.remove('as-rec'); ta.focus(); };
+      mic.classList.add('as-rec');
+      try { rec.start(); } catch { rec = null; mic.classList.remove('as-rec'); }
+    };
+  }
   await load(true);
 }
