@@ -125,7 +125,7 @@ export async function assistenteView(el, params, ME) {
     if (!s) return;
     $('#as-status', el).innerHTML = !s.agent_online
       ? `🔴 PC con l’LLM spento o non avviato: le richieste restano in coda${s.queued ? ` (${s.queued})` : ''} e partono appena si accende`
-      : !s.llm_ready ? '🟠 PC collegato ma l’LLM (Ollama) non risponde' : `🟢 PC con l’LLM collegato${s.queued ? ` · ${s.queued} in elaborazione` : ''}`;
+      : !s.llm_ready ? '🟠 PC collegato ma l’LLM (Ollama) non risponde' : `🟢 PC con l’LLM collegato${s.processing ? ' · sta elaborando una richiesta' : ''}${s.queued ? ` · ${s.queued} in coda/elaborazione` : ''}`;
   }
   let timer;
   async function load(force) {
