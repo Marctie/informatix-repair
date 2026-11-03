@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-14",
+  "updated": "2026-10-26",
   "items": [
     {
       "slug": "iphone-17-pro-max-512-argento-sigillato",
@@ -137,7 +137,9 @@
           "Original box"
         ]
       ],
-      "category": "smartphone"
+      "category": "smartphone",
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "iphone-16-pro-256-titanio-bianco",
@@ -192,7 +194,9 @@
           "Original box"
         ]
       ],
-      "category": "smartphone"
+      "category": "smartphone",
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "iphone-15-128-giallo",
@@ -331,7 +335,9 @@
           "5.8 inches"
         ]
       ],
-      "category": "smartphone"
+      "category": "smartphone",
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "macbook-air-13-2020-i7-8-256",
@@ -401,7 +407,9 @@
         ]
       ],
       "category": "computer",
-      "contact": true
+      "contact": true,
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "samsung-galaxy-tab-a11-plus-5g",
@@ -508,7 +516,9 @@
         ]
       ],
       "category": "smartphone",
-      "contact": true
+      "contact": true,
+      "sold": true,
+      "soldAt": "2026-10-26"
     },
     {
       "slug": "airpods-4-cancellazione-rumore",
