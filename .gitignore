@@ -12,3 +12,6 @@ dist
 /bot/.venv
 /bot/.env
 __pycache__/
+
+# Dati locali dell assistente (cronologia, allegati, backup)
+/admin/data/

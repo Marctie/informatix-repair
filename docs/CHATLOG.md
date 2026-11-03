@@ -329,3 +329,21 @@ Vedi sopra: login rimosso, server solo su 127.0.0.1.
 - 2026-10-22 09:23 – pubblicati 2 articoli: "PHP2Shell, due falle critiche in PHP mettono a rischio migliaia di siti web" (patch d'emergenza del progetto PHP per CVE-2026-109618 e CVE-2026-109619, riportate il 21 ottobre da Help Net Security con analisi tecnica di Wiz: versioni corrette 8.5.12/8.4.27/8.3.36/8.2.35, tentativo di exploit rilevato da Amazon Threat Intelligence già il 17 ottobre, quattro giorni prima della divulgazione pubblica) e "Diritto alla riparazione, le nuove regole sono in vigore da oggi: cosa cambia" (fatto nuovo rispetto all'articolo del 15/10 sulla pubblicazione in Gazzetta: entrata in vigore odierna del decreto 176/2026 riportata da S&H Magazine con l'elenco delle 11 categorie di prodotti coperte e, secondo Dirittobancario, il ruolo di autorità competente attribuito ad AGCM sulla garanzia di conformità).
 - 2026-10-22 18:23 – pubblicati 2 articoli: "Meta condannata a pagare 25 miliardi di dollari per violazioni della privacy" (ordinanza del tribunale del New Mexico del 21 ottobre, confermata dal deposito SEC di Meta: sanzione civile di 25 miliardi di dollari più interessi al 15%, dopo il verdetto di settembre della giuria su oltre 43 milioni di violazioni della legge statale sulle pratiche commerciali sleali legate al caso Cambridge Analytica; Meta ha dichiarato intenzione di fare appello) e "Chrome rafforza la protezione contro le truffe e riconosce i comandi ClickFix" (ampliamento della modalità Enhanced Protection annunciato da Google, riportato il 21 ottobre da BleepingComputer: modello lato server per i siti sospetti e rilevamento dei comandi copiati tipici degli schemi ClickFix, con avviso prima dell'esecuzione).
 - 2026-10-23 09:20 – pubblicati 2 articoli: "Violazione dati Capcom, coinvolti 11,7 milioni di account CAPCOM ID" (Capcom ha confermato il 22 ottobre, riportato da BleepingComputer, una violazione del login condiviso CAPCOM ID: email e metadati di account esposti per 11,7 milioni di utenti, dati sensibili solo per 43 account, password e carte di credito non coinvolte secondo l'azienda) e "Plex2Shell, le falle nel server multimediale già sfruttate dagli hacker" (CISA segnala il 21 ottobre, fonte BleepingComputer, attacchi attivi contro quattro vulnerabilità concatenate di Plex Media Server con punteggio 9,8, sfruttamento in corso dal 17 ottobre contro sistemi non aggiornati alla versione 1.43.3.10861 del 4 agosto).
+
+---
+
+## Sessione 2026-11-03 – Assistente LLM nel gestionale
+
+### Aggiunto
+- `admin/assistant.mjs` + pagina `admin/public/assistente.html` (link «✨ Assistente» nell'header del gestionale): chat con LLM locale (Ollama, `gemma3:12b`; documenti-foto con `qwen2.5vl:7b`; PDF/TXT/CSV letti come testo).
+- L'LLM **non scrive mai direttamente**: propone azioni (aggiungi, modifica, venduto, rimetti in vetrina, elimina, cerca), il server le valida e mostra un **riepilogo obbligatorio** (con prima→dopo per le modifiche, prezzo modificabile); si esegue solo dopo «Conferma». Prima di ogni esecuzione copia di sicurezza di `usati.json` in `admin/data/backups/` (14 giorni).
+- **Cronologia** richieste/operazioni conservata 30 giorni (minimo richiesto 7) in `admin/data/assistant-history.json` (escluso da git), con filtri e separatori per giorno.
+- **Coda persistente**: se Ollama è spento la richiesta resta «in coda» e riparte da sola; se il PC/gestionale è spento la coda non può accumulare nulla (il server gira sul PC).
+- Suggerimenti proattivi (prezzi, foto, evidenza) e consigli generici sul negozio/usato.
+- Documenti fornitore: prezzi lasciati vuoti (il costo fornitore non è il prezzo di vendita), righe tipo spedizione/totale scartate, quantità espansa in più articoli.
+- Variabili opzionali: `ASSISTANT_MODEL`, `ASSISTANT_VISION_MODEL`, `OLLAMA_URL`. Dipendenza nuova: `pdf-parse@1.1.1`.
+
+### Limiti noti
+- Al primo messaggio il modello si carica in memoria (1-2 min); poi 20-90 s a risposta (dipende da GPU).
+- I modelli locali possono sbagliare nella lettura dei documenti: per questo c'è sempre il riepilogo.
+- Bot Telegram/Termux non toccati: l'assistente è solo nel pannello web locale.
