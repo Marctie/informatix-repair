@@ -57,10 +57,12 @@ async function pdfText(buf) {
 
 async function callOllama(model, job, images) {
   const t0 = Date.now();
+  // risposta in STREAMING: una risposta unica che tarda oltre 5 minuti farebbe cadere la connessione (limite di Node), mentre lo
+  // streaming resta vivo finche' il modello scrive. Il testo si ricompone pezzo per pezzo.
   const res = await fetch(`${OLLAMA}/api/chat`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     body: JSON.stringify({
-      model, stream: false, format: job.schema, keep_alive: '10m', options: { temperature: 0.2, num_ctx: NUM_CTX },
+      model, stream: true, format: job.schema, keep_alive: '10m', options: { temperature: 0.2, num_ctx: NUM_CTX },
       messages: [{ role: 'system', content: job.system }, { role: 'user', content: job.user, ...(images.length ? { images } : {}) }],
     }),
   });
@@ -68,8 +70,21 @@ async function callOllama(model, job, images) {
     const t = await res.text().catch(() => '');
     throw Object.assign(new Error(res.status === 404 ? `Il modello «${model}» non è installato in Ollama: esegui «ollama pull ${model}».` : `Ollama ha risposto ${res.status}: ${t.slice(0, 200)}`), { fatal: res.status === 404 });
   }
-  const j = await res.json();
-  return { content: j.message?.content || '', ms: Date.now() - t0 };
+  let content = ''; let buf = ''; let last = {};
+  for await (const chunk of res.body) {
+    buf += Buffer.from(chunk).toString('utf8');
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const ln of lines) {
+      if (!ln.trim()) continue;
+      const j = JSON.parse(ln);
+      if (j.error) throw new Error(`Ollama: ${String(j.error).slice(0, 200)}`);
+      content += j.message?.content || '';
+      last = j;
+    }
+  }
+  if (buf.trim()) { const j = JSON.parse(buf); content += j.message?.content || ''; last = j; }
+  if (last.prompt_eval_count) log(`  ${last.prompt_eval_count} token letti, ${last.eval_count || 0} scritti`);
+  return { content, ms: Date.now() - t0 };
 }
 
 async function handle(job) {
@@ -101,7 +116,12 @@ for (;;) {
     const note = models === null ? 'Ollama non risponde: avvialo (le richieste restano in coda).' : missing.length ? `Modelli mancanti in Ollama: ${missing.join(', ')} (ollama pull …).` : '';
     if (note !== warned) { if (note) log(`⚠ ${note}`); else log('Ollama pronto.'); warned = note; }
     const r = await api('POST', '/api/assistant-agent/claim', { ollama: models !== null, models: models || [] });
-    if (r.status === 200) { await handle(r.data); continue; }
+    if (r.status === 200) {
+      // mentre il modello lavora (anche minuti) si continua a dire al gestionale "sono qui e sto lavorando"
+      const beat = setInterval(() => { api('POST', '/api/assistant-agent/claim', { ollama: true, models: models || [], busy: true }).catch(() => {}); }, 20000);
+      try { await handle(r.data); } finally { clearInterval(beat); }
+      continue;
+    }
   } catch (e) {
     if (e.fatal) { console.error(e.message); process.exit(1); }
     log(`Gestionale non raggiungibile (${e.message}): riprovo.`);

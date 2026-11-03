@@ -94,7 +94,7 @@ test('messaggio -> in coda; PC spento: lo stato lo dice; il PC si fa sentire: lo
   const claim = await llm('Ho preparato il carico.', [{ type: 'stock_move', product: String(iphone.id), fields: { delta: 3, reason: 'carico' } }]);
   assert.match(claim.system, /Display iPhone 12/, 'il PC riceve i dati veri del gestionale');
   assert.match(claim.system, /R-\d{4}-\d+/);
-  assert.match(claim.system, /SOTTO SCORTA \(quantità ≤ scorta minima\): nessuno|SOTTO SCORTA \(quantità ≤ scorta minima\): .*Display iPhone 12/, "l'elenco sotto scorta lo calcola il server");
+  assert.match(claim.system, /SOTTO SCORTA \(quantità ≤ scorta minima, \d+\): (nessuno|.*Display iPhone 12)/, "l'elenco sotto scorta lo calcola il server");
   assert.equal(claim.kind, 'text');
   assert.equal((await call('GET', '/api/assistant/status')).data.agent_online, true);
   assert.equal((await call('GET', '/api/assistant/status')).data.llm_ready, true);
@@ -348,4 +348,22 @@ test('avviso Telegram: la conferma elenca cosa e\' stato fatto e cosa no', () =>
   assert.match(msg, /ordine\.pdf/);
   assert.match(msg, /PC con l’LLM spento/);
   assert.match(describeEvent({ method: 'POST', path: '/api/assistant/requests/9/cancel', status: 200, user: USERS.admin, result: { ok: true } }), /richiesta #9 annullata/);
+});
+
+test("contesto corto: con 120 articoli in più all'LLM arrivano solo quelli attinenti; PC occupato = collegato", async () => {
+  for (let i = 1; i <= 120; i++) await call('POST', '/api/products', { name: `Cavo prova numero ${i} lungo nome articolo di magazzino`, category: 'Cavi', qty: 5, min_qty: 1, price: 5 });
+  await ask('quanti display iPhone 12 ho?');
+  const claim = await agent('POST', '/api/assistant-agent/claim', { ollama: true, models: [] });
+  assert.equal(claim.status, 200);
+  assert.ok(claim.data.system.length < 14000, `prompt troppo lungo: ${claim.data.system.length}`);
+  assert.doesNotMatch(claim.data.system, /Cavo prova numero 77/);
+  assert.match(claim.data.system, /Display iPhone 12/);
+  assert.match(claim.data.system, /MAGAZZINO: \d+ articoli in totale/);
+  // mentre l'LLM lavora il programma manda solo il segnale di vita ("busy"): non gli viene assegnato altro
+  await db.prepare("UPDATE assistant_state SET value = ? WHERE key = 'agent_seen'").run(String(Date.now() - 600_000));
+  const st = (await call('GET', '/api/assistant/status')).data;
+  assert.equal(st.agent_online, true, 'una richiesta in elaborazione da poco = PC collegato anche senza segnali recenti');
+  assert.equal(st.processing, 1);
+  assert.equal((await agent('POST', '/api/assistant-agent/claim', { ollama: true, busy: true })).status, 204);
+  await agent('POST', `/api/assistant-agent/${claim.data.id}/result`, { content: JSON.stringify({ reply: 'ok', actions: [] }), model: 'x' });
 });
