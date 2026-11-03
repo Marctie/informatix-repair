@@ -17,7 +17,7 @@ const KINDS = {
   blacklist: { type: 'segnalazione', table: 'blacklist', label: (r) => `${r.name} · ${r.reason}` },
   sales: { type: 'vendita', table: 'sales', label: (r) => `Vendita n. ${r.id} (${Number(r.total).toFixed(2)} €)` },
 };
-export const AUDIT_TYPES = ['cliente', 'riparazione', 'articolo', 'fornitore', 'utente', 'spesa', 'servizio', 'ricambio', 'vendita', 'pagamento', 'impostazioni', 'acquisto', 'carico', 'dati demo', 'retroattivo', 'segnalazione'];
+export const AUDIT_TYPES = ['cliente', 'riparazione', 'articolo', 'fornitore', 'utente', 'spesa', 'servizio', 'ricambio', 'vendita', 'pagamento', 'impostazioni', 'acquisto', 'carico', 'dati demo', 'retroattivo', 'segnalazione', 'richiesta', 'assistente'];
 
 // sotto-azioni importanti: "METODO ultimo-pezzo" -> [tipo, azione, descrizione]
 const SUB = {

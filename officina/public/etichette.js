@@ -46,8 +46,8 @@ export const looksLikeCode = (s) => /^[0-9A-Za-z\-_./]{6,}$/.test(s) && /\d/.tes
 
 // ---------- Stampa ----------
 /** Prepara (assegna i codici mancanti) e apre la pagina di stampa. items = [{ product_id, qty }]. */
-export async function printLabels(items, { templateId = null, skip = 0, preview = false } = {}) {
-  const win = window.open('about:blank', '_blank'); // aperta subito dal click: dopo l'attesa del server il browser potrebbe bloccarla
+export async function printLabels(items, { templateId = null, skip = 0, preview = false, win: preWin = null } = {}) {
+  const win = preWin || window.open('about:blank', '_blank'); // aperta subito dal click: dopo l'attesa del server il browser potrebbe bloccarla
   const out = await safe(() => api('POST', '/api/labels/prepare', { items, template_id: templateId, skip }));
   if (!out) { win?.close(); return null; }
   if (!win) { toast('Il browser ha bloccato la finestra di stampa: consenti i popup per questo sito e riprova.', false); return out; }

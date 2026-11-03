@@ -2,7 +2,7 @@
 // Aggiorna giacenza, ultimo costo e storico prezzi di Acquisti (grafico e avvisi).
 import { $, esc, eur, api, toast, safe, debounce, openModal, today } from './util.js';
 import { categoryNames } from './categorie.js';
-import { vatBlock, bindVat, ensureVatDefault } from './iva.js';
+import { vatBlock, bindVat, bindNetTwin, ensureVatDefault } from './iva.js';
 import { printLabels } from './etichette.js';
 
 /** product = articolo già scelto (da Magazzino); senza: si cerca o si crea un articolo nuovo. */
@@ -38,6 +38,7 @@ export async function loadStockDialog({ product = null, done } = {}) {
   );
   const r = m.el;
   const vatVals = bindVat(r, 'cl', '#cl-cost');
+  bindNetTwin(r, '#cl-price', 'Prezzo senza IVA €');
   const pick = $('#cl-pick', r);
 
   const hint = async () => {

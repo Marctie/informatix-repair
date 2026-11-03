@@ -150,6 +150,8 @@
   <a href="#errori-vista">41 · Errori: pagine del cliente e registro</a>
   <a href="#etichette">45 · Etichette e codici a barre</a>
   <a href="#preventivi-iva">46 · Preventivi: IVA, sconti e permuta</a>
+  <a href="#segnalazioni">47 · Segnalazioni e richieste a Marco</a>
+  <a href="#assistente">48 · Assistente: scrivi cosa ti serve</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -1210,6 +1212,15 @@
 <tr><td><code>SEGNALAZIONE_NON_TROVATA</code></td><td>Aggiorna l’elenco: potrebbe essere stata eliminata.</td></tr>
 <tr><td><code>SEGNALAZIONE_GIA_RIMOSSA</code></td><td>Aggiorna l’elenco.</td></tr>
 <tr><td><code>SEGNALAZIONE_GIA_ATTIVA</code></td><td>Aggiorna l’elenco.</td></tr>
+<tr><th colspan="2">Segnalazioni</th></tr>
+<tr><td><code>TITOLO_MANCANTE</code></td><td>Scrivi un titolo breve: in poche parole, di cosa si tratta.</td></tr>
+<tr><td><code>DESCRIZIONE_MANCANTE</code></td><td>Descrivi cosa succede o cosa ti serve.</td></tr>
+<tr><td><code>TIPO_NON_VALIDO</code></td><td>Scegli il tipo di segnalazione dall&#x27;elenco.</td></tr>
+<tr><td><code>PRIORITA_NON_VALIDA</code></td><td>Scegli: bassa, normale, alta o urgente.</td></tr>
+<tr><td><code>STATO_NON_VALIDO</code></td><td>Scegli uno stato dall&#x27;elenco.</td></tr>
+<tr><td><code>SEGNALAZIONE_NON_TROVATA</code></td><td>Aggiorna l&#x27;elenco: potrebbe essere stata eliminata (o non è tua).</td></tr>
+<tr><td><code>SEGNALAZIONE_IN_CARICO</code></td><td>È già stata presa in carico: aggiungi un commento.</td></tr>
+<tr><td><code>COMMENTO_VUOTO</code></td><td>Scrivi il commento prima di inviarlo.</td></tr>
 <tr><th colspan="2">Etichette e codici a barre</th></tr>
 <tr><td><code>ETICHETTA_NOME_MANCANTE</code></td><td>Scrivi un nome per riconoscere il template (es. «Cavi 62 × 30»).</td></tr>
 <tr><td><code>ETICHETTA_NOME_LUNGO</code></td><td>Accorcia il nome: al massimo 60 caratteri.</td></tr>
@@ -1232,6 +1243,18 @@
 <tr><td><code>CODICE_NON_TROVATO</code></td><td>Nessun articolo ha quel codice: controlla la lettura, oppure crea l’articolo e scrivi il codice nel campo «Codice a barre».</td></tr>
 <tr><td><code>ARTICOLO_ARCHIVIATO</code></td><td>L’articolo con quel codice è archiviato: ripristinalo dal Magazzino oppure usa un altro articolo.</td></tr>
 </tbody>
+<tr><th colspan="2">Assistente</th></tr>
+<tr><td><code>RICHIESTA_NON_TROVATA</code></td><td>Aggiorna la pagina: potrebbe essere scaduta (la cronologia dura 30 giorni).</td></tr>
+<tr><td><code>MESSAGGIO_VUOTO</code></td><td>Scrivi cosa ti serve, per esempio «carica 3 display iPhone 12».</td></tr>
+<tr><td><code>TROPPE_RICHIESTE</code></td><td>Hai troppe richieste in attesa: aspetta che vengano elaborate (PC con l&#x27;LLM spento = restano in coda).</td></tr>
+<tr><td><code>FORMATO_NON_SUPPORTATO</code></td><td>Allega una foto, un PDF, un TXT o un CSV.</td></tr>
+<tr><td><code>ALLEGATO_TROPPO_GRANDE</code></td><td>Massimo 8 MB: riduci la foto o dividi il PDF.</td></tr>
+<tr><td><code>ALLEGATO_VUOTO</code> / <code>ALLEGATO_NON_VALIDO</code></td><td>Riprova a caricare il file.</td></tr>
+<tr><td><code>ARCHIVIO_NON_COLLEGATO</code></td><td>Avvisa Marco: manca il bucket R2 «officina-media».</td></tr>
+<tr><td><code>RICHIESTA_NON_CONFERMABILE</code> / <code>GIA_CONFERMATA</code></td><td>È già stata eseguita o annullata: aggiorna la pagina.</td></tr>
+<tr><td><code>DATI_CAMBIATI</code></td><td>Nel frattempo i dati sono cambiati: ricontrolla il nuovo riepilogo e conferma di nuovo.</td></tr>
+<tr><td><code>PREZZO_NON_VALIDO</code></td><td>Scrivi solo il numero, per esempio 249,90.</td></tr>
+<tr><td><code>RICHIESTA_NON_ANNULLABILE</code> / <code>RICHIESTA_NON_RIPROVABILE</code></td><td>Aggiorna la pagina per vedere com&#x27;è finita.</td></tr>
 </table>
 
 </section>
@@ -1331,6 +1354,25 @@
     <li>☐ <b>Carico merce:</b> dopo il carico compare <i>Stampa N etichette</i> (una per pezzo arrivato).</li>
     <li>☐ <b>Foglio A4 adesivo</b> (solo se lo usi): crea un template &quot;Foglio A4 adesivo&quot;, stampa e controlla che le etichette cadano giuste sul foglio.</li>
   </ul>
+  <h3>J. Segnalazioni e richieste (richiesta del 26/10)</h3>
+  <ul class="checks">
+    <li>☐ <b>Dal pulsante 📣</b> (in alto, da una qualsiasi pagina): apri una segnalazione di tipo <i>Qualcosa non funziona</i>, con titolo, descrizione e percorso. La sezione deve essere già quella in cui eri.</li>
+    <li>☐ <b>Immagine:</b> incolla una schermata con Ctrl+V (o scegline una): compare l&#x27;anteprima; Invia a Marco.</li>
+    <li>☐ <b>Funzione nuova:</b> apri un&#x27;altra segnalazione di tipo <i>Funzione nuova da aggiungere</i>: le domande cambiano (<i>Cosa ti serve che non c&#x27;è?</i>).</li>
+    <li>☐ <b>Cronologia:</b> da <i>Gestione → Segnalazioni</i> apri la segnalazione, scrivi un commento e controlla che compaia.</li>
+    <li>☐ <b>Domanda di Marco:</b> quando una segnalazione passa a <i>In attesa di risposta</i> deve comparire nella campanella 🔔; rispondendo torna <i>Nuova</i>.</li>
+  </ul>
+  <h3>K. Assistente (richiesta del 03/11)</h3>
+  <ul class="checks">
+    <li>☐ <b>Domanda:</b> da <i>Portale → Assistente</i> scrivi «quali articoli sono sotto scorta?»: deve rispondere con l&#x27;elenco vero e qualche suggerimento.</li>
+    <li>☐ <b>Carico:</b> «carica 2 [un tuo articolo]»: compare il riepilogo <i>Giacenza: prima → dopo</i>; <b>prima di confermare controlla in Magazzino che sia ancora il numero di prima</b>, poi conferma e ricontrolla.</li>
+    <li>☐ <b>Annulla:</b> chiedi un&#x27;altra cosa e premi <i>Annulla</i>: non deve cambiare niente.</li>
+    <li>☐ <b>Stato riparazione:</b> «la [codice] è pronta» → riepilogo, conferma, controlla la scheda e il Registro.</li>
+    <li>☐ <b>Ordine fornitore:</b> allega un PDF/foto/CSV vero: controlla che righe, quantità e costi del riepilogo siano giusti e metti i prezzi di vendita.</li>
+    <li>☐ <b>Richieste che non deve fare:</b> «elimina l&#x27;articolo X» o «incassa la [codice]»: deve rifiutare e dirti dove farlo.</li>
+    <li>☐ <b>PC spento:</b> spegni (o chiedi a Marco di spegnere) il PC con l&#x27;LLM, scrivi una richiesta: resta «in coda» e parte quando si riaccende.</li>
+    <li>☐ <b>Cronologia:</b> le richieste dei giorni scorsi restano nell&#x27;elenco (30 giorni).</li>
+  </ul>
   <h3>Se qualcosa non va</h3>
   <p>Scrivi: <i>che schermata</i>, <i>cosa hai premuto</i>, <i>cosa ti aspettavi</i>, <i>cosa è successo</i> e, se c&#x27;è, il <b>codice in rosso</b> (tipo E-7K3QX). Quel codice permette a Marco di trovare l&#x27;errore in un attimo (Gestione → Errori).</p>
 </section>
@@ -1347,7 +1389,7 @@
   </ul>
   <h3>Il template (Impostazioni → Etichette prodotto, solo amministratore)</h3>
   <ul>
-    <li>Il primo template è già pronto: rotolo 62 × 30 mm con la scritta Informatix Repair, prezzo grande, nome (anche su due righe), codice a barre e numero.</li>
+    <li><b>Segnalazioni, grafica</b>: ogni segnalazione è una scheda con il colore dello stato; nel dettaglio descrizione, percorso e attese sono in riquadri, la cronologia è una conversazione e il commento si invia anche con Ctrl+Invio. <b>Versione e note di rilascio</b>: in fondo alla barra laterale c'è «Versione 1.0.2.1» (maggiore.minore.funzione.correzione): cliccandola si leggono le novità. Una funzione nuova azzera il numero delle correzioni. <b>Salva e stampa etichetta</b>: nel Nuovo articolo il tasto salva e stampa subito le etichette (tante quanti i pezzi). <b>Margine e listini (Magazzino)</b>: nella lista e nel modulo articolo si vede il guadagno a pezzo e il margine % (prezzo di vendita senza IVA meno costo). Ogni articolo può avere anche un <i>prezzo amico</i> e un <i>prezzo rivenditore</i> (facoltativi, IVA inclusa); in Vendite il menu «Listino prezzi» sopra il carrello cambia i prezzi di tutto il carrello (dove manca il prezzo vale quello al pubblico). <b>Riepilogo prima di incassare</b>: in Vendite il tasto «Stampa riepilogo» apre un riepilogo con intestazione del negozio, articoli e totale da dare al cliente (anche rivenditore): si sceglie il formato foglio A4 o scontrino 80 mm e si stampa o si salva in PDF. Non registra nulla e non è uno scontrino fiscale. <b>Prezzi senza IVA</b>: in Nuovo articolo e nel Carico merce, sotto costo e prezzo di vendita c'è il campo «senza IVA»: scrivi l'uno o l'altro e l'altro si calcola con l'aliquota delle Impostazioni. <b>Brother QL-800 / QL-1100</b>: nel template scegli la misura del rotolo che hai montato (elenco «Brother», es. 62 × 29 mm) e nella stampa imposta lo stesso formato carta nel driver, margini «nessuno», scala 100%. Una misura diversa dal rotolo fa uscire etichette bianche o tagliate. Il primo template è già pronto: rotolo 62 × 30 mm con la scritta Informatix Repair, prezzo grande, nome (anche su due righe), codice a barre e numero.</li>
     <li><b>Modifica:</b> a sinistra l’anteprima (identica alla stampa), a destra misura, elementi e proprietà. <b>Trascina</b> un elemento per spostarlo e il quadratino rosso per ridimensionarlo. Si può scegliere fra 12 misure (Brother QL, DYMO, generiche, foglio A4 adesivo 70 × 37) o scrivere la propria; cambiando misura gli elementi si adattano da soli.</li>
     <li><b>Cosa mostrare:</b> logo, prezzo, nome, codice a barre, numero, categoria, codice articolo, nome del negozio e un testo libero (es. «Garanzia 24 mesi»). Se un nome è troppo lungo il carattere si rimpicciolisce da solo.</li>
     <li><b>Avvisi in giallo</b> sotto l’anteprima: elemento fuori dai bordi, testo troppo lungo, <b>codice a barre troppo stretto</b> (la pistola farebbe fatica a leggerlo: allarga il riquadro o usa un’etichetta più larga).</li>
@@ -1401,6 +1443,66 @@
     <li>Gli avvisi dicono quando un preventivo è IVA esclusa (con imponibile e aliquota) e quando c’è una permuta (valore e da pagare).</li>
     <li>Il testo che il cliente firma riporta totale, imponibile, IVA e permuta, così resta tutto scritto.</li>
     <li>Fatture e scontrini non cambiano: lavorano come prima sul totale.</li>
+  </ul>
+</section>
+<section id="segnalazioni">
+  <h2><span class="n">47</span>Segnalazioni e richieste a Marco</h2>
+  <p>Se qualcosa non funziona, vuoi cambiare una cosa o ti serve una funzione che nel gestionale non c&#x27;è, apri una <b>segnalazione</b>: è un task per Marco, con tutto quello che serve per intervenire senza doverti richiamare.</p>
+  <h3>Come si apre</h3>
+  <ul>
+    <li>Dal pulsante <b>📣</b> in alto, da <b>qualsiasi pagina</b> (la sezione in cui ti trovi si compila da sola), oppure da <i>Gestione → Segnalazioni → Nuova segnalazione</i>.</li>
+    <li><b>Di cosa si tratta</b>: <i>Qualcosa non funziona</i>, <i>Da cambiare o migliorare</i>, <i>Funzione nuova da aggiungere</i> o <i>Domanda o dubbio</i>. Le domande sotto si adattano al tipo scelto.</li>
+    <li>Scrivi un <b>titolo breve</b>, racconta <b>cosa succede</b> (o cosa ti serve), indica il <b>percorso fatto</b> (es. <i>Riparazioni → R-2026-0016 → Preventivo → Salva</i>) e come dovrebbe funzionare.</li>
+    <li><b>Immagini</b>: fino a 6, dal pulsante, <b>incollando una schermata con Ctrl+V</b> o trascinandole nella finestra. Si possono aggiungere anche dopo.</li>
+    <li><b>Quanto è importante</b>: bassa, normale, alta o urgente (urgente = ti blocca il lavoro).</li>
+    <li>In automatico si salvano la pagina, il tipo di schermo e gli ultimi errori comparsi: servono a capire il problema.</li>
+  </ul>
+  <h3>Dopo l&#x27;invio</h3>
+  <ul>
+    <li>Marco riceve subito l&#x27;avviso su <b>Telegram</b> (anche per commenti e cambi di stato).</li>
+    <li>Ogni segnalazione ha un <b>codice</b> (S-0001…), uno <b>stato</b> — <i>Nuova, In lavorazione, In attesa di risposta, Da verificare, Risolta, Non si fa</i> — e una <b>cronologia di commenti</b>.</li>
+    <li>Se Marco ti fa una domanda (<i>In attesa di risposta</i>) o ha finito (<i>Da verificare</i>) compare un avviso nella campanella 🔔: rispondi nei commenti o controlla e chiudi.</li>
+    <li>Finché è <i>Nuova</i> puoi modificarla; dopo puoi solo aggiungere commenti e immagini.</li>
+  </ul>
+  <h3>Chi vede cosa</h3>
+  <ul>
+    <li>Ogni utente (anche Cassa) vede <b>solo le proprie</b> segnalazioni. Gli <b>amministratori</b> le vedono tutte, cambiano stato e priorità, ed eliminano.</li>
+  </ul>
+  <h3>Report per Marco</h3>
+  <ul>
+    <li>Dentro ogni segnalazione (amministratori): <b>⬇ Report (.md)</b> o <b>⬇ Report con immagini</b>: un file di testo completo con tipo, priorità, percorso, dati tecnici, immagini e cronologia.</li>
+    <li>In elenco: <b>⬇ Report di tutte le aperte</b> (con le immagini): un unico file da portare a Marco.</li>
+  </ul>
+</section>
+<section id="assistente">
+  <h2><span class="n">48</span>Assistente: scrivi cosa ti serve</h2>
+  <p>Nel menu <b>Portale → Assistente</b> puoi scrivere come parleresti a un collega, oppure allegare l&#x27;ordine di un fornitore. L&#x27;assistente (un&#x27;intelligenza artificiale che gira sul PC di Marco) capisce la richiesta e <b>prepara</b> le operazioni: tu controlli il <b>riepilogo</b> e solo dopo aver premuto <b>«Conferma ed esegui»</b> succede qualcosa. Senza conferma non cambia niente.</p>
+  <h3>Cosa puoi chiedere</h3>
+  <ul>
+    <li><b>Magazzino:</b> «carica 3 display iPhone 12», «scarica 2 batterie Samsung S21», «cambia il prezzo del cavo Lightning a 9,90», «nuovo articolo: cavo USB-C 1 m, 10 pezzi, costo 1,20».</li>
+    <li><b>Riparazioni:</b> «la R-2026-0016 è pronta», «nuova riparazione: Mario Rossi 333 1234567, iPhone 11, schermo rotto, preventivo 80 euro», «aggiungi una nota alla R-2026-0016».</li>
+    <li><b>Vetrina usati:</b> «metti in vetrina un iPhone 13 128 GB nero a 380 euro», «segna venduto l&#x27;iPad», «rimetti in vetrina l&#x27;iPad».</li>
+    <li><b>Clienti:</b> «nuovo cliente Luca Bianchi 347 9876543».</li>
+    <li><b>Domande e consigli:</b> «quali articoli sono sotto scorta?», «quali riparazioni sono ferme?», «che prezzo metto a un iPhone 13 usato?». Sotto ogni risposta ci sono dei <b>suggerimenti</b> (clic per riusarli).</li>
+    <li><b>Ordine di un fornitore:</b> con la graffetta 📎 allega una foto, un PDF, un TXT o un CSV. Per ogni riga l&#x27;assistente propone un carico (se l&#x27;articolo c&#x27;è già) o un articolo nuovo con il costo del documento. Il prezzo di vendita lo scrivi tu nel riepilogo. <b>Controlla bene nomi e quantità:</b> la lettura di un documento può sbagliare.</li>
+  </ul>
+  <h3>Il riepilogo e la conferma</h3>
+  <ul>
+    <li>Ogni operazione è una scheda con quello che cambia (es. <i>Prezzo: 99,00 € → 109,00 €</i>, <i>Giacenza: 2 → 5 pz</i>). Se c&#x27;è un problema la scheda è arancione, dice cosa non va ed <b>è saltata</b>.</li>
+    <li>Il <b>prezzo</b> si può correggere nella scheda prima di confermare.</li>
+    <li>Se nel frattempo i dati cambiano (es. qualcuno scarica lo stesso articolo) il gestionale rifà il riepilogo e ti chiede di ricontrollare.</li>
+    <li>L&#x27;esecuzione passa dagli <b>stessi controlli</b> di quando fai le cose a mano: stesso ruolo (la Cassa non vede costi), stesso <b>Registro</b>, stessi <b>avvisi Telegram</b>.</li>
+  </ul>
+  <h3>Cosa NON fa</h3>
+  <ul>
+    <li><b>Non incassa, non consegna, non vende in cassa, non elimina</b> e non tocca impostazioni, utenti, fatture o documenti: per quelle cose si usa il gestionale come sempre (l&#x27;assistente ti dice dove).</li>
+    <li>Il nuovo articolo in vetrina resta in <b>bozza, senza foto</b>: aggiungi le foto da <i>Vetrina usati</i> e premi «Ripubblica sul sito». L&#x27;acconto, il PIN e la firma di una nuova riparazione si completano dalla scheda.</li>
+  </ul>
+  <h3>Cronologia e PC spento</h3>
+  <ul>
+    <li>Tutte le richieste restano in <b>cronologia per 30 giorni</b> (con filtri: da confermare, eseguite, annullate, solo mie). Ognuno vede le proprie; gli amministratori vedono tutte.</li>
+    <li>In alto la pagina dice se il PC con l&#x27;LLM è collegato. Se è <b>spento</b> le richieste restano <b>«in coda»</b> e partono da sole appena si riaccende; dopo 10 minuti Marco riceve un avviso su Telegram. Se aspetti da molto, chiedi a Marco di accendere il PC.</li>
+    <li>La prima risposta dopo un po&#x27; di pausa può richiedere un paio di minuti (il modello si carica); poi bastano circa 30-60 secondi.</li>
   </ul>
 </section>
 <!-- agente D: fine sezioni -->

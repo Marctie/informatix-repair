@@ -13,6 +13,9 @@ import { scanWithCamera, cameraSupported } from './scan.js';
 export async function salesView(el) {
   const cart = [];
   let customer = null;
+  let listino = 'public'; // listino prezzi della vendita: public | friend | reseller (se l'articolo non ha quel prezzo vale il pubblico)
+  const priceFor = (pr) => { const v = listino === 'friend' ? pr.friend : listino === 'reseller' ? pr.reseller : null; return v != null && Number(v) > 0 ? Number(v) : Number(pr.public); };
+  const nz = (v) => (v == null || v === '' || v === 'null' ? null : Number(v));
   const discNow = () => Number(String($('#s-disc', el)?.value ?? '0').replace(',', '.')) || 0;
   const dueNow = () => Math.max(0, cart.reduce((a, i) => a + i.qty * i.unit_price, 0) - discNow());
   // Pagamento: metodo singolo, conto diviso e codice buono (buoni.js)
@@ -61,7 +64,8 @@ export async function salesView(el) {
     const keepPrint = $('#s-print', el) ? $('#s-print', el).checked : wantPrint();
     const retroOpen = !!$('#s-cart details.retro[open]', el);
     $('#s-cart', el).innerHTML = cart.length
-      ? `<div class="sec" style="gap:0"><h3 class="sec-t" style="margin-bottom:.9rem">Carrello</h3>${cart.map((i, idx) => `<div class="cart-item">
+      ? `<div class="sec" style="gap:0"><h3 class="sec-t" style="margin-bottom:.9rem">Carrello</h3>
+        <div class="field" style="margin-bottom:.7rem"><label class="l" for="s-list">Listino prezzi</label><select id="s-list"><option value="public" ${listino === 'public' ? 'selected' : ''}>Prezzo al pubblico</option><option value="friend" ${listino === 'friend' ? 'selected' : ''}>Prezzo amico</option><option value="reseller" ${listino === 'reseller' ? 'selected' : ''}>Prezzo rivenditore</option></select>${listino !== 'public' ? '<span class="hint">Gli articoli senza questo prezzo restano al prezzo al pubblico.</span>' : ''}</div>${cart.map((i, idx) => `<div class="cart-item">
           <span class="name">${esc(i.name)}</span><button class="xbtn" data-rm="${idx}" aria-label="Rimuovi ${esc(i.name)}">✕</button>
           <div class="ctrl">
             <span class="qty"><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="-1" aria-label="Meno">−</button><b>${i.qty}</b><button class="btn btn-outline btn-sm" data-q="${idx}" data-d="1" aria-label="Più">+</button></span>
@@ -76,6 +80,7 @@ export async function salesView(el) {
         ${retroField('s-retro')}
         ${appesoField('s-appeso', keepAppeso)}
         <label class="row tight" style="align-items:center;gap:.5rem;margin-bottom:.5rem"><input type="checkbox" id="s-print" ${keepPrint ? 'checked' : ''} style="width:1.4rem;height:1.4rem" /> Stampa la ricevuta</label>
+        <button class="btn btn-outline" style="width:100%;margin-bottom:.5rem" id="s-summary" type="button">🖨️ Stampa riepilogo (prima di incassare)</button>
         <button class="btn btn-green btn-lg" style="width:100%" id="s-pay">✔ Incassa</button>`
       : '<p class="empty">Il carrello è vuoto: cerca un articolo o aggiungi una voce libera.</p>';
     const disc = $('#s-disc', el);
@@ -98,14 +103,14 @@ export async function salesView(el) {
     const q = e.target.value.trim();
     if (q.length < 2 || q === lastScan) return sugg.classList.add('hidden');
     const rows = await safe(() => api('GET', `/api/products?q=${encodeURIComponent(q)}`));
-    sugg.innerHTML = (rows || []).map((p) => `<div class="px-3 py-2.5 hover:bg-lightbg cursor-pointer text-sm flex justify-between gap-2 ${p.qty <= 0 ? 'opacity-50' : ''}" data-add="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}" data-qty="${p.qty}"><span class="min-w-0">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz · ${eur(p.price)}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun articolo in magazzino: usa la voce libera.</div>';
+    sugg.innerHTML = (rows || []).map((p) => `<div class="px-3 py-2.5 hover:bg-lightbg cursor-pointer text-sm flex justify-between gap-2 ${p.qty <= 0 ? 'opacity-50' : ''}" data-add="${p.id}" data-name="${esc(p.name)}" data-price="${p.price}" data-pf="${p.price_friend ?? ''}" data-pr="${p.price_reseller ?? ''}" data-qty="${p.qty}"><span class="min-w-0">${esc(p.name)}</span><span class="text-gray-500 shrink-0">${p.qty} pz · ${eur(priceFor({ public: p.price, friend: nz(p.price_friend), reseller: nz(p.price_reseller) }))}</span></div>`).join('') || '<div class="px-3 py-2 text-sm text-gray-400">Nessun articolo in magazzino: usa la voce libera.</div>';
     sugg.classList.remove('hidden');
   }, 200);
 
   /** Aggiunge un articolo al carrello (da elenco, da codice a barre o da fotocamera). p = { id, name, price, qty (giacenza) } */
   function addToCart(p) {
     const ex = cart.find((i) => i.product_id === p.id);
-    if (ex) { ex.qty++; ex.stock = p.qty; } else cart.push({ product_id: p.id, name: p.name, qty: 1, unit_price: Number(p.price), stock: p.qty });
+    if (ex) { ex.qty++; ex.stock = p.qty; } else { const prices = { public: Number(p.price), friend: nz(p.pf), reseller: nz(p.pr) }; cart.push({ product_id: p.id, name: p.name, qty: 1, unit_price: priceFor(prices), stock: p.qty, prices }); }
     sugg.classList.add('hidden');
     $('#s-q', el).value = '';
     renderCart();
@@ -126,7 +131,7 @@ export async function salesView(el) {
       qIn.select();
       return;
     }
-    addToCart({ id: p.id, name: p.name, price: p.price, qty: p.qty });
+    addToCart({ id: p.id, name: p.name, price: p.price, pf: p.price_friend, pr: p.price_reseller, qty: p.qty });
     beep(p.qty > 0);
     const line = cart.find((i) => i.product_id === p.id);
     if (p.qty <= 0) toast(`${p.name}: giacenza 0, controlla il magazzino.`, false, { ms: 6000 });
@@ -168,7 +173,7 @@ export async function salesView(el) {
 
   el.addEventListener('click', async (e) => {
     const add = e.target.closest('[data-add]');
-    if (add) return addToCart({ id: Number(add.dataset.add), name: add.dataset.name, price: add.dataset.price, qty: Number(add.dataset.qty) });
+    if (add) return addToCart({ id: Number(add.dataset.add), name: add.dataset.name, price: add.dataset.price, pf: add.dataset.pf, pr: add.dataset.pr, qty: Number(add.dataset.qty) });
     const pick = e.target.closest('[data-cust]');
     if (pick) {
       customer = { id: Number(pick.dataset.cust), name: pick.dataset.name };
@@ -193,6 +198,7 @@ export async function salesView(el) {
       if (!name || !(price >= 0) || $('#s-free-p', el).value === '') return toast('Inserisci descrizione e importo', false);
       cart.push({ name, qty: 1, unit_price: price }); $('#s-free', el).value = ''; $('#s-free-p', el).value = ''; return renderCart();
     }
+    if (e.target.id === 's-summary') return printSummary(cart, discNow(), customer, listino);
     if (e.target.id === 's-pay') {
       const printNow = $('#s-print', el).checked;
       try { localStorage.setItem('sale_print', printNow ? '1' : '0'); } catch { /* memoria non disponibile */ }
@@ -210,6 +216,11 @@ export async function salesView(el) {
     }
   });
   el.addEventListener('change', (e) => {
+    if (e.target.id === 's-list') {
+      listino = e.target.value;
+      for (const i of cart) if (i.prices) i.unit_price = priceFor(i.prices);
+      return renderCart();
+    }
     const sn = e.target.closest('[data-sn]');
     if (sn) { cart[Number(sn.dataset.sn)].serial = sn.value.trim(); return; }
     const p = e.target.closest('[data-p]');
@@ -294,6 +305,38 @@ export async function cashView(el, qs = new URLSearchParams()) {
   $('#c-from', el).onchange = (e) => { from = e.target.value; load(); };
   $('#c-to', el).onchange = (e) => { to = e.target.value; load(); };
   await load();
+}
+
+/** Riepilogo del carrello da dare al cliente prima di incassare (anche rivenditore): scontrino 80 mm, foglio A4 o PDF. Non e' uno scontrino fiscale e non registra nulla. */
+async function printSummary(cart, discount, customer, listino = 'public') {
+  if (!cart.length) return toast('Il carrello è vuoto.', false);
+  const win = window.open('about:blank', '_blank');
+  if (!win) return toast('Il browser ha bloccato la finestra di stampa: consentila e riprova.', false);
+  const shop = (await safe(() => api('GET', '/api/settings'))) || {};
+  const sub = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
+  const disc = Math.min(Math.max(Number(discount) || 0, 0), sub);
+  const rows = cart.map((i) => `<tr><td>${esc(i.name)}${i.serial ? `<br><small>Matricola ${esc(i.serial)}</small>` : ''}</td><td class="n">${i.qty}</td><td class="n">${eur(i.unit_price)}</td><td class="n">${eur(i.qty * i.unit_price)}</td></tr>`).join('');
+  const list = { friend: 'Listino amico', reseller: 'Listino rivenditore' }[listino] || '';
+  win.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Riepilogo vendita</title><style id="pg">@page{size:A4;margin:12mm}</style><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;padding:14px;font-size:14px}h1{font-size:19px;margin:0 0 2px}.shop{font-size:12px;color:#333;margin-bottom:8px}p{margin:2px 0}
+    table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #999;padding:6px 3px;text-align:left;vertical-align:top}th.n,td.n{text-align:right;white-space:nowrap}
+    .tot td{border:0;font-weight:700;font-size:16px}.note{margin-top:14px;font-size:11px;color:#444}
+    .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:8px;background:#f3f4f6;border-bottom:1px solid #d1d5db}.bar button{padding:8px 12px;font-weight:700;cursor:pointer}.bar button.on{background:#111;color:#fff}
+    body.rcpt{width:72mm;font-size:11px;padding:2mm}body.rcpt h1{font-size:14px}body.rcpt .tot td{font-size:13px}
+    @media print{.bar{display:none}}
+  </style></head><body><div class="bar"><b>Formato:</b><button id="fa" class="on">Foglio A4</button><button id="fr">Scontrino 80 mm</button><button id="fp">🖨️ Stampa</button><button id="fd">📄 Salva PDF</button><span style="font-size:12px;color:#444">Per il PDF scegli «Salva come PDF» come stampante.</span></div>
+    <h1>${esc(shop.shop_name || 'Riepilogo della vendita')}</h1><div class="shop">${[shop.shop_address, shop.shop_phone].filter(Boolean).map(esc).join(' · ')}</div>
+    <p><b>Riepilogo della vendita</b> · ${esc(new Date().toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }))}${customer ? ` · ${esc(customer.name || '')}` : ''}${list ? ` · ${esc(list)}` : ''}</p>
+    <table><thead><tr><th>Articolo</th><th class="n">Q.tà</th><th class="n">Prezzo</th><th class="n">Totale</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot>${disc ? `<tr class="tot"><td colspan="3">Subtotale</td><td class="n">${eur(sub)}</td></tr><tr class="tot"><td colspan="3">Sconto</td><td class="n">−${eur(disc)}</td></tr>` : ''}<tr class="tot"><td colspan="3">TOTALE DA PAGARE</td><td class="n">${eur(sub - disc)}</td></tr></tfoot></table>
+    <p class="note">Prezzi IVA inclusa. Questo riepilogo non è uno scontrino né una ricevuta fiscale: serve solo a controllare gli articoli prima del pagamento.</p>
+    <script>
+      var pg=document.getElementById('pg'),a=document.getElementById('fa'),r=document.getElementById('fr');
+      function fmt(rc){document.body.className=rc?'rcpt':'';pg.textContent=rc?'@page{size:80mm auto;margin:3mm}':'@page{size:A4;margin:12mm}';a.className=rc?'':'on';r.className=rc?'on':''}
+      a.onclick=function(){fmt(false)};r.onclick=function(){fmt(true)};
+      document.getElementById('fp').onclick=document.getElementById('fd').onclick=function(){window.print()};
+    <\/script></body></html>`);
+  win.document.close();
 }
 
 /** Ultima scelta di stampa (per postazione): di default la ricevuta si stampa. */

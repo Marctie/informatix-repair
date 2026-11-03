@@ -35,6 +35,9 @@ import { modelliView } from './modelli.js';
 import { storicoView } from './storico.js';
 import { esterneView } from './esterne.js';
 import { noteView } from './note.js';
+import { segnalazioniView, openTicketForm } from './segnalazioni.js';
+import { assistenteView } from './assistente.js';
+import { VERSION, openReleaseNotes } from './versione.js';
 
 // Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
 const GROUPS = [
@@ -46,6 +49,7 @@ const GROUPS = [
 ];
 const VIEWS = [
   { id: 'portale', label: 'Portale', icon: '🧭', render: portaleView, group: 'base' },
+  { id: 'assistente', label: 'Assistente', icon: '✨', render: assistenteView, group: 'base' }, // scrive l'LLM, conferma l'utente
   { id: 'oggi', label: 'Oggi', icon: '🏠', render: dashboardView, bottom: true, group: 'base' },
   { id: 'riparazioni', label: 'Riparazioni', icon: '🛠️', render: repairsView, bottom: true, group: 'banco' },
   { id: 'clienti', label: 'Clienti', icon: '👤', render: customersView, bottom: true, group: 'banco' },
@@ -66,6 +70,7 @@ const VIEWS = [
   { id: 'blacks', label: 'Blacks', icon: '⛔', render: blacksView, group: 'gestione' },
   { id: 'analisi', label: 'Analisi', icon: '📊', render: analyticsView, admin: true, group: 'gestione' },
   { id: 'altra', label: 'Altra attività', icon: '🏢', render: altraView, admin: true, group: 'gestione' },
+  { id: 'segnalazioni', label: 'Segnalazioni', icon: '📣', render: segnalazioniView, group: 'gestione' },
   { id: 'impostazioni', label: 'Impostazioni', icon: '⚙️', render: settingsView, notCassa: true, group: 'gestione' },
   // --- Agente B (voci del menu: storico, esterne, note, modelli) ---
   { id: 'storico', label: 'Storico riparazioni', icon: '📋', render: storicoView, group: 'banco' },
@@ -119,7 +124,7 @@ document.addEventListener('click', (e) => {
 const view = $('#view');
 
 // ---------- Avvisi: campanella e riquadro in home ----------
-const ALERT_ICO = { invoice_overdue: '🗂️', invoice_due: '🗂️', bad_payer: '⚠️', out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
+const ALERT_ICO = { ticket: '📣', invoice_overdue: '🗂️', invoice_due: '🗂️', bad_payer: '⚠️', out_of_stock: '🛑', low_stock: '📉', stale: '🐌', late: '⏰', declined: '❌', ready_waiting: '📞', storage_due: '📦', storage_soon: '📦', fate_unknown: '❓' };
 const alertRow = (a) => `<a href="${a.link}" class="flex gap-3 px-4 py-3 border-b border-line last:border-0 text-sm hover:bg-lightbg" data-alert>
   <span aria-hidden="true">${ALERT_ICO[a.type] || '🔔'}</span><span class="min-w-0"><b class="block">${esc(a.title)}</b><span class="text-gray-500">${esc(a.detail)}</span></span></a>`;
 export async function refreshBell() {
@@ -131,6 +136,8 @@ export async function refreshBell() {
   $('#bell').setAttribute('aria-label', d.count ? `Avvisi: ${d.count}` : 'Avvisi');
   return d;
 }
+document.addEventListener('click', (e) => { if (e.target.closest('#report-btn')) openTicketForm(); if (e.target.closest('#ver-btn')) openReleaseNotes(); });
+if ($('#ver-btn')) $('#ver-btn').textContent = `Versione ${VERSION}`;
 document.addEventListener('click', async (e) => {
   if (!e.target.closest('#bell')) return;
   const d = await refreshBell();

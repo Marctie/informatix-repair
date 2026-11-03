@@ -3,6 +3,7 @@ import { $, $$, esc, eur, fdt, api, toast, safe, debounce, openModal, confirmDel
 import { openLabelPrint, printLabels, codeHint, lookupCode, looksLikeCode } from './etichette.js';
 import { scanWithCamera, cameraSupported } from './scan.js';
 import { loadStockDialog } from './carico.js';
+import { bindNetTwin, bindMargin, marginOf, ensureVatDefault } from './iva.js';
 import { categoryNames } from './categorie.js';
 
 const CATEGORIES = ['Ricambi', 'Accessori', 'Cavi e caricatori', 'Usato / ricondizionato', 'Software e servizi', 'Altro'];
@@ -27,6 +28,7 @@ export async function stockView(el, params) {
     $$('[data-t]', el).forEach((c) => c.classList.toggle('on', c.dataset.t === tab && !(c.dataset.t === 'all' && area)));
     $('#p-q', el).classList.toggle('hidden', tab === 'reorder');
     $('#p-area', el).classList.toggle('hidden', tab === 'reorder');
+    await ensureVatDefault();
     const sum = await safe(() => api('GET', '/api/stock/summary'));
     if (sum && $('#p-kpi', el)) $('#p-kpi', el).innerHTML = [[sum.items, 'Articoli a catalogo', ''], [sum.units, 'Pezzi in magazzino', ''], ...(canSeeCosts() ? [[eur(sum.value_cost), 'Valore a costo', '']] : []), [sum.low, 'Sotto scorta', sum.low ? 'text-amber-600' : '']].map(([n, l, c]) => `<div class="card kpi"><b class="${c}">${n}</b><span>${l}</span></div>`).join('');
     if (tab === 'reorder') return loadReorder();
@@ -37,19 +39,20 @@ export async function stockView(el, params) {
       const low = p.min_qty > 0 && p.qty <= p.min_qty;
       return `<span class="badge ${p.qty <= 0 ? 'bg-red-100 text-red-700' : low ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}">${p.qty} pz${low ? ' · basso' : ''}</span>`;
     };
+    const marginCell = (p) => { const m = marginOf(p.cost, p.price); return m ? `<span style="color:${m.gain < 0 ? '#B91C1C' : 'inherit'}" title="Guadagno IVA esclusa: ${eur(m.gain)} · ricarico ${m.markup.toFixed(0)}%">${m.pct.toFixed(0)}%</span>` : '<span class="hint">—</span>'; };
     const meta = (p) => [p.sku, p.barcode, p.location, p.supplier_name].filter(Boolean).map(esc).join(' · ');
     const stepper = (p) => `<span class="row tight" data-stop><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="-1" aria-label="Togli uno">−1</button><button class="btn btn-outline btn-sm" data-mv="${p.id}" data-d="1" aria-label="Aggiungi uno">+1</button></span>`;
     const list2 = rows || [];
     if (!list2.length) { list.innerHTML = '<p class="empty">Nessun articolo. Aggiungi il primo con “Nuovo articolo”.</p>'; return; }
     list.innerHTML =
-      `<div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th>${canSeeCosts() ? '<th>Costo</th>' : ''}<th>Prezzo</th><th></th></tr></thead><tbody>` +
+      `<div class="tbl-wrap only-wide"><table class="t"><thead><tr><th>Articolo</th><th>Categoria</th><th>Giacenza</th>${canSeeCosts() ? '<th>Costo</th>' : ''}<th>Prezzo</th>${canSeeCosts() ? '<th>Margine</th>' : ''}<th></th></tr></thead><tbody>` +
       list2.map((p) => `<tr class="row-h" style="cursor:pointer" data-id="${p.id}"><td><b>${esc(p.name)}</b><div class="hint">${meta(p)}</div></td>
-          <td class="hint" style="font-size:.85rem">${esc(p.category || '—')}</td><td>${badge(p)}</td>${canSeeCosts() ? `<td>${eur(p.cost)}</td>` : ''}<td><b>${eur(p.price)}</b></td><td data-stop style="white-space:nowrap">${stepper(p)}</td></tr>`).join('') +
+          <td class="hint" style="font-size:.85rem">${esc(p.category || '—')}</td><td>${badge(p)}</td>${canSeeCosts() ? `<td>${eur(p.cost)}</td>` : ''}<td><b>${eur(p.price)}</b></td>${canSeeCosts() ? `<td>${marginCell(p)}</td>` : ''}<td data-stop style="white-space:nowrap">${stepper(p)}</td></tr>`).join('') +
       '</tbody></table></div>' +
       `<div class="only-narrow">${list2.map((p) => `<div class="pcard" style="cursor:pointer" data-id="${p.id}">
           <div class="top"><span class="name">${esc(p.name)}</span>${badge(p)}</div>
           <div class="sub">${[p.category, meta(p)].filter(Boolean).join(' · ')}</div>
-          <div class="top" style="align-items:center"><span>${canSeeCosts() ? `<span class="sub">Costo</span> ${eur(p.cost)} &nbsp;·&nbsp; ` : ''}<span class="sub">Prezzo</span> <b>${eur(p.price)}</b></span>${stepper(p)}</div></div>`).join('')}</div>`;
+          <div class="top" style="align-items:center"><span>${canSeeCosts() ? `<span class="sub">Costo</span> ${eur(p.cost)} &nbsp;·&nbsp; ` : ''}<span class="sub">Prezzo</span> <b>${eur(p.price)}</b>${canSeeCosts() ? ` &nbsp;·&nbsp; <span class="sub">Margine</span> ${marginCell(p)}` : ''}</span>${stepper(p)}</div></div>`).join('')}</div>`;
   }
 
   /** Menu a tendina delle aree: elenco standard + eventuali categorie già usate, con il numero di articoli. */
@@ -128,8 +131,10 @@ async function productForm(id, done, prefill = {}) {
         ${id ? `<div class="field"><label class="l">Giacenza attuale</label><input value="${p.qty} pz" disabled /></div>` : '<div class="field"><label class="l" for="pf-qty">Quantità iniziale</label><input id="pf-qty" inputmode="numeric" value="0" /></div>'}
         <div class="field"><label class="l" for="pf-min">Scorta minima</label><input id="pf-min" inputmode="numeric" value="${p?.min_qty ?? 0}" /><span class="hint">Sotto questa quantità compare in “Da ordinare”.</span></div>
         <div class="field"><label class="l" for="pf-stale">Fermo dopo (giorni)</label><input id="pf-stale" inputmode="numeric" value="${p?.stale_days ?? ''}" placeholder="generale" /><span class="hint">Vuoto = soglia generale (Impostazioni). 0 = non avvisare mai.</span></div>
-        ${canSeeCosts() ? `<div class="field"><label class="l" for="pf-cost">Costo d’acquisto €</label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>` : ""}
-        <div class="field"><label class="l" for="pf-price">Prezzo di vendita €</label><input id="pf-price" inputmode="decimal" value="${p?.price ?? ''}" /></div>
+        ${canSeeCosts() ? `<div class="field"><label class="l" for="pf-cost">Costo d’acquisto € <span style="font-weight:500;color:var(--muted)">(senza IVA)</span></label><input id="pf-cost" inputmode="decimal" value="${p?.cost ?? ''}" /></div>` : ""}
+        <div class="field"><label class="l" for="pf-price">Prezzo di vendita € <span style="font-weight:500;color:var(--muted)">(IVA inclusa)</span></label><input id="pf-price" inputmode="decimal" value="${p?.price ?? ''}" /></div>
+        <div class="field"><label class="l" for="pf-pf">Prezzo amico € <span style="font-weight:500;color:var(--muted)">(facoltativo)</span></label><input id="pf-pf" inputmode="decimal" value="${p?.price_friend ?? ''}" /></div>
+        <div class="field"><label class="l" for="pf-pr">Prezzo rivenditore € <span style="font-weight:500;color:var(--muted)">(facoltativo)</span></label><input id="pf-pr" inputmode="decimal" value="${p?.price_reseller ?? ''}" /><span class="hint">IVA inclusa come il prezzo al pubblico. Vuoto = vale il prezzo al pubblico.</span></div>
         <div class="field"><label class="l" for="pf-sup">Fornitore</label><select id="pf-sup"><option value="">—</option>${suppliers.map((s) => `<option value="${s.id}" ${p?.supplier_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
         <div class="field"><label class="l" for="pf-loc">Posizione</label><input id="pf-loc" placeholder="es. cassetto A2" value="${esc(p?.location || '')}" /></div>
       </div>
@@ -145,9 +150,12 @@ async function productForm(id, done, prefill = {}) {
     <section class="sec"><h3 class="sec-t">Ultimi movimenti</h3>
       <ul class="tl">${moves.slice(0, 8).map((x) => `<li><time>${fdt(x.created_at)}</time><span><b class="${x.delta > 0 ? 'text-emerald-600' : 'text-secondary'}">${x.delta > 0 ? '+' : ''}${x.delta}</b> · ${esc(x.reason)} ${esc(x.ref || '')}</span></li>`).join('') || '<li><span class="hint">Nessun movimento.</span></li>'}</ul></section>` : ''}`,
     { title: id ? 'Modifica articolo' : 'Nuovo articolo', wide: true,
-      footer: `${id ? '<button class="btn btn-ghost mr-auto" id="pf-del">Archivia</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="pf-ok">Salva</button>` }
+      footer: `${id ? '<button class="btn btn-ghost mr-auto" id="pf-del">Archivia</button>' : ''}<button class="btn btn-outline" data-close>Annulla</button>${id ? '' : '<button class="btn btn-outline" id="pf-okp" type="button">🏷️ Salva e stampa etichetta</button>'}<button class="btn btn-primary" id="pf-ok">Salva</button>` }
   );
   const r = m.el;
+  bindNetTwin(r, '#pf-cost', 'Costo con IVA €', 'toGross');
+  const priceTwin = bindNetTwin(r, '#pf-price', 'Prezzo senza IVA €');
+  if ($('#pf-cost', r)) bindMargin(r, '#pf-cost', '#pf-price', priceTwin);
   // codice a barre: frase d'aiuto, pistola (Invio non deve salvare) e fotocamera
   const bc = $('#pf-bc', r);
   const bcHint = () => { $('#pf-bc-hint', r).textContent = codeHint(bc.value); };
@@ -159,12 +167,18 @@ async function productForm(id, done, prefill = {}) {
     const n = Math.min(Math.max(Math.round(Number($('#pf-lq', r).value) || 1), 1), 500);
     printLabels([{ product_id: id, qty: n }]).then((out) => { if (out?.codes?.[id] && !bc.value.trim()) { bc.value = out.codes[id]; bcHint(); } }); // mostra il codice appena assegnato: un "Salva" col campo vuoto lo cancellerebbe
   };
-  $('#pf-ok', r).onclick = async () => {
-    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, barcode: bc.value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
+  /** Salva l'articolo; con `print` apre subito la finestra (il click e' ancora quello dell'utente) e poi stampa le etichette del nuovo articolo. */
+  const save = async (print) => {
+    const win = print ? window.open('about:blank', '_blank') : null;
+    const body = { name: $('#pf-name', r).value, category: $('#pf-cat', r).value, sku: $('#pf-sku', r).value, barcode: bc.value, min_qty: $('#pf-min', r).value, stale_days: $('#pf-stale', r).value, cost: $('#pf-cost', r)?.value, price: $('#pf-price', r).value, price_friend: $('#pf-pf', r).value, price_reseller: $('#pf-pr', r).value, supplier_id: $('#pf-sup', r).value || null, location: $('#pf-loc', r).value, notes: $('#pf-notes', r).value };
     if (!id) body.qty = $('#pf-qty', r).value;
     const out = await safe(() => (id ? api('PUT', `/api/products/${id}`, body) : api('POST', '/api/products', body)));
-    if (out) { m.close(); toast('Articolo salvato'); done(); }
+    if (!out) { win?.close(); return; }
+    m.close(); toast('Articolo salvato'); done();
+    if (print) await printLabels([{ product_id: out.id, qty: Math.min(Math.max(Math.round(Number(body.qty)) || 1, 1), 500) }], { win });
   };
+  $('#pf-ok', r).onclick = () => save(false);
+  if ($('#pf-okp', r)) $('#pf-okp', r).onclick = () => save(true);
   if (id) {
     if ($('#pf-load', r)) $('#pf-load', r).onclick = async () => {
       const out = await safe(() => api('POST', `/api/products/${id}/move`, { delta: Number($('#pf-add', r).value), reason: 'carico merce' }));

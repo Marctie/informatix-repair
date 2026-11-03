@@ -1,5 +1,0 @@
-.env
-bot.pid
-heartbeat
-logs/
-__pycache__/

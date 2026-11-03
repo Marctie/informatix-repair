@@ -62,8 +62,11 @@ export function toast(msg, ok = true, opts = {}) {
 }
 
 /** Mostra un errore in modo parlante: cosa e' successo, cosa fare, e pulsanti Riprova / Ricarica quando servono. */
+/** Ultimi errori mostrati a schermo: la segnalazione li allega da sola. */
+export const recentErrors = [];
 export function showError(e, retryFn) {
   const f = friendly(e);
+  try { recentErrors.push({ at: new Date().toTimeString().slice(0, 8), msg: String(f.message).slice(0, 300) }); if (recentErrors.length > 5) recentErrors.shift(); } catch { /* solo un'aggiunta utile */ }
   const actions = [];
   if (f.retry && retryFn) actions.push({ label: 'Riprova', fn: () => safe(retryFn) });
   if (f.reload) actions.push({ label: 'Ricarica la pagina', fn: () => location.reload() });

@@ -38,6 +38,8 @@ addColumn('quotes', 'sent_at', 'TEXT');
 for (const c of ['legal_address', 'pickup_address', 'vat_number', 'payment_terms', 'min_order', 'delivery_days', 'agents']) addColumn('suppliers', c, 'TEXT');
 addColumn('quotes', 'sent_via', 'TEXT');
 addColumn('products', 'barcode', 'TEXT');
+addColumn('products', 'price_friend', 'REAL');
+addColumn('products', 'price_reseller', 'REAL');
 addColumn('quotes', 'vat_mode', "TEXT NOT NULL DEFAULT 'gross'");
 addColumn('quotes', 'vat_rate', 'REAL NOT NULL DEFAULT 22');
 addColumn('quotes', 'tradein_desc', 'TEXT');
