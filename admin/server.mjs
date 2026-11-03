@@ -7,6 +7,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { mountAssistant } from './assistant.mjs';
 
 const ADMIN_DIR = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = join(ADMIN_DIR, 'public');
@@ -244,6 +245,8 @@ app.delete('/api/items/:slug', (req, res) => {
   runBuild();
   res.json({ ok: true });
 });
+
+mountAssistant(app, { readData, writeData, runBuild, slugify, uniqueSlug, withStatus, upload, ROOT });
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`\nGestionale Usati Informatix Repair`);
