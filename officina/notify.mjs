@@ -390,7 +390,12 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
       const lines = (r.results || []).map((x) => `${x.ok ? '✅' : '❌'} ${esc(short(x.title, 90))}${x.ok ? '' : ` — ${esc(short(x.message, 160))}`}`).join('\n');
       return `🤖 <b>Assistente: richiesta #${esc(path.match(/requests\/(\d+)/)[1])} confermata</b> (${r.done || 0} eseguite${r.failed ? `, ${r.failed} non riuscite` : ''})\n«${esc(short(r.text, 200))}»\n${lines}${foot}`;
     }
-    if (m === 'POST' && path === '/api/assistant/message') return isOk ? null : fail('Assistente');
+    if (m === 'POST' && path === '/api/assistant/message') {
+      if (!isOk) return fail('Assistente');
+      const att = body.file?.name ? `\n📎 ${esc(short(body.file.name, 80))}` : '';
+      return `🤖 <b>Assistente: nuova richiesta #${esc(r.id)}</b>\n«${esc(short(body.text || '(solo allegato)', 400))}»${att}${r.status?.agent_online === false ? '\n⏳ PC con l’LLM spento: resta in coda' : ''}${foot}`;
+    }
+    if (/\/cancel$/.test(path)) return isOk ? `🤖 <b>Assistente: richiesta #${esc(path.match(/requests\/(\d+)/)[1])} annullata</b>${foot}` : fail('Assistente');
     return null;
   }
 
@@ -496,6 +501,7 @@ ${ch}` : ''}${foot}`;
 
 /** Operazioni minori o di routine: il messaggio arriva senza suono. */
 export function isQuiet(method, path, status) {
+  if (/^\/api\/assistant\/requests\/\d+\/cancel$/.test(path)) return true; // annullare una richiesta all'assistente: avviso senza suono
   if (status >= 400 && status !== 401 && status !== 403 && status < 500) return true; // errori di compilazione: li vede gia' chi usa il gestionale
   return /^\/print\//.test(path) || /\/(checklist|photos|note|quote-options|request-signature)(\/|$)/.test(path)
     || /^\/api\/reminders/.test(path) || /^\/api\/checklists/.test(path) || /^\/api\/labels\/(prepare|logo|assign-missing)/.test(path) || (method === 'PUT' && /^\/api\/(products|suppliers|customers|services)\//.test(path));

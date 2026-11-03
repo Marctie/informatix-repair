@@ -342,5 +342,10 @@ test('avviso Telegram: la conferma elenca cosa e\' stato fatto e cosa no', () =>
   assert.match(text, /richiesta #7 confermata/);
   assert.match(text, /✅ Movimento di magazzino/);
   assert.match(text, /❌ Cambio stato: R-1 — Già pronta/);
-  assert.equal(describeEvent({ method: 'POST', path: '/api/assistant/message', status: 200, user: USERS.admin, result: {} }), null);
+  const msg = describeEvent({ method: 'POST', path: '/api/assistant/message', status: 200, user: USERS.admin, body: { text: 'carica 3 display', file: { name: 'ordine.pdf' } }, result: { ok: true, id: 9, status: { agent_online: false } } });
+  assert.match(msg, /Assistente: nuova richiesta #9/);
+  assert.match(msg, /carica 3 display/);
+  assert.match(msg, /ordine\.pdf/);
+  assert.match(msg, /PC con l’LLM spento/);
+  assert.match(describeEvent({ method: 'POST', path: '/api/assistant/requests/9/cancel', status: 200, user: USERS.admin, result: { ok: true } }), /richiesta #9 annullata/);
 });
