@@ -42,6 +42,13 @@ import { registerBlackRoutes, findBlacks } from './blacks.mjs';
 import { registerLabelRoutes, LABEL_TABLES, cleanBarcode } from './etichette.mjs'; // etichette prodotto + codici a barre
 
 import * as CK from './checklists.mjs';
+import { registerTechRoutes, statusMiddleware } from './tecnici.mjs';
+import { registerMarginRoutes } from './margine.mjs';
+import { registerReorderRoutes } from './riordino.mjs';
+import { registerWarrantyRoutes, registerPublicDocRoutes } from './garanzie.mjs';
+import { registerExportRoutes } from './esporta.mjs';
+import { registerPermissionRoutes, permissionsMiddleware } from './permessi.mjs';
+import { registerForecastRoutes } from './previsioni.mjs';
 import { LEGAL_DEFAULTS } from './legal.mjs';
 import * as SG from './signatures.mjs';
 import * as R from './remote.mjs';
@@ -106,6 +113,7 @@ export const qrSvg = (t) => renderSVG(String(t || ''), { border: 1 });
 export function createPublicApp({ media } = {}) {
   const app = new Hono();
   app.onError((e, c) => errorReply(c, e)); // eccezioni fuori dai gestori h(): stesso formato e log con contesto
+  app.use('*', statusMiddleware); // nomi degli stati personalizzati anche per il cliente
   app.use('/api/track/*', notifyMiddleware);
   app.use('/api/quote/*', notifyMiddleware);
   // Il sito pubblico (altro dominio) chiama la ricerca per numero ricevuta
@@ -117,6 +125,8 @@ export function createPublicApp({ media } = {}) {
   app.post('/api/lookup', h((req) => L.lookup(req.body?.code, req.body?.phone4)));
   // Preventivo autonomo: il cliente lo vede e lo firma dal link /p/<codice>
   registerPublicQuoteRoutes(app, h);
+  // Ricevuta (/r/), certificato di garanzia (/g/, /t/<token>/certificato) e listino pubblico (/listino, /api/listino)
+  registerPublicDocRoutes(app);
   // Bot di controllo sul telefono: riepilogo numerico, solo con la chiave MONITOR_TOKEN (altrimenti 404)
   registerMonitorRoutes(app, { env: (c) => ({ ...(typeof process !== 'undefined' ? process.env : {}), ...(c.env || {}) }) });
   // Programma dell'assistente sul PC con l'LLM: chiama il Worker (coda in D1), solo con la chiave ASSISTANT_TOKEN (altrimenti 404)
@@ -132,6 +142,8 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   app.use('*', notifyMiddleware); // prima dell'accesso: segnala anche i tentativi negati e gli errori
   if (auth) app.use('*', auth);
   app.use('*', cassaMiddleware); // ruolo cassa: niente costi/margini nelle risposte
+  app.use('*', permissionsMiddleware); // sezioni negate al singolo utente (Gestione → Utenti → Permessi)
+  app.use('*', statusMiddleware); // nomi e testi degli stati personalizzati
   app.use('/api/*', auditMiddleware); // registro eliminazioni/modifiche (dopo l'accesso: sa chi è)
   app.use('/api/*', retroMiddleware); // inserimento retroattivo (entry_date), sempre registrato
 
@@ -153,6 +165,14 @@ export function createAdminApp({ trackBaseFallback, backup, auth, usati = {} } =
   registerTicketRoutes(app, h, adminOnly, { media: usati.media || (() => missingMedia()) });
   registerAssistantRoutes(app, h, adminOnly, { media: usati.media || (() => missingMedia()), dispatchApp: () => app }); // assistente: sempre con riepilogo e conferma
   registerLabelRoutes(app, h, page, adminOnly, { getSettings });
+  // --- Funzioni dal confronto con Fix-Book, e-Share e Fixh IT (2026-11-04) ---
+  registerTechRoutes(app, h, adminOnly); // tecnico assegnato, statistiche per tecnico, stati e fasi personalizzati
+  registerMarginRoutes(app, h, page, adminOnly); // usato a margine e cartellini
+  registerReorderRoutes(app, h); // proposta d'ordine e arrivo con differenze (prima di /api/orders/:id)
+  registerWarrantyRoutes(app, h, adminOnly, { trackBase }); // estensioni di garanzia, link ricevuta, listino pubblico
+  registerExportRoutes(app, adminOnly, errorReply); // CSV per Excel
+  registerPermissionRoutes(app, h, adminOnly); // permessi per utente
+  registerForecastRoutes(app, h, adminOnly); // previsioni e agenda
   app.get('/api/me', h((req) => ({ user: req.user || { email: 'locale', name: 'Locale', role: 'admin' } })));
   app.get('/api/meta', h(async () => ({ statuses: L.STATUSES, step_labels: L.STEP_LABELS, settings: await getSettings(), track_base: await trackBase(), device_types: CK.DEVICE_TYPES, phases: CK.PHASES })));
   app.get('/api/dashboard', h(async () => ({ ...(await L.dashboard()), storage: await R.storageList().catch(() => []) })));

@@ -9,6 +9,10 @@ import * as L from './logic.mjs';
 import { storageList } from './remote.mjs';
 import { notifyDueReminders } from './promemoria.mjs';
 import { publishStatus } from './usati.mjs';
+import { techStats } from './tecnici.mjs';
+import { marginReport } from './margine.mjs';
+import { reorderProposal, receiptDifferences } from './riordino.mjs';
+import { forecast, agenda } from './previsioni.mjs';
 
 const r2 = (n) => Math.round(Number(n || 0) * 100) / 100;
 const days = (ts, today) => (ts ? Math.max(0, Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${String(ts).slice(0, 10)}T00:00:00Z`)) / 86400000)) : null);
@@ -113,7 +117,27 @@ export async function monitorSummary({ backups } = {}) {
     }, null);
   }
 
-  return { ok: true, generated_at: nowLocal(), today, repairs, cash, sales, orders, quotes, reminders, stock, usati, users, activity, backup };
+  // Funzioni dal confronto con altri gestionali (2026-11-04): dettaglio per il bot di controllo
+  const extra = {
+    techs: await safe(async () => (await techStats(monthStart, today)).rows, []),
+    unassigned_open: await safe(async () => (await one("SELECT COUNT(*) AS n FROM repairs WHERE tech_email IS NULL AND status NOT IN ('delivered','cancelled')")).n || 0, 0),
+    substatus: await safe(() => all("SELECT substatus, COUNT(*) AS n FROM repairs WHERE substatus IS NOT NULL AND status NOT IN ('delivered','cancelled') GROUP BY substatus"), []),
+    margin: await safe(async () => { const m = await marginReport(monthStart, today); return { stock: m.stock, month: { bought: m.bought, sold: m.sold, margin: m.margin, vat_due: m.vat_due, negative: m.negative } }; }, null),
+    tradein_month: await safe(() => one("SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(tradein_value),0),2) AS total FROM sales WHERE tradein_value > 0 AND date(created_at) BETWEEN ? AND ?", monthStart, today), null),
+    reorder: await safe(async () => { const r = await reorderProposal(); return { lines: r.lines, total: r.total, suppliers: r.groups.filter((g) => g.lines.some((l) => l.suggested > 0)).map((g) => ({ name: g.supplier_name, lines: g.lines.filter((l) => l.suggested > 0).length, total: g.total })) }; }, null),
+    receipt_differences: await safe(async () => (await receiptDifferences()).filter((d) => String(d.arrived_at).slice(0, 10) >= monthStart).slice(0, 8), []),
+    warranty: await safe(async () => {
+      const in30 = new Date(Date.parse(`${today}T00:00:00Z`) + 30 * 86400000).toISOString().slice(0, 10);
+      const a = await one('SELECT COUNT(*) AS n FROM warranty_ext WHERE cancelled = 0 AND ends_on >= ?', today);
+      const e = await one('SELECT COUNT(*) AS n FROM warranty_ext WHERE cancelled = 0 AND ends_on BETWEEN ? AND ?', today, in30);
+      const s = await one('SELECT COUNT(*) AS n, ROUND(COALESCE(SUM(price),0),2) AS total FROM warranty_ext WHERE cancelled = 0 AND date(created_at) BETWEEN ? AND ?', monthStart, today);
+      return { active: a.n || 0, expiring_30: e.n || 0, month: s };
+    }, null),
+    forecast: await safe(() => forecast(today), null),
+    agenda_today: await safe(async () => (await agenda(today, today)).days[0].items.map((x) => ({ kind: x.kind, time: x.time || null, title: x.title, detail: x.detail || null })), []),
+  };
+
+  return { ok: true, generated_at: nowLocal(), today, repairs, cash, sales, orders, quotes, reminders, stock, usati, users, activity, backup, extra };
 }
 
 /** Rotta per il bot. `env(c)` restituisce le variabili (segreti del Worker o ambiente del PC). */

@@ -197,6 +197,8 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
 
   // ---- Riparazioni
   let x;
+  // ---- Funzioni dal confronto con altri gestionali (2026-11-04)
+  if (m !== 'GET' && (x = describeConfronto(m, path, body, r, p, isOk, foot, fail))) return x;
   if (m === 'POST' && path === '/api/repairs') {
     if (!isOk) return fail('Nuova riparazione');
     const money = [r.quote != null ? `Preventivo ${eur(r.quote)}${r.quote_vat_mode === 'net' && r.quote_net != null ? netTag(r.quote_net, r.quote_vat_rate) : ''}${discTag(r.quote_discount_pct, r.quote_discount)}` : 'Preventivo da fare', Number(r.deposit) > 0 ? `acconto ${eur(r.deposit)}${body.deposit_method ? ` (${esc(body.deposit_method)})` : ''}` : ''];
@@ -272,7 +274,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
     const voucherOff = (r.vouchers || []).filter((v) => v.kind !== 'regalo').reduce((a, v) => a + Number(v.amount || 0), 0);
     const baseOff = Math.round((Number(r.discount || 0) - voucherOff) * 100) / 100; // lo sconto del buono e' gia' nella riga del buono
     const items = (r.items || []).map((i) => `• ${esc(short(i.name, 50))} ×${esc(i.qty)} · ${eur(i.unit_price)}`).join('\n');
-    return `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)}\n💶 ${how}${r.customer_name ? `\nCliente: ${esc(r.customer_name)}` : ''}\n${items}${baseOff > 0 ? `\nSconto ${eur(baseOff)}` : ''}${vouchers}${alerts(r.device_alerts)}${blk(r.blacklist_alert)}${foot}`;
+    return `🛒 <b>Vendita ${esc(r.code)}</b> · ${eur(r.total)}\n💶 ${how}${r.customer_name ? `\nCliente: ${esc(r.customer_name)}` : ''}\n${items}${baseOff > 0 ? `\nSconto ${eur(baseOff)}` : ''}${Number(r.tradein_value) > 0 ? `\n♻️ Permuta: ${esc(short(r.tradein_desc, 50))} −${eur(r.tradein_value)}${r.tradein_item ? ` (registro usato ${esc(r.tradein_item.code)})` : ''}` : ''}${(r.items || []).some((i) => i.margin_id) ? '\n♻️ Contiene usato in regime del margine' : ''}${vouchers}${alerts(r.device_alerts)}${blk(r.blacklist_alert)}${foot}`;
   }
   if (path === '/api/expenses' && m === 'POST') return isOk ? `🧾 <b>Nuova spesa</b> ${eur(r.amount)} (${esc(r.method || 'contanti')})\n${join(esc(short(r.description, 100)), esc(r.category), esc(r.vendor))}${r.reimbursable ? ' · da rimborsare' : ''}${foot}` : fail('Nuova spesa');
   if ((x = path.match(/^\/api\/expenses\/(\d+)$/)) && (m === 'PUT' || m === 'DELETE')) {
@@ -501,6 +503,40 @@ ${ch}` : ''}${foot}`;
 
   if (m === 'GET') return null; // le letture normali non si segnalano
   return `ℹ️ <b>${esc(section(path))}</b>: ${esc(m)} ${esc(path)}${foot}`;
+}
+
+/** Avvisi per tecnico/fasi/stati, usato a margine, proposta d'ordine, arrivo merce, garanzie, listino, permessi. */
+function describeConfronto(m, path, body, r, p, isOk, foot, fail) {
+  const rep = join(esc(r.code), esc(r.brand_model), esc(r.customer_name));
+  if (/^\/api\/repairs\/\d+\/tech$/.test(path)) return isOk ? `👷 <b>${r.tech_email ? 'Tecnico assegnato' : 'Tecnico tolto'}</b>${r.tech_email ? `: ${esc(r.tech_name || r.tech_email)}` : ''}\n${rep}${foot}` : fail('Tecnico');
+  if (/^\/api\/repairs\/\d+\/substatus$/.test(path)) return isOk ? `🔖 <b>Fase: ${esc(r.substatus || 'tolta')}</b>\n${rep}${foot}` : fail('Fase della riparazione');
+  if (path === '/api/stati' && m === 'PUT') {
+    if (!isOk) return fail('Stati e fasi');
+    const ren = (r.statuses || []).filter((s) => s.label !== s.default_label).map((s) => `${esc(s.default_label)} → ${esc(s.label)}`);
+    const hid = (r.statuses || []).filter((s) => s.hidden).map((s) => esc(s.label));
+    return `⚙️ <b>Stati e fasi modificati</b>${ren.length ? `\nRinominati: ${ren.join(', ')}` : ''}${hid.length ? `\nNascosti dal menu: ${hid.join(', ')}` : ''}\nFasi: ${(r.substatuses || []).map(esc).join(', ') || 'nessuna'}${foot}`;
+  }
+  if (path.startsWith('/api/margine')) {
+    if (!isOk) return fail('Usato a margine');
+    if (m === 'POST') return `♻️ <b>Usato a margine registrato</b> ${esc(r.code)}\n${esc(short(r.description, 80))} · costo ${eur(r.cost)}${r.price != null ? ` · in vendita a ${eur(r.price)}` : ''}\nProvenienza: ${esc(r.origin_label)} · cedente ${esc(r.seller_customer || r.seller_name || '—')}${foot}`;
+    if (m === 'PUT') return `♻️ <b>Usato a margine modificato</b> ${esc(r.code)}: ${esc(short(r.description, 80))}${r.price != null ? ` · ${eur(r.price)}` : ''}${foot}`;
+    if (m === 'DELETE') return `🗑️ <b>Usato tolto dal registro</b> ${esc(r.code)}: ${esc(short(r.description, 80))}${foot}`;
+  }
+  if (path === '/api/riordino' && m === 'POST') {
+    if (!isOk) return fail('Proposta d’ordine');
+    const o = r.orders || [];
+    return `📦 <b>Proposta d’ordine: ${o.length} ordin${o.length === 1 ? 'e creato' : 'i creati'}</b>\n${o.map((q) => `• ${esc(q.code)} · ${esc(q.supplier_name)} · ${q.lines} righe · ${eur(q.total)}`).join('\n')}${foot}`;
+  }
+  if (/^\/api\/orders\/\d+\/receive$/.test(path)) {
+    if (!isOk) return fail('Arrivo merce');
+    const d = r.differences || [];
+    return `📥 <b>Merce arrivata</b>: ordine ${esc(r.code)}${r.supplier_name ? ` · ${esc(r.supplier_name)}` : ''}\nCaricati a magazzino: ${esc(r.loaded)} pz${d.length ? `\n⚠️ Differenze:\n${d.map((q) => `• ${esc(short(q.description, 50))}: ordinati ${q.ordered}, arrivati ${q.received} (${q.diff > 0 ? '+' : ''}${q.diff})`).join('\n')}` : '\n✅ Arrivato tutto come ordinato'}${foot}`;
+  }
+  if (path === '/api/garanzie' && m === 'POST') return isOk ? `🛡️ <b>Estensione di garanzia ${esc(r.code)}</b> · ${esc(r.months)} mesi · ${eur(r.price)}\n${esc(short(r.description, 120))}\nValida dal ${dmy(r.starts_on)} al ${dmy(r.ends_on)}${r.sale_code ? `\nIncassata con la vendita ${esc(r.sale_code)}` : ' (omaggio)'}${foot}` : fail('Estensione di garanzia');
+  if (/^\/api\/garanzie\/\d+$/.test(path) && m === 'DELETE') return isOk ? `🗑️ <b>Estensione di garanzia annullata</b> ${esc(r.code)}${r.note ? `\n${esc(r.note)}` : ''}${foot}` : fail('Estensione di garanzia');
+  if (/^\/api\/services\/\d+\/public$/.test(path)) return isOk ? `🌐 <b>Listino pubblico</b>: ${esc(short(r.name, 60))} ${r.public ? `visibile (${r.price_from ? 'da ' : ''}${eur(r.price)})` : 'nascosto'}${foot}` : fail('Listino pubblico');
+  if (/^\/api\/users\/\d+\/permessi$/.test(path)) return isOk ? `🔐 <b>Permessi di ${esc(r.email)}</b>\n${(r.deny_labels || []).length ? `Sezioni negate: ${r.deny_labels.map(esc).join(', ')}` : 'Accesso a tutte le sezioni del suo ruolo'}${foot}` : fail('Permessi utente');
+  return null;
 }
 
 /** Operazioni minori o di routine: il messaggio arriva senza suono. */

@@ -6,6 +6,8 @@ import { priceAlerts } from './purchases.mjs';
 import { planSettlement, commitSettlement, voucherUsage } from './buoni.mjs';
 import { deviceHook, alertText } from './dispositivi.mjs';
 import { ensureModel } from './modelli.mjs';
+import { checkMarginLine, markSold, planTradein, commitTradein } from './margine.mjs';
+import { repairDocuments } from './garanzie.mjs';
 
 import { fillText, isVerified, buildQuoteFlow } from './legal.mjs';
 
@@ -446,7 +448,14 @@ export async function createSale(b) {
     let total = 0;
     for (const it of items) {
       const q = Math.max(1, Math.round(num(it.qty, 1)));
-      let name = str(it.name), price = num(it.unit_price), cost = Math.max(0, num(it.unit_cost, 0)), pid = null;
+      let name = str(it.name), price = num(it.unit_price), cost = Math.max(0, num(it.unit_cost, 0)), pid = null, mid = null;
+      if (it.margin_id) { // bene usato del registro a margine: costo dal registro, una sola unita'
+        const m = await checkMarginLine(it.margin_id);
+        if (lines.some((l) => l.mid === m.id)) throw new HttpError(400, `Il bene ${m.code} è due volte nella vendita.`, { code: 'USATO_DOPPIO', hint: 'Togli la riga ripetuta.' });
+        mid = m.id; name = name || m.description; cost = m.cost; if (price == null) price = m.price;
+        if (Math.round(num(it.qty, 1)) !== 1) throw new HttpError(400, `Il bene usato ${m.code} è un pezzo unico: quantità 1.`, { code: 'USATO_QUANTITA', hint: 'Metti quantità 1.' });
+        if (!it.serial && m.serial) it.serial = m.serial;
+      }
       if (it.product_id) {
         const p = await db.prepare('SELECT * FROM products WHERE id = ?').get(it.product_id);
         if (!p) throw new HttpError(404, 'Prodotto non trovato');
@@ -455,28 +464,34 @@ export async function createSale(b) {
       }
       if (!name) throw new HttpError(400, 'Nome articolo obbligatorio');
       if (price == null || price < 0) throw new HttpError(400, `Manca il prezzo dell’articolo “${name}”.`, { code: 'PREZZO_MANCANTE', hint: 'Inserisci il prezzo di vendita nella riga e conferma di nuovo.' });
-      lines.push({ pid, name, q, price, cost, serial: str(it.serial) });
+      lines.push({ pid, mid, name, q, price, cost, serial: str(it.serial) });
       total += q * price;
     }
     const baseDiscount = money(num(b.discount, 0));
     total = money(total - baseDiscount);
     if (total < 0) throw new HttpError(400, 'Lo sconto inserito è maggiore del totale della vendita.', { code: 'SCONTO_ECCESSIVO', hint: 'Riduci lo sconto: al massimo può azzerare il totale.' });
+    // permuta: il valore del bene ritirato si scala dal totale; il bene entra nel registro dell'usato a margine
+    const trade = planTradein(b.tradein, total, b.customer_id);
+    if (trade) total = money(total - trade.value);
     const plan = await planSettlement(b, total);
     total = money(total - plan.discount);
     // 2) si scrive
     const code = await nextCode('sales', 'V');
-    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, entity, created_at) VALUES (?,?,?,?,?,?,?,datetime('now','localtime'))").run(
-      code, b.customer_id || null, total, money(baseDiscount + plan.discount), plan.split || plan.gift ? plan.methodLabel : (str(b.method) || plan.methodLabel), str(b.notes), entityOf(b)
+    const sale = await db.prepare("INSERT INTO sales (code, customer_id, total, discount, method, notes, entity, token, tradein_value, tradein_desc, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now','localtime'))").run(
+      code, b.customer_id || null, total, money(baseDiscount + plan.discount), plan.split || plan.gift ? plan.methodLabel : (str(b.method) || plan.methodLabel), str(b.notes), entityOf(b), newToken(), trade ? trade.value : 0, trade ? trade.description : null
     );
     const saleId = Number(sale.lastInsertRowid);
     const deviceAlerts = [];
     for (const l of lines) {
       if (l.pid) await moveStock(l.pid, -l.q, 'vendita', code);
-      await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost) VALUES (?,?,?,?,?,?)').run(saleId, l.pid, l.name, l.q, money(l.price), money(l.cost));
+      await db.prepare('INSERT INTO sale_items (sale_id, product_id, name, qty, unit_price, unit_cost, margin_id) VALUES (?,?,?,?,?,?,?)').run(saleId, l.pid, l.name, l.q, money(l.price), money(l.cost), l.mid);
+      if (l.mid) await markSold(l.mid, saleId, l.price);
       if (l.serial) deviceAlerts.push(...await deviceHook(l.serial, 'vendita', `Venduto con ${code}`));
     }
     await commitSettlement(plan, { kind: 'sale', refId: saleId, label: `Vendita ${code}` }, (k, ref, l, a, m) => addPayment(k, ref, l, a, m, entityOf(b)));
-    return { ...(await getSale(saleId)), device_alerts: deviceAlerts };
+    const tradeItem = trade ? await commitTradein(trade, code, b.customer_id) : null;
+    if (trade?.serial) deviceAlerts.push(...await deviceHook(trade.serial, 'permuta', `Ritirato in permuta con ${code}`));
+    return { ...(await getSale(saleId)), device_alerts: deviceAlerts, tradein_item: tradeItem };
   });
 }
 
@@ -519,6 +534,7 @@ export async function publicView(token) {
     status: r.status,
     status_label: st.label,
     status_hint: st.hint,
+    substatus: r.substatus || null,
     step: st.step,
     steps: STEP_LABELS,
     progress: progressPct(r.status),
@@ -553,6 +569,7 @@ export async function publicView(token) {
     intake_sign: r.sign_requested && !intakeSig && !['delivered', 'cancelled'].includes(r.status)
       ? { text: fillText(s.consent_intake, { negozio: s.shop_name, garanzia: r.warranty_days, codice: r.code, dispositivo: r.brand_model }), terms: s.terms, draft: !isVerified(s) } : null,
     intake_signed_at: intakeSig?.signed_at || null,
+    documents: await repairDocuments(r).catch(() => []), // ricevuta, certificato di garanzia, estensioni, preventivo
     shop: { name: s.shop_name, address: s.shop_address, phone: s.shop_phone },
     updated_at: r.updated_at,
   };
