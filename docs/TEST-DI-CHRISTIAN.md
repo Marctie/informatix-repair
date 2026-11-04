@@ -111,5 +111,9 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 80. [ ] **Permessi:** Utenti → Permessi su una postazione → nega «Vendite e cassa»; entra con quella postazione: Vendite e Cassa non ci sono e non si aprono.
 81. [ ] **Previsioni e Agenda:** Analisi → Previsioni; Banco → Agenda.
 
+## M. Chiedere una modifica all'assistente (04/11, versione 1.0.6.0)
+82. [ ] Scrivi all'Assistente: «vorrei che nella scheda riparazione ci fosse anche il colore della cover». Rispondi alle sue domande, controlla il riepilogo e premi Conferma.
+83. [ ] Apri Gestione → Segnalazioni: c'è la richiesta a tuo nome. Marco riceve l'avviso su Telegram.
+
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).

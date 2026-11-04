@@ -324,3 +324,26 @@ test('risposte istantanee: le richieste ricorrenti si risolvono subito, senza mo
   const ideas = (await call('GET', '/api/assistant/ideas')).data.ideas;
   assert.ok(ideas.every((i) => i.instant === true && instantIntent(i.prompt)), 'ogni idea a schermo e\' una richiesta istantanea');
 });
+
+test('richiesta di modifica al gestionale: diventa una Segnalazione di Christian, con riepilogo e conferma; troppo vaga = rifiutata', async () => {
+  const id = await ask('vorrei che nella scheda riparazione ci fosse anche il colore della cover');
+  await llm('Ho preparato la richiesta per Marco.', [
+    { type: 'app_request', fields: { kind: 'miglioria', title: 'Colore della cover nella scheda', description: 'Nella scheda riparazione vorrei un campo per il colore della cover che porta il cliente, così non la confondiamo.', expected: 'Un campo «Cover» vicino al colore, stampato sulla scheda', page: 'Riparazioni', priority: 'normale' } },
+    { type: 'app_request', fields: { title: 'Boh', description: 'cambia' } },
+  ]);
+  const r = await get(id);
+  assert.deepEqual(r.actions.map((a) => a.valid), [true, false]);
+  assert.match(r.actions[0].lines.join(' '), /Marco/);
+  const c = await confirm(id);
+  assert.equal(c.data.done, 1, JSON.stringify(c.data.results));
+  const t = await db.prepare("SELECT * FROM tickets WHERE title = 'Colore della cover nella scheda'").get();
+  assert.ok(t, 'segnalazione creata');
+  assert.equal(t.kind, 'miglioria'); assert.equal(t.created_by, 'christian@test.it'); assert.equal(t.page, 'Riparazioni');
+  assert.match(t.expected, /Cover/);
+});
+
+test('prompt: le istruzioni di app_request compaiono quando si chiede di cambiare il gestionale', async () => {
+  const { systemPrompt } = await import('../assistente.mjs');
+  assert.match(systemPrompt('', [], 'admin', { text: 'si potrebbe aggiungere un pulsante per stampare due etichette?' }), /app_request: richiesta di MODIFICA/);
+  assert.doesNotMatch(systemPrompt('', [], 'admin', { text: 'carica 3 display iPhone 12' }), /app_request: richiesta di MODIFICA/);
+});

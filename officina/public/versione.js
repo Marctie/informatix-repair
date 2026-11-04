@@ -3,9 +3,13 @@
 // Maggiore/minore cambiano per scelte grosse (nuova area, riscrittura). Aggiungi la nuova voce IN CIMA a NOTES e aggiorna VERSION.
 import { esc, openModal } from './util.js';
 
-export const VERSION = '1.0.5.0';
+export const VERSION = '1.0.6.0';
 
 export const NOTES = [
+  { v: '1.0.6.0', date: '2026-11-04', type: 'funzione', items: [
+    'Assistente: puoi chiedergli una modifica al gestionale con parole tue («vorrei che nella scheda ci fosse…», «la stampa non va…»). Ti fa le domande che servono e, dopo la tua conferma, la manda a Marco come Segnalazione.',
+    'Marco la fa preparare, ti risponde nella Segnalazione e te la fa provare: il gestionale cambia solo dopo la sua approvazione.',
+  ] },
   { v: '1.0.5.0', date: '2026-11-04', type: 'funzione', items: [
     'Tecnico assegnato e fase della riparazione (es. «Inviato al centro Samsung»), visibile anche al cliente. Stati rinominabili e nascondibili da Impostazioni → Stati e fasi. Statistiche per tecnico in Analisi.',
     'Usato a margine: registro dei beni usati comprati da privati, vendita dalla cassa con la dicitura del regime del margine, cartellino da stampare e riepilogo dell’IVA sul margine.',

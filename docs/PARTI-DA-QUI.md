@@ -177,3 +177,8 @@ Assistente v1.0.4.0 (03/11 sera): funzioni aggiuntive (voce, WhatsApp, promemori
 
 ## AGGIORNAMENTO 2026-11-04 - versione 1.0.5.0
 Online le funzioni prese dal confronto con Fix-Book, e-Share e Fixh IT (tecnico e fasi, usato a margine e permuta, proposta d'ordine e arrivo con differenze, garanzie estese con certificato, ricevuta su WhatsApp, documenti nel link del cliente, listino pubblico, export Excel, permessi per utente, previsioni, agenda). Migrazioni D1 fino alla 0045. Leggi CHATLOG "2026-11-04". Prossimo passo: prove di Christian (TEST-DI-CHRISTIAN sez. L) e conferma del commercialista sull'IVA a margine.
+
+## AGGIORNAMENTO 2026-11-04 (pomeriggio) - versione 1.0.6.0
+Christian chiede modifiche all'assistente -> diventano Segnalazioni -> Claude Code le legge con `node officina/tools/segnalazioni.mjs elenco aperte` e le prende in carico (pubblicazione solo con l'ok di Marco).
+**Da fare da Marco (una volta)**: creare la chiave. Da `informatix-repair`, in PowerShell:
+`$k = -join ((1..64) | % { '{0:x}' -f (Get-Random -Max 16) }); "CLAUDE_TOKEN=$k" | Set-Content -Encoding ascii officina\tools\segnalazioni.env.local; $k | npx wrangler secret put CLAUDE_TOKEN --config officina/wrangler.jsonc`
