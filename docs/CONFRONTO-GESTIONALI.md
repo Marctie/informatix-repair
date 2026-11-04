@@ -82,3 +82,34 @@ Avvisi Telegram e bot di controllo, registro attivita' completo, analisi prezzi 
 5. Stampa diretta (agente di stampa) senza finestra del browser.
 6. Chiavi API e invio diretto al SdI: solo per la versione vendibile.
 Si sommano alle idee dei punti 1 e 2 (IVA a margine + permuta, proposta d'ordine, ricevuta/OTP WhatsApp, differenze ordine/arrivo, tecnico assegnato).
+
+## 4. Aggiornamento del 04/11: Fix-Book in dettaglio (fix-book.it), ricontrollo Fixh IT, Multiquantum
+Fonte: pagine pubbliche. **Multiquantum: non trovato** (nessun sito o scheda pubblica con questo nome; serve il link da Marco/Christian).
+**Fixh IT** (/features, 04/11): nessuna novita' rispetto al punto 3 (niente AI, WhatsApp, RT o app dichiarati).
+
+### Fix-Book: piani (IVA inclusa, mese / anno)
+| Piano | Prezzo | Contenuto |
+|---|---|---|
+| Solo | 14,90 / 149 EUR | fino a 5.000 ticket, link/QR/WhatsApp cliente, firma e ricevute, assistente AI + bot Telegram (10 msg/giorno) |
+| Pro | 19,90 / 199 EUR | 10.000 ticket, magazzino, ordini ricambi, cassa, documenti, report + export Excel, vetrina online, import fatture con AI (beta, 10/settimana), AI 30 msg/giorno |
+| Business | 25,90 / 259 EUR | ticket illimitati, usato a regime del margine (anche in vetrina), sotto-magazzini, ruoli/permessi personalizzabili, AI illimitata, fino a 2 negozi |
+Addon ScontrinoBook (scontrino elettronico) 19,90 EUR + IVA/mese per cassa. Prova 14 giorni, approvazione manuale.
+
+### Fix-Book: confronto funzione per funzione
+| Fix-Book | Nostro gestionale | Esito |
+|---|---|---|
+| Ticket con ricerca IMEI e riparazioni precedenti del dispositivo | IMEI/seriale con Luhn e avviso doppioni, storico | Pari |
+| Lavagna 13 stati rinominabili/disattivabili/estendibili | Stati fissi | Possibile: stati personalizzabili |
+| Preventivi, firme, link/QR/WhatsApp | Presente (+ prova della firma, approvazione dal link) | Pari |
+| Magazzino con pezzi impegnati sui ticket, scorte minime, storico prezzi, import CSV, export Excel | Magazzino, scorte, storico prezzi, materiali sulle riparazioni | Pari; export Excel e "impegnato" da verificare |
+| Sotto-magazzini | No | Possibile se servono piu' sedi/banchi |
+| Import fatture con AI | Import PDF/XML con apprendimento formati | Pari (il nostro senza limiti) |
+| Cassa non fiscale + scontrino elettronico (addon) | Cassa, chiusure, dare/avere; scontrino fiscale no | Da valutare: collegamento RT/scontrino |
+| Usato a regime del margine con report e cartellini | Usati con vetrina; IVA a margine no | Da fare (gia' prima idea in lista) |
+| Ruoli e permessi personalizzabili | Ruoli fissi | Parziale |
+| Assistente AI + bot Telegram | Assistente LLM (v1.0.4.0) + avvisi Telegram + bot Termux | Pari, il nostro senza limiti di messaggi |
+| Notifiche push (in prova) | Telegram | Pari |
+| 2 negozi | 1 negozio | Legato alla versione vendibile |
+
+### Prezzi di riferimento per la versione vendibile
+Fixh IT 9,99-59,99 EUR/mese + IVA; Fix-Book 14,90-25,90 EUR/mese IVA inclusa. Le due funzioni che entrambi fanno pagare nei piani alti: **usato a margine** e **permessi/multi-negozio**.
