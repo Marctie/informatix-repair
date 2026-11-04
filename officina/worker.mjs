@@ -57,7 +57,7 @@ app.use('*', async (c, next) => { await init(c.env); await next(); });
 app.use('*', async (c, next) => {
   if (new URL(c.req.url).hostname !== c.env.PUBLIC_HOST) return next();
   const path = new URL(c.req.url).pathname;
-  if (path.startsWith('/api/')) return publicApp.fetch(c.req.raw, c.env, c.executionCtx);
+  if (path.startsWith('/api/') || /^\/(r|g)\/[^/]+$|^\/t\/[^/]+\/certificato$|^\/listino$/.test(path)) return publicApp.fetch(c.req.raw, c.env, c.executionCtx); // dati, ricevute, garanzie, listino
   if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track');
   if (path.startsWith('/p/')) return serveAsset(c.env, c.req.raw, '/preventivo');
   if (PUBLIC_ASSETS.has(path)) return serveAsset(c.env, c.req.raw, path);

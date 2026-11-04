@@ -34,7 +34,7 @@ export async function getOrder(id) {
 }
 
 function cleanItems(list) {
-  const items = (Array.isArray(list) ? list : []).map((i) => ({ description: str(i.description), qty: Math.max(1, Math.round(num(i.qty, 1))), unit_price: num(i.unit_price, 0) })).filter((i) => i.description);
+  const items = (Array.isArray(list) ? list : []).map((i) => ({ description: str(i.description), qty: Math.max(1, Math.round(num(i.qty, 1))), unit_price: num(i.unit_price, 0), product_id: Number(i.product_id) || null })).filter((i) => i.description);
   if (!items.length) throw new HttpError(400, 'Ordine senza articoli: serve almeno un articolo con la descrizione compilata.', { code: 'ORDINE_SENZA_ARTICOLI', hint: 'Aggiungi almeno un articolo da ordinare (descrizione e quantità) e salva di nuovo.' });
   if (items.some((i) => !Number.isFinite(i.unit_price) || i.unit_price < 0)) throw new HttpError(400, 'Un articolo dell’ordine ha un prezzo non valido (non numerico o negativo).', { code: 'ORDINE_PREZZO_NON_VALIDO', hint: 'Correggi il prezzo con un numero uguale o maggiore di zero (es. 12,50).' });
   return items;
@@ -77,7 +77,7 @@ export async function createOrder(b) {
     const r = await db.prepare(`INSERT INTO orders (code, kind, customer_id, supplier_id, repair_id, expected_date, notes, created_at, updated_at) VALUES (?,?,?,?,?,?,?,${NOW},${NOW})`)
       .run(code, kind, b.customer_id || null, b.supplier_id || null, b.repair_id || null, str(b.expected_date), str(b.notes));
     const id = Number(r.lastInsertRowid);
-    for (const i of items) await db.prepare('INSERT INTO order_items (order_id, description, qty, unit_price) VALUES (?,?,?,?)').run(id, i.description, i.qty, i.unit_price);
+    for (const i of items) await db.prepare('INSERT INTO order_items (order_id, description, qty, unit_price, product_id) VALUES (?,?,?,?,?)').run(id, i.description, i.qty, i.unit_price, i.product_id);
     if (deposit > 0) {
       await addDeposit(id, code, deposit, b.deposit_method, entityOf(b));
     }
@@ -96,7 +96,7 @@ export async function updateOrder(id, b) {
       const items = cleanItems(b.items);
       if (items.reduce((s, i) => s + i.qty * i.unit_price, 0) + 0.001 < cur.paid) throw new HttpError(400, `Ordine ${cur.code}: il nuovo totale è inferiore all’acconto già incassato (${cur.paid} €).`, { code: 'TOTALE_SOTTO_ACCONTO', hint: 'Alza i prezzi/quantità oppure annulla l’ordine e restituisci l’acconto.' });
       await db.prepare('DELETE FROM order_items WHERE order_id = ?').run(id);
-      for (const i of items) await db.prepare('INSERT INTO order_items (order_id, description, qty, unit_price) VALUES (?,?,?,?)').run(id, i.description, i.qty, i.unit_price);
+      for (const i of items) await db.prepare('INSERT INTO order_items (order_id, description, qty, unit_price, product_id) VALUES (?,?,?,?,?)').run(id, i.description, i.qty, i.unit_price, i.product_id);
     }
     return getOrder(id);
   });

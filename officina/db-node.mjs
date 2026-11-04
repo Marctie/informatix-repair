@@ -56,6 +56,10 @@ addColumn('repairs', 'quote_vat_rate', 'REAL NOT NULL DEFAULT 22');
 addColumn('repairs', 'quote_net', 'REAL');
 addColumn('quote_options', 'amount_net', 'REAL');
 addColumn('quote_options', 'vat_rate', 'REAL');
+// 0045: funzioni dal confronto con gli altri gestionali
+for (const [t, c, d] of [['repairs', 'tech_email', 'TEXT'], ['repairs', 'substatus', 'TEXT'], ['users', 'deny', 'TEXT'], ['order_items', 'product_id', 'INTEGER'], ['order_items', 'qty_received', 'INTEGER'], ['orders', 'received_note', 'TEXT'],
+  ['sales', 'token', 'TEXT'], ['sales', 'tradein_value', 'REAL NOT NULL DEFAULT 0'], ['sales', 'tradein_desc', 'TEXT'], ['sale_items', 'margin_id', 'INTEGER'],
+  ['services', 'public', 'INTEGER NOT NULL DEFAULT 0'], ['services', 'price_from', 'INTEGER NOT NULL DEFAULT 1'], ['services', 'device_type', 'TEXT'], ['services', 'public_note', 'TEXT']]) addColumn(t, c, d);
 raw.exec('CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)'); // dopo addColumn: su un database vecchio la colonna prima non c'e'
 
 let depth = 0;
