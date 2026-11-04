@@ -3,9 +3,12 @@
 // Maggiore/minore cambiano per scelte grosse (nuova area, riscrittura). Aggiungi la nuova voce IN CIMA a NOTES e aggiorna VERSION.
 import { esc, openModal } from './util.js';
 
-export const VERSION = '1.0.6.0';
+export const VERSION = '1.0.6.1';
 
 export const NOTES = [
+  { v: '1.0.6.1', date: '2026-11-04', type: 'correzione', items: [
+    'Blacks: in «Segnala una persona» puoi scegliere un cliente già registrato dall’elenco (come nelle riparazioni) oppure scrivere i dati a mano. Richiesta S-0007 di Christian.',
+  ] },
   { v: '1.0.6.0', date: '2026-11-04', type: 'funzione', items: [
     'Assistente: puoi chiedergli una modifica al gestionale con parole tue («vorrei che nella scheda ci fosse…», «la stampa non va…»). Ti fa le domande che servono e, dopo la tua conferma, la manda a Marco come Segnalazione.',
     'Marco la fa preparare, ti risponde nella Segnalazione e te la fa provare: il gestionale cambia solo dopo la sua approvazione.',
