@@ -87,6 +87,7 @@ test('usato a margine: registro, cedente obbligatorio, vendita in cassa, IVA a m
   ok(sale);
   assert.equal(sale.data.total, 272);
   assert.equal(sale.data.items[0].unit_cost, 150);
+  assert.match((await call('GET', `/print/sale/${sale.data.id}`)).data, /regime del margine/); // anche la ricevuta stampata
   assert.equal((await call('POST', '/api/sales', { items: [{ margin_id: item.id }], method: 'contanti' })).data.code, 'USATO_GIA_VENDUTO');
   const reg = ok(await call('GET', '/api/margine/registro'));
   assert.equal(reg.sold.n, 1); assert.equal(reg.margin, 122); assert.equal(reg.vat_due, 22); // 122 x 22 / 122
@@ -108,6 +109,7 @@ test('permuta in cassa: scala dal totale, entra nel registro, ricevuta e avviso 
   assert.equal(sale.total, 309); assert.equal(sale.tradein_value, 90);
   assert.equal(sale.tradein_item.origin, 'permuta'); assert.equal(sale.tradein_item.cost, 90);
   assert.match(s.msgs, /permuta.*Galaxy S10.*90,00/si);
+  assert.match((await call('GET', `/print/sale/${sale.id}`)).data, /Permuta: Galaxy S10 128GB/);
   const link = ok(await call('GET', `/api/sales/${sale.id}/link`));
   assert.match(link.url, /\/r\/[\w-]+$/); assert.match(link.wa, /^https:\/\/wa\.me\/393207654321\?text=/);
   const rec = await call('GET', new URL(link.url, 'http://x').pathname, null, 'admin', pub);

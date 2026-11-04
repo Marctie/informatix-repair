@@ -13,6 +13,7 @@ import { attachModelSuggest } from './modelli.js'; // suggerimenti marca/modello
 import { repairExternals } from './esterne.js'; // sezione "Riparazione esterna" nella scheda
 import { repairLoans } from './prestiti.js'; // sezione "Muletto in prestito" nella scheda
 import { signIntakeAtDesk, signDialog } from './sign.js';
+import { mountRepairExtra } from './confronto.js'; // tecnico, fase, estensione di garanzia
 import { checklistGrid, checklistLegend, checklistSections, bindChecklist, bindChecklistGrids, checklistClick, readChecklist, hasAny, toItems } from './checklist.js';
 
 // Tipi di dispositivo, etichette e suggerimenti arrivano dal server (/api/meta): cambiano con il tipo scelto.
@@ -317,7 +318,7 @@ export async function openRepairDetail(id, onChange) {
     const wa = (kind) => waLink(r.customer_phone, waMessage(kind, { ...r }));
     const waKind = r.status === 'ready' ? 'ready' : r.status === 'quote_pending' ? 'quote' : 'generic';
     const waHref = wa(waKind);
-    const statusOptions = Object.entries(META.statuses).filter(([k]) => k !== 'delivered' && k !== r.status).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
+    const statusOptions = Object.entries(META.statuses).filter(([k, v]) => k !== 'delivered' && k !== r.status && !v.hidden).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
     const restoreRetro = keepRetro(body); // la data "giorno passato" digitata non si perde se la scheda si ridisegna
     body.innerHTML = `
       <div class="sticky-head">
@@ -328,6 +329,7 @@ export async function openRepairDetail(id, onChange) {
           ${r.quote_decision === 'declined' ? '<span class="badge bg-red-100 text-red-700">Preventivo rifiutato dal cliente</span>' : ''}
         </div>
         ${progressBar(r)}
+        <div id="d-extra"></div>
         ${!done ? `<div class="row">
           ${r.next_status ? `<button class="btn btn-dark" data-act="advance">${esc(r.next_label)} →</button>` : ''}
           <select id="d-status" style="width:auto;min-width:11rem" aria-label="Cambia stato"><option value="">Cambia stato…</option>${statusOptions}</select>
@@ -473,6 +475,7 @@ export async function openRepairDetail(id, onChange) {
       </section>`;
 
     restoreRetro();
+    mountRepairExtra($('#d-extra', body), r, () => { reloadList(); render(); });
     mountRepairLedger($('#d-ledger', body), r);
     const vatRate = () => r.quote_vat_rate ?? META.settings?.vat_rate ?? 22;
     if ($('#d-quote', body)) bindPriceNote(body, '#d-quote', '#d-qmode', '#d-qsum', vatRate, 'd-q');

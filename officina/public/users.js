@@ -1,5 +1,6 @@
 // Utenti: elenco di chi può entrare nel gestionale. Lo vede e lo modifica solo l'amministratore.
 import { $, esc, api, toast, safe, openModal, confirmDelete } from './util.js';
+import { permissionsDialog } from './confronto.js'; // sezioni negate al singolo utente
 
 const ROLE = { admin: 'Amministratore', staff: 'Postazione / collaboratore', cassa: 'Cassa (permessi limitati)' };
 
@@ -16,11 +17,13 @@ export async function usersView(el) {
       <div class="w-9 h-9 rounded-full bg-secondary-light text-secondary-dark flex items-center justify-center font-bold">${esc((u.name || u.email).charAt(0).toUpperCase())}</div>
       <div class="flex-1 min-w-0"><p class="font-semibold text-sm">${esc(u.name || u.email)}${u.protected ? ' 🔒' : ''}${u.active ? '' : ' <span class="hint">(disattivato)</span>'}</p>
         <p class="text-xs text-gray-500">${esc(u.email)} · ${ROLE[u.role]}</p></div>
-      ${u.protected ? '<span class="hint">protetto</span>' : `<button class="btn btn-outline btn-sm" data-edit="${u.id}">Modifica</button>`}</div>`).join('') || '<p class="empty">Nessun utente.</p>';
+      ${u.protected ? '<span class="hint">protetto</span>' : `${u.role !== 'admin' ? `<button class="btn btn-ghost btn-sm" data-perm="${u.id}">Permessi${u.deny ? ' ⚠️' : ''}</button>` : ''}<button class="btn btn-outline btn-sm" data-edit="${u.id}">Modifica</button>`}</div>`).join('') || '<p class="empty">Nessun utente.</p>';
     list._rows = rows || [];
   }
   $('#u-new', el).onclick = () => editUser(null, load);
   list.onclick = (e) => {
+    const pm = e.target.closest('[data-perm]');
+    if (pm) return permissionsDialog(list._rows.find((u) => u.id === Number(pm.dataset.perm)), load);
     const b = e.target.closest('[data-edit]');
     if (b) editUser(list._rows.find((u) => u.id === Number(b.dataset.edit)), load);
   };

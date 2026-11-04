@@ -39,6 +39,7 @@ function render(d) {
     <div class="card">
       <h1>Riparazione ${esc(d.code)}</h1>
       <div class="status">${esc(d.status_label)}</div>
+      ${d.substatus ? `<p class="hint"><b>${esc(d.substatus)}</b></p>` : ''}
       <p class="hint">${esc(d.status_hint)}</p>
       ${d.cancelled ? '' : `<div class="bar ${done ? 'done' : ''}"><i style="width:${d.progress}%"></i></div>
       <div class="steps">${steps}</div>
@@ -75,6 +76,8 @@ function render(d) {
         <div><b>${eur(d.balance)}</b><small>Da saldare</small></div>
       </div>`}
     </div>
+    ${(d.documents || []).length ? `<div class="card"><h2>I tuoi documenti</h2><p class="hint">Si aprono in una pagina che puoi stampare o salvare in PDF.</p>
+      <ul class="tl">${d.documents.map((x) => `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">📄 ${esc(x.label)}</a></li>`).join('')}</ul></div>` : ''}
     <div class="card"><h2>Cronologia</h2>
       <ul class="tl">${d.events.map((e) => `<li>${esc(e.note || '')}<small>${esc(fdt(e.created_at))}</small></li>`).join('')}</ul>
     </div>`;

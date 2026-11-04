@@ -1,9 +1,10 @@
 // Analisi: riparazioni, incassi e vendite del periodo scelto. Solo amministratori.
 import { $, esc, eur, fdate, api, safe, META } from './util.js';
+import { techStatsTab, forecastTab } from './confronto.js'; // statistiche per tecnico e previsioni
 
 const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Rome' });
 const shift = (ymd, n) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-const TABS = [['riparazioni', 'Riparazioni'], ['incassi', 'Incassi'], ['vendite', 'Vendite'], ['magazzino', 'Magazzino']];
+const TABS = [['riparazioni', 'Riparazioni'], ['incassi', 'Incassi'], ['vendite', 'Vendite'], ['magazzino', 'Magazzino'], ['tecnici', 'Tecnici'], ['previsioni', 'Previsioni']];
 export const AN_CSS = `<style>
       [data-an]{display:grid;gap:1.6rem;margin-top:1.6rem}
       [data-an] .sec-t{margin-bottom:.4rem}
@@ -42,6 +43,8 @@ export async function analyticsView(el, qs) {
   const out = $('#an-out', el);
 
   async function load() {
+    if (tab === 'tecnici') return techStatsTab(out, from, to);
+    if (tab === 'previsioni') return forecastTab(out);
     const d = await safe(() => api('GET', `/api/analytics?from=${from}&to=${to}`));
     if (!d || !$('#an-out', el)) return;
     if (tab === 'magazzino') {

@@ -9,6 +9,7 @@ const dt = (s) => (s ? new Date(s.replace(' ', 'T')).toLocaleString('it-IT', { d
 const d = (s) => (s ? new Date(s + 'T00:00:00').toLocaleDateString('it-IT') : '—');
 const qr = (text, size = 130) => `<img src="/api/qr?text=${encodeURIComponent(text)}" width="${size}" height="${size}" alt="QR" />`;
 const barcode = (text, w = 150, h = 34) => `<img src="/api/barcode?text=${encodeURIComponent(text)}" style="width:${w}px;height:${h}px;display:block" alt="codice a barre ${esc(text)}" />`;
+import { MARGIN_NOTE } from './margine.mjs';
 import { DEVICE_TYPES, typeInfo } from './checklists.mjs';
 import { fiscalLines } from './clienti.mjs';
 import { isVerified, LEGAL_NOTE } from './legal.mjs';
@@ -238,7 +239,9 @@ export function printSale(sale, s, req) {
   ${sale.customer_name ? `<p><b>Cliente: ${esc(sale.customer_name)}</b>${fiscalLines(sale).map((l) => `<br><span style="font-size:11px">${esc(l)}</span>`).join('')}</p>` : ''}
   <table style="margin-top:14px"><tr><th>Articolo</th><th>Q.tà</th><th style="text-align:right">Prezzo</th><th style="text-align:right">Totale</th></tr>${rows}</table>
   ${sale.discount ? `<p style="text-align:right">Sconto: -${eur(sale.discount)}</p>` : ''}
+  ${sale.tradein_value > 0 ? `<p style="text-align:right">Permuta: ${esc(sale.tradein_desc || '')} -${eur(sale.tradein_value)}</p>` : ''}
   <p style="text-align:right" class="big">Totale ${eur(sale.total)}</p>${payLines(sale)}
+  ${(sale.items || []).some((i) => i.margin_id) ? `<p style="font-size:11px">${esc(MARGIN_NOTE)}</p>` : ''}
   <p class="terms">Documento non fiscale. Per la garanzia legale conservare questa ricevuta.</p>`;
   return page(`Vendita ${sale.code}`, body, '', req);
 }

@@ -3,9 +3,17 @@
 // Maggiore/minore cambiano per scelte grosse (nuova area, riscrittura). Aggiungi la nuova voce IN CIMA a NOTES e aggiorna VERSION.
 import { esc, openModal } from './util.js';
 
-export const VERSION = '1.0.4.0';
+export const VERSION = '1.0.5.0';
 
 export const NOTES = [
+  { v: '1.0.5.0', date: '2026-11-04', type: 'funzione', items: [
+    'Tecnico assegnato e fase della riparazione (es. «Inviato al centro Samsung»), visibile anche al cliente. Stati rinominabili e nascondibili da Impostazioni → Stati e fasi. Statistiche per tecnico in Analisi.',
+    'Usato a margine: registro dei beni usati comprati da privati, vendita dalla cassa con la dicitura del regime del margine, cartellino da stampare e riepilogo dell’IVA sul margine.',
+    'Ritiro in permuta in cassa: il valore si scala dal totale e il bene entra nel registro dell’usato.',
+    'Estensioni di garanzia a pagamento con certificato da mandare al cliente; ricevuta di vendita su WhatsApp; nel link della riparazione il cliente scarica ricevuta e certificato.',
+    'Proposta d’ordine calcolata dalle scorte e dai consumi (un ordine per fornitore) e arrivo merce con controllo delle differenze e carico automatico.',
+    'Listino pubblico delle riparazioni, esportazioni per Excel, permessi per singolo utente, previsioni di fine mese e Agenda delle scadenze.',
+  ] },
   { v: '1.0.4.0', date: '2026-11-03', type: 'funzione', items: [
     'Assistente: risposte istantanee (senza aspettare il modello) per le richieste ricorrenti: articoli sotto scorta, ordini sotto scorta, com’è andata oggi, riparazioni in ritardo o pronte, preventivi da approvare, controllo dati, articoli fermi. I suggerimenti «Per te adesso» e gli esempi completi partono con un clic.',
     'Assistente: nuove funzioni. Dettatura a voce (🎤), suggerimenti «Per te adesso» calcolati dai dati (articoli sotto scorta, riparazioni pronte o in ritardo…) e il pannello «Cosa posso fare per te» con esempi cliccabili per ogni funzione, compreso l’inserimento dei dati.',
