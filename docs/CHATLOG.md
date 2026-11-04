@@ -1146,3 +1146,11 @@ Ordine in cui sono andate le cose, per ripartire senza rileggere tutto:
 - **Test**: `officina/tests/confronto.test.mjs` (12) nel `test:officina`: 360/360.
 - **NON fatto (serve un servizio esterno o una scelta di Marco)**: scontrino fiscale/RT, invio diretto SdI, pagamenti online (Stripe/PayPal), OTP via SMS, marketplace tra negozi, multi-negozio, API dei fornitori, sotto-magazzini (c'e' gia' l'ubicazione), agente di stampa senza browser.
 - **Da verificare con Christian**: TEST-DI-CHRISTIAN sez. L (prove 69-81); regole dell'IVA a margine e testo del certificato col commercialista.
+
+## 2026-11-04 - RIEPILOGO DELLA GIORNATA
+1. **Confronto gestionali**: Fix-Book con piani e prezzi veri (14,90/19,90/25,90 EUR al mese IVA incl.), Fixh IT ricontrollato (nessuna novita'), Multiquantum non trovato online (serve il link). `docs/CONFRONTO-GESTIONALI.md` sez. 4-5.
+2. **Versione 1.0.5.0**: tutte le funzioni mancanti realizzabili senza servizi esterni (dettaglio nella sezione sopra). Commit f89275a + e0a0872 su `gestionale-officina`, pushati.
+3. **Pubblicato**: migrazione D1 0045 in produzione + deploy del Worker (versione f2354533).
+4. **Test**: automatici 360/360 (gestionale) e 50/50 (bot); interfaccia provata in locale con Edge headless a 390 e 1280 px, senza errori JS. Online verificate solo le pagine pubbliche (/listino, /api/listino, /r/, /g/, /t/<t>/certificato, track.js); il gestionale sta dietro Access e non e' stato aperto online.
+5. **Bot di controllo**: codice aggiornato in `Bot Telegram/informatix-bot` (sezione «Dettaglio» e Buongiorno piu' ricco). Marco: **il telefono non ospita piu' i bot** (04/11): niente installazione su Termux finche' non si decide dove farli girare. La sezione `extra` di `/api/monitor` online NON e' verificata (chiave non disponibile sul PC).
+**Da fare**: prove di Christian (TEST-DI-CHRISTIAN sez. L, 69-81); conferma del commercialista su IVA a margine e testo del certificato; decidere dove far girare i bot; link di Multiquantum.
