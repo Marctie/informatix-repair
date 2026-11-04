@@ -1163,3 +1163,7 @@ Ordine in cui sono andate le cose, per ripartire senza rileggere tutto:
 - **Come lavoro le richieste**: `node officina/tools/segnalazioni.mjs elenco aperte --foto --file <scratch>.md`, commento «Preso in carico», stato `in_corso`; modifica su `gestionale-officina` con test e documentazione; stato `da_verificare` con nota; pubblicazione SOLO dopo l'ok di Marco.
 
 - **Correzione (stesso pomeriggio, scelta di Marco: «niente chiave API»)**: tolti `claude-gate.mjs`, il suo test e la rotta `/api/claude/*`; nessun segreto CLAUDE_TOKEN. Le richieste di Christian arrivano su Telegram come ogni Segnalazione; Claude Code le legge e aggiorna direttamente in D1 con l'accesso wrangler gia' in uso: `node officina/tools/segnalazioni.mjs elenco | leggi <n> | commenta <n> "testo" | stato <n> <stato> ["nota"]` (firma «Marco»; i cambi fatti cosi' non passano dagli avvisi Telegram del Worker). Lettura provata online; scritture non provate in produzione. Suite 362/362.
+
+## 2026-11-04 (sera) - 1.0.6.0 online, S-0007 risolta (versione 1.0.6.1)
+- 1.0.6.0 pubblicata da Marco (versione Cloudflare del 16:45Z). Nota: `wrangler deployments list` non la mostrava; usare `wrangler versions list`.
+- S-0007 (Christian, Blacks): «Segnala una persona» ora ha la scelta di un cliente già registrato (`customerField`/`bindCustomer` di pickers.js) che compila nome/telefono/email e invia `customer_id`; altrimenti dati a mano. Solo frontend (`public/blacks.js`), il backend gestiva gia' customer_id.

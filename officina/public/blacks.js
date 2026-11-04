@@ -2,6 +2,7 @@
 // Uso interno: non compare mai nelle pagine del cliente. Rimuovere una segnalazione e' solo dell'amministratore.
 import { $, esc, fdate, api, toast, safe, debounce, openModal, today } from './util.js';
 import { META } from './util.js';
+import { customerField, bindCustomer } from './pickers.js';
 
 const isAdmin = () => META.role === 'admin';
 const STYLE = 'background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:.75rem;padding:.6rem .8rem;font-size:.85rem';
@@ -41,7 +42,7 @@ export async function reportDialog({ customer = null, black = null, done } = {})
   const list = await reasons();
   const v = black || {};
   const m = openModal(
-    `<div class="sec"><div class="fgrid c2">
+    `<div class="sec">${!customer && !black ? `${customerField('bk-cust', 'Cliente già registrato (facoltativo)')}<p class="hint">Scegli dall’elenco oppure lascia «nessun cliente» e scrivi i dati a mano qui sotto.</p>` : ''}<div class="fgrid c2">
         <div class="field span2"><label class="l" for="bk-name">Nome *</label><input id="bk-name" value="${esc(v.name || customer?.name || '')}" ${customer ? 'readonly' : ''} /></div>
         <div class="field"><label class="l" for="bk-phone">Telefono</label><input id="bk-phone" inputmode="tel" value="${esc(v.phone || customer?.phone || '')}" /></div>
         <div class="field"><label class="l" for="bk-email">Email</label><input id="bk-email" type="email" value="${esc(v.email || customer?.email || '')}" /></div>
@@ -52,10 +53,21 @@ export async function reportDialog({ customer = null, black = null, done } = {})
       <p class="hint">Elenco interno: non lo vede nessun cliente. Ogni segnalazione e ogni modifica restano scritte nel Registro.</p></div>`,
     { title: black ? 'Modifica segnalazione' : 'Segnala cliente', footer: '<button class="btn btn-outline" data-close>Annulla</button><button class="btn btn-primary" id="bk-ok">Salva</button>' }
   );
+  // S-0007: scelta di un cliente gia' registrato (come nelle riparazioni), oppure dati scritti a mano
+  let picked = null;
+  if (!customer && !black) {
+    const cp = bindCustomer(m.el, 'bk-cust');
+    $('#bk-cust', m.el).onchange = async () => {
+      const id = cp.value(); const name = $('#bk-name', m.el);
+      picked = id ? await safe(() => api('GET', `/api/customers/${id}`)) : null;
+      name.readOnly = !!picked;
+      if (picked) { name.value = picked.name || ''; $('#bk-phone', m.el).value = picked.phone || ''; $('#bk-email', m.el).value = picked.email || ''; }
+    };
+  }
   $('#bk-ok', m.el).onclick = async () => {
     const g = (id) => $(`#${id}`, m.el).value;
     const body = { name: g('bk-name'), phone: g('bk-phone'), email: g('bk-email'), reason: g('bk-reason'), reported_on: g('bk-date'), note: g('bk-note') };
-    if (customer) body.customer_id = customer.id;
+    if (customer || picked) body.customer_id = (customer || picked).id;
     const out = await safe(() => (black ? api('PUT', `/api/blacklist/${black.id}`, body) : api('POST', '/api/blacklist', body)));
     if (out) { m.close(); toast(black ? 'Segnalazione aggiornata' : 'Cliente segnalato'); done?.(); }
   };
@@ -78,7 +90,7 @@ export async function blacksView(el) {
     <div class="row tight" style="align-items:center"><input id="bk-q" type="search" placeholder="Cerca per nome, telefono, motivo…" style="flex:1;min-width:12rem" />
       <label class="check"><input type="checkbox" id="bk-all" /> Mostra anche le rimosse</label></div>
     <div class="card overflow-hidden" id="bk-list"></div>
-    <p class="hint">Elenco interno. All’apertura di una nuova scheda o di una vendita il gestionale avvisa se la persona (stesso cliente, telefono, email o nome) è qui dentro. Per segnalare un cliente già registrato usa «Segnala» nella sua scheda.</p>`;
+    <p class="hint">Elenco interno. All’apertura di una nuova scheda o di una vendita il gestionale avvisa se la persona (stesso cliente, telefono, email o nome) è qui dentro. Con «Segnala una persona» puoi scegliere un cliente già registrato oppure scrivere i dati a mano (o usare «Segnala» nella scheda del cliente).</p>`;
   const list = $('#bk-list', el);
   let rows = [];
   async function load() {
