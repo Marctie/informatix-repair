@@ -1,43 +1,52 @@
-// Strumento per Claude Code (e Marco): legge e aggiorna le Segnalazioni di Christian senza aprire il gestionale.
-// La chiave CLAUDE_TOKEN sta nel file `segnalazioni.env.local` accanto a questo script (escluso da git: *.local).
-// Uso:
-//   node officina/tools/segnalazioni.mjs elenco [aperte|nuova|in_corso|tutte] [--foto] [--file percorso.md]
-//   node officina/tools/segnalazioni.mjs leggi <numero> [--foto] [--file percorso.md]
+// Strumento per Claude Code (e Marco): legge e aggiorna le Segnalazioni di Christian direttamente nel database D1,
+// con l'accesso Cloudflare gia' usato per pubblicare (wrangler). Nessuna chiave nuova.
+// Le richieste arrivano anche su Telegram (avviso «Nuova segnalazione»); questo strumento serve a prenderle in carico.
+// Uso (dalla cartella informatix-repair):
+//   node officina/tools/segnalazioni.mjs elenco            -> segnalazioni aperte (nuove per prime)
+//   node officina/tools/segnalazioni.mjs leggi <numero>    -> dettaglio completo con la cronologia
 //   node officina/tools/segnalazioni.mjs commenta <numero> "testo"
-//   node officina/tools/segnalazioni.mjs stato <numero> <nuova|in_corso|in_attesa|da_verificare|risolta|rifiutata> "nota"
-// Non stampa mai la chiave.
-import { readFileSync, writeFileSync } from 'node:fs';
+//   node officina/tools/segnalazioni.mjs stato <numero> <nuova|in_corso|in_attesa|da_verificare|risolta|rifiutata> ["nota"]
+// I commenti e i cambi di stato sono firmati «Marco» (come quelli scritti dal gestionale).
+import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const BASE = process.env.SEGNALAZIONI_BASE || 'https://riparazioni.informatixrepair.com';
-const env = Object.fromEntries(readFileSync(join(HERE, 'segnalazioni.env.local'), 'utf8').split(/\r?\n/).filter((l) => /^\w+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]));
-if (!env.CLAUDE_TOKEN) { console.error('Manca CLAUDE_TOKEN in segnalazioni.env.local'); process.exit(1); }
-const [cmd, a1, a2, a3] = process.argv.slice(2).filter((x) => !x.startsWith('--'));
-const flag = (n) => process.argv.includes(`--${n}`);
-const fileArg = (() => { const i = process.argv.indexOf('--file'); return i > 0 ? process.argv[i + 1] : null; })();
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const STATI = { nuova: 'Nuova', in_corso: 'In lavorazione', in_attesa: 'In attesa di risposta', da_verificare: 'Da verificare', risolta: 'Risolta', rifiutata: 'Rifiutata' };
+const AUTORE = ['marcopeluso99@gmail.com', 'Marco'];
+const q = (v) => (v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`);
+const code = (id) => `S-${String(id).padStart(4, '0')}`;
 
-async function call(method, path, body) {
-  const r = await fetch(`${BASE}/api/claude${path}`, { method, headers: { authorization: `Bearer ${env.CLAUDE_TOKEN}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
-  const t = await r.text();
-  let d; try { d = JSON.parse(t); } catch { d = t; }
-  if (!r.ok) { console.error(`Errore ${r.status}: ${typeof d === 'string' ? d : d.error || JSON.stringify(d)}`); process.exit(1); }
-  return d;
+function sql(command) {
+  // wrangler lanciato con Node senza shell: la query arriva intatta (sotto Windows la shell rovinerebbe < > e gli spazi)
+  const bin = join(ROOT, 'node_modules', 'wrangler', 'bin', 'wrangler.js');
+  const out = execFileSync(process.execPath, [bin, 'd1', 'execute', 'officina', '--remote', '--config', 'officina/wrangler.jsonc', '--json', '--command', command], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  return JSON.parse(out.slice(out.indexOf('[')))[0]?.results || [];
 }
-const out = (md) => { if (fileArg) { writeFileSync(fileArg, md); console.log(`Salvato in ${fileArg}`); } else console.log(md); };
+const NOW = "datetime('now', '+1 hour')"; // ora di Roma (solare); D1 lavora in UTC
+
+const [cmd, a1, a2, a3] = process.argv.slice(2);
+const id = Number(String(a1 || '').replace(/\D/g, ''));
 
 if (cmd === 'elenco') {
-  const d = await call('GET', `/tickets/report?stato=${a1 || 'aperte'}${flag('foto') ? '&foto=1' : ''}`);
-  out(d.markdown);
-} else if (cmd === 'leggi' && a1) {
-  out((await call('GET', `/tickets/${Number(String(a1).replace(/\D/g, ''))}/report${flag('foto') ? '?foto=1' : ''}`)).markdown);
-} else if (cmd === 'commenta' && a1 && a2) {
-  const d = await call('POST', `/tickets/${Number(String(a1).replace(/\D/g, ''))}/comments`, { body: a2 });
-  console.log(`Commento aggiunto a ${d.code} (${d.status_label}).`);
-} else if (cmd === 'stato' && a1 && a2) {
-  const d = await call('PUT', `/tickets/${Number(String(a1).replace(/\D/g, ''))}`, { status: a2, ...(a3 ? { note: a3 } : {}) });
-  console.log(`${d.code}: ora «${d.status_label}».`);
+  const rows = sql("SELECT id, kind, status, priority, title, created_by_name, created_at, updated_at FROM tickets WHERE status NOT IN ('risolta','rifiutata') ORDER BY status <> 'nuova', id");
+  if (!rows.length) console.log('Nessuna segnalazione aperta.');
+  for (const t of rows) console.log(`${code(t.id)} · ${STATI[t.status] || t.status} · ${t.kind} · priorità ${t.priority} · ${t.created_by_name || ''} ${t.created_at}\n   ${t.title}`);
+} else if (cmd === 'leggi' && id) {
+  const [t] = sql(`SELECT * FROM tickets WHERE id = ${id}`);
+  if (!t) { console.error(`${code(id)} non esiste.`); process.exit(1); }
+  const com = sql(`SELECT kind, body, author_name, created_at FROM ticket_comments WHERE ticket_id = ${id} ORDER BY id`);
+  let photos = 0; try { photos = JSON.parse(t.photos || '[]').length; } catch { /* nessuna */ }
+  console.log(`# ${code(t.id)} · ${t.title}\nTipo: ${t.kind} · Priorità: ${t.priority} · Stato: ${STATI[t.status]} · Aperta da ${t.created_by_name || t.created_by} il ${t.created_at}${t.page ? `\nSezione: ${t.page}` : ''}\n\n## Descrizione\n${t.description}${t.path_text ? `\n\n## Percorso\n${t.path_text}` : ''}${t.expected ? `\n\n## Come dovrebbe essere\n${t.expected}` : ''}${photos ? `\n\n## Immagini: ${photos} (si vedono nel gestionale, Segnalazioni → ${code(t.id)})` : ''}${com.length ? `\n\n## Cronologia\n${com.map((m) => `- ${m.created_at} · ${m.author_name}${m.kind === 'stato' ? ' (stato)' : ''}: ${m.body}`).join('\n')}` : ''}`);
+} else if (cmd === 'commenta' && id && a2) {
+  sql(`INSERT INTO ticket_comments (ticket_id, kind, body, author, author_name, created_at) VALUES (${id}, 'commento', ${q(a2)}, ${q(AUTORE[0])}, ${q(AUTORE[1])}, ${NOW}); UPDATE tickets SET updated_at = ${NOW} WHERE id = ${id}`);
+  console.log(`Commento aggiunto a ${code(id)}.`);
+} else if (cmd === 'stato' && id && STATI[a2]) {
+  const [t] = sql(`SELECT status FROM tickets WHERE id = ${id}`);
+  if (!t) { console.error(`${code(id)} non esiste.`); process.exit(1); }
+  const closed = ['risolta', 'rifiutata'].includes(a2);
+  sql(`UPDATE tickets SET status = ${q(a2)}, closed_at = ${closed ? `COALESCE(closed_at, ${NOW})` : 'NULL'}, updated_at = ${NOW} WHERE id = ${id}; INSERT INTO ticket_comments (ticket_id, kind, body, author, author_name, created_at) VALUES (${id}, 'stato', ${q(`${STATI[t.status]} → ${STATI[a2]}`)}, ${q(AUTORE[0])}, ${q(AUTORE[1])}, ${NOW})${a3 ? `; INSERT INTO ticket_comments (ticket_id, kind, body, author, author_name, created_at) VALUES (${id}, 'commento', ${q(a3)}, ${q(AUTORE[0])}, ${q(AUTORE[1])}, ${NOW})` : ''}`);
+  console.log(`${code(id)}: ${STATI[t.status]} → ${STATI[a2]}.`);
 } else {
-  console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 9).join('\n'));
+  console.log('Uso: elenco | leggi <n> | commenta <n> "testo" | stato <n> <stato> ["nota"]');
 }
