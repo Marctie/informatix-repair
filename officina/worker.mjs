@@ -1,7 +1,6 @@
 // Cloudflare Worker del gestionale officina.
 //  gestionale.informatixrepair.com  -> gestionale completo, dietro Cloudflare Access + tabella users
 //  riparazioni.informatixrepair.com -> solo tracciamento pubblico (nessun login)
-import { claudeGate } from './claude-gate.mjs';
 import { Hono } from 'hono';
 import { useD1 } from './db-d1.mjs';
 import { ensureDefaults, ensureOwner } from './dbref.mjs';
@@ -26,15 +25,6 @@ const adminApp = createAdminApp({
   usati: { publisher: (c) => createPublisher(c.env), media: (c) => r2Media(c.env.MEDIA), siteUrl: (c) => c.env.SITE_URL },
 });
 const publicApp = createPublicApp({ media: (c) => r2Media(c.env.MEDIA) });
-// Claude Code legge e aggiorna le Segnalazioni con CLAUDE_TOKEN (solo quelle; agisce come Marco). Vedi claude-gate.mjs
-const claudeTickets = claudeGate({
-  env: (c) => c.env || {},
-  makeApp: (user) => createAdminApp({
-    auth: async (c, next) => { c.set('user', user); await next(); },
-    trackBaseFallback: () => globalThis.__PUBLIC_BASE__,
-    usati: { publisher: (c) => createPublisher(c.env), media: (c) => r2Media(c.env.MEDIA), siteUrl: (c) => c.env.SITE_URL },
-  }),
-});
 
 const NO_STORE = { 'Cache-Control': 'no-cache' };
 const serveAsset = async (env, request, path) => {
@@ -67,7 +57,6 @@ app.use('*', async (c, next) => { await init(c.env); await next(); });
 app.use('*', async (c, next) => {
   if (new URL(c.req.url).hostname !== c.env.PUBLIC_HOST) return next();
   const path = new URL(c.req.url).pathname;
-  if (path.startsWith('/api/claude/')) return claudeTickets(c);
   if (path.startsWith('/api/') || /^\/(r|g)\/[^/]+$|^\/t\/[^/]+\/certificato$|^\/listino$/.test(path)) return publicApp.fetch(c.req.raw, c.env, c.executionCtx); // dati, ricevute, garanzie, listino
   if (path.startsWith('/t/')) return serveAsset(c.env, c.req.raw, '/track');
   if (path.startsWith('/p/')) return serveAsset(c.env, c.req.raw, '/preventivo');

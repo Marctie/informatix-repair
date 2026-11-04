@@ -180,5 +180,4 @@ Online le funzioni prese dal confronto con Fix-Book, e-Share e Fixh IT (tecnico 
 
 ## AGGIORNAMENTO 2026-11-04 (pomeriggio) - versione 1.0.6.0
 Christian chiede modifiche all'assistente -> diventano Segnalazioni -> Claude Code le legge con `node officina/tools/segnalazioni.mjs elenco aperte` e le prende in carico (pubblicazione solo con l'ok di Marco).
-**Da fare da Marco (una volta)**: creare la chiave. Da `informatix-repair`, in PowerShell:
-`$k = -join ((1..64) | % { '{0:x}' -f (Get-Random -Max 16) }); "CLAUDE_TOKEN=$k" | Set-Content -Encoding ascii officina\tools\segnalazioni.env.local; $k | npx wrangler secret put CLAUDE_TOKEN --config officina/wrangler.jsonc`
+Nessuna chiave da creare (decisione di Marco): Claude Code legge le segnalazioni in D1 con `node officina/tools/segnalazioni.mjs elenco`. Da fare: deploy della 1.0.6.0 (`npx wrangler deploy --config officina/wrangler.jsonc`).
