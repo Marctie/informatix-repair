@@ -152,6 +152,7 @@
   <a href="#preventivi-iva">46 · Preventivi: IVA, sconti e permuta</a>
   <a href="#segnalazioni">47 · Segnalazioni e richieste a Marco</a>
   <a href="#assistente">48 · Assistente: scrivi cosa ti serve</a>
+  <a href="#novita-confronto">49 · Tecnico, usato a margine, garanzie, proposta d’ordine e altro</a>
   <!-- agente D: fine voci -->
 </nav>
 
@@ -1526,6 +1527,45 @@
     <li>In alto la pagina dice se il PC con l&#x27;LLM è collegato. Se è <b>spento</b> le richieste restano <b>«in coda»</b> e partono da sole appena si riaccende; dopo 10 minuti Marco riceve un avviso su Telegram. Se aspetti da molto, chiedi a Marco di accendere il PC.</li>
     <li>La prima risposta dopo un po&#x27; di pausa può richiedere un paio di minuti (il modello si carica); poi bastano circa 30-60 secondi.</li>
   </ul>
+</section>
+<section id="novita-confronto">
+  <h2><span class="n">49</span>Tecnico, usato a margine, garanzie, proposta d’ordine e altro</h2>
+  <p>Funzioni prese dal confronto con altri gestionali per riparatori (Fix-Book, e-Share, Fixh IT), versione 1.0.5.0.</p>
+  <h3>Tecnico e fase della riparazione</h3>
+  <ul>
+    <li>Nella scheda, sotto la barra: <b>👷 Tecnico</b> (chi ci lavora, scelto tra gli utenti) e <b>🔖 Fase</b>, un’etichetta in più sopra lo stato (es. «Inviato al centro Samsung»). La fase la vede anche il cliente nel suo link.</li>
+    <li><i>Impostazioni → Stati e fasi</i>: rinomina gli stati, cambia il testo che legge il cliente, nascondi dal menu gli stati che non usi (Ricevuto e Consegnato restano sempre) e scrivi l’elenco delle fasi.</li>
+    <li><i>Analisi → Tecnici</i> (solo amministratore): per ogni tecnico riparazioni aperte e consegnate, incassato, margine stimato e giorni medi.</li>
+  </ul>
+  <h3>Usato a margine e permuta</h3>
+  <ul>
+    <li><i>Vetrina e buoni → Usato a margine</i>: registra ogni usato comprato da un privato (descrizione, IMEI, cedente con documento, prezzo pagato, prezzo di vendita). Ogni bene ha un codice U-anno-numero e un <b>cartellino</b> da stampare.</li>
+    <li>In <i>Vendite</i> il pulsante <b>♻️ Usato a margine</b> aggiunge il bene al carrello: alla vendita il registro lo segna venduto. Sulla ricevuta online compare la dicitura del regime del margine e l’IVA non è esposta.</li>
+    <li><b>🔁 Ritiro in permuta</b> in <i>Vendite</i>: scrivi cosa ritiri e quanto vale; il valore si scala dal totale e il bene entra da solo nel registro come «permuta» (serve il cliente della vendita, che è il cedente).</li>
+    <li><i>Usato a margine → Riepilogo IVA</i> (amministratore): acquistati, venduti, margine e <b>IVA sul margine</b> del mese, calcolata bene per bene (margine negativo = IVA zero). Da far confermare al commercialista.</li>
+    <li>Il ruolo Cassa non vede i prezzi pagati.</li>
+  </ul>
+  <h3>Garanzie estese, ricevute e documenti per il cliente</h3>
+  <ul>
+    <li>Riparazione consegnata → <b>🛡️ Estensione garanzia</b> nella scheda; dopo una vendita la stessa voce compare nella finestra «Vendita fatta». Scegli 3-36 mesi e il prezzo (0 = omaggio): si incassa come una vendita e nasce un <b>certificato</b> con link da mandare al cliente. L’estensione parte quando finisce la garanzia attuale.</li>
+    <li>Dopo ogni vendita: <b>💬 Ricevuta su WhatsApp</b> manda il link della ricevuta al cliente (anche dalle «Ultime vendite» col 💬).</li>
+    <li>Nel link della riparazione il cliente trova <b>«I tuoi documenti»</b>: ricevuta e certificato di garanzia (dopo la consegna), estensioni e preventivo, da stampare o salvare in PDF.</li>
+  </ul>
+  <h3>Proposta d’ordine e arrivo merce</h3>
+  <ul>
+    <li><i>Ordini → 🧮 Proposta d’ordine</i>: gli articoli sotto la scorta minima con la quantità consigliata (scorta riportata al doppio del minimo, o ai consumi di 30 giorni + minimo, meno quanto è già in ordine). Correggi e premi «Crea gli ordini»: uno per fornitore.</li>
+    <li>Ordine al fornitore → <b>📥 Registra arrivo</b>: scrivi quanti pezzi sono arrivati davvero. Il magazzino si carica da solo e le <b>differenze</b> (mancanti o in più) restano scritte nell’ordine e arrivano su Telegram.</li>
+  </ul>
+  <h3>Listino pubblico, esportazioni, permessi, previsioni, agenda</h3>
+  <ul>
+    <li><i>Impostazioni → Listino pubblico</i>: spunta i servizi da mostrare ai clienti (con prezzo «da» e una nota). La pagina pubblica è <code>/listino</code> sull’indirizzo del tracciamento.</li>
+    <li><i>Impostazioni → Esporta per Excel</i> (amministratore): magazzino, clienti, riparazioni, vendite e registro dell’usato in file che Excel apre direttamente.</li>
+    <li><i>Gestione → Utenti → Permessi</i>: togli a un singolo utente (non amministratore) intere sezioni, per esempio Vendite o Analisi. Il blocco vale anche se qualcuno conosce l’indirizzo; le riparazioni restano sempre accessibili.</li>
+    <li><i>Analisi → Previsioni</i> (amministratore): incassato del mese, previsione di fine mese, confronto con lo stesso mese dell’anno prima e quanto resta da incassare sulle riparazioni aperte.</li>
+    <li><i>Banco → Agenda</i>: in una pagina sola promemoria, consegne previste, ordini attesi e preventivi in scadenza delle prossime due settimane.</li>
+  </ul>
+  <h3>Cosa NON c’è (serve un servizio esterno)</h3>
+  <p>Scontrino fiscale col registratore telematico, invio diretto delle fatture al SdI, pagamenti online con carta, codice OTP via SMS, marketplace e più negozi: servono contratti o apparecchi esterni, se ne parla con Marco.</p>
 </section>
 <!-- agente D: fine sezioni -->
 

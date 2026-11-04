@@ -1,4 +1,5 @@
 // Ordini: cosa ordinare al fornitore per un cliente (o per il negozio), con stato, acconto e avviso all'arrivo.
+import { reorderDialog, receiveDialog } from './confronto.js'; // proposta d'ordine e arrivo con differenze
 import { $, esc, eur, fdate, api, toast, safe, debounce, openModal, confirmDelete, waLink, META } from './util.js';
 import { customerField, bindCustomer, itemsEditor, methodSelect } from './pickers.js';
 import { appesoField, appesoVal } from './retro.js';
@@ -38,7 +39,7 @@ export async function ordiniView(el, params) {
   let q = '';
   el.innerHTML = `
     <div class="page-head"><h1 class="font-heading font-extrabold text-2xl">Ordini</h1>
-      <div class="row"><button class="btn btn-outline" id="o-toorder">📋 Da ordinare</button><button class="btn btn-primary" id="o-new">＋ Nuovo ordine</button></div></div>
+      <div class="row"><button class="btn btn-outline" id="o-reorder">🧮 Proposta d’ordine</button><button class="btn btn-outline" id="o-toorder">📋 Da ordinare</button><button class="btn btn-primary" id="o-new">＋ Nuovo ordine</button></div></div>
     <input id="o-q" type="search" placeholder="Cerca per cliente, articolo, fornitore, codice…" />
     <div class="flex gap-2 flex-wrap chips-scroll" id="o-chips"></div>
     <div class="card overflow-hidden" id="o-list"></div>`;
@@ -52,6 +53,7 @@ export async function ordiniView(el, params) {
   $('#o-chips', el).onclick = (e) => { const c = e.target.closest('[data-f]'); if (c) { stato = c.dataset.f; load(); } };
   $('#o-q', el).oninput = debounce((e) => { q = e.target.value.trim(); load(); });
   $('#o-new', el).onclick = () => orderForm(null, load);
+  $('#o-reorder', el).onclick = () => reorderDialog(load);
   $('#o-toorder', el).onclick = () => toOrderDialog(load);
   list.onclick = async (e) => {
     const adv = e.target.closest('[data-adv]');
@@ -96,10 +98,12 @@ export async function openOrder(id, done) {
         <dt>Creato</dt><dd>${fdate(o.created_at)}${o.arrived_at ? ` · arrivato ${fdate(o.arrived_at)}` : ''}${o.delivered_at ? ` · consegnato ${fdate(o.delivered_at)}` : ''}</dd></dl>
     </section>
     <section class="sec"><h3 class="sec-t">Articoli</h3>
-      <div class="plist">${o.items.map((i) => `<div><span>${i.qty}× ${esc(i.description)}</span><b>${i.unit_price ? eur(i.qty * i.unit_price) : ''}</b></div>`).join('')}</div>
+      <div class="plist">${o.items.map((i) => `<div><span>${i.qty}× ${esc(i.description)}${i.qty_received != null && i.qty_received !== i.qty ? ` <span class="badge bg-red-100 text-red-700">arrivati ${i.qty_received}</span>` : ''}</span><b>${i.unit_price ? eur(i.qty * i.unit_price) : ''}</b></div>`).join('')}</div>
+      ${o.received_note ? `<p class="hint">📥 ${esc(o.received_note)}</p>` : ''}
       ${o.total ? `<dl class="kv"><dt>Totale</dt><dd><b>${eur(o.total)}</b></dd><dt>Acconto/pagato</dt><dd>${eur(o.paid)}</dd><dt>Da saldare</dt><dd><b>${eur(o.balance)}</b></dd></dl>` : ''}
     </section>
     <section class="sec"><div class="row">
+      ${o.kind === 'fornitore' && ['ordinato', 'da_ordinare'].includes(o.status) && !o.items.some((i) => i.qty_received != null) ? '<button class="btn btn-green btn-sm" id="od-recv">📥 Registra arrivo</button>' : ''}
       ${open && st.next ? `<button class="btn btn-dark btn-sm" id="od-adv">${st.nextLabel} →</button>` : ''}
       ${o.status === 'arrivato' && o.kind === 'cliente' && waLink(o.customer_phone, '') ? `<a class="btn btn-green btn-sm" target="_blank" rel="noopener" href="${waLink(o.customer_phone, arrivedMessage(o))}">💬 Avvisa il cliente</a>` : ''}
       ${open && o.kind === 'cliente' && o.balance > 0 ? '<button class="btn btn-outline btn-sm" id="od-dep">＋ Acconto</button>' : ''}
@@ -112,6 +116,7 @@ export async function openOrder(id, done) {
   const reload = () => { m.close(); done?.(); };
   const again = () => { m.close(); openOrder(id, done); done?.(); };
   if ($('#od-adv', m.el)) $('#od-adv', m.el).onclick = async () => { if (st.next === 'consegnato') { m.close(); return deliverDialog(id, done); } await advance(id, st.next); again(); };
+  if ($('#od-recv', m.el)) $('#od-recv', m.el).onclick = () => { m.close(); receiveDialog(o, () => { openOrder(id, done); done?.(); }); };
   if ($('#od-dep', m.el)) $('#od-dep', m.el).onclick = () => depositDialog(o, again);
   if ($('#od-edit', m.el)) $('#od-edit', m.el).onclick = () => { m.close(); orderForm(o, done); };
   if ($('#od-cancel', m.el)) $('#od-cancel', m.el).onclick = async () => { if (confirm('Annullare l’ordine?')) { await safe(() => api('POST', `/api/orders/${id}/status`, { status: 'annullato' })); again(); } };

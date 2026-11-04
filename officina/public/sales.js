@@ -1,4 +1,5 @@
 // Vendite al banco, cassa giornaliera e impostazioni.
+import { pickMarginItem, tradeinDialog, afterSaleDialog, shareSale, mountStatusSettings, mountPriceListSettings, mountExportPanel } from './confronto.js'; // usato a margine, permuta, ricevuta WhatsApp, garanzia
 import { hbars, kpi, AN_CSS } from './analytics.js';
 import { createSettlement } from './buoni.js';
 import { retroField, retroVal, appesoField, appesoVal } from './retro.js';
@@ -13,11 +14,12 @@ import { scanWithCamera, cameraSupported } from './scan.js';
 export async function salesView(el) {
   const cart = [];
   let customer = null;
+  let trade = null; // permuta: { description, value, serial, price, seller_doc }
   let listino = 'public'; // listino prezzi della vendita: public | friend | reseller (se l'articolo non ha quel prezzo vale il pubblico)
   const priceFor = (pr) => { const v = listino === 'friend' ? pr.friend : listino === 'reseller' ? pr.reseller : null; return v != null && Number(v) > 0 ? Number(v) : Number(pr.public); };
   const nz = (v) => (v == null || v === '' || v === 'null' ? null : Number(v));
   const discNow = () => Number(String($('#s-disc', el)?.value ?? '0').replace(',', '.')) || 0;
-  const dueNow = () => Math.max(0, cart.reduce((a, i) => a + i.qty * i.unit_price, 0) - discNow());
+  const dueNow = () => Math.max(0, cart.reduce((a, i) => a + i.qty * i.unit_price, 0) - discNow() - (trade?.value || 0));
   // Pagamento: metodo singolo, conto diviso e codice buono (buoni.js)
   const settle = createSettlement({ methodId: 's-method', getDue: dueNow });
   el.innerHTML = `
@@ -37,6 +39,8 @@ export async function salesView(el) {
           <label class="l" for="s-free">Oppure aggiungi una voce libera</label>
           <div class="free-row"><input id="s-free" placeholder="es. Pulizia software" /><input id="s-free-p" inputmode="decimal" placeholder="Importo €" aria-label="Importo" /><button class="btn btn-outline" id="s-free-add">Aggiungi</button></div>
         </div>
+        <div class="row tight"><button class="btn btn-outline btn-sm" id="s-margin" type="button">♻️ Usato a margine</button><button class="btn btn-outline btn-sm" id="s-trade" type="button">🔁 Ritiro in permuta</button></div>
+        <div id="s-trade-box"></div>
         <div class="field">
           <label class="l" for="s-cust">Cliente <span style="font-weight:500;color:var(--muted)">(facoltativo, per lo storico)</span></label>
           <div class="relative"><input id="s-cust" placeholder="Cerca per nome o telefono" autocomplete="off" /><div id="s-cust-s" class="suggest card hidden"></div></div>
@@ -56,6 +60,13 @@ export async function salesView(el) {
     $('#s-svc', el).innerHTML = services.map((x) => `<button class="chip" type="button" data-svc="${x.id}">${esc(x.name)} · ${eur(x.price)}</button>`).join('') || '<span class="hint">Nessun servizio nel listino: aggiungili da “Gestisci listino”.</span>';
   }
 
+  function renderTrade() {
+    const box = $('#s-trade-box', el);
+    if (!box) return;
+    box.innerHTML = trade ? `<div class="kv-line row nowrap" style="justify-content:space-between"><span>🔁 Permuta: <b>${esc(trade.description)}</b></span><span><b>−${eur(trade.value)}</b> <button class="xbtn" id="s-trade-x" type="button" aria-label="Togli la permuta">✕</button></span></div>` : '';
+    const x = $('#s-trade-x', el);
+    if (x) x.onclick = () => { trade = null; renderTrade(); renderCart(); };
+  }
   function renderCart() {
     const subtotal = cart.reduce((a, i) => a + i.qty * i.unit_price, 0);
     const keepDisc = discNow(); // lo sconto digitato non si perde quando cambia il carrello
@@ -74,7 +85,7 @@ export async function salesView(el) {
           </div>${i.product_id && i.stock != null ? `<div class="hint" style="margin-top:.3rem;${i.stock - i.qty < 0 ? 'color:var(--red-d);font-weight:700' : ''}">In magazzino ${i.stock} pz → dopo la vendita ${i.stock - i.qty}${i.stock - i.qty < 0 ? ' (giacenza insufficiente)' : ''}</div>` : ''}<input data-sn="${idx}" value="${esc(i.serial || '')}" placeholder="Seriale / IMEI (facoltativo)" aria-label="Seriale o IMEI" style="margin-top:.4rem" /></div>`).join('')}</div>
         <div class="fgrid c2" style="align-items:end">
           <div class="field"><label class="l" for="s-disc">Sconto €</label><input id="s-disc" inputmode="decimal" value="${esc(String(keepDisc))}" /></div>
-          <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc))}</b></div>
+          <div class="total-box" style="flex-direction:column;align-items:flex-end;gap:0"><span class="hint">Totale</span><b class="font-heading" style="font-size:1.9rem;line-height:1.1" id="s-total">${eur(Math.max(0, subtotal - keepDisc - (trade?.value || 0)))}</b></div>
         </div>
         <div class="sec" id="s-settle"></div>
         ${retroField('s-retro')}
@@ -89,14 +100,14 @@ export async function salesView(el) {
     if (rd && (keepRetro || retroOpen)) rd.closest('details')?.setAttribute('open', '');
     if (disc) {
       settle.mount($('#s-settle', el));
-      disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - discNow())); settle.update(); };
+      disc.oninput = () => { $('#s-total', el).textContent = eur(Math.max(0, subtotal - discNow() - (trade?.value || 0))); settle.update(); };
     }
   }
 
   async function recent() {
     const rows = await safe(() => api('GET', '/api/sales'));
     if (!$('#s-recent', el)) return; // pagina cambiata nel frattempo
-    $('#s-recent', el).innerHTML = (rows || []).slice(0, 12).map((s) => `<div><span>${esc(s.code)}<span class="hint" style="display:block">${fdt(s.created_at)} · ${esc(s.method)}${s.customer_name ? ' · ' + esc(s.customer_name) : ''}</span></span><span><b>${eur(s.total)}</b><a class="xbtn" style="color:var(--muted)" target="_blank" href="/print/sale/${s.id}" aria-label="Stampa ricevuta">🖨️</a></span></div>`).join('') || '<p class="empty">Ancora nessuna vendita.</p>';
+    $('#s-recent', el).innerHTML = (rows || []).slice(0, 12).map((s) => `<div><span>${esc(s.code)}<span class="hint" style="display:block">${fdt(s.created_at)} · ${esc(s.method)}${s.customer_name ? ' · ' + esc(s.customer_name) : ''}</span></span><span><b>${eur(s.total)}</b><a class="xbtn" style="color:var(--muted)" target="_blank" href="/print/sale/${s.id}" aria-label="Stampa ricevuta">🖨️</a><button class="xbtn" style="color:var(--muted)" data-share="${s.id}" aria-label="Manda la ricevuta su WhatsApp">💬</button></span></div>`).join('') || '<p class="empty">Ancora nessuna vendita.</p>';
   }
 
   $('#s-q', el).oninput = debounce(async (e) => {
@@ -205,15 +216,19 @@ export async function salesView(el) {
       const bad = settle.validate();
       if (bad) return toast(bad, false);
       e.target.disabled = true;
-      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, ...settle.payload(), ...retroVal(el, 's-retro'), ...appesoVal(el, 's-appeso') }));
+      const out = await safe(() => api('POST', '/api/sales', { items: cart, discount: $('#s-disc', el).value, customer_id: customer?.id || null, tradein: trade, ...settle.payload(), ...retroVal(el, 's-retro'), ...appesoVal(el, 's-appeso') }));
       e.target.disabled = false;
       if (!out) return;
-      cart.length = 0; settle.reset(); renderCart(); recent();
+      cart.length = 0; trade = null; renderTrade(); settle.reset(); renderCart(); recent();
       showDeviceAlerts(out.device_alerts);
       showBlackAlert(out.blacklist_alert);
       toast(`Venduto: ${eur(out.total)}`);
       if (printNow) window.open(`/print/sale/${out.id}`, '_blank');
+      afterSaleDialog(out); // ricevuta su WhatsApp, estensione di garanzia
     }
+    if (e.target.id === 's-margin') return pickMarginItem((m) => { if (cart.some((i) => i.margin_id === m.id)) return toast('Questo usato è già nel carrello.', false); cart.push({ margin_id: m.id, name: m.description, qty: 1, unit_price: m.price ?? 0, serial: m.serial || '' }); renderCart(); });
+    if (e.target.id === 's-trade') return tradeinDialog(trade, (t) => { trade = t; renderTrade(); renderCart(); });
+    if (e.target.closest('[data-share]')) return shareSale(Number(e.target.closest('[data-share]').dataset.share));
   });
   el.addEventListener('change', (e) => {
     if (e.target.id === 's-list') {
@@ -500,6 +515,9 @@ export async function settingsView(el) {
       </section>
       </div>
       <section class="card panel sec lg:col-span-3" id="st-labels"></section>
+      <section class="card panel sec lg:col-span-3" id="st-stati"></section>
+      <section class="card panel sec lg:col-span-3" id="st-listino"></section>
+      <section class="card panel sec lg:col-span-3" id="st-export"></section>
     </div>`;
   const drawDemo = async () => {
     const d = await safe(() => api('GET', '/api/demo'));
@@ -520,6 +538,9 @@ export async function settingsView(el) {
   mountLedgerSettings($('#st-demo', el)); // Agente C: soglie del cattivo pagatore
   mountMaterialsSettings($('#st-legal', el)); // agente D: promemoria materiali da ordinare
   mountLabelSettings($('#st-labels', el)); // template delle etichette prodotto e logo
+  mountStatusSettings($('#st-stati', el)); // stati rinominabili e fasi
+  mountPriceListSettings($('#st-listino', el)); // listino pubblico delle riparazioni
+  mountExportPanel($('#st-export', el)); // esportazioni per Excel
   // checklist per tipo: tre elenchi modificabili (una voce per riga)
   const ckBox = $('#ck-body', el);
   let ckAll = {};

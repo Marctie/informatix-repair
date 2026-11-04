@@ -38,6 +38,7 @@ import { noteView } from './note.js';
 import { segnalazioniView, openTicketForm } from './segnalazioni.js';
 import { assistenteView } from './assistente.js';
 import { VERSION, openReleaseNotes } from './versione.js';
+import { margineView, agendaView } from './confronto.js'; // usato a margine e agenda
 
 // Menu a gruppi: le voci di tutti i giorni in alto, la gestione in fondo. L'ordine qui e' l'ordine nel menu.
 const GROUPS = [
@@ -87,10 +88,14 @@ const VIEWS = [
   { id: 'dareavere', label: 'Dare/avere', icon: '⚖️', render: dareavereView, group: 'banco' },
   { id: 'fatture', label: 'Archivio fatture', icon: '🗂️', render: fattureView, group: 'gestione' },
   // --- fine Agente C ---
+  // --- Dal confronto con Fix-Book, e-Share e Fixh IT ---
+  { id: 'agenda', label: 'Agenda', icon: '📅', render: agendaView, group: 'banco' },
+  { id: 'margine', label: 'Usato a margine', icon: '♻️', render: margineView, group: 'negozio' },
 ];
 // L'utente collegato (Cloudflare Access): le voci riservate all'amministratore le vede solo lui.
 let ME = null;
-const visible = () => VIEWS.filter((x) => (!x.admin || ME?.role === 'admin') && !(x.notCassa && ME?.role === 'cassa'));
+let HIDDEN = []; // sezioni tolte al singolo utente (Gestione → Utenti → Permessi)
+const visible = () => VIEWS.filter((x) => (!x.admin || ME?.role === 'admin') && !(x.notCassa && ME?.role === 'cassa') && !HIDDEN.includes(x.id));
 const ONLINE = !['localhost', '127.0.0.1'].includes(location.hostname) && !/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname);
 const MANUAL = { href: '/manuale.html', label: 'Manuale', icon: '📖', group: 'gestione', external: true };
 
@@ -412,5 +417,6 @@ window.addEventListener('hashchange', route);
   await safe(loadMeta);
   ME = (await safe(() => api('GET', '/api/me')))?.user || null;
   META.role = ME?.role || 'admin';
+  HIDDEN = (await safe(() => api('GET', '/api/permessi/miei')))?.hidden_views || [];
   route();
 })();

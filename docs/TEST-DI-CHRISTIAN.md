@@ -96,5 +96,20 @@ Come usarlo: una prova alla volta, segna ✅ se va, ❌ se no e scrivi a Marco *
 67. [ ] **Carico da fornitore:** allega una bolla/CSV vero: costo, fornitore e storico prezzi in Acquisti.
 68. [ ] **Controllo dati e preferenze:** «fai un controllo dei dati»; «d'ora in poi arrotonda i prezzi di vendita a 9».
 
+## L. Funzioni nuove dal confronto con altri gestionali (04/11, versione 1.0.5.0)
+69. [ ] **Tecnico e fase:** apri una riparazione, scegli il tecnico e una fase (prima aggiungile in Impostazioni → Stati e fasi); apri il link del cliente e controlla che la fase compaia.
+70. [ ] **Stati rinominati:** in Impostazioni → Stati e fasi rinomina «In riparazione» e salva: il nuovo nome compare nella scheda e nel link del cliente.
+71. [ ] **Usato a margine:** Vetrina e buoni → Usato a margine → Registra usato (con IMEI e documento del cedente) → stampa il cartellino.
+72. [ ] **Vendita dell’usato:** Vendite → ♻️ Usato a margine → vendi: la ricevuta online riporta la dicitura del margine; il bene passa in «Venduti».
+73. [ ] **Permuta:** Vendite → scegli il cliente → 🔁 Ritiro in permuta (es. 90 €): il totale scende di 90 € e il bene compare nel registro come permuta.
+74. [ ] **Ricevuta su WhatsApp:** dopo una vendita premi «💬 Ricevuta su WhatsApp»: il cliente riceve il link e la ricevuta si apre dal telefono.
+75. [ ] **Estensione di garanzia:** su una riparazione consegnata → 🛡️ Estensione garanzia 12 mesi; apri e stampa il certificato; controlla che il cliente lo veda nel suo link sotto «I tuoi documenti».
+76. [ ] **Proposta d’ordine:** imposta una scorta minima su un ricambio, poi Ordini → 🧮 Proposta d’ordine → Crea gli ordini.
+77. [ ] **Arrivo con differenze:** sull’ordine creato → Ordinato → 📥 Registra arrivo con un pezzo in meno: il magazzino si carica e la differenza arriva su Telegram.
+78. [ ] **Listino pubblico:** Impostazioni → Listino pubblico → spunta 2-3 servizi e apri la pagina /listino dal telefono.
+79. [ ] **Excel:** Impostazioni → Esporta per Excel → Magazzino: il file si apre in Excel con le colonne giuste.
+80. [ ] **Permessi:** Utenti → Permessi su una postazione → nega «Vendite e cassa»; entra con quella postazione: Vendite e Cassa non ci sono e non si aprono.
+81. [ ] **Previsioni e Agenda:** Analisi → Previsioni; Banco → Agenda.
+
 ## Se qualcosa non va
 Scrivi: *che schermata*, *cosa hai premuto*, *cosa ti aspettavi*, *cosa è successo* e, se c'è, il **codice in rosso** (tipo E-7K3QX). Quel codice permette a Marco di trovare l'errore in un attimo (Gestione → Errori).

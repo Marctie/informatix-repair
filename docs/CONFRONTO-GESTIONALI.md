@@ -113,3 +113,21 @@ Addon ScontrinoBook (scontrino elettronico) 19,90 EUR + IVA/mese per cassa. Prov
 
 ### Prezzi di riferimento per la versione vendibile
 Fixh IT 9,99-59,99 EUR/mese + IVA; Fix-Book 14,90-25,90 EUR/mese IVA inclusa. Le due funzioni che entrambi fanno pagare nei piani alti: **usato a margine** e **permessi/multi-negozio**.
+
+## 5. Cosa e' stato implementato (04/11, versione 1.0.5.0)
+| Idea (fonte) | Stato |
+|---|---|
+| IVA a margine + permuta (Fix-Book, e-Share, Fixh IT) | FATTO: registro usato a margine, vendita in cassa, permuta, riepilogo IVA, cartellino |
+| Proposta d'ordine calcolata (e-Share) | FATTO |
+| Differenze ordine/arrivo (e-Share) | FATTO, con carico automatico |
+| Tecnico assegnato + statistiche (e-Share) | FATTO |
+| Stati personalizzabili (Fix-Book) | FATTO: rinomina, testo cliente, nascondi, fasi libere |
+| Ruoli/permessi personalizzabili (Fix-Book) | FATTO: sezioni negate per utente |
+| Export Excel (Fix-Book) | FATTO (CSV) |
+| Calendario (Fix-Book) | FATTO: Agenda delle scadenze |
+| Ricevuta via WhatsApp (e-Share) | FATTO (link pubblico della ricevuta) |
+| Estensione garanzia (Fixh IT) | FATTO, con certificato pubblico |
+| Listino pubblico riparazioni (Fixh IT) | FATTO (/listino e /api/listino; da collegare al sito se Marco vuole) |
+| Documenti scaricabili dal portale (Fixh IT) | FATTO ("I tuoi documenti" nel link del cliente) |
+| Previsioni (Fixh IT) | FATTO (fine mese) |
+| Scontrino RT, SdI diretto, pagamenti online, OTP SMS, marketplace, multi-negozio, API fornitori, agente di stampa | NON FATTO: servono contratti, apparecchi o una scelta di Marco |
