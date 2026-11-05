@@ -1167,3 +1167,10 @@ Ordine in cui sono andate le cose, per ripartire senza rileggere tutto:
 ## 2026-11-04 (sera) - 1.0.6.0 online, S-0007 risolta (versione 1.0.6.1)
 - 1.0.6.0 pubblicata da Marco (versione Cloudflare del 16:45Z). Nota: `wrangler deployments list` non la mostrava; usare `wrangler versions list`.
 - S-0007 (Christian, Blacks): «Segnala una persona» ora ha la scelta di un cliente già registrato (`customerField`/`bindCustomer` di pickers.js) che compila nome/telefono/email e invia `customer_id`; altrimenti dati a mano. Solo frontend (`public/blacks.js`), il backend gestiva gia' customer_id.
+
+## 2026-11-05 - Avvisi del gestionale spostati sul gruppo Telegram
+- **Problema (segnalato da Marco)**: il 03/11 era stato spostato sul gruppo «Gestionale Informatix repair» (ID `-5529016123`) solo il bot di controllo (`main-wt/bot/.env`, backup `.env.bak_pre-gruppo_20261103`). Il Worker del gestionale usava ancora la chat privata di Marco (segreto `TELEGRAM_OWNER_ID`), quindi oggi gli avvisi di Christian (R-2026-0025...0029) sono finiti in privato.
+- **Correzione**: segreto `TELEGRAM_OWNER_ID=-5529016123` caricato sul Worker `informatix-officina` (wrangler: «Success! Uploaded secret»). Vale per tutti gli invii del Worker: avvisi delle azioni, accessi, errori, backup notturno, promemoria, materiali da ordinare. Nessuna modifica al codice, nessun deploy necessario. Verificato prima con getChat che @informatix_repair_bot possa scrivere nel gruppo.
+- **Recupero**: i 25 messaggi di oggi della chat privata (dal backup delle 03:30 a R-2026-0029 delle 12:53) sono stati riletti con forwardMessage (data originale) e ripubblicati nel gruppo, in ordine, con «🕘 Arrivato il ... alle ...». Dopo le 12:53 nessun altro avviso in privato.
+- **NON verificato**: un avviso reale del Worker arrivato nel gruppo. La prova con un promemoria di test in D1 e' stata bloccata dai permessi di Claude Code; fa da prova la prima azione sul gestionale.
+- **Regole di Marco (05/11)**: zero errori, verificare e testare sempre dal vivo; i comandi li lancia Claude, Marco non ne lancia fino a nuovo ordine. Tutti i messaggi del bot vanno nel gruppo, mai in privato.
