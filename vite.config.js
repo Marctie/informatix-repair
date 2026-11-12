@@ -23,9 +23,28 @@ const cleanUrls = () => {
   };
 };
 
+// Precarica i font usati sopra la piega (solo alfabeto latino, ~64 KB): senza, il testo viene
+// disegnato col font di sistema e quando arriva Inter/Poppins le righe vanno a capo diversamente
+// e il contenuto "salta" (Cumulative Layout Shift).
+const preloadFonts = () => ({
+  name: 'preload-fonts',
+  transformIndexHtml: {
+    order: 'post',
+    handler(html, ctx) {
+      if (!ctx.bundle) return html;
+      const want = [/\/inter-latin-400-normal-[\w-]+\.woff2$/, /\/inter-latin-600-normal-[\w-]+\.woff2$/, /\/poppins-latin-600-normal-[\w-]+\.woff2$/, /\/poppins-latin-800-normal-[\w-]+\.woff2$/];
+      const files = Object.keys(ctx.bundle).filter((f) => want.some((r) => r.test('/' + f)));
+      return {
+        html,
+        tags: files.map((f) => ({ tag: 'link', attrs: { rel: 'preload', href: '/' + f, as: 'font', type: 'font/woff2', crossorigin: '' }, injectTo: 'head' })),
+      };
+    },
+  },
+});
+
 export default defineConfig({
   base: '/',
-  plugins: [cleanUrls()],
+  plugins: [cleanUrls(), preloadFonts()],
   build: {
     rollupOptions: {
       input: {
