@@ -90,7 +90,7 @@ const card = (it) => {
                 it.sold
                   ? `<div class="rounded-xl bg-lightbg px-3.5 py-3 text-sm text-center font-semibold text-gray-500">${bi('span', '', 'Venduto: presto altri arrivi', 'Sold: more coming soon')}</div>`
                   : `<div class="grid grid-cols-[1fr_auto] gap-2">
-                <a href="/contatti.html?${query}" class="btn-primary !py-3 text-sm"><span data-i18n="${ctaLabel}">${it.contact ? 'Contatta il negozio' : it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'}</span> <i data-icon="arrow" data-class="w-4 h-4"></i></a>
+                <a href="/contatti?${query}" class="btn-primary !py-3 text-sm"><span data-i18n="${ctaLabel}">${it.contact ? 'Contatta il negozio' : it.price != null ? 'Chiedi info' : 'Chiedi il prezzo'}</span> <i data-icon="arrow" data-class="w-4 h-4"></i></a>
                 <a data-site="phone" href="#" class="btn-outline !py-3 !px-4 text-sm" aria-label="Chiama per ${esc(title(it))}"><i data-icon="phoneCall" data-class="w-4 h-4"></i></a>
               </div>`
               }
@@ -115,39 +115,54 @@ const ld = JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'ItemList',
   name: 'Vetrina Usati Informatix Repair',
-  itemListElement: items.map((it, i) => ({
-    '@type': 'ListItem',
-    position: i + 1,
-    item: {
-      '@type': 'Product',
-      name: title(it),
-      description: it.description,
-      ...(it.photos ? { image: `${BASE}${img(it, 1)}` } : {}),
-      itemCondition: it.condition === 'nuovo' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition',
-      ...(it.price != null ? { offers: { '@type': 'Offer', price: it.price, priceCurrency: 'EUR', availability: 'https://schema.org/LimitedAvailability', url: `${BASE}/usati.html#${it.slug}` } } : {}),
-    },
-  })),
+  // Solo articoli disponibili e con prezzo: per Google un Product senza "offers" e' un errore
+  // e quelli venduti non vanno proposti nei risultati.
+  itemListElement: items.filter((it) => it.price != null && !it.sold).map((it, i) => {
+    const condition = it.condition === 'nuovo' ? 'https://schema.org/NewCondition' : 'https://schema.org/UsedCondition';
+    return {
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'Product',
+        name: title(it),
+        description: it.description,
+        ...(it.photos ? { image: `${BASE}${img(it, 1)}` } : {}),
+        itemCondition: condition,
+        offers: {
+          '@type': 'Offer',
+          price: it.price,
+          priceCurrency: 'EUR',
+          itemCondition: condition,
+          availability: 'https://schema.org/LimitedAvailability',
+          url: `${BASE}/usati#${it.slug}`,
+          seller: { '@type': 'ComputerStore', name: 'Informatix Repair', '@id': `${BASE}/#negozio` },
+        },
+      },
+    };
+  }),
 });
 
 const ogItem = items.find((i) => i.featured && i.photos) || items.find((i) => i.photos);
-const ogImage = ogItem ? img(ogItem, 1) : '/images/Informatix-logo.png';
+const ogImage = ogItem ? img(ogItem, 1) : '/images/og-informatix.jpg';
 
 const html = `<!doctype html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-i18n="usati.meta.title">Vetrina Usati | Smartphone, computer e accessori a Nocera Superiore | Informatix Repair</title>
+  <title data-i18n="usati.meta.title">Smartphone e PC usati a Nocera Superiore | Informatix Repair</title>
   <meta name="description" data-i18n-content="usati.meta.desc" content="Vetrina Usati di Informatix Repair a Nocera Superiore: smartphone, computer, tablet e accessori usati o nuovi sigillati, con foto e prezzi. Vieni a vederli e provarli in negozio." />
   <meta name="theme-color" content="#0B0F19" />
-  <link rel="canonical" href="${BASE}/usati.html" />
-  <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="${BASE}/usati" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/images/favicon-48.png" />
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="it_IT" />
   <meta property="og:site_name" content="Informatix Repair" />
-  <meta property="og:title" data-i18n-content="usati.meta.title" content="Vetrina Usati | Informatix Repair" />
-  <meta property="og:description" data-i18n-content="usati.meta.desc" content="Smartphone, computer, tablet e accessori con foto e prezzi. Vieni a vederli in negozio a Nocera Superiore." />
-  <meta property="og:url" content="${BASE}/usati.html" />
+  <meta property="og:title" data-i18n-content="usati.meta.title" content="Smartphone e PC usati a Nocera Superiore | Informatix Repair" />
+  <meta property="og:description" data-i18n-content="usati.meta.desc" content="Vetrina Usati di Informatix Repair a Nocera Superiore: smartphone, computer, tablet e accessori usati o nuovi sigillati, con foto e prezzi. Vieni a vederli e provarli in negozio." />
+  <meta property="og:url" content="${BASE}/usati" />
   <meta property="og:image" content="${BASE}${ogImage}" />
   <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">${ld}</script>
@@ -175,13 +190,13 @@ const html = `<!doctype html>
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-5 mb-10">
         <p class="text-gray-600"><strong class="text-primary font-semibold" id="usati-count">${items.length}</strong> <span data-i18n="usati.countLabel">dispositivi in negozio</span></p>
         <div class="flex flex-wrap gap-2" role="group" data-i18n-attr="aria-label:usati.filters.aria" aria-label="Filtra la vetrina">
-${filters.map(([k, key, l, n], i) => `          <button type="button" class="filter-btn" data-usati-filter="${k}" aria-pressed="${i === 0}"><span data-i18n="${key}">${l}</span> <span class="opacity-60">${n}</span></button>`).join('\n')}
+${filters.map(([k, key, l, n], i) => `          <button type="button" class="filter-btn" data-usati-filter="${k}" aria-pressed="${i === 0}"><span data-i18n="${key}">${l}</span> <span class="font-normal">(${n})</span></button>`).join('\n')}
         </div>
       </div>
 
       <div id="usati-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 ${items.map(card).join('')}      </div>
-      <p id="usati-empty" class="hidden text-center text-gray-600 py-16"><span data-i18n="usati.empty">Nessun dispositivo per questo filtro. Prova con un altro o</span> <a href="/contatti.html" class="text-secondary font-semibold underline" data-i18n="usati.emptyLink">scrivici cosa cerchi</a>.</p>
+      <p id="usati-empty" class="hidden text-center text-gray-600 py-16"><span data-i18n="usati.empty">Nessun dispositivo per questo filtro. Prova con un altro o</span> <a href="/contatti" class="text-secondary font-semibold underline" data-i18n="usati.emptyLink">scrivici cosa cerchi</a>.</p>
     </section>
 
     <section class="bg-lightbg">
@@ -206,7 +221,7 @@ ${items.map(card).join('')}      </div>
           <h2 class="text-2xl md:text-4xl font-bold mb-3" data-i18n="usati.cta2.title">Non vedi quello che cerchi?</h2>
           <p class="text-gray-300 mb-8 max-w-xl mx-auto" data-i18n="usati.cta2.subtitle">La vetrina cambia spesso. Dicci che modello ti serve: se arriva in negozio, ti avvisiamo per primo.</p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contatti.html?prodotto=${encodeURIComponent('Ricerca modello')}" class="btn-primary"><span data-i18n="usati.cta2.button1">Scrivici cosa cerchi</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
+            <a href="/contatti?prodotto=${encodeURIComponent('Ricerca modello')}" class="btn-primary"><span data-i18n="usati.cta2.button1">Scrivici cosa cerchi</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
             <a data-site="phone" href="#" class="btn-ghost"><i data-icon="phoneCall" data-class="w-5 h-5"></i> <span data-i18n="usati.cta2.button2">Chiama il negozio</span></a>
           </div>
         </div>

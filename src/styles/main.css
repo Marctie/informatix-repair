@@ -46,7 +46,7 @@
 
   /* Tipografia sezioni */
   .eyebrow {
-    @apply inline-block text-xs font-semibold uppercase tracking-[0.18em] text-secondary mb-3;
+    @apply inline-block text-xs font-semibold uppercase tracking-[0.18em] text-secondary-dark mb-3;
   }
   .section-title {
     @apply text-3xl md:text-4xl font-bold text-primary mb-4 leading-tight;
@@ -149,3 +149,9 @@
   .animate-floaty { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
+
+/* Domande frequenti (details/summary): niente triangolino di sistema, "+" che ruota in "x" */
+.faq summary { list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq-sign { transition: transform 0.2s ease; }
+.faq[open] .faq-sign { transform: rotate(45deg); }

@@ -27,14 +27,16 @@ export const SITE = {
 };
 
 const NAV_LINKS = [
-  { href: '/', key: 'common.nav.home', match: ['', 'index.html'] },
-  { href: '/chi-siamo.html', key: 'common.nav.chiSiamo', match: ['chi-siamo.html'] },
-  { href: '/servizi.html', key: 'common.nav.servizi', match: ['servizi.html'] },
-  { href: '/portfolio.html', key: 'common.nav.portfolio', match: ['portfolio.html'] },
-  { href: '/usati.html', key: 'common.nav.usati', match: ['usati.html'] },
-  { href: '/segui-riparazione.html', key: 'common.nav.segui', match: ['segui-riparazione.html'], wide: true },
-  { href: '/blog.html', key: 'common.nav.blog', match: ['blog.html'] },
-  { href: '/contatti.html', key: 'common.nav.contatti', match: ['contatti.html'] },
+  // Indirizzi "puliti" (senza .html): Cloudflare Pages reindirizza con 308 le versioni .html,
+  // quindi link, canonical e sitemap usano sempre questi.
+  { href: '/', key: 'common.nav.home', match: ['', 'index'] },
+  { href: '/chi-siamo', key: 'common.nav.chiSiamo', match: ['chi-siamo'] },
+  { href: '/servizi', key: 'common.nav.servizi', match: ['servizi'] },
+  { href: '/portfolio', key: 'common.nav.portfolio', match: ['portfolio'] },
+  { href: '/usati', key: 'common.nav.usati', match: ['usati'] },
+  { href: '/segui-riparazione', key: 'common.nav.segui', match: ['segui-riparazione'], wide: true },
+  { href: '/blog', key: 'common.nav.blog', match: ['blog'] },
+  { href: '/contatti', key: 'common.nav.contatti', match: ['contatti'] },
 ];
 
 /* Icone (stile outline 24x24) */
@@ -87,16 +89,16 @@ const telHref = (n) => 'tel:+' + n.replace(/\D/g, '').replace(/^\+?/, '');
 function renderNavbar() {
   const mount = document.getElementById('navbar');
   if (!mount) return;
-  const page = window.location.pathname.split('/').pop();
+  const page = window.location.pathname.split('/').pop().replace(/\.html$/, '');
 
   const links = (cls, desktop = false) =>
     NAV_LINKS.map(
       (l) =>
-        `<a href="${l.href}" class="${cls}${desktop && l.wide ? ' hidden xl:inline' : ''}" ${l.match.includes(page) || (l.href === '/blog.html' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${t(l.key)}</a>`
+        `<a href="${l.href}" class="${cls}${desktop && l.wide ? ' hidden xl:inline' : ''}" ${l.match.includes(page) || (l.href === '/blog' && window.location.pathname.startsWith('/blog')) ? 'aria-current="page"' : ''}>${t(l.key)}</a>`
     ).join('');
 
   const langBtn = (cls) => {
-    const label = getLang() === 'it' ? 'Switch to English' : "Passa all'italiano";
+    const label = getLang() === 'it' ? 'EN - Switch to English' : "IT - Passa all'italiano";
     return `<button type="button" id="lang-toggle-${cls.includes('mobile') ? 'mobile' : 'desktop'}" class="lang-toggle ${cls}" aria-label="${label}">${getLang() === 'it' ? 'EN' : 'IT'}</button>`;
   };
 
@@ -106,11 +108,11 @@ function renderNavbar() {
       <div class="container-x">
         <div class="flex items-center justify-between h-[72px]">
           <a href="/" class="flex items-center gap-2" aria-label="${SITE.name} - Home">
-            <img src="/images/Informatix-logo.png" alt="${SITE.name}" width="56" height="56" class="h-12 w-auto" />
+            <img src="/images/logo-192.webp" alt="${SITE.name}" width="54" height="48" class="h-12 w-auto" />
           </a>
           <nav class="hidden md:flex items-center gap-8" aria-label="${t('common.nav.aria')}">
             ${links('nav-link', true)}
-            <a href="/contatti.html" class="btn-primary !py-2.5 !px-5 text-sm">${t('common.cta.quote')}</a>
+            <a href="/contatti" class="btn-primary !py-2.5 !px-5 text-sm">${t('common.cta.quote')}</a>
             ${langBtn('shrink-0 w-10 h-9 rounded-lg border border-line text-xs font-semibold text-primary hover:border-secondary hover:text-secondary transition-colors')}
           </nav>
           <div class="md:hidden flex items-center gap-2">
@@ -125,7 +127,7 @@ function renderNavbar() {
       <div id="nav-mobile" class="md:hidden overflow-hidden max-h-0 transition-[max-height] duration-300 bg-white border-t border-line">
         <nav class="container-x py-4 flex flex-col" aria-label="${t('common.nav.ariaMobile')}">
           ${links('py-3 text-base font-medium text-primary border-b border-line aria-[current=page]:text-secondary')}
-          <a href="/contatti.html" class="btn-primary mt-4">${t('common.cta.quote')}</a>
+          <a href="/contatti" class="btn-primary mt-4">${t('common.cta.quote')}</a>
         </nav>
       </div>
     </header>
@@ -195,18 +197,18 @@ function renderFooter() {
     <footer class="bg-ink text-white">
       <div class="container-x py-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
         <div class="lg:col-span-2">
-          <div class="inline-block bg-white rounded-xl p-2 mb-4"><img src="/images/Informatix-logo.png" alt="${SITE.name}" class="h-14 w-auto" loading="lazy" /></div>
+          <div class="inline-block bg-white rounded-xl p-2 mb-4"><img src="/images/logo-192.webp" alt="${SITE.name}" width="63" height="56" class="h-14 w-auto" loading="lazy" /></div>
           <p class="text-gray-400 text-sm max-w-sm">${t('common.footer.tagline')}</p>
           ${social ? `<div class="flex gap-3 mt-5">${social}</div>` : ''}
         </div>
         <div>
-          <h4 class="font-heading font-semibold mb-4">${t('common.footer.navHeading')}</h4>
+          <h2 class="font-heading text-base font-semibold mb-4">${t('common.footer.navHeading')}</h2>
           <ul class="space-y-2.5 text-sm text-gray-400">
             ${NAV_LINKS.map((l) => `<li><a href="${l.href}" class="hover:text-white transition-colors">${t(l.key)}</a></li>`).join('')}
           </ul>
         </div>
         <div>
-          <h4 class="font-heading font-semibold mb-4">${t('common.footer.contactHeading')}</h4>
+          <h2 class="font-heading text-base font-semibold mb-4">${t('common.footer.contactHeading')}</h2>
           <ul class="space-y-3 text-sm text-gray-400">
             <li class="flex gap-2">${icon('pin', 'w-5 h-5 shrink-0 text-secondary')}<span>${SITE.address}</span></li>
             ${SITE.phone ? `<li class="flex gap-2">${icon('phoneCall', 'w-5 h-5 shrink-0 text-secondary')}<a href="${telHref(SITE.phone)}" class="hover:text-white">${SITE.phone}</a></li>` : ''}
@@ -216,13 +218,19 @@ function renderFooter() {
         </div>
       </div>
       <div class="border-t border-white/10">
-        <div class="container-x py-5 text-center sm:text-left text-xs text-gray-500">
+        <div class="container-x pt-5 ${SITE.phone ? 'pb-24 md:pb-5' : 'pb-5'} text-center sm:text-left text-xs text-gray-400">
           &copy; ${new Date().getFullYear()} ${SITE.legalName || SITE.name}. ${t('common.footer.rights')}${SITE.vat ? ` VAT ${SITE.vat}.` : ''}
-          <span class="mx-1">·</span><a href="/privacy.html" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.privacy')}</a>
-          <span class="mx-1">·</span><a href="https://gestionale.informatixrepair.com" rel="noopener" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.reserved')}</a>
+          <span class="mx-1">·</span><a href="/privacy" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.privacy')}</a>
+          <span class="mx-1">·</span><a href="https://gestionale.informatixrepair.com" rel="nofollow noopener" class="hover:text-white underline-offset-2 hover:underline">${t('common.footer.reserved')}</a>
         </div>
       </div>
     </footer>
+    ${
+      // Pulsante "Chiama" sempre a portata di pollice su telefono (piu' contatti dai visitatori da mobile)
+      SITE.phone
+        ? `<a href="${telHref(SITE.phone)}" class="md:hidden fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-secondary text-white font-semibold px-5 py-3 min-h-[48px] shadow-glow" aria-label="${t('common.callAria')} ${SITE.phone}">${icon('phoneCall', 'w-5 h-5')} ${t('common.callNow')}</a>`
+        : ''
+    }
   `;
 }
 
@@ -345,14 +353,14 @@ async function initUsatiTeaser() {
               <h2 class="text-3xl md:text-4xl font-bold leading-tight mb-3">${t('home.usati.title')}</h2>
               <p class="text-gray-300">${t('home.usati.subtitle', count)}</p>
             </div>
-            <a href="/usati.html" class="btn-primary shrink-0">${t('home.usati.link')} ${icon('arrow', 'w-5 h-5')}</a>
+            <a href="/usati" class="btn-primary shrink-0">${t('home.usati.link')} ${icon('arrow', 'w-5 h-5')}</a>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             ${items
               .slice(0, 3)
               .map(
                 (i) => `
-              <a href="/usati.html#${i.slug}" class="group rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-secondary/60 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+              <a href="/usati#${i.slug}" class="group rounded-2xl overflow-hidden bg-white/5 border border-white/10 hover:border-secondary/60 hover:-translate-y-1 transition-all duration-300 flex flex-col">
                 <div class="relative aspect-[4/5] overflow-hidden bg-black">
                   <img src="${i.image}" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-60" loading="lazy" />
                   <img src="${i.image}" alt="${i.name} ${i.memory} ${i.color}" class="relative w-full h-full object-contain transition-transform duration-500 group-hover:scale-105" loading="lazy" width="880" height="1100" />
