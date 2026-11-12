@@ -181,3 +181,6 @@ Online le funzioni prese dal confronto con Fix-Book, e-Share e Fixh IT (tecnico 
 ## AGGIORNAMENTO 2026-11-04 (pomeriggio) - versione 1.0.6.0
 Christian chiede modifiche all'assistente -> diventano Segnalazioni -> Claude Code le legge con `node officina/tools/segnalazioni.mjs elenco aperte` e le prende in carico (pubblicazione solo con l'ok di Marco).
 Nessuna chiave da creare (decisione di Marco): Claude Code legge le segnalazioni in D1 con `node officina/tools/segnalazioni.mjs elenco`. Da fare: deploy della 1.0.6.0 (`npx wrangler deploy --config officina/wrangler.jsonc`).
+
+## AGGIORNAMENTO 2026-11-12 - sito principale ottimizzato per Google (online)
+Il sito pubblico (`main`, worktree `../main-wt`) e' stato ottimizzato e pubblicato (commit 05a4a1f + 0ace1c1): indirizzi puliti, titoli locali, dati strutturati, «Dove siamo» + «Domande frequenti», pulsante «Chiama», font precaricati. Lighthouse online: accessibilita'/SEO/best practices 100, prestazioni 99-100, CLS 0. Prossimi passi (Marco): Search Console + sitemap, Google Business Profile, Web Analytics, redirect www. Leggi CHATLOG 2026-11-12 (sera). Nota: il token wrangler ha solo lettura sulla zona DNS (niente regole WAF/redirect da riga di comando).

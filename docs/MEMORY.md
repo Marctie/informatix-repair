@@ -155,3 +155,5 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - **Riepilogo 04/11**: 1.0.5.0 online (D1 0045, deploy f2354533), test 360/360 + bot 50/50, online verificate solo le pagine pubbliche. Il telefono non ospita piu' i bot (decisione di Marco). Da fare: prove di Christian sez. L, commercialista, dove far girare i bot, link Multiquantum. Dettagli: CHATLOG «RIEPILOGO DELLA GIORNATA» 2026-11-04.
 - **Richieste di Christian via assistente (04/11, 1.0.6.0)**: operazione `app_request` -> Segnalazione; Claude Code le legge/aggiorna con `officina/tools/segnalazioni.mjs` (chiave CLAUDE_TOKEN in `officina/tools/segnalazioni.env.local`, escluso da git; gate `claude-gate.mjs`, solo segnalazioni). Pubblicazione delle modifiche solo con l'ok di Marco. Dettagli: CHATLOG 2026-11-04 (pomeriggio).
 - **Correzione 04/11**: niente CLAUDE_TOKEN ne' rotta /api/claude (tolti). Segnalazioni lette/aggiornate da Claude Code via `officina/tools/segnalazioni.mjs` (wrangler d1, gia' autorizzato).
+
+
