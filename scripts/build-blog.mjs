@@ -80,7 +80,10 @@ function cover(slug) {
 
 /* ---------- template ---------- */
 /* titleKey/descKey: attivano data-i18n solo per le pagine di elenco (chrome bilingue). Gli articoli mantengono titolo/descrizione fissi in italiano. */
-const head = ({ title, desc, path, extra = '', titleKey = '', descKey = '' }) => `<!doctype html>
+/* Indirizzi "puliti" (senza .html): Cloudflare Pages reindirizza con 308 le versioni .html,
+   quindi canonical, link interni e sitemap usano sempre /blog/<slug>. I file restano <slug>.html. */
+const OG_IMAGE = `${BASE}/images/og-informatix.jpg`;
+const head = ({ title, desc, path, extra = '', titleKey = '', descKey = '', type = 'website', published = '' }) => `<!doctype html>
 <html lang="it">
 <head>
   <meta charset="UTF-8" />
@@ -88,16 +91,20 @@ const head = ({ title, desc, path, extra = '', titleKey = '', descKey = '' }) =>
   <title${titleKey ? ` data-i18n="${titleKey}"` : ''}>${esc(title)}</title>
   <meta name="description"${descKey ? ` data-i18n-content="${descKey}"` : ''} content="${esc(desc)}" />
   <meta name="theme-color" content="#0B0F19" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <link rel="canonical" href="${BASE}${path}" />
-  <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
-  <meta property="og:type" content="article" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/images/favicon-48.png" />
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
+  <meta property="og:type" content="${type}" />
   <meta property="og:locale" content="it_IT" />
   <meta property="og:site_name" content="Informatix Repair" />
   <meta property="og:title"${titleKey ? ` data-i18n-content="${titleKey}"` : ''} content="${esc(title)}" />
   <meta property="og:description"${descKey ? ` data-i18n-content="${descKey}"` : ''} content="${esc(desc)}" />
   <meta property="og:url" content="${BASE}${path}" />
-  <meta property="og:image" content="${BASE}/images/Informatix-logo.png" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image" content="${OG_IMAGE}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+${published ? `  <meta property="article:published_time" content="${published}" />\n  <meta property="article:section" content="${CATEGORY}" />\n` : ''}  <meta name="twitter:card" content="summary_large_image" />
 ${extra}  <script type="module" src="/src/main.js"></script>
 </head>
 <body>
@@ -112,7 +119,7 @@ const tail = `  </main>
 </html>
 `;
 
-const card = (a) => `        <a href="/blog/${a.slug}.html" class="card card-hover !p-0 overflow-hidden group flex flex-col reveal">
+const card = (a) => `        <a href="/blog/${a.slug}" class="card card-hover !p-0 overflow-hidden group flex flex-col reveal">
           <div class="aspect-[800/340] overflow-hidden">${cover(a.slug)}</div>
           <div class="p-6 flex flex-col grow">
             <div class="flex items-center gap-3 text-xs text-gray-500 mb-3"><span class="font-semibold uppercase tracking-wider text-secondary">${CATEGORY}</span><span>${fmtDate(a.date)}</span></div>
@@ -133,7 +140,7 @@ if (existsSync(OUT)) rmSync(OUT, { recursive: true });
 mkdirSync(OUT, { recursive: true });
 
 const pages = Math.max(1, Math.ceil(articles.length / PER_PAGE));
-const listPath = (n) => (n === 1 ? '/blog.html' : `/blog/pagina-${n}.html`);
+const listPath = (n) => (n === 1 ? '/blog' : `/blog/pagina-${n}`);
 
 for (let n = 1; n <= pages; n++) {
   const slice = articles.slice((n - 1) * PER_PAGE, n * PER_PAGE);
@@ -145,8 +152,11 @@ for (let n = 1; n <= pages; n++) {
       : '';
   const html =
     head({
-      title: `Blog${n > 1 ? ` - Pagina ${n}` : ''} | Informatix Repair`,
-      desc: 'Notizie, novità e approfondimenti dal mondo della tecnologia, a cura di Informatix Repair.',
+      title: n > 1 ? `Blog di tecnologia - Pagina ${n} | Informatix Repair` : 'Blog di tecnologia: notizie e guide | Informatix Repair',
+      desc:
+        n > 1
+          ? `Notizie di tecnologia, sicurezza informatica, smartphone e PC spiegate in modo semplice: pagina ${n} dell'archivio del blog di Informatix Repair.`
+          : 'Notizie di tecnologia, sicurezza informatica, smartphone e PC spiegate in modo semplice dal laboratorio Informatix Repair di Nocera Superiore.',
       path: listPath(n),
       titleKey: n === 1 ? 'blog.meta.title' : '',
       descKey: n === 1 ? 'blog.meta.desc' : '',
@@ -171,24 +181,46 @@ ${nav}    </section>
 
 articles.forEach((a, i) => {
   const related = articles.filter((x) => x.slug !== a.slug).slice(i % Math.max(1, articles.length - 3), (i % Math.max(1, articles.length - 3)) + 3);
+  const url = `${BASE}/blog/${a.slug}`;
   const ld = JSON.stringify({
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: a.title,
     description: a.description,
+    image: [OG_IMAGE],
     datePublished: a.date,
-    inLanguage: 'it',
+    dateModified: a.date,
+    inLanguage: 'it-IT',
     articleSection: CATEGORY,
-    author: { '@type': 'Organization', name: 'Informatix Repair' },
-    publisher: { '@type': 'Organization', name: 'Informatix Repair', logo: { '@type': 'ImageObject', url: `${BASE}/images/Informatix-logo.png` } },
-    mainEntityOfPage: `${BASE}/blog/${a.slug}.html`,
+    wordCount: a.body.split(/\s+/).length,
+    url,
+    author: { '@type': 'Organization', name: 'Informatix Repair', url: `${BASE}/` },
+    publisher: { '@type': 'Organization', name: 'Informatix Repair', url: `${BASE}/`, logo: { '@type': 'ImageObject', url: `${BASE}/images/Informatix-logo.png` } },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+  });
+  const crumbs = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE}/` },
+      { '@type': 'ListItem', position: 2, name: 'Blog', item: `${BASE}/blog` },
+      { '@type': 'ListItem', position: 3, name: a.title, item: url },
+    ],
   });
   const html =
-    head({ title: `${a.title} | Informatix Repair`, desc: a.description, path: `/blog/${a.slug}.html`, extra: `  <script type="application/ld+json">${ld}</script>\n` }) +
+    head({
+      // Brand in coda solo se il titolo e' corto: Google taglia oltre ~60 caratteri
+      title: a.title.length > 55 ? a.title : `${a.title} | Informatix Repair`,
+      desc: a.description,
+      path: `/blog/${a.slug}`,
+      type: 'article',
+      published: a.date,
+      extra: `  <script type="application/ld+json">${ld}</script>\n  <script type="application/ld+json">${crumbs}</script>\n`,
+    }) +
     `    <section class="hero-bg relative overflow-hidden text-white">
       <div class="grid-pattern absolute inset-0" aria-hidden="true"></div>
       <div class="container-x relative py-12 md:py-16 max-w-3xl">
-        <a href="/blog.html" class="text-sm text-gray-300 hover:text-white">&larr; <span data-i18n="blog.backToAll">Tutti gli articoli</span></a>
+        <a href="/blog" class="text-sm text-gray-300 hover:text-white">&larr; <span data-i18n="blog.backToAll">Tutti gli articoli</span></a>
         <div class="flex items-center gap-3 text-xs mt-6 mb-4"><span class="font-semibold uppercase tracking-wider text-red-400">${CATEGORY}</span><span class="text-gray-400">${fmtDate(a.date)} &middot; ${a.minutes} <span data-i18n="blog.minRead">min di lettura</span></span></div>
         <h1 class="text-3xl md:text-5xl font-extrabold leading-tight">${esc(a.title)}</h1>
       </div>
@@ -214,7 +246,7 @@ ${related.map(card).join('')}        </div>
       <div class="rounded-3xl bg-ink text-white px-6 py-12 text-center">
         <h2 class="text-2xl md:text-3xl font-bold mb-3" data-i18n="blog.cta.title">Hai un dispositivo che non funziona?</h2>
         <p class="text-gray-300 mb-7 max-w-xl mx-auto" data-i18n="blog.cta.subtitle">Diagnosi gratuita e preventivo prima di ogni intervento.</p>
-        <a href="/contatti.html" class="btn-primary" data-i18n="common.cta.quote">Richiedi Preventivo</a>
+        <a href="/contatti" class="btn-primary" data-i18n="common.cta.quote">Richiedi Preventivo</a>
       </div>
     </section>
 ` +
@@ -223,11 +255,13 @@ ${related.map(card).join('')}        </div>
 });
 
 /* ---------- sitemap ---------- */
-const fixed = ['', 'chi-siamo.html', 'servizi.html', 'portfolio.html', 'usati.html', 'blog.html', 'contatti.html', 'privacy.html'];
+// Solo indirizzi puliti (quelli con .html rispondono 308 e Google li scarta dalla sitemap).
+const latest = articles[0]?.date;
+const fixed = ['', 'servizi', 'contatti', 'chi-siamo', 'usati', 'segui-riparazione', 'portfolio', 'blog', 'privacy'];
 const urls = [
-  ...fixed.map((p) => `  <url><loc>${BASE}/${p}</loc></url>`),
-  ...Array.from({ length: pages - 1 }, (_, i) => `  <url><loc>${BASE}/blog/pagina-${i + 2}.html</loc></url>`),
-  ...articles.map((a) => `  <url><loc>${BASE}/blog/${a.slug}.html</loc><lastmod>${a.date}</lastmod></url>`),
+  ...fixed.map((p) => `  <url><loc>${BASE}/${p}</loc>${p === 'blog' && latest ? `<lastmod>${latest}</lastmod>` : ''}</url>`),
+  ...Array.from({ length: pages - 1 }, (_, i) => `  <url><loc>${BASE}/blog/pagina-${i + 2}</loc></url>`),
+  ...articles.map((a) => `  <url><loc>${BASE}/blog/${a.slug}</loc><lastmod>${a.date}</lastmod></url>`),
 ];
 writeFileSync(join(ROOT, 'public', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`);
 

@@ -21,6 +21,8 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 ## Decisioni architetturali
 - Contenuti/contatti configurabili in un unico oggetto `SITE` in `src/main.js` (telefono, WhatsApp, email, orari, social, apkUrl). I campi vuoti nascondono i relativi elementi, così non compaiono mai placeholder sul sito live.
 - `base` di Vite = `/` (dominio proprio, non più sottocartella GitHub Pages).
+- **Indirizzi puliti (2026-11-12)**: Cloudflare Pages reindirizza con 308 ogni `.html` alla versione senza estensione, quindi link interni, canonical, og:url e sitemap usano SEMPRE `/servizi`, `/blog/<slug>` ecc. (mai `.html`). I file restano `.html`. In locale lo stesso comportamento lo da' il plugin `clean-urls` di `vite.config.js`.
+- **SEO (2026-11-12)**: titoli/descrizioni orientati alla ricerca locale in `src/i18n.js` (e allineati nell'HTML), JSON-LD `ComputerStore` + `WebSite` in home, `BreadcrumbList` nelle pagine interne e negli articoli, immagine social `public/images/og-informatix.jpg`, sezioni «Dove siamo» e «Domande frequenti» in home, pulsante «Chiama» fisso su telefono. Dettagli: CHATLOG 2026-11-12 (sera).
 - Quando arriverà auth/e-commerce serve un backend (valutare Cloudflare Workers + D1/Supabase); il sito statico attuale non lo richiede.
 
 ## Sito bilingue IT/EN (switch lato client, stessa URL)

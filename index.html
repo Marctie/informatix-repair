@@ -3,31 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-i18n="home.meta.title">Informatix Repair | Riparazioni Informatica a Nocera Superiore</title>
-  <meta name="description" data-i18n-content="home.meta.desc" content="Informatix Repair: riparazioni professionali di PC, laptop e smartphone a Nocera Superiore (SA). Hardware, software, recupero dati, assemblaggio PC gaming. Diagnosi gratuita." />
+  <title data-i18n="home.meta.title">Riparazione PC e Smartphone a Nocera Superiore | Informatix Repair</title>
+  <meta name="description" data-i18n-content="home.meta.desc" content="Laboratorio di riparazione PC, notebook e smartphone a Nocera Superiore (SA): diagnosi gratuita, preventivo prima dell'intervento, recupero dati, PC gaming e Vetrina Usati." />
   <meta name="theme-color" content="#0B0F19" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <link rel="canonical" href="https://informatixrepair.com/" />
-  <link rel="icon" type="image/png" href="/images/Informatix-logo.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/images/favicon-48.png" />
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="it_IT" />
   <meta property="og:site_name" content="Informatix Repair" />
-  <meta property="og:title" data-i18n-content="home.meta.title" content="Informatix Repair | Riparazioni Informatica a Nocera Superiore" />
+  <meta property="og:title" data-i18n-content="home.meta.title" content="Riparazione PC e Smartphone a Nocera Superiore | Informatix Repair" />
   <meta property="og:description" data-i18n-content="home.meta.ogDesc" content="Riparazioni professionali di PC, laptop e smartphone. Diagnosi gratuita e preventivi trasparenti." />
   <meta property="og:url" content="https://informatixrepair.com/" />
-  <meta property="og:image" content="https://informatixrepair.com/images/Informatix-logo.png" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image" content="https://informatixrepair.com/images/og-informatix.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Informatix Repair, riparazione PC e smartphone a Nocera Superiore" />
+  <meta name="twitter:card" content="summary_large_image" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "ComputerStore",
-    "name": "Informatix Repair",
-    "url": "https://informatixrepair.com",
-    "image": "https://informatixrepair.com/images/Informatix-logo.png",
-    "email": "info@informatixrepair.it",
-    "telephone": "+393762344151",
-    "description": "Riparazioni informatiche professionali di PC, laptop e smartphone.",
-    "address": { "@type": "PostalAddress", "streetAddress": "Via Pecorari 178", "addressLocality": "Nocera Superiore", "addressRegion": "SA", "postalCode": "84015", "addressCountry": "IT" },
-    "areaServed": "Nocera Superiore e Agro Nocerino-Sarnese"
+    "@graph": [
+      {
+        "@type": "ComputerStore",
+        "@id": "https://informatixrepair.com/#negozio",
+        "name": "Informatix Repair",
+        "url": "https://informatixrepair.com/",
+        "logo": "https://informatixrepair.com/images/Informatix-logo.png",
+        "image": ["https://informatixrepair.com/images/og-informatix.jpg", "https://informatixrepair.com/images/Informatix-logo.png"],
+        "email": "info@informatixrepair.it",
+        "telephone": "+393762344151",
+        "description": "Laboratorio di riparazione PC, notebook e smartphone a Nocera Superiore (SA): diagnosi gratuita, preventivo prima dell'intervento, recupero dati, assemblaggio PC gaming e Vetrina Usati.",
+        "address": { "@type": "PostalAddress", "streetAddress": "Via Pecorari 178", "addressLocality": "Nocera Superiore", "addressRegion": "SA", "postalCode": "84015", "addressCountry": "IT" },
+        "hasMap": "https://www.google.com/maps?q=Via+Pecorari+178,+84015+Nocera+Superiore+SA",
+        "areaServed": [
+          { "@type": "City", "name": "Nocera Superiore" },
+          { "@type": "City", "name": "Nocera Inferiore" },
+          { "@type": "City", "name": "Pagani" },
+          { "@type": "City", "name": "Roccapiemonte" },
+          { "@type": "City", "name": "Castel San Giorgio" },
+          { "@type": "AdministrativeArea", "name": "Agro Nocerino-Sarnese" }
+        ],
+        "openingHoursSpecification": [
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "13:30" },
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "16:00", "closes": "19:30" },
+          { "@type": "OpeningHoursSpecification", "dayOfWeek": "Saturday", "opens": "09:00", "closes": "12:30" }
+        ],
+        "sameAs": ["https://www.facebook.com/informatixrepair"],
+        "hasOfferCatalog": {
+          "@type": "OfferCatalog",
+          "name": "Servizi di riparazione",
+          "itemListElement": [
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Riparazione PC e notebook" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Riparazione smartphone" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Recupero dati da HDD e SSD" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Saldatura e riparazione schede madri" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Rimozione virus e malware" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Assemblaggio PC gaming su misura" } }
+          ]
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://informatixrepair.com/#sito",
+        "url": "https://informatixrepair.com/",
+        "name": "Informatix Repair",
+        "inLanguage": "it-IT",
+        "publisher": { "@id": "https://informatixrepair.com/#negozio" }
+      }
+    ]
   }
   </script>
   <script type="module" src="/src/main.js"></script>
@@ -45,14 +90,14 @@
             <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span> <span data-i18n="home.hero.badge">Nocera Superiore (SA) · Diagnosi gratuita</span>
           </span>
           <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08]" data-i18n-html="home.hero.titleHtml">
-            Riparazioni informatiche <span class="text-secondary">professionali</span>, senza sorprese.
+            Riparazione PC e smartphone a <span class="text-secondary">Nocera Superiore</span>, senza sorprese.
           </h1>
           <p class="text-lg md:text-xl mt-6 text-gray-300 max-w-xl mx-auto lg:mx-0" data-i18n="home.hero.subtitle">
             PC, laptop, smartphone e assemblaggio gaming. Diagnosi chiara, preventivo prima dell'intervento, componenti di qualità.
           </p>
           <div class="mt-9 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-            <a href="/contatti.html" class="btn-primary"><span data-i18n="home.hero.cta1">Richiedi Preventivo</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
-            <a href="/servizi.html" class="btn-ghost" data-i18n="home.hero.cta2">Scopri i Servizi</a>
+            <a href="/contatti" class="btn-primary"><span data-i18n="home.hero.cta1">Richiedi Preventivo</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
+            <a href="/servizi" class="btn-ghost" data-i18n="home.hero.cta2">Scopri i Servizi</a>
           </div>
           <ul class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm text-gray-300 max-w-xl mx-auto lg:mx-0">
             <li class="flex items-center justify-center lg:justify-start gap-2"><i data-icon="check" data-class="w-5 h-5 text-secondary"></i> <span data-i18n="home.hero.check1">Diagnosi gratuita</span></li>
@@ -64,7 +109,7 @@
           <div class="relative">
             <div class="absolute -inset-6 rounded-full bg-secondary/25 blur-3xl" aria-hidden="true"></div>
             <div class="relative animate-floaty bg-white rounded-[2rem] p-6 shadow-lift">
-              <img src="/images/Informatix-logo.png" alt="Informatix Repair" width="420" height="420" class="w-full max-w-[19rem] sm:max-w-sm h-auto" fetchpriority="high" />
+              <img src="/images/logo-456.webp" alt="Informatix Repair, laboratorio di riparazioni informatiche a Nocera Superiore" width="456" height="406" class="w-full max-w-[19rem] sm:max-w-sm h-auto" fetchpriority="high" />
             </div>
           </div>
         </div>
@@ -96,7 +141,7 @@
         </article>
       </div>
       <div class="text-center mt-10">
-        <a href="/servizi.html" class="inline-flex items-center gap-2 text-secondary font-semibold hover:gap-3 transition-all"><span data-i18n="home.services.link">Vedi tutti i dettagli</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
+        <a href="/servizi" class="inline-flex items-center gap-2 text-secondary font-semibold hover:gap-3 transition-all"><span data-i18n="home.services.link">Vedi tutti i dettagli</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
       </div>
     </section>
 
@@ -107,7 +152,7 @@
           <span class="eyebrow" data-i18n="home.segui.eyebrow">Hai lasciato un dispositivo?</span>
           <h2 class="section-title" data-i18n="home.segui.title">Segui la tua riparazione</h2>
           <p class="text-gray-600 text-lg mb-8" data-i18n="home.segui.text">Controlla in ogni momento a che punto siamo: ti bastano il numero della ricevuta e le ultime 4 cifre del tuo telefono. Oppure inquadra il codice QR sulla ricevuta.</p>
-          <a href="/segui-riparazione.html" class="btn-primary"><span data-i18n="home.segui.cta">Controlla lo stato</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
+          <a href="/segui-riparazione" class="btn-primary"><span data-i18n="home.segui.cta">Controlla lo stato</span> <i data-icon="arrow" data-class="w-5 h-5"></i></a>
         </div>
       </div>
     </section>
@@ -155,6 +200,44 @@
       </ol>
     </section>
 
+    <!-- DOVE SIAMO (nome, indirizzo e telefono in chiaro: aiutano la ricerca locale) -->
+    <section class="bg-lightbg" aria-labelledby="dove-siamo">
+      <div class="section container-x grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+        <div>
+          <span class="eyebrow" data-i18n="home.local.eyebrow">Dove siamo</span>
+          <h2 id="dove-siamo" class="section-title" data-i18n="home.local.title">Il tuo laboratorio di riparazioni a Nocera Superiore</h2>
+          <p class="text-gray-600 text-lg leading-relaxed" data-i18n="home.local.text">Ci trovi in Via Pecorari 178 a Nocera Superiore (SA), a pochi minuti da Nocera Inferiore, Pagani, Roccapiemonte e Castel San Giorgio. Porta il tuo PC, notebook o smartphone: la diagnosi è gratuita e ti spieghiamo costi e tempi prima di intervenire.</p>
+        </div>
+        <div class="card">
+          <ul class="space-y-4 text-sm text-gray-600">
+            <li class="flex gap-3"><span class="text-secondary shrink-0"><i data-icon="pin" data-class="w-5 h-5"></i></span><span><strong class="block text-primary" data-i18n="home.local.address">Indirizzo</strong>Via Pecorari 178, 84015 Nocera Superiore (SA)</span></li>
+            <li class="flex gap-3"><span class="text-secondary shrink-0"><i data-icon="phoneCall" data-class="w-5 h-5"></i></span><span><strong class="block text-primary" data-i18n="home.local.phone">Telefono</strong><a data-site="phone" data-text href="tel:+393762344151" class="hover:text-secondary">+39 376 234 4151</a></span></li>
+            <li class="flex gap-3"><span class="text-secondary shrink-0"><i data-icon="clock" data-class="w-5 h-5"></i></span><span><strong class="block text-primary" data-i18n="home.local.hours">Orari</strong><span data-site="hours" data-text>Lun–Ven 9:00–13:30 e 16:00–19:30 · Sab 9:00–12:30 · Dom chiuso</span></span></li>
+          </ul>
+          <div class="flex flex-wrap gap-3 mt-6">
+            <a data-site="phone" href="tel:+393762344151" class="btn-primary !py-2.5 !px-5 text-sm"><i data-icon="phoneCall" data-class="w-4 h-4"></i> <span data-i18n="home.local.call">Chiama ora</span></a>
+            <a href="https://www.google.com/maps/dir/?api=1&amp;destination=Via+Pecorari+178,+84015+Nocera+Superiore+SA" target="_blank" rel="noopener" class="btn-outline !py-2.5 !px-5 text-sm"><i data-icon="pin" data-class="w-4 h-4"></i> <span data-i18n="home.local.directions">Indicazioni stradali</span></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOMANDE FREQUENTI -->
+    <section class="section container-x" aria-labelledby="faq-title">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="eyebrow" data-i18n="home.faq.eyebrow">Domande frequenti</span>
+        <h2 id="faq-title" class="section-title" data-i18n="home.faq.title">Le risposte alle domande più comuni</h2>
+      </div>
+      <div class="max-w-3xl mx-auto space-y-3">
+        <details class="faq card !p-0 group"><summary class="flex items-center justify-between gap-4 cursor-pointer px-6 py-5 font-semibold text-primary"><span data-i18n="home.faq.q1">Quanto costa la diagnosi?</span><span class="faq-sign text-secondary text-2xl leading-none" aria-hidden="true">+</span></summary><p class="px-6 pb-5 text-gray-600 leading-relaxed" data-i18n="home.faq.a1">La diagnosi è gratuita. Dopo aver capito il problema ti diamo un preventivo chiaro con costi e tempi, e interveniamo solo dopo il tuo via libera.</p></details>
+        <details class="faq card !p-0 group"><summary class="flex items-center justify-between gap-4 cursor-pointer px-6 py-5 font-semibold text-primary"><span data-i18n="home.faq.q2">Quali dispositivi riparate?</span><span class="faq-sign text-secondary text-2xl leading-none" aria-hidden="true">+</span></summary><p class="px-6 pb-5 text-gray-600 leading-relaxed" data-i18n="home.faq.a2">Computer fissi, notebook e smartphone: dalla pulizia e dagli upgrade (RAM, SSD) alla reinstallazione del sistema operativo, fino alle riparazioni sulla scheda madre e al recupero dati. Assembliamo anche PC su misura per gaming e lavoro.</p></details>
+        <details class="faq card !p-0 group"><summary class="flex items-center justify-between gap-4 cursor-pointer px-6 py-5 font-semibold text-primary"><span data-i18n="home.faq.q3">Si possono recuperare i dati da un disco danneggiato?</span><span class="faq-sign text-secondary text-2xl leading-none" aria-hidden="true">+</span></summary><p class="px-6 pb-5 text-gray-600 leading-relaxed" data-i18n="home.faq.a3">Recuperiamo dati da hard disk e SSD danneggiati o non funzionanti. Dopo la diagnosi ti diciamo cosa si può recuperare e quanto costa, prima di procedere.</p></details>
+        <details class="faq card !p-0 group"><summary class="flex items-center justify-between gap-4 cursor-pointer px-6 py-5 font-semibold text-primary"><span data-i18n="home.faq.q4">Come faccio a sapere a che punto è la mia riparazione?</span><span class="faq-sign text-secondary text-2xl leading-none" aria-hidden="true">+</span></summary><p class="px-6 pb-5 text-gray-600 leading-relaxed" data-i18n-html="home.faq.a4Html">Dalla pagina <a href="/segui-riparazione" class="text-secondary font-semibold underline">Segui la tua riparazione</a>: bastano il numero della ricevuta e le ultime 4 cifre del telefono, oppure inquadra il codice QR stampato sulla ricevuta.</p></details>
+        <details class="faq card !p-0 group"><summary class="flex items-center justify-between gap-4 cursor-pointer px-6 py-5 font-semibold text-primary"><span data-i18n="home.faq.q5">Vendete anche dispositivi usati?</span><span class="faq-sign text-secondary text-2xl leading-none" aria-hidden="true">+</span></summary><p class="px-6 pb-5 text-gray-600 leading-relaxed" data-i18n-html="home.faq.a5Html">Sì: nella <a href="/usati" class="text-secondary font-semibold underline">Vetrina Usati</a> trovi smartphone, computer e accessori con foto e prezzi. Puoi venire a vederli e provarli in negozio.</p></details>
+        <details class="faq card !p-0 group"><summary class="flex items-center justify-between gap-4 cursor-pointer px-6 py-5 font-semibold text-primary"><span data-i18n="home.faq.q6">Dove siete e quando siete aperti?</span><span class="faq-sign text-secondary text-2xl leading-none" aria-hidden="true">+</span></summary><p class="px-6 pb-5 text-gray-600 leading-relaxed" data-i18n="home.faq.a6">In Via Pecorari 178 a Nocera Superiore (SA). Dal lunedì al venerdì 9:00–13:30 e 16:00–19:30, sabato 9:00–12:30, domenica chiuso.</p></details>
+      </div>
+    </section>
+
     <div id="app-banner"></div>
 
     <!-- CTA -->
@@ -165,7 +248,7 @@
           <h2 class="text-2xl md:text-4xl font-bold mb-4" data-i18n="home.cta.title">Hai un problema con il tuo dispositivo?</h2>
           <p class="text-gray-300 mb-8 max-w-xl mx-auto" data-i18n="home.cta.subtitle">Contattaci per una diagnosi rapida e un preventivo senza impegno.</p>
           <div class="flex flex-col sm:flex-row gap-4 justify-center">
-            <a href="/contatti.html" class="btn-primary" data-i18n="home.cta.button1">Contattaci ora</a>
+            <a href="/contatti" class="btn-primary" data-i18n="home.cta.button1">Contattaci ora</a>
             <a data-site="whatsapp" href="#" target="_blank" rel="noopener" class="btn-ghost"><i data-icon="whatsapp" data-class="w-5 h-5"></i> <span data-i18n="home.cta.button2">Scrivici su WhatsApp</span></a>
           </div>
         </div>

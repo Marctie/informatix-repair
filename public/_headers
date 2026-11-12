@@ -5,3 +5,11 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
   Cross-Origin-Opener-Policy: same-origin
+
+# File con hash nel nome (JS, CSS, font generati da Vite): non cambiano mai, cache di un anno
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Immagini (nome fisso): una settimana
+/images/*
+  Cache-Control: public, max-age=604800
