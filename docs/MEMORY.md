@@ -157,3 +157,7 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - **Correzione 04/11**: niente CLAUDE_TOKEN ne' rotta /api/claude (tolti). Segnalazioni lette/aggiornate da Claude Code via `officina/tools/segnalazioni.mjs` (wrangler d1, gia' autorizzato).
 
 
+## Sito principale: SEO (2026-11-12)
+- Sul ramo `main` (worktree `../main-wt`), online: indirizzi puliti senza `.html` (Cloudflare Pages reindirizza con 308 le versioni `.html`), titoli per la ricerca locale, JSON-LD completo, sezioni «Dove siamo» e «Domande frequenti» in home, pulsante «Chiama» su telefono, precarico dei font. Lighthouse online: accessibilita'/SEO/best practices 100, prestazioni 99-100, CLS 0.
+- Regola: mai link, canonical o sitemap con `.html`.
+- Da fare da Marco: Search Console + sitemap, Google Business Profile, Cloudflare Web Analytics, redirect www -> dominio senza www, numero WhatsApp. Dettagli: CHATLOG 2026-11-12 (sera).
