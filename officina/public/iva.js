@@ -25,18 +25,24 @@ export function vatBlock(p) {
   return `<div class="fgrid c3" style="margin-top:.25rem">
       <div class="field"><label class="l" for="${p}-vmode">Il prezzo è</label><select id="${p}-vmode"><option value="net">IVA esclusa</option><option value="gross">IVA inclusa</option></select></div>
       <div class="field"><label class="l" for="${p}-vrate">Aliquota IVA %</label><input id="${p}-vrate" inputmode="decimal" value="${esc(String(defaultRate))}" /></div>
-      <div class="field"><span class="l">IVA realmente dovuta</span><label class="check"><input type="checkbox" id="${p}-vapply" /> Aggiungi l’IVA al costo</label></div>
+      <div class="field"><span class="l">Solo acquisti esteri / reverse charge</span><label class="check"><input type="checkbox" id="${p}-vapply" /> L’IVA non la recupero: mettila nel costo</label><span class="hint">Fattura italiana normale: lascia vuoto.</span></div>
     </div>
     <p class="hint" id="${p}-vsum" aria-live="polite"></p>`;
 }
+
+/** Testo della conferma quando si spunta "IVA nel costo": con le fatture italiane il costo va sempre senza IVA. */
+export const VAT_APPLY_CONFIRM = 'Spunta questa casella SOLO se l’IVA per te è un costo che non recuperi (acquisto da un negozio estero, reverse charge, IVA non detraibile).\n\nCon una fattura italiana normale il costo va salvato SENZA IVA: altrimenti il costo in magazzino risulta più alto del 22% e il guadagno sbagliato.\n\nConfermi che l’IVA va nel costo?';
 
 /** Collega il blocco al campo prezzo; restituisce la funzione che legge i valori da inviare. */
 export function bindVat(root, p, priceSel) {
   const upd = () => {
     const mode = $(`#${p}-vmode`, root).value, rate = Number(String($(`#${p}-vrate`, root).value).replace(',', '.')) || 0, apply = $(`#${p}-vapply`, root).checked;
     const c = calcVat($(priceSel, root).value, mode, rate, apply);
-    $(`#${p}-vsum`, root).textContent = c ? `Imponibile ${eur(c.net)} + IVA ${eur(c.vat)} = ${eur(c.gross)} · costo registrato ${eur(c.cost)}${apply ? ' (IVA aggiunta)' : ' (IVA esclusa dal costo)'}` : 'Scrivi il prezzo per vedere il calcolo dell’IVA.';
+    $(`#${p}-vsum`, root).textContent = c ? `Imponibile ${eur(c.net)} + IVA ${eur(c.vat)} = ${eur(c.gross)} · costo registrato ${eur(c.cost)}${apply ? ' (IVA MESSA NEL COSTO: solo per acquisti esteri/reverse charge)' : ' (senza IVA, come va per le fatture italiane)'}` : 'Scrivi il prezzo per vedere il calcolo dell’IVA.';
   };
+  // la spunta va confermata: usata per errore su fatture italiane mette l'IVA nel costo di magazzino (caso del 14/11)
+  const box = $(`#${p}-vapply`, root);
+  box.addEventListener('change', () => { if (box.checked && !window.confirm(VAT_APPLY_CONFIRM)) box.checked = false; upd(); });
   for (const id of [`#${p}-vmode`, `#${p}-vrate`, `#${p}-vapply`, priceSel]) $(id, root).addEventListener('input', upd);
   upd();
   return () => ({ price_mode: $(`#${p}-vmode`, root).value, vat_rate: $(`#${p}-vrate`, root).value.replace(',', '.'), vat_apply: $(`#${p}-vapply`, root).checked });

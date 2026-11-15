@@ -418,6 +418,10 @@ test('notifiche: categorie, fornitore con agenti, carico senza fornitore', async
   assert.match(text(await call('POST', '/api/suppliers', { name: 'Moon', agents: [{ name: 'Luca', phone: '1' }] })), /Fornitore creato.*Moon.*1 agente di riferimento/s);
   const l = text(await call('POST', '/api/products/load', { name: 'Kit auto', category: 'Accessori', qty: 1, unit_price: 6 }));
   assert.match(l, /Carico merce.*Kit auto.*senza fornitore/s);
+  assert.doesNotMatch(l, /IVA messa nel costo/);
+  // IVA nel costo (solo esteri/reverse charge): l'avviso lo dice, cosi' un errore su una fattura italiana si vede subito
+  const v = text(await call('POST', '/api/products/load', { name: 'Cavo estero', qty: 1, unit_price: '12.20', price_mode: 'gross', vat_rate: 22, vat_apply: true }));
+  assert.match(v, /IVA messa nel costo \(10,00\s€ \+ IVA = 12,20\s€\)/);
 });
 
 test('isQuiet: etichette e codici assegnati senza suono, template normali con suono', () => {

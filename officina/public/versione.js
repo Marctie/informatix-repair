@@ -3,9 +3,13 @@
 // Maggiore/minore cambiano per scelte grosse (nuova area, riscrittura). Aggiungi la nuova voce IN CIMA a NOTES e aggiorna VERSION.
 import { esc, openModal } from './util.js';
 
-export const VERSION = '1.0.6.1';
+export const VERSION = '1.0.6.2';
 
 export const NOTES = [
+  { v: '1.0.6.2', date: '2026-11-15', type: 'correzione', items: [
+    'Carico merce e ricambi: la casella che mette l’IVA nel costo ora si chiama «L’IVA non la recupero: mettila nel costo», vale solo per acquisti esteri o reverse charge e chiede conferma. Con le fatture italiane normali va lasciata vuota: il costo si salva senza IVA.',
+    'Corretti i costi degli articoli caricati con l’IVA per errore (tastiera+mouse Logitech MK235, kit auto Techmade, UPS Hikvision) e il relativo storico prezzi.',
+  ] },
   { v: '1.0.6.1', date: '2026-11-04', type: 'correzione', items: [
     'Blacks: in «Segnala una persona» puoi scegliere un cliente già registrato dall’elenco (come nelle riparazioni) oppure scrivere i dati a mano. Richiesta S-0007 di Christian.',
   ] },

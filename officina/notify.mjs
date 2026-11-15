@@ -366,7 +366,7 @@ export function describeEvent({ method, path, status, user, body = {}, result = 
   if ((path === '/api/products/load' || /^\/api\/products\/\d+\/load$/.test(path)) && m === 'POST') {
     if (!isOk) return fail('Carico merce');
     const l = r.loaded || {};
-    return `📥 <b>Carico merce</b>: ${esc(short(r.name, 80))}${l.new_product ? ' (nuovo articolo)' : ''}\n+${esc(l.qty)} pz a ${eur(l.unit_price)} cad.${l.supplier_name ? ` da ${esc(l.supplier_name)}` : ' (senza fornitore)'}${l.doc_number && !/^CARICO-/.test(l.doc_number) ? ` · doc. ${esc(l.doc_number)}` : ''}\nGiacenza ora ${esc(r.qty)} pz · costo medio ${eur(l.avg_cost)}${foot}`;
+    return `📥 <b>Carico merce</b>: ${esc(short(r.name, 80))}${l.new_product ? ' (nuovo articolo)' : ''}\n+${esc(l.qty)} pz a ${eur(l.unit_price)} cad.${l.supplier_name ? ` da ${esc(l.supplier_name)}` : ' (senza fornitore)'}${l.doc_number && !/^CARICO-/.test(l.doc_number) ? ` · doc. ${esc(l.doc_number)}` : ''}\nGiacenza ora ${esc(r.qty)} pz · costo medio ${eur(l.avg_cost)}${l.vat?.applied ? `\n⚠️ IVA messa nel costo (${eur(l.vat.net)} + IVA = ${eur(l.vat.gross)}): giusto solo per acquisti esteri o reverse charge` : ''}${foot}`;
   }
   if ((x = path.match(/^\/api\/products\/(\d+)\/move$/)) && m === 'POST') return isOk ? `📦 <b>Movimento di magazzino</b>\n${esc(r.name)} ${Number(body.delta) > 0 ? '+' : ''}${esc(body.delta)} (${esc(body.reason || '—')}) → ora ${esc(r.qty)} pz${foot}` : fail('Movimento di magazzino');
   if (/^\/api\/services/.test(path) && m !== 'GET') {

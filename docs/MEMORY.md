@@ -161,3 +161,7 @@ Il registro cronologico delle modifiche è in [CHATLOG.md](CHATLOG.md).
 - Sul ramo `main` (worktree `../main-wt`), online: indirizzi puliti senza `.html` (Cloudflare Pages reindirizza con 308 le versioni `.html`), titoli per la ricerca locale, JSON-LD completo, sezioni «Dove siamo» e «Domande frequenti» in home, pulsante «Chiama» su telefono, precarico dei font. Lighthouse online: accessibilita'/SEO/best practices 100, prestazioni 99-100, CLS 0.
 - Regola: mai link, canonical o sitemap con `.html`.
 - Da fare da Marco: Search Console + sitemap, Google Business Profile, Cloudflare Web Analytics, redirect www -> dominio senza www, numero WhatsApp. Dettagli: CHATLOG 2026-11-12 (sera).
+
+## Costi e IVA (2026-11-15, versione 1.0.6.2)
+- Il costo degli articoli in magazzino e' SEMPRE senza IVA (margine = prezzo/1,22 - costo). La casella «IVA nel costo» del carico e dei ricambi vale solo per esteri/reverse charge e ora chiede conferma; l'avviso Telegram del carico lo segnala.
+- 15/11: corretti in D1 i costi salvati con IVA per errore (articoli 1, 2, 3 + storico prezzi, righe carico, V-2026-0001). Aperto: 16 ricambi di riparazione con IVA nel costo, da decidere col regime IVA del negozio. Dettagli: CHATLOG 2026-11-15.
