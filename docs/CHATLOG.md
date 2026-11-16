@@ -1199,3 +1199,9 @@ Ordine in cui sono andate le cose, per ripartire senza rileggere tutto:
 5. **Avviso a Christian**: nota fissata n. 1 con elenco da spuntare e istruzioni + promemoria n. 1 (inviato sul gruppo Telegram alle 11:21).
 **Da fare alla prossima sessione**: (a) deploy della 1.0.6.2 con l'ok di Marco (`npx wrangler deploy --config officina/wrangler.jsonc`, nessuna migrazione) e verifica online; (b) decidere i 16 ricambi delle riparazioni con IVA nel costo (`repair_parts.vat_applied=1`, R-2026-0004...0022) in base al regime IVA del negozio; (c) leggere se Christian ha spuntato la nota o corretto qualche costo (`SELECT items FROM notes WHERE id=1`, registro).
 **Lezioni**: «prezzi sbagliati» senza esempi: controllare prima costi e margini, non solo i prezzi di vendita; un valore con 4 decimali divisibile per 1,22 e' il segno dell'IVA finita nel costo.
+
+## 2026-11-16 - Controllo costi su fatture Erregame 1/64659 (12/11) e Moon Computer 1/20838 (11/11) (richiesta di Marco)
+- **Solo lettura su D1, nessuna modifica.** Confrontati i prezzi unitari delle fatture (senza IVA) con `products.cost`: tutti uguali. Moon: art. 112, 51, 113, 114, 22, 115, 116, 25, 17, 11, 117 (6,38 / 9,91 / 4,75 / 5,28 / 2,63 / 2,68 / 2,55 / 1,68 / 2,84 / 5,41 / 4,50). Erregame: art. 119, 118, 120, 121, 122, 123, 124, 125 (19,90 / 51,90 / 48,90 / 53,90 x3 / 48,90 / 56,90). `purchase_lines` di questi articoli tutte con `vat_applied=0`.
+- Non in magazzino (non toccati): Frog Kit Assistenza, Frog Portacialda, Poppy Kit, Lollocaffe' (Erregame); set pennelli e pistola sparapunti ricondizionati (Moon).
+- Nota: GTA VI in fattura ha EAN 5026555439862, in magazzino (art. 125) 5026555439855. Prezzo giusto, codice a barre lasciato com'e'.
+- Nessun avviso Telegram: Marco l'ha chiesto solo per i prezzi sistemati, e non ce n'erano.
