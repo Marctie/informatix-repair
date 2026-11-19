@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-26",
+  "updated": "2026-11-19",
   "items": [
     {
       "slug": "iphone-17-pro-max-512-argento-sigillato",
@@ -414,10 +414,12 @@
     {
       "slug": "samsung-galaxy-tab-a11-plus-5g",
       "name": "Samsung Galaxy Tab A11+ 5G",
-      "condition": "usato",
+      "memory": "128gb",
+      "color": "nero",
+      "condition": "nuovo",
       "conditionLabel": "Con scatola originale",
       "conditionLabelEn": "With original box",
-      "price": null,
+      "price": 280,
       "featured": false,
       "photos": 1,
       "tagline": "Un tablet Samsung con connessione 5G.",
